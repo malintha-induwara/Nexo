@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Default account groups (AS-001) -->
+    <string name="group_cash">Cash</string>
+    <string name="group_accounts">Accounts</string>
+    <string name="group_card">Card</string>
+    <string name="group_debit_card">Debit Card</string>
+    <string name="group_savings">Savings</string>
+    <string name="group_prepaid">Top-Up/Prepaid</string>
+    <string name="group_investments">Investments</string>
+    <string name="group_overdrafts">Overdrafts</string>
+    <string name="group_loan">Loan</string>
+    <string name="group_insurance">Insurance</string>
+    <string name="group_others">Others</string>
+
+    <!-- Default categories (DM-085) -->
+    <string name="cat_allowance">Allowance</string>
+    <string name="cat_salary">Salary</string>
+    <string name="cat_petty_cash">Petty cash</string>
+    <string name="cat_bonus">Bonus</string>
+    <string name="cat_other">Other</string>
+    <string name="cat_food">Food</string>
+    <string name="cat_social_life">Social Life</string>
+    <string name="cat_pets">Pets</string>
+    <string name="cat_transport">Transport</string>
+    <string name="cat_culture">Culture</string>
+    <string name="cat_household">Household</string>
+    <string name="cat_apparel">Apparel</string>
+    <string name="cat_beauty">Beauty</string>
+    <string name="cat_health">Health</string>
+    <string name="cat_education">Education</string>
+    <string name="cat_gift">Gift</string>
+    <string name="cat_lunch">Lunch</string>
+    <string name="cat_dinner">Dinner</string>
+    <string name="cat_eating_out">Eating out</string>
+    <string name="cat_beverages">Beverages</string>
+    <string name="cat_friend">Friend</string>
+    <string name="cat_fellowship">Fellowship</string>
+    <string name="cat_alumni">Alumni</string>
+    <string name="cat_dues">Dues</string>
+    <string name="cat_bus">Bus</string>
+    <string name="cat_subway">Subway</string>
+    <string name="cat_taxi">Taxi</string>
+    <string name="cat_car">Car</string>
+    <string name="cat_books">Books</string>
+    <string name="cat_movie">Movie</string>
+    <string name="cat_music">Music</string>
+    <string name="cat_apps">Apps</string>
+    <string name="cat_appliances">Appliances</string>
+    <string name="cat_furniture">Furniture</string>
+    <string name="cat_kitchen">Kitchen</string>
+    <string name="cat_toiletries">Toiletries</string>
+    <string name="cat_chandlery">Chandlery</string>
+    <string name="cat_clothing">Clothing</string>
+    <string name="cat_fashion">Fashion</string>
+    <string name="cat_shoes">Shoes</string>
+    <string name="cat_laundry">Laundry</string>
+    <string name="cat_cosmetics">Cosmetics</string>
+    <string name="cat_makeup">Makeup</string>
+    <string name="cat_accessories">Accessories</string>
+    <string name="cat_yoga">Yoga</string>
+    <string name="cat_hospital">Hospital</string>
+    <string name="cat_medicine">Medicine</string>
+    <string name="cat_schooling">Schooling</string>
+    <string name="cat_textbooks">Textbooks</string>
+    <string name="cat_school_supplies">School supplies</string>
+    <string name="cat_academy">Academy</string>
+    <string name="cat_fees">Fees</string>
+</resources>

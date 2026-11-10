@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tx_difference">Difference</string>
+
+    <string name="action_back">Back</string>
+    <string name="action_previous">Previous</string>
+    <string name="action_next">Next</string>
+    <string name="action_yes">Yes</string>
+    <string name="action_no">No</string>
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_close">Close</string>
+    <string name="action_done">Done</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_save">Save</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_add">Add</string>
+    <string name="action_change">Change</string>
+    <string name="action_continue">Continue</string>
+    <string name="action_reset">Reset</string>
+    <string name="action_restore">Restore</string>
+    <string name="action_more">More</string>
+    <string name="action_select_all">Select all</string>
+    <string name="action_share">Share</string>
+
+    <string name="this_month">This month</string>
+    <string name="no_data">No data available.</string>
+    <string name="income">Income</string>
+    <string name="expenses">Expenses</string>
+    <string name="expense">Expense</string>
+    <string name="transfer">Transfer</string>
+    <string name="total">Total</string>
+    <string name="calculator">Calculator</string>
+    <string name="calc_error">Error</string>
+    <string name="search">Search</string>
+    <string name="currency">Currency</string>
+    <string name="main_currency">Main currency</string>
+    <string name="sub_currency_setting">Sub Currency Setting</string>
+    <string name="none">None</string>
+    <string name="all">All</string>
+    <string name="other">Other</string>
+    <string name="modified_balance">Modified Bal.</string>
+    <string name="carry_over">Carry-over</string>
+    <string name="repeat">Repeat</string>
+    <string name="note">Note</string>
+    <string name="description">Description</string>
+    <string name="account">Account</string>
+    <string name="category">Category</string>
+    <string name="amount">Amount</string>
+    <string name="date">Date</string>
+    <string name="from">From</string>
+    <string name="to">To</string>
+    <string name="fees">Fees</string>
+    <string name="tags">Tags</string>
+    <string name="balance">Balance</string>
+    <string name="deposit">Deposit</string>
+    <string name="withdrawal">Withdrawal</string>
+    <string name="saved">Saved.</string>
+    <string name="deleted">Deleted.</string>
+    <string name="reset_complete">Reset complete.</string>
+    <string name="confirm_delete">Are you sure you want to delete?</string>
+    <string name="please_enter_contents">Please enter the contents</string>
+    <string name="weekly">Weekly</string>
+    <string name="monthly">Monthly</string>
+    <string name="annually">Annually</string>
+    <string name="period">Period</string>
+    <string name="daily">Daily</string>
+
+    <!-- Shell -->
+    <string name="tab_trans">Trans.</string>
+    <string name="tab_stats">Stats</string>
+    <string name="tab_accounts">Accounts</string>
+    <string name="tab_more">More</string>
+    <string name="press_back_again">Press the Back button again to exit.</string>
+    <string name="shortcut_add">Add</string>
+    <string name="shortcut_add_long">Add transaction</string>
+
+    <!-- Onboarding -->
+    <string name="welcome_text">Your records stay on this phone. There is no internet connection and no sign-up with any service.</string>
+    <string name="get_started">Get started</string>
+    <string name="starting_data_title">Choose starting data</string>
+    <string name="starting_data_text">Start with default categories and accounts, or bring your data in from a backup file.</string>
+    <string name="start_fresh">Start fresh</string>
+    <string name="start_fresh_text">Set up default categories and accounts.</string>
+    <string name="restore_from_file">Restore from a backup file</string>
+    <string name="restore_from_file_text">Use a backup made by Nexo, or by Money Manager on Android.</string>
+    <string name="restore_not_backup">This file isn\'t a backup file.</string>
+    <string name="restore_unsupported">This backup format isn\'t supported yet.</string>
+    <string name="restore_failed">Restore failed.</string>
+    <string name="restore_completed">Restore completed.</string>
+    <string name="permission_title">Notifications</string>
+    <string name="permission_text">Nexo can remind you to record your day and show a quick-add shortcut in the notification bar. Everything stays on this device. The app works without this permission.</string>
+
+    <!-- Lock -->
+    <string name="lock_enter_pin">Enter your PIN</string>
+    <string name="lock_wrong_pin">Wrong PIN.</string>
+    <plurals name="tries_left">
+        <item quantity="one">%d try left before a short wait.</item>
+        <item quantity="other">%d tries left before a short wait.</item>
+    </plurals>
+    <string name="lock_wait">Too many attempts. Try again in %1$d:%2$02d.</string>
+    <string name="lock_forgot_pin">Forgot PIN?</string>
+    <string name="lock_forgot_text">Without the PIN, Nexo can only be opened again by erasing all data on this phone: transactions, accounts, settings, photos and automatic backups. Backup files you exported earlier are not affected and can be restored afterwards.</string>
+    <string name="lock_erase_continue">Erase…</string>
+    <string name="lock_erase_title">Erase all data?</string>
+    <string name="lock_erase_word">ERASE</string>
+    <string name="lock_erase_type">Type %1$s to confirm</string>
+    <string name="lock_erase_mismatch">The text doesn\'t match.</string>
+    <string name="biometric_unlock">Biometric unlock</string>
+    <string name="biometric_prompt_title">Unlock %1$s</string>
+    <string name="use_pin">Use PIN</string>
+    <string name="biometric_invalidated">Biometric unlock was turned off because this phone\'s biometric settings changed. Unlock with your PIN and turn it on again in Lock settings.</string>
+</resources>

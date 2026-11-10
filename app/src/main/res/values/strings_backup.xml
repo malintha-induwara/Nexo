@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="please_wait">Please wait…</string>
+    <string name="backup_on_device">Backup/restore on device</string>
+    <string name="share_backup">Export backup file</string>
+    <string name="backup_mail_subject">Nexo Backup</string>
+    <string name="backup_mail_body">To restore: save this attachment on your phone, then open Nexo › More › Backup › Backup/restore on device › Data Recovery and choose the file.</string>
+    <string name="import_excel">Import Excel File</string>
+    <string name="export_photos">Export Photo Files</string>
+    <string name="export_photos_text">Copy your photos to a folder you choose</string>
+    <string name="import_photos">Import Photo Files</string>
+    <string name="import_photos_text">Copy images from a folder into Nexo</string>
+    <string name="photos_copied">%d photo(s) copied.</string>
+    <string name="complete_reset">A complete reset</string>
+    <string name="contents_reset">Reset contents only (Others remain)</string>
+    <string name="reset_question">Are you sure you want to reset?</string>
+    <string name="contents_reset_text">Transactions will be deleted. Accounts, categories, tags, budgets, repeats, notes and settings remain. Do you wish to continue?</string>
+    <string name="reset_photos_question">Would you like to delete the photos saved in Nexo as well?</string>
+    <string name="backup_device_text">Backups made here stay where you save them. A backup on this phone is lost with the phone, so keep a copy elsewhere too. Photos are not included in backups; copy them with Export Photo Files.</string>
+    <string name="data_backup">Data Backup</string>
+    <string name="data_backup_text">Export a backup file from the device</string>
+    <string name="data_recovery">Data Recovery</string>
+    <string name="data_recovery_text">Import a backup file to the device</string>
+    <string name="auto_backup_history">Automatic Backup History</string>
+    <string name="backup_completed">Backup has been completed.</string>
+    <string name="backup_failed">Backup failed.</string>
+    <string name="restore_selected_question">Would you like to restore from the selected data? All current data will be replaced.</string>
+    <string name="last_month">Last M</string>
+    <string name="last_year">Last Y</string>
+    <string name="excel_not_backup">This file is not a backup file. It cannot be restored.</string>
+    <string name="excel_subject">Nexo - Excel</string>
+    <string name="transfer_out">Transfer-Out</string>
+    <string name="transfer_in">Transfer-In</string>
+    <string name="income_expense">Income/Expense</string>
+    <string name="not_excel_file">This is not a valid spreadsheet file (.tsv or .txt).</string>
+    <string name="import_text">Add .tsv or .txt (Unicode Text) files to the list, then open one to check and save its rows.</string>
+    <string name="import_input_n">Input (%d)</string>
+    <string name="import_error_date">%1$s : Please check again your date format</string>
+    <string name="import_error_type">Only [Income], [Expense], [Transfer-Out] and [Transfer-In] are possible.</string>
+    <string name="import_error_amount">Please check the amount.</string>
+    <string name="import_error_category">There is no category \'%1$s\'.</string>
+    <string name="import_error_subcategory">There is no subcategory \'%1$s\' in \'%2$s\'.</string>
+    <string name="import_error_account">There is no account \'%1$s\'.</string>
+    <string name="add_named">Add : %1$s</string>
+    <string name="save_question">Do you want to save?</string>
+    <string name="import_partial">%1$d saved, %2$d rows still need fixing.</string>
+</resources>

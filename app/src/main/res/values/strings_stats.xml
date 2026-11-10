@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="budget">Budget</string>
+    <string name="budget_setting">Budget Setting</string>
+    <string name="total_budget">Total Budget</string>
+    <string name="budget_empty_hint">Set a monthly budget to track your spending here.</string>
+    <string name="today">Today</string>
+    <string name="excess">Excess</string>
+    <string name="used_amount">Used Amount</string>
+    <string name="remaining">Remaining</string>
+    <string name="budget_help">You can check out the budget status in Trans. tab › Total page.</string>
+    <string name="add_budget">Add Budget</string>
+    <string name="default_budget">Default Budget</string>
+    <string name="budget_editor_help">You can set the budget for each month. If you change the default budget, it is applied from next month.</string>
+    <string name="budget_rollup_help">If the budget of the main category is zero, it shows the total of the subcategory budgets.</string>
+    <string name="month_total">month total</string>
+    <string name="weekly_total">weekly total</string>
+    <string name="annual_income">annual income</string>
+    <string name="annual_expenses">annual expenses</string>
+    <string name="income_category">Income Category</string>
+    <string name="expenses_category">Expenses Category</string>
+    <string name="subcategory">Subcategory</string>
+    <string name="subcategory_name">Subcategory name</string>
+    <string name="modify_subcategory">Modify Subcategory</string>
+    <string name="change_category">Change Category</string>
+    <string name="no_subcategories">There are no sub-categories.</string>
+    <string name="to_main_category">→ Main Category</string>
+    <string name="to_subcategory">→ Subcategory</string>
+    <string name="to_main_confirm">This subcategory will be changed to a main category. Do you wish to continue?</string>
+    <string name="to_subcategory_confirm">Category \'%1$s\' will become a subcategory of \'%2$s\'. All subcategories of \'%1$s\' will become subcategories of \'%2$s\'. Do you wish to continue?</string>
+    <string name="tag_settings">Tag Settings</string>
+    <string name="tag_help">Tags add information to a record. For example, a \'Travel\' tag makes it easy to find everything related to your trips.</string>
+</resources>

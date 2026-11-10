@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="title">Title</string>
+    <string name="color">Color</string>
+    <string name="pin">Pin</string>
+    <string name="memo_button_setting">Note button setting</string>
+    <string name="memo_button_text">Show note button on Trans. tab.</string>
+    <string name="bookmark_help_title">How to register Bookmark?</string>
+    <string name="bookmark_help">Open a transaction you enter often and tap Bookmark. Next time, pick it from here or from the star on the entry screen to fill the form in one tap.</string>
+    <string name="repeat_setting">Repeat Setting</string>
+    <string name="repeat_reflect_title">Timing of reflection</string>
+    <string name="reflect_on_date">On the date</string>
+    <string name="reflect_first_day">On the first day of every month</string>
+    <string name="reflect_first_day_confirm">Recurring transactions are applied on the first day of every month. The recurring transactions until %1$s are reflected in advance. Do you want to continue?</string>
+    <string name="repeat_help_title">How to setup \'Repeat\' transactions?</string>
+    <string name="repeat_help">Tap + here, or choose Rep/Inst. › Repeat on the entry screen. Nexo then adds the transaction automatically on each date.</string>
+    <string name="min">Min.</string>
+    <string name="max">Max.</string>
+    <string name="transactions_n">Transactions (%d)</string>
+    <string name="memos_n">Notes (%d)</string>
+</resources>
