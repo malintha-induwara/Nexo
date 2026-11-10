@@ -1,6 +1,14 @@
 package com.nexo.app.ui.transactions
 
 import androidx.activity.compose.BackHandler
+import java.util.Locale
+import com.nexo.app.ui.theme.NexoShapes
+import com.nexo.app.ui.theme.MoneyColors
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -435,60 +443,97 @@ private fun DailyContent(
     )
 }
 
+/**
+ * Month grid (UI-011). No ruled lines: days sit on the page, and a day with transactions or memos
+ * becomes a soft tile, so activity is what stands out. Today's number is an inverted pill.
+ * Each cell still shows income, expenses and the day's net.
+ */
 @Composable
 private fun CalendarContent(data: HomeData, main: CurrencyEntity, weekStart: java.time.DayOfWeek, bottom: Dp, onDay: (LocalDate) -> Unit) {
     val money = LocalMoneyColors.current
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(vertical = 4.dp)) {
+    val colors = LocalNexoColors.current
+    Column(Modifier.fillMaxSize().padding(horizontal = Space.s)) {
+        Row(Modifier.fillMaxWidth().padding(top = Space.s, bottom = Space.s)) {
             (0 until 7).forEach { i ->
                 val d = weekStart.plus(i.toLong())
-                Text(Formats.weekdayShort(d), Modifier.weight(1f), color = weekdayColor(d), style = MaterialTheme.typography.labelSmall, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Text(
+                    Formats.weekdayShort(d).uppercase(Locale.getDefault()),
+                    Modifier.weight(1f),
+                    color = when (d) {
+                        java.time.DayOfWeek.SUNDAY -> NexoPalette.Sunday
+                        java.time.DayOfWeek.SATURDAY -> NexoPalette.Saturday
+                        else -> colors.textTertiary
+                    },
+                    style = NexoType.Caps,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                )
             }
         }
         val weeks = data.cells.chunked(7)
-        Column(Modifier.fillMaxSize().padding(bottom = bottom)) {
+        Column(Modifier.fillMaxSize().padding(bottom = bottom), verticalArrangement = Arrangement.spacedBy(CalendarGap)) {
             weeks.forEach { week ->
-                Row(Modifier.fillMaxWidth().weight(1f).heightIn(min = 64.dp)) {
-                    week.forEach { cell ->
-                        val longest = listOf(cell.income, cell.expense, cell.income - cell.expense).maxOf { AmountFormatter.number(it, main.decimals).length }
-                        val size = if (longest >= 9) ((27 - longest) / 2f).coerceAtLeast(6f) else 9.5f
-                        Column(
-                            Modifier.weight(1f).fillMaxSize()
-                                .background(if (cell.inPeriod) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceContainer)
-                                .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
-                                .clickable { onDay(cell.date) }
-                                .padding(3.dp),
-                        ) {
-                            val label = if (cell.date.dayOfMonth == 1) Formats.monthDay(cell.date) else cell.date.dayOfMonth.toString()
-                            Box(
-                                Modifier.then(if (cell.isToday) Modifier.background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp)) else Modifier).padding(horizontal = 3.dp),
-                            ) {
-                                Text(
-                                    label, fontSize = 11.sp,
-                                    color = when {
-                                        cell.isToday -> MaterialTheme.colorScheme.onPrimary
-                                        cell.date.dayOfWeek == java.time.DayOfWeek.SUNDAY && cell.inPeriod -> NexoPalette.Sunday
-                                        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = if (cell.inPeriod) 1f else 0.5f)
-                                    },
-                                )
-                            }
-                            if (cell.memoColors.isNotEmpty()) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    cell.memoColors.take(4).forEach { MemoDot(it, 6) }
-                                    if (cell.memoColors.size > 4) Text("+${cell.memoColors.size - 4}", fontSize = 8.sp)
-                                }
-                            }
-                            Spacer(Modifier.weight(1f))
-                            val alpha = if (cell.inPeriod) 1f else 0.5f
-                            if (cell.income != 0.0) Text(AmountFormatter.number(cell.income, main.decimals), fontSize = size.sp, color = money.income.copy(alpha = alpha), maxLines = 1, modifier = Modifier.align(Alignment.End))
-                            if (cell.expense != 0.0) Text(AmountFormatter.number(cell.expense, main.decimals), fontSize = size.sp, color = money.expense.copy(alpha = alpha), maxLines = 1, modifier = Modifier.align(Alignment.End))
-                            if ((cell.income != 0.0 && cell.expense != 0.0) || (cell.hasTx && cell.income == 0.0 && cell.expense == 0.0)) {
-                                Text(AmountFormatter.number(cell.income - cell.expense, main.decimals), fontSize = size.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha), maxLines = 1, modifier = Modifier.align(Alignment.End))
-                            }
-                        }
-                    }
+                Row(Modifier.fillMaxWidth().weight(1f).heightIn(min = 64.dp), horizontalArrangement = Arrangement.spacedBy(CalendarGap)) {
+                    week.forEach { cell -> CalendarDay(cell, main, money, Modifier.weight(1f).fillMaxHeight()) { onDay(cell.date) } }
                 }
             }
+        }
+    }
+}
+
+private val CalendarGap = 3.dp
+
+@Composable
+private fun CalendarDay(cell: CalendarCell, main: CurrencyEntity, money: MoneyColors, modifier: Modifier, onClick: () -> Unit) {
+    val colors = LocalNexoColors.current
+    val active = cell.hasTx || cell.memoColors.isNotEmpty()
+    val dim = if (cell.inPeriod) 1f else 0.45f
+    // Long figures step the type down; shrinkToFit below catches anything that still overflows.
+    val longest = listOf(cell.income, cell.expense, cell.income - cell.expense).maxOf { AmountFormatter.number(it, main.decimals).length }
+    val size = if (longest >= 9) ((27 - longest) / 2f).coerceAtLeast(6f) else 9.5f
+    val figure = NexoType.AmountSmall.copy(fontSize = size.sp, lineHeight = (size + 3.5f).sp, fontWeight = FontWeight.SemiBold)
+    Column(
+        modifier
+            .clip(NexoShapes.tile)
+            .background(if (active) colors.surface.copy(alpha = dim) else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 2.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        val label = if (cell.date.dayOfMonth == 1) Formats.monthDay(cell.date) else cell.date.dayOfMonth.toString()
+        Box(
+            Modifier
+                .height(24.dp)
+                .widthIn(min = 24.dp)
+                .clip(CircleShape)
+                .then(if (cell.isToday) Modifier.background(colors.text) else Modifier)
+                .padding(horizontal = 6.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (cell.isToday) FontWeight.Bold else FontWeight.Medium,
+                maxLines = 1,
+                color = when {
+                    cell.isToday -> colors.background
+                    !cell.inPeriod -> colors.textTertiary.copy(alpha = 0.7f)
+                    cell.date.dayOfWeek == java.time.DayOfWeek.SUNDAY -> NexoPalette.Sunday
+                    else -> colors.text
+                },
+            )
+        }
+        if (cell.memoColors.isNotEmpty()) {
+            Row(Modifier.padding(top = 3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                cell.memoColors.take(4).forEach { MemoDot(it, 5) }
+                if (cell.memoColors.size > 4) Text("+${cell.memoColors.size - 4}", fontSize = 8.sp, color = colors.textTertiary)
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        if (cell.income != 0.0) Text(AmountFormatter.number(cell.income, main.decimals), Modifier.shrinkToFit(), style = figure, color = money.income.copy(alpha = dim), maxLines = 1)
+        if (cell.expense != 0.0) Text(AmountFormatter.number(cell.expense, main.decimals), Modifier.shrinkToFit(), style = figure, color = money.expense.copy(alpha = dim), maxLines = 1)
+        if ((cell.income != 0.0 && cell.expense != 0.0) || (cell.hasTx && cell.income == 0.0 && cell.expense == 0.0)) {
+            Text(AmountFormatter.number(cell.income - cell.expense, main.decimals), Modifier.shrinkToFit(), style = figure, color = colors.textSecondary.copy(alpha = dim), maxLines = 1)
         }
     }
 }
