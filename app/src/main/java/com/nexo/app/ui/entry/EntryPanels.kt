@@ -1,28 +1,42 @@
 package com.nexo.app.ui.entry
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.ViewAgenda
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,8 +46,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,29 +60,80 @@ import com.nexo.app.core.database.entity.CategoryEntity
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.domain.RefData
+import com.nexo.app.ui.components.CategoryTile
+import com.nexo.app.ui.components.NavMotion
+import com.nexo.app.ui.components.RoundIconButton
+import com.nexo.app.ui.components.rememberHaptics
+import com.nexo.app.ui.theme.CategoryHues
+import com.nexo.app.ui.theme.LocalNexoColors
+import com.nexo.app.ui.theme.NexoMotion
+import com.nexo.app.ui.theme.NexoShapes
+import com.nexo.app.ui.theme.NexoType
+import com.nexo.app.ui.theme.Space
+import java.util.Locale
+
+private val PanelHeight = 320.dp
 
 @Composable
-private fun PanelHeader(title: String, onClose: () -> Unit, extra: @Composable () -> Unit = {}) {
-    Row(Modifier.fillMaxWidth().padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-        extra()
-        IconButton(onClick = onClose) { Icon(Icons.Filled.Close, stringResource(R.string.action_close)) }
-    }
+private fun PanelFrame(content: @Composable () -> Unit) {
+    val colors = LocalNexoColors.current
+    Column(Modifier.fillMaxWidth().clip(NexoShapes.sheet).background(colors.surface).navigationBarsPadding().height(PanelHeight)) { content() }
 }
 
 @Composable
-private fun GridCell(text: String, selected: Boolean, accent: Color, dimmed: Boolean = false, onClick: () -> Unit) {
+private fun PanelHeader(title: String, onClose: () -> Unit, onTitleClick: (() -> Unit)? = null, extra: @Composable () -> Unit = {}) {
+    val colors = LocalNexoColors.current
+    Row(Modifier.fillMaxWidth().height(52.dp).padding(start = Space.s, end = Space.s), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.weight(1f).clip(CircleShape).then(if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier).padding(horizontal = Space.s, vertical = Space.s),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (onTitleClick != null) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, null, tint = colors.text, modifier = Modifier.size(20.dp))
+            Text(title.uppercase(Locale.getDefault()), style = NexoType.Caps, color = if (onTitleClick != null) colors.text else colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        extra()
+        RoundIconButton(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_close), onClose, size = 36.dp, tint = colors.textSecondary, container = Color.Transparent)
+    }
+}
+
+/** A name in a rounded cell; selection fills it with the entry's colour at low strength and rings it. */
+@Composable
+private fun NameCell(text: String, selected: Boolean, accent: Color, dimmed: Boolean = false, onClick: () -> Unit) {
+    val colors = LocalNexoColors.current
+    val haptics = rememberHaptics()
+    val bg by animateColorAsState(if (selected) colors.tint(accent, colors.raised) else colors.raised, NexoMotion.standard(), label = "cellBg")
+    val ring by animateColorAsState(if (selected) accent else Color.Transparent, NexoMotion.standard(), label = "cellRing")
     Box(
-        Modifier.padding(3.dp).fillMaxWidth().height(48.dp)
-            .background(if (selected) accent.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surface, MaterialTheme.shapes.small)
-            .clickable(onClick = onClick),
+        Modifier
+            .padding(Space.xs)
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(NexoShapes.control)
+            .background(bg)
+            .border(1.5.dp, ring, NexoShapes.control)
+            .clickable(role = Role.RadioButton) { haptics.tick(); onClick() },
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 6.dp),
-            color = if (dimmed) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = Space.s),
+            color = if (dimmed) colors.textTertiary else colors.text,
         )
+    }
+}
+
+@Composable
+private fun ListCell(text: String, selected: Boolean, accent: Color, chevron: Boolean = false, dimmed: Boolean = false, onClick: () -> Unit) {
+    val colors = LocalNexoColors.current
+    val haptics = rememberHaptics()
+    val bg by animateColorAsState(if (selected) colors.tint(accent, colors.surface) else Color.Transparent, NexoMotion.standard(), label = "listCell")
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = Space.xs).clip(NexoShapes.control).background(bg)
+            .clickable { haptics.tick(); onClick() }.padding(horizontal = Space.m, vertical = Space.m),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (dimmed) colors.textTertiary else colors.text)
+        if (chevron) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = colors.textTertiary, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -83,21 +151,20 @@ fun AccountPanel(
     onAdd: () -> Unit,
     onClose: () -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().height(300.dp).background(MaterialTheme.colorScheme.surfaceContainer)) {
+    val colors = LocalNexoColors.current
+    PanelFrame {
         PanelHeader(title, onClose) {
-            IconButton(onClick = onToggleGrouped) {
-                Icon(if (grouped) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda, stringResource(R.string.toggle_grouping))
-            }
-            IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit)) }
+            RoundIconButton(if (grouped) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda, stringResource(R.string.toggle_grouping), onToggleGrouped, size = 36.dp, tint = colors.textSecondary, container = Color.Transparent)
+            RoundIconButton(Icons.Outlined.Edit, stringResource(R.string.action_edit), onEdit, size = 36.dp, tint = colors.textSecondary, container = Color.Transparent)
         }
         val visible = ref.orderedAccounts().filter { a ->
             val g = ref.groupById[a.groupId]
             g != null && g.status == com.nexo.app.core.model.GroupStatus.ACTIVE && (a.status == AccountStatus.ACTIVE || (grouped && a.status == AccountStatus.HIDDEN))
         }
         if (!grouped) {
-            LazyVerticalGrid(GridCells.Fixed(3), Modifier.padding(horizontal = 6.dp)) {
+            LazyVerticalGrid(GridCells.Fixed(3), Modifier.padding(horizontal = Space.s), contentPadding = PaddingValues(bottom = Space.s)) {
                 items(visible.filter { it.status == AccountStatus.ACTIVE }, key = { it.id }) { a ->
-                    GridCell(a.name, a.id == selectedId, accent) { onSelect(a.id) }
+                    NameCell(a.name, a.id == selectedId, accent) { onSelect(a.id) }
                 }
                 item { AddCell(onAdd) }
             }
@@ -124,24 +191,51 @@ fun AccountPanel(
 
 @Composable
 private fun AddCell(onAdd: () -> Unit) {
+    val colors = LocalNexoColors.current
     Box(
-        Modifier.padding(3.dp).fillMaxWidth().height(48.dp).background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.small).clickable(onClick = onAdd),
+        Modifier.padding(Space.xs).fillMaxWidth().height(48.dp).clip(NexoShapes.control)
+            .border(1.dp, colors.hairline, NexoShapes.control).clickable(onClick = onAdd),
         contentAlignment = Alignment.Center,
-    ) { Icon(Icons.Filled.Add, stringResource(R.string.add_account), tint = MaterialTheme.colorScheme.primary) }
+    ) { Icon(Icons.Rounded.Add, stringResource(R.string.add_account), tint = colors.textSecondary) }
 }
 
+/** An emoji tile with its name beneath, ringed in the entry's colour when chosen. */
 @Composable
-private fun ListCell(text: String, selected: Boolean, accent: Color, chevron: Boolean = false, dimmed: Boolean = false, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().background(if (selected) accent.copy(alpha = 0.14f) else Color.Transparent).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+private fun CategoryCell(category: CategoryEntity, ref: RefData, selected: Boolean, accent: Color, hasChildren: Boolean, label: String = category.name, onClick: () -> Unit) {
+    val colors = LocalNexoColors.current
+    val haptics = rememberHaptics()
+    val v = ref.visual(category.id)
+    val ring by animateColorAsState(if (selected) accent else Color.Transparent, NexoMotion.standard(), label = "catRing")
+    val scale by animateFloatAsState(if (selected) 1.06f else 1f, NexoMotion.snappy(), label = "catScale")
+    Column(
+        Modifier
+            .padding(horizontal = Space.xxs, vertical = Space.xs)
+            .clip(NexoShapes.control)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, role = Role.RadioButton) { haptics.tick(); onClick() }
+            .padding(vertical = Space.xs),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(text, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (dimmed) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface)
-        if (chevron) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.outline)
+        Box(Modifier.graphicsLayer { scaleX = scale; scaleY = scale }.border(2.dp, ring, NexoShapes.tile).padding(3.dp)) {
+            if (v != null) CategoryTile(v.emoji, v.monogram, CategoryHues.of(v.colorIndex, colors.isDark), size = 44.dp, over = colors.surface)
+            if (hasChildren) {
+                Box(Modifier.align(Alignment.BottomEnd).size(16.dp).clip(CircleShape).background(colors.raisedHigh), contentAlignment = Alignment.Center) {
+                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = colors.textSecondary, modifier = Modifier.size(12.dp))
+                }
+            }
+        }
+        Spacer(Modifier.height(Space.xs))
+        Text(
+            label, style = MaterialTheme.typography.labelMedium, color = if (selected) colors.text else colors.textSecondary,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().heightIn(min = 16.dp),
+        )
     }
 }
 
-/** Category selection panel (TX-006): main grid, or main/sub two-pane when subcategories are on. */
+/**
+ * Category selection panel (TX-006). A grid of main categories; with subcategories on, a main
+ * category that has subcategories opens its own grid, where the first cell picks the main
+ * category itself (same rule as the old two-pane picker: first tap opens, second tap selects).
+ */
 @Composable
 fun CategoryPanel(
     kind: CategoryKind,
@@ -152,32 +246,33 @@ fun CategoryPanel(
     onEdit: () -> Unit,
     onClose: () -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().height(300.dp).background(MaterialTheme.colorScheme.surfaceContainer)) {
-        PanelHeader(stringResource(R.string.category), onClose) {
-            IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit)) }
+    val colors = LocalNexoColors.current
+    val subsOn = ref.settings.subcategories
+    val selectedMain = ref.mainCategoryId(selectedId)
+    var open by remember(selectedId) { mutableStateOf(if (subsOn) selectedMain?.takeIf { ref.subCategories(it).isNotEmpty() } else null) }
+    val openCategory = open?.let { ref.categoryById[it] }
+    PanelFrame {
+        PanelHeader(openCategory?.name ?: stringResource(R.string.category), onClose, onTitleClick = if (openCategory != null) ({ open = null }) else null) {
+            RoundIconButton(Icons.Outlined.Edit, stringResource(R.string.action_edit), onEdit, size = 36.dp, tint = colors.textSecondary, container = Color.Transparent)
         }
-        val mains = ref.mainCategories(kind)
-        if (!ref.settings.subcategories) {
-            LazyVerticalGrid(GridCells.Fixed(3), Modifier.padding(horizontal = 6.dp)) {
-                items(mains, key = { it.id }) { c -> GridCell(c.name, c.id == ref.mainCategoryId(selectedId), accent) { onSelect(c.id) } }
-            }
-        } else {
-            val selectedMain = ref.mainCategoryId(selectedId)
-            var open by remember(selectedId) { mutableStateOf(selectedMain) }
-            Row(Modifier.fillMaxHeight()) {
-                LazyColumn(Modifier.weight(1f)) {
-                    items(mains, key = { it.id }) { c ->
-                        val subs = ref.subCategories(c.id)
-                        ListCell(c.name, c.id == open, accent, chevron = subs.isNotEmpty()) {
-                            if (subs.isEmpty() || open == c.id) onSelect(c.id) else open = c.id
+        AnimatedContent(
+            targetState = open,
+            transitionSpec = { NavMotion.lateral(this, if (targetState != null) 1 else -1) },
+            modifier = Modifier.fillMaxSize(),
+            label = "categoryLevel",
+        ) { o ->
+            LazyVerticalGrid(GridCells.Fixed(4), Modifier.fillMaxSize().padding(horizontal = Space.s), contentPadding = PaddingValues(bottom = Space.s)) {
+                if (o == null) {
+                    items(ref.mainCategories(kind), key = { it.id }) { c ->
+                        val subs = if (subsOn) ref.subCategories(c.id) else emptyList()
+                        CategoryCell(c, ref, c.id == selectedMain, accent, hasChildren = subs.isNotEmpty()) {
+                            if (subs.isEmpty()) onSelect(c.id) else open = c.id
                         }
                     }
-                }
-                val subs: List<CategoryEntity> = open?.let { ref.subCategories(it) }.orEmpty()
-                if (subs.isNotEmpty()) {
-                    LazyColumn(Modifier.weight(1f)) {
-                        items(subs, key = { it.id }) { c -> ListCell(c.name, c.id == selectedId, accent) { onSelect(c.id) } }
-                    }
+                } else {
+                    val main = ref.categoryById[o]
+                    if (main != null) item(key = "main_$o") { CategoryCell(main, ref, selectedId == o, accent, hasChildren = false) { onSelect(o) } }
+                    items(ref.subCategories(o), key = { it.id }) { c -> CategoryCell(c, ref, c.id == selectedId, accent, hasChildren = false) { onSelect(c.id) } }
                 }
             }
         }

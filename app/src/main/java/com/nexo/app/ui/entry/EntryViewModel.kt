@@ -536,7 +536,10 @@ class EntryViewModel @AssistedInject constructor(
         _ui.update { it.copy(saving = true) }
         viewModelScope.launch {
             runCatching { writer.save(draft(_ui.value)) }
-                .onSuccess { afterSave(continueAfter) }
+                .onSuccess { id ->
+                    home.saved(id)
+                    afterSave(continueAfter)
+                }
                 .onFailure {
                     _ui.update { st -> st.copy(saving = false) }
                     _events.trySend(EntryEvent.Message(R.string.save_failed))

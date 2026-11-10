@@ -120,7 +120,7 @@ fun LockScreen(
             verticalArrangement = Arrangement.Center,
         ) {
             Box(Modifier.size(72.dp).background(MaterialTheme.colorScheme.primary, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.Lock, null, tint = Color.White, modifier = Modifier.size(36.dp))
+                Icon(Icons.Outlined.Lock, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(36.dp))
             }
             Spacer(Modifier.height(16.dp))
             Text(stringResource(R.string.lock_enter_pin), style = MaterialTheme.typography.titleMedium)

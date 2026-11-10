@@ -63,7 +63,6 @@ import com.nexo.app.R
 import com.nexo.app.core.lock.BiometricHelper
 import com.nexo.app.core.lock.PinHasher
 import com.nexo.app.core.settings.LockTimeout
-import com.nexo.app.core.settings.ThemeColor
 import com.nexo.app.core.settings.ThemeMode
 import com.nexo.app.ui.components.ChoiceDialog
 import com.nexo.app.ui.components.ConfirmDialog
@@ -77,7 +76,6 @@ import com.nexo.app.ui.lock.PinDots
 import com.nexo.app.ui.lock.PinKeypad
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.theme.LocalIsDark
-import com.nexo.app.ui.theme.accent
 import com.nexo.app.work.ReminderScheduler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -93,13 +91,12 @@ private fun themeModeLabel(m: ThemeMode) = stringResource(
     },
 )
 
-/** Style (CFG-021): mode and colour theme. */
+/** Style (CFG-021): light, dark or follow the system. The colour theme was retired with the neutral redesign. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun StyleScreen(vm: SettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val device by vm.device.collectAsStateWithLifecycle()
-    val dark = LocalIsDark.current
     val d = device ?: return
     Scaffold(topBar = { NexoTopBar(stringResource(R.string.style), onBack = { nav.back() }) }) { p ->
         Column(Modifier.padding(p)) {
@@ -109,39 +106,9 @@ fun StyleScreen(vm: SettingsViewModel = hiltViewModel()) {
                     Text(themeModeLabel(m))
                 }
             }
-            if (!dark) {
-                SectionHeader(stringResource(R.string.theme_color))
-                FlowRow(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    ThemeColor.entries.forEach { c ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(
-                                Modifier.size(56.dp).background(if (c == ThemeColor.WHITE) Color.White else c.accent(), CircleShape)
-                                    .border(if (d.themeColor == c) 3.dp else 1.dp, if (d.themeColor == c) c.accent() else MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                                    .clickable { vm.device { setThemeColor(c) } },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                if (d.themeColor == c) Icon(Icons.Filled.Check, null, tint = if (c == ThemeColor.WHITE) c.accent() else Color.White)
-                            }
-                            Text(themeColorName(c), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp))
-                        }
-                    }
-                }
-            }
         }
     }
 }
-
-@Composable
-private fun themeColorName(c: ThemeColor) = stringResource(
-    when (c) {
-        ThemeColor.WHITE -> R.string.color_white
-        ThemeColor.RED -> R.string.color_red
-        ThemeColor.PINK -> R.string.color_pink
-        ThemeColor.GREEN -> R.string.color_green
-        ThemeColor.BLUE -> R.string.color_blue
-        ThemeColor.BLACK -> R.string.color_black
-    },
-)
 
 /** Widget Settings (CFG-023). */
 @Composable

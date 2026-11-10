@@ -6,10 +6,27 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,28 +41,35 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.automirrored.outlined.Notes
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.PhotoCamera
-import androidx.compose.material.icons.outlined.StarOutline
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material.icons.rounded.StarOutline
+import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -60,10 +84,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -74,36 +102,51 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
+import com.nexo.app.core.database.entity.CurrencyEntity
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.RepeatType
+import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.core.money.AmountFormatter
+import com.nexo.app.core.money.AmountParts
 import com.nexo.app.core.money.Money
 import com.nexo.app.domain.Conversion
 import com.nexo.app.domain.PadKey
 import com.nexo.app.domain.RefData
 import com.nexo.app.ui.components.AmountSheet
+import com.nexo.app.ui.components.AmountText
 import com.nexo.app.ui.components.CalculatorDialog
+import com.nexo.app.ui.components.CategoryTile
 import com.nexo.app.ui.components.ConfirmDialog
+import com.nexo.app.ui.components.DropContainer
 import com.nexo.app.ui.components.Formats
 import com.nexo.app.ui.components.NexoDatePickerDialog
 import com.nexo.app.ui.components.NexoTimePickerDialog
-import com.nexo.app.ui.components.NexoTopBar
 import com.nexo.app.ui.components.NumberPad
+import com.nexo.app.ui.components.RoundIconButton
+import com.nexo.app.ui.components.SegmentedPill
+import com.nexo.app.ui.components.pressScale
+import com.nexo.app.ui.components.rememberHaptics
+import com.nexo.app.ui.components.shakeOn
+import com.nexo.app.ui.components.shrinkToFit
 import com.nexo.app.ui.navigation.AccountFormKey
 import com.nexo.app.ui.navigation.AccountListKey
 import com.nexo.app.ui.navigation.BookmarksKey
@@ -112,9 +155,18 @@ import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SubCurrenciesKey
+import com.nexo.app.ui.theme.CategoryHues
 import com.nexo.app.ui.theme.LocalMoneyColors
+import com.nexo.app.ui.theme.LocalNexoColors
+import com.nexo.app.ui.theme.NexoMotion
+import com.nexo.app.ui.theme.NexoShapes
+import com.nexo.app.ui.theme.NexoType
+import com.nexo.app.ui.theme.Space
 import java.io.File
 import java.text.DecimalFormatSymbols
+import java.text.NumberFormat
+import java.time.LocalDate
+import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -129,6 +181,8 @@ fun EntryScreen(key: EntryKey) {
     val context = LocalContext.current
     val resources = androidx.compose.ui.platform.LocalResources.current
     val money = LocalMoneyColors.current
+    val colors = LocalNexoColors.current
+    val haptics = rememberHaptics()
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val noteFocus = remember { FocusRequester() }
@@ -148,15 +202,19 @@ fun EntryScreen(key: EntryKey) {
     var rateEdit by rememberSaveable { mutableIntStateOf(0) }
     var showTransferGuide by rememberSaveable { mutableStateOf(false) }
     var noteFocused by remember { mutableStateOf(false) }
+    var shake by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
         vm.events.collect { e ->
             when (e) {
-                is EntryEvent.Message -> Toast.makeText(
-                    context,
-                    if (e.arg != null) resources.getString(e.text, e.arg) else resources.getString(e.text),
-                    Toast.LENGTH_SHORT,
-                ).show()
+                is EntryEvent.Message -> {
+                    haptics.reject()
+                    Toast.makeText(
+                        context,
+                        if (e.arg != null) resources.getString(e.text, e.arg) else resources.getString(e.text),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
                 is EntryEvent.Close -> {
                     e.date?.let(vm::focus)
                     nav.back()
@@ -183,17 +241,15 @@ fun EntryScreen(key: EntryKey) {
     val typeColor = when {
         s.type == EntryType.INCOME -> money.income
         s.type == EntryType.EXPENSE -> money.expense
-        else -> MaterialTheme.colorScheme.onSurface
+        else -> colors.text
     }
     val txCurrency = ref.currency(s.currencyId)
-    val title = when {
+    val modeLabel = when {
         s.balanceKind == TxKind.BALANCE_INCREASE -> stringResource(R.string.income_balance)
         s.balanceKind == TxKind.BALANCE_DECREASE -> stringResource(R.string.expense_balance)
         s.mode == EntryMode.PAY_CARD -> stringResource(R.string.card_payment)
         s.repeatMode -> stringResource(R.string.repeat)
-        s.type == EntryType.INCOME -> stringResource(R.string.income)
-        s.type == EntryType.EXPENSE -> stringResource(R.string.expense)
-        else -> stringResource(R.string.transfer)
+        else -> null
     }
 
     // Photos
@@ -220,22 +276,20 @@ fun EntryScreen(key: EntryKey) {
         camera.launch(uri)
     }
 
-    if (!s.loaded) return
+    /** Keypad input with a shake and a reject buzz when the key cannot change the amount. */
+    fun pressKey(k: PadKey) {
+        val r = s.pad.press(k)
+        if (r.input == s.pad && !r.negateExisting && !r.clearField) {
+            shake++
+            haptics.reject()
+        }
+        vm.padKey(k)
+    }
 
-    Scaffold(
-        topBar = {
-            NexoTopBar(title = title, onBack = { nav.back() }) {
-                if ((s.mode == EntryMode.NEW || s.mode == EntryMode.PAY_CARD || s.mode == EntryMode.FAVORITE) && s.originalId == null) {
-                    IconButton(onClick = { nav.navigate(BookmarksKey(pickForForm = true)) }) { Icon(Icons.Outlined.StarOutline, stringResource(R.string.bookmarks)) }
-                }
-                if (s.isEdit && !s.viewing) {
-                    IconButton(onClick = vm::revert) { Icon(Icons.Filled.Close, stringResource(R.string.revert)) }
-                }
-            }
-        },
-    ) { padding ->
+    DropContainer(enabled = key.fromAdd, background = colors.background) {
+        if (!s.loaded) return@DropContainer
         Column(
-            Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()).imePadding()
+            Modifier.fillMaxSize().statusBarsPadding().imePadding()
                 .onPreviewKeyEvent { ev ->
                     if (ev.type != KeyEventType.KeyDown || (s.panel != Panel.AMOUNT && s.panel != Panel.FEE)) return@onPreviewKeyEvent false
                     val k = when (ev.key) {
@@ -255,56 +309,210 @@ fun EntryScreen(key: EntryKey) {
                         Key.Enter, Key.NumPadEnter -> { vm.padDone(); return@onPreviewKeyEvent true }
                         else -> return@onPreviewKeyEvent false
                     }
-                    vm.padKey(k)
+                    pressKey(k)
                     true
                 },
         ) {
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-                if (!s.isBalance) {
-                    TypeToggles(s.type, money.income, money.expense, enabled = s.mode != EntryMode.PAY_CARD) { t ->
-                        if (t == EntryType.TRANSFER && device?.transferGuideShown == false) showTransferGuide = true
-                        vm.setType(t)
-                    }
-                } else {
-                    TypeToggles(s.type, money.income, money.expense, enabled = true, highlight = false) { vm.setType(it) }
-                }
-                // Date row
-                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.date), Modifier.width(88.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(
-                        Formats.dateWithWeekday(s.date),
-                        Modifier.clickable { vm.enterEdit(); showDate = true }.padding(vertical = 12.dp),
-                        style = MaterialTheme.typography.bodyLarge,
+            // Top: close, type, bookmarks / revert.
+            Row(Modifier.fillMaxWidth().height(60.dp).padding(horizontal = Space.m), verticalAlignment = Alignment.CenterVertically) {
+                RoundIconButton(Icons.Rounded.Close, stringResource(R.string.action_back), { nav.back() })
+                Box(Modifier.weight(1f).padding(horizontal = Space.s), contentAlignment = Alignment.Center) {
+                    SegmentedPill(
+                        options = listOf(EntryType.INCOME, EntryType.EXPENSE, EntryType.TRANSFER),
+                        selected = s.type,
+                        onSelect = { t ->
+                            if (t == EntryType.TRANSFER && device?.transferGuideShown == false) showTransferGuide = true
+                            vm.setType(t)
+                        },
+                        label = { t ->
+                            stringResource(
+                                when (t) {
+                                    EntryType.INCOME -> R.string.income
+                                    EntryType.EXPENSE -> R.string.expense
+                                    EntryType.TRANSFER -> R.string.transfer
+                                },
+                            )
+                        },
+                        accent = { t -> if (t == EntryType.INCOME) money.income else if (t == EntryType.EXPENSE) money.expense else null },
+                        enabled = s.mode != EntryMode.PAY_CARD || s.isBalance,
+                        showSelection = !s.isBalance,
+                        segmentPadding = 12.dp,
+                        modifier = Modifier.widthIn(max = 320.dp).fillMaxWidth(),
                     )
-                    if (ref.settings.timeDisplay.timeInput && s.showTime) {
-                        Spacer(Modifier.width(12.dp))
+                }
+                Box(Modifier.size(40.dp)) {
+                    when {
+                        s.isEdit && !s.viewing -> RoundIconButton(Icons.AutoMirrored.Rounded.Undo, stringResource(R.string.revert), vm::revert)
+                        (s.mode == EntryMode.NEW || s.mode == EntryMode.PAY_CARD || s.mode == EntryMode.FAVORITE) && s.originalId == null ->
+                            RoundIconButton(Icons.Rounded.StarOutline, stringResource(R.string.bookmarks), { nav.navigate(BookmarksKey(pickForForm = true)) })
+                    }
+                }
+            }
+            modeLabel?.let {
+                Text(
+                    it.uppercase(Locale.getDefault()), style = NexoType.Caps, color = typeColor,
+                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = Space.xs),
+                )
+            }
+
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                Spacer(Modifier.height(Space.l))
+                // Note: the entry's title, set above the amount.
+                NoteField(
+                    value = s.note,
+                    onValueChange = vm::setNote,
+                    focused = noteFocused,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = Space.xl).focusRequester(noteFocus).onFocusChanged {
+                        noteFocused = it.isFocused
+                        if (it.isFocused) { vm.closePanel(); vm.enterEdit() }
+                    },
+                    onDone = { focus.clearFocus() },
+                    onClear = { vm.setNote("") },
+                )
+                if (noteFocused && s.note.isNotEmpty()) {
+                    val q = s.note
+                    val matches = remember(q, suggestions) {
+                        suggestions.mapNotNull { sug -> sug.note.indexOf(q, ignoreCase = true).takeIf { it >= 0 && sug.note != q }?.let { sug to it } }
+                            .sortedWith(compareByDescending<Pair<NoteSuggestion, Int>> { it.first.count }.thenBy { it.second }.thenByDescending { it.first.lastDate })
+                            .take(6)
+                    }
+                    if (matches.isNotEmpty()) {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.xs).clip(NexoShapes.control).background(colors.raised)) {
+                            matches.forEach { (sug, idx) ->
+                                Text(
+                                    buildAnnotatedString {
+                                        append(sug.note.substring(0, idx))
+                                        withStyle(SpanStyle(color = typeColor, fontWeight = FontWeight.SemiBold)) { append(sug.note.substring(idx, idx + q.length)) }
+                                        append(sug.note.substring(idx + q.length))
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colors.textSecondary,
+                                    modifier = Modifier.fillMaxWidth().clickable { vm.setNote(sug.note); focus.clearFocus() }.padding(horizontal = Space.l, vertical = Space.m),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // The amount.
+                AmountDisplay(
+                    s = s,
+                    currency = txCurrency,
+                    color = typeColor,
+                    shake = shake,
+                    onClick = { haptics.tick(); vm.openPanel(Panel.AMOUNT) },
+                )
+                // Exchange lines (TX-010)
+                val amount = s.amount
+                if (txCurrency.id != ref.mainCurrency.id && amount != null && amount != 0.0 && s.repeat == RepeatType.NONE) {
+                    val rate = s.rate ?: Conversion.effectiveRate(txCurrency)
+                    val main = Money.round(Money.multiply(amount, rate), ref.mainCurrency.decimals)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            Formats.time(s.time, android.text.format.DateFormat.is24HourFormat(context)),
-                            Modifier.clickable { vm.enterEdit(); showTime = true }.padding(vertical = 12.dp),
-                            style = MaterialTheme.typography.bodyLarge,
+                            "≈ " + AmountFormatter.format(main, ref.mainCurrency),
+                            Modifier.clip(CircleShape).clickable { rateEdit = 1 }.padding(horizontal = Space.s, vertical = Space.xs),
+                            color = colors.textSecondary, style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text("·", color = colors.textTertiary)
+                        Text(
+                            stringResource(R.string.exchange_rate_value, AmountFormatter.rate(rate)),
+                            Modifier.clip(CircleShape).clickable { rateEdit = 2 }.padding(horizontal = Space.s, vertical = Space.xs),
+                            color = colors.textSecondary, style = MaterialTheme.typography.bodySmall,
                         )
                     }
-                    Spacer(Modifier.weight(1f))
-                    s.installmentInfo?.let {
-                        Text(stringResource(R.string.installment_k_n, it.index, it.count), color = typeColor, style = MaterialTheme.typography.labelLarge)
+                }
+                s.installmentInfo?.let { info ->
+                    Text(
+                        stringResource(R.string.installment_k_n, info.index, info.count) + " · " +
+                            stringResource(R.string.installment_balance_total, AmountFormatter.format(info.balance, txCurrency), AmountFormatter.format(info.total, txCurrency)),
+                        style = NexoType.Meta, color = colors.textSecondary, textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.xs),
+                    )
+                }
+
+                Spacer(Modifier.height(Space.l))
+                // Field pills, in the configured input order, then when and how often.
+                FlowRow(
+                    Modifier.fillMaxWidth().padding(horizontal = Space.l),
+                    horizontalArrangement = Arrangement.spacedBy(Space.s, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(Space.s),
+                ) {
+                    s.fields.filter { it != Field.AMOUNT && it != Field.FEE }.forEach { f ->
+                        when (f) {
+                            Field.ACCOUNT, Field.FROM, Field.TO -> {
+                                val id = if (f == Field.TO) s.toAccountId else s.accountId
+                                val label = stringResource(if (f == Field.ACCOUNT) R.string.account else if (f == Field.FROM) R.string.from else R.string.to)
+                                val panel = EntryUi.panelFor(f)
+                                FieldPill(
+                                    text = id?.let { ref.accountById[it]?.name } ?: label,
+                                    label = label,
+                                    placeholder = id == null,
+                                    active = s.panel == panel,
+                                    accent = typeColor,
+                                    icon = Icons.Outlined.AccountBalanceWallet,
+                                    prefix = if (s.isTransfer && id != null) label else null,
+                                ) { vm.openPanel(panel) }
+                                if (s.isTransfer && f == s.fields.firstOrNull { it == Field.FROM || it == Field.TO }) {
+                                    RoundIconButton(Icons.Rounded.SwapHoriz, stringResource(R.string.swap), { haptics.tick(); vm.swap() }, size = 40.dp, tint = colors.textSecondary)
+                                }
+                            }
+                            Field.CATEGORY -> {
+                                val visual = s.categoryId?.let { ref.visual(it) }
+                                val text = categoryText(ref, s)
+                                FieldPill(
+                                    text = text.ifEmpty { stringResource(R.string.category) },
+                                    label = stringResource(R.string.category),
+                                    placeholder = text.isEmpty(),
+                                    active = s.panel == Panel.CATEGORY,
+                                    accent = typeColor,
+                                    leading = visual?.let { v -> { CategoryTile(v.emoji, v.monogram, CategoryHues.of(v.colorIndex, colors.isDark), size = 26.dp, over = colors.raised) } },
+                                ) { vm.openPanel(Panel.CATEGORY) }
+                            }
+                            else -> Unit
+                        }
+                    }
+                }
+                Spacer(Modifier.height(Space.s))
+                FlowRow(
+                    Modifier.fillMaxWidth().padding(horizontal = Space.l),
+                    horizontalArrangement = Arrangement.spacedBy(Space.s, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(Space.s),
+                ) {
+                    FieldPill(
+                        text = if (s.date.year == LocalDate.now().year) Formats.weekdayMonthDay(s.date) else Formats.mediumDate(s.date),
+                        label = stringResource(R.string.date),
+                        icon = Icons.Outlined.CalendarToday,
+                        accent = typeColor,
+                    ) { vm.enterEdit(); showDate = true }
+                    if (ref.settings.timeDisplay.timeInput && s.showTime) {
+                        FieldPill(
+                            text = Formats.time(s.time, android.text.format.DateFormat.is24HourFormat(context)),
+                            label = stringResource(R.string.date),
+                            icon = Icons.Outlined.Schedule,
+                            accent = typeColor,
+                        ) { vm.enterEdit(); showTime = true }
                     }
                     if (s.showRepInst) {
                         Box {
-                            val label = when {
-                                s.repeat != RepeatType.NONE -> repeatLabel(s.repeat)
-                                s.installments > 0 -> pluralStringResource(R.plurals.n_months, s.installments, s.installments)
-                                else -> stringResource(R.string.rep_inst)
-                            }
-                            TextButton(onClick = {
-                                val anySet = s.repeat != RepeatType.NONE || s.installments > 0
+                            val anySet = s.repeat != RepeatType.NONE || s.installments > 0
+                            FieldPill(
+                                text = when {
+                                    s.repeat != RepeatType.NONE -> repeatLabel(s.repeat)
+                                    s.installments > 0 -> pluralStringResource(R.plurals.n_months, s.installments, s.installments)
+                                    else -> stringResource(R.string.rep_inst)
+                                },
+                                label = stringResource(R.string.rep_inst),
+                                placeholder = !anySet,
+                                icon = Icons.Rounded.Repeat,
+                                accent = typeColor,
+                                tint = if (anySet) typeColor else null,
+                            ) {
                                 when {
                                     s.repeatMode -> showRepeatList = true
                                     s.type == EntryType.EXPENSE -> showRepMenu = true
                                     !anySet -> showRepeatList = true
                                     else -> showRepMenu = true
                                 }
-                            }) {
-                                Text(label, color = if (s.repeat != RepeatType.NONE || s.installments > 0) typeColor else MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             DropdownMenu(showRepMenu, onDismissRequest = { showRepMenu = false }) {
                                 if (s.type == EntryType.EXPENSE && !s.isBalance) {
@@ -317,218 +525,152 @@ fun EntryScreen(key: EntryKey) {
                             }
                         }
                     }
-                }
-                if (s.repeat != RepeatType.NONE) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.repeat_end), Modifier.width(88.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(
-                            s.repeatEnd?.let { Formats.dateWithWeekday(it) } ?: stringResource(R.string.repeat_no_end),
-                            Modifier.clickable { showRepeatEnd = true }.padding(vertical = 10.dp),
-                        )
-                        if (s.repeatEnd != null) IconButton(onClick = { vm.setRepeatEnd(null) }) { Icon(Icons.Filled.Close, stringResource(R.string.action_clear)) }
+                    if (s.repeat != RepeatType.NONE) {
+                        FieldPill(
+                            text = s.repeatEnd?.let { stringResource(R.string.repeat_end) + " " + Formats.shortDate(it) } ?: stringResource(R.string.repeat_no_end),
+                            label = stringResource(R.string.repeat_end),
+                            accent = typeColor,
+                            onClear = if (s.repeatEnd != null) ({ vm.setRepeatEnd(null) }) else null,
+                        ) { showRepeatEnd = true }
                     }
-                }
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-                // Account / category / amount block
-                s.fields.forEach { f ->
-                    when (f) {
-                        Field.ACCOUNT, Field.FROM, Field.TO, Field.CATEGORY -> {
-                            val label = stringResource(
-                                when (f) {
-                                    Field.ACCOUNT -> R.string.account
-                                    Field.FROM -> R.string.from
-                                    Field.TO -> R.string.to
-                                    else -> R.string.category
-                                },
-                            )
-                            val value = when (f) {
-                                Field.ACCOUNT, Field.FROM -> s.accountId?.let { ref.accountById[it]?.name } ?: ""
-                                Field.TO -> s.toAccountId?.let { ref.accountById[it]?.name } ?: ""
-                                else -> categoryText(ref, s)
-                            }
-                            val panel = EntryUi.panelFor(f)
-                            FieldRow(label, value, active = s.panel == panel, accent = typeColor, onClick = { vm.openPanel(panel) }) {
-                                if (s.isTransfer && f == s.fields.firstOrNull { it == Field.FROM || it == Field.TO }) {
-                                    IconButton(onClick = vm::swap) { Icon(Icons.Filled.SwapVert, stringResource(R.string.swap)) }
-                                }
-                            }
-                        }
-                        Field.AMOUNT -> {
-                            val text = if (s.panel == Panel.AMOUNT && s.pad.buffer.isNotEmpty()) bufferText(s.pad.buffer, txCurrency.symbol, txCurrency.symbolPosition)
-                            else s.amount?.let { AmountFormatter.format(it, txCurrency) } ?: ""
-                            FieldRow(stringResource(R.string.amount), text, active = s.panel == Panel.AMOUNT, accent = typeColor, onClick = { vm.openPanel(Panel.AMOUNT) }, bold = true) {
-                                if (s.isTransfer && !s.feeExpanded && s.repeat == RepeatType.NONE) {
-                                    TextButton(onClick = { vm.setFeeExpanded(true) }) { Text(stringResource(R.string.fees)) }
-                                }
-                            }
-                            // Exchange lines (TX-010)
-                            val amount = s.amount
-                            if (txCurrency.id != ref.mainCurrency.id && amount != null && amount != 0.0 && s.repeat == RepeatType.NONE) {
-                                val rate = s.rate ?: Conversion.effectiveRate(txCurrency)
-                                val main = Money.round(Money.multiply(amount, rate), ref.mainCurrency.decimals)
-                                Column(Modifier.padding(start = 88.dp, bottom = 6.dp)) {
-                                    Text(AmountFormatter.format(main, ref.mainCurrency), Modifier.clickable { rateEdit = 1 }, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(stringResource(R.string.exchange_rate_value, AmountFormatter.rate(rate)), Modifier.clickable { rateEdit = 2 }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                                }
-                            }
-                        }
-                        Field.FEE -> {
-                            val feeCur = ref.currency(s.feeCurrencyId)
-                            val text = if (s.panel == Panel.FEE && s.pad.buffer.isNotEmpty()) bufferText(s.pad.buffer, feeCur.symbol, feeCur.symbolPosition)
-                            else s.feeAmount?.let { AmountFormatter.format(it, feeCur) } ?: ""
-                            FieldRow(stringResource(R.string.fees), text, active = s.panel == Panel.FEE, accent = typeColor, onClick = { vm.openPanel(Panel.FEE) }) {
-                                IconButton(onClick = { vm.setFeeExpanded(false) }) { Icon(Icons.Filled.Close, stringResource(R.string.remove_fee)) }
-                            }
-                        }
-                    }
-                }
-                s.installmentInfo?.let { info ->
-                    Text(
-                        stringResource(R.string.installment_balance_total, AmountFormatter.format(info.balance, txCurrency), AmountFormatter.format(info.total, txCurrency)),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 4.dp),
-                    )
-                }
-
-                // Note with autocomplete (TX-012)
-                TextField(
-                    value = s.note,
-                    onValueChange = vm::setNote,
-                    label = { Text(stringResource(R.string.note)) },
-                    singleLine = true,
-                    trailingIcon = if (s.note.isNotEmpty() && noteFocused) ({ IconButton(onClick = { vm.setNote("") }) { Icon(Icons.Filled.Close, stringResource(R.string.action_clear)) } }) else null,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
-                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { focus.clearFocus() }),
-                    colors = flatFieldColors(),
-                    modifier = Modifier.fillMaxWidth().focusRequester(noteFocus).onFocusChanged {
-                        noteFocused = it.isFocused
-                        if (it.isFocused) { vm.closePanel(); vm.enterEdit() }
-                    },
-                )
-                if (noteFocused && s.note.isNotEmpty()) {
-                    val q = s.note
-                    val matches = remember(q, suggestions) {
-                        suggestions.mapNotNull { sug -> sug.note.indexOf(q, ignoreCase = true).takeIf { it >= 0 && sug.note != q }?.let { sug to it } }
-                            .sortedWith(compareByDescending<Pair<NoteSuggestion, Int>> { it.first.count }.thenBy { it.second }.thenByDescending { it.first.lastDate })
-                            .take(6)
-                    }
-                    matches.forEach { (sug, idx) ->
-                        Text(
-                            buildAnnotatedString {
-                                append(sug.note.substring(0, idx))
-                                withStyle(SpanStyle(color = Color(0xFFE53935), fontWeight = FontWeight.SemiBold)) { append(sug.note.substring(idx, idx + q.length)) }
-                                append(sug.note.substring(idx + q.length))
-                            },
-                            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer).clickable { vm.setNote(sug.note); focus.clearFocus() }.padding(12.dp),
-                        )
+                    // Transfer fee (TX-011)
+                    if (s.isTransfer && s.feeExpanded) {
+                        val feeCur = ref.currency(s.feeCurrencyId)
+                        val text = if (s.panel == Panel.FEE && s.pad.buffer.isNotEmpty()) bufferParts(s.pad.buffer, feeCur).text
+                        else s.feeAmount?.let { AmountFormatter.format(it, feeCur) } ?: ""
+                        FieldPill(
+                            text = stringResource(R.string.fees) + (if (text.isNotEmpty()) " · $text" else ""),
+                            label = stringResource(R.string.fees),
+                            active = s.panel == Panel.FEE,
+                            accent = typeColor,
+                            onClear = { vm.setFeeExpanded(false) },
+                        ) { vm.openPanel(Panel.FEE) }
+                    } else if (s.isTransfer && s.repeat == RepeatType.NONE) {
+                        FieldPill(text = stringResource(R.string.fees), label = stringResource(R.string.fees), placeholder = true, icon = Icons.Rounded.Add, accent = typeColor) { vm.setFeeExpanded(true) }
                     }
                 }
 
-                // Tags (TX-014)
-                if (s.repeat == RepeatType.NONE) {
-                    FlowRow(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Details: tags and photo as pills, then the description and any thumbnails.
+                Spacer(Modifier.height(Space.section))
+                val photosAllowed = !s.repeatMode && s.repeat == RepeatType.NONE
+                FlowRow(Modifier.fillMaxWidth().padding(horizontal = Space.gutter), horizontalArrangement = Arrangement.spacedBy(Space.s), verticalArrangement = Arrangement.spacedBy(Space.s)) {
+                    if (s.repeat == RepeatType.NONE) {
                         s.tagIds.mapNotNull { id -> ref.tagById[id]?.takeIf { !it.isDeleted } }.forEach { t ->
-                            InputChip(selected = false, onClick = { vm.removeTag(t.id) }, label = { Text("#" + t.name) }, trailingIcon = { Icon(Icons.Filled.Close, null, Modifier.size(16.dp)) })
+                            FieldPill(text = "#" + t.name, label = stringResource(R.string.tags), accent = typeColor, onClear = { vm.removeTag(t.id) }) { vm.enterEdit(); showTags = true }
                         }
-                        InputChip(selected = false, onClick = { vm.enterEdit(); showTags = true }, label = { Text("+ " + stringResource(R.string.tags)) })
+                        FieldPill(text = stringResource(R.string.tags), label = stringResource(R.string.tags), placeholder = true, icon = Icons.Rounded.Add, accent = typeColor) { vm.enterEdit(); showTags = true }
+                    }
+                    if (photosAllowed && s.photos.size < 3) {
+                        Box {
+                            FieldPill(text = stringResource(R.string.add_photo), label = stringResource(R.string.add_photo), placeholder = true, icon = Icons.Outlined.PhotoCamera, accent = typeColor) {
+                                vm.enterEdit()
+                                if (device?.photoNoticeShown == false) showPhotoNotice = true else showPhotoMenu = true
+                            }
+                            DropdownMenu(showPhotoMenu, onDismissRequest = { showPhotoMenu = false }) {
+                                if (context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY)) {
+                                    DropdownMenuItem(text = { Text(stringResource(R.string.camera)) }, onClick = { showPhotoMenu = false; launchCamera() })
+                                }
+                                DropdownMenuItem(text = { Text(stringResource(R.string.gallery)) }, onClick = {
+                                    showPhotoMenu = false
+                                    val req = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    if (3 - s.photos.size > 1) galleryMany.launch(req) else galleryOne.launch(req)
+                                })
+                            }
+                        }
+                    }
+                }
+                // Photos (TX-015)
+                if (photosAllowed && s.photos.isNotEmpty()) {
+                    Box(Modifier.padding(horizontal = Space.gutter, vertical = Space.m)) {
+                        PhotoThumbs(s.photos, vm.photoStore, removable = !s.viewing, onOpen = { viewerIndex = it }, onRemove = vm::removePhoto, onLongPress = vm::enterEdit)
                     }
                 }
                 TextField(
                     value = s.description,
                     onValueChange = vm::setDescription,
-                    label = { Text(stringResource(R.string.description)) },
-                    minLines = 2,
-                    colors = flatFieldColors(),
-                    modifier = Modifier.fillMaxWidth().onFocusChanged { if (it.isFocused) { vm.closePanel(); vm.enterEdit() } },
+                    placeholder = { Text(stringResource(R.string.description), color = colors.textTertiary) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Notes, null, tint = colors.textTertiary, modifier = Modifier.size(20.dp)) },
+                    minLines = 1,
+                    colors = quietFieldColors(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = Space.s, vertical = Space.xs).onFocusChanged { if (it.isFocused) { vm.closePanel(); vm.enterEdit() } },
                 )
-
-                // Photos (TX-015)
-                if (!s.repeatMode && s.repeat == RepeatType.NONE) {
-                    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        if (s.photos.size < 3) {
-                            Box {
-                                OutlinedButton(onClick = {
-                                    vm.enterEdit()
-                                    if (device?.photoNoticeShown == false) showPhotoNotice = true else showPhotoMenu = true
-                                }, modifier = Modifier.size(72.dp), shape = RoundedCornerShape(8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-                                    Icon(Icons.Outlined.PhotoCamera, stringResource(R.string.add_photo))
-                                }
-                                DropdownMenu(showPhotoMenu, onDismissRequest = { showPhotoMenu = false }) {
-                                    if (context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY)) {
-                                        DropdownMenuItem(text = { Text(stringResource(R.string.camera)) }, onClick = { showPhotoMenu = false; launchCamera() })
-                                    }
-                                    DropdownMenuItem(text = { Text(stringResource(R.string.gallery)) }, onClick = {
-                                        showPhotoMenu = false
-                                        val req = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                        if (3 - s.photos.size > 1) galleryMany.launch(req) else galleryOne.launch(req)
-                                    })
-                                }
-                            }
-                            Spacer(Modifier.width(8.dp))
-                        }
-                        PhotoThumbs(s.photos, vm.photoStore, removable = !s.viewing, onOpen = { viewerIndex = it }, onRemove = vm::removePhoto, onLongPress = vm::enterEdit)
+                s.sourceText?.let { src ->
+                    Column(Modifier.padding(horizontal = Space.gutter, vertical = Space.s)) {
+                        Text(stringResource(R.string.original_text).uppercase(Locale.getDefault()), style = NexoType.Caps, color = colors.textTertiary)
+                        Spacer(Modifier.height(Space.xs))
+                        Text(src, Modifier.fillMaxWidth().clip(NexoShapes.control).background(colors.raised).padding(Space.m), style = NexoType.Meta, color = colors.textSecondary)
                     }
                 }
-                s.sourceText?.let { src ->
-                    Text(stringResource(R.string.original_text), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(src, Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)).padding(12.dp), style = MaterialTheme.typography.bodySmall)
-                }
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(Space.xl))
             }
 
-            // Bottom: panel or buttons
-            when (s.panel) {
-                Panel.ACCOUNT, Panel.TO_ACCOUNT -> AccountPanel(
-                    title = stringResource(if (!s.isTransfer) R.string.account else if (s.panel == Panel.ACCOUNT) R.string.from else R.string.to),
-                    ref = ref,
-                    selectedId = if (s.panel == Panel.ACCOUNT) s.accountId else s.toAccountId,
-                    grouped = device?.groupedAccountPicker == true,
-                    accent = typeColor,
-                    onToggleGrouped = { vm.setGroupedPicker(device?.groupedAccountPicker != true) },
-                    onSelect = vm::selectAccount,
-                    onEdit = { nav.navigate(AccountListKey()) },
-                    onAdd = { nav.navigate(AccountFormKey()) },
-                    onClose = vm::closePanel,
-                )
-                Panel.CATEGORY -> CategoryPanel(
-                    kind = if (s.type == EntryType.INCOME) CategoryKind.INCOME else CategoryKind.EXPENSE,
-                    ref = ref,
-                    selectedId = s.categoryId,
-                    accent = typeColor,
-                    onSelect = vm::selectCategory,
-                    onEdit = { nav.navigate(CategoryListKey(if (s.type == EntryType.INCOME) CategoryKind.INCOME else CategoryKind.EXPENSE)) },
-                    onClose = vm::closePanel,
-                )
-                Panel.AMOUNT, Panel.FEE -> {
-                    val fee = s.panel == Panel.FEE
-                    val cur = ref.currency(if (fee) s.feeCurrencyId else s.currencyId)
-                    NumberPad(
-                        title = stringResource(if (fee) R.string.fees else R.string.amount),
-                        onKey = vm::padKey,
-                        onDone = vm::padDone,
-                        onCalculator = { showCalc = true },
-                        descending = device?.numberPadDescending == true,
-                        decimals = cur.decimals,
-                        signKey = !fee,
-                        currencies = ref.activeCurrencies,
-                        selectedCurrencyId = cur.id,
-                        onCurrency = { vm.setPadCurrency(it.id) },
-                        onGlobe = { nav.navigate(SubCurrenciesKey) },
-                        accent = if (s.type == EntryType.TRANSFER) MaterialTheme.colorScheme.primary else typeColor,
-                        modifier = Modifier.navigationBarsPadding(),
+            // Bottom: keypad, pickers or actions, swapped with a short rise.
+            AnimatedContent(
+                targetState = when (s.panel) {
+                    Panel.AMOUNT, Panel.FEE -> BottomKind.PAD
+                    Panel.ACCOUNT, Panel.TO_ACCOUNT -> BottomKind.ACCOUNT
+                    Panel.CATEGORY -> BottomKind.CATEGORY
+                    Panel.NONE -> BottomKind.ACTIONS
+                },
+                transitionSpec = {
+                    (slideInVertically(NexoMotion.snappy()) { it / 4 } + fadeIn(NexoMotion.enter(NexoMotion.MEDIUM))) togetherWith
+                        (slideOutVertically(NexoMotion.exit(NexoMotion.MEDIUM)) { it / 4 } + fadeOut(NexoMotion.exit())) using
+                        SizeTransform(clip = false) { _, _ -> spring(dampingRatio = 0.9f, stiffness = 420f) }
+                },
+                label = "entryBottom",
+            ) { kind ->
+                when (kind) {
+                    BottomKind.ACCOUNT -> AccountPanel(
+                        title = stringResource(if (!s.isTransfer) R.string.account else if (s.panel == Panel.TO_ACCOUNT) R.string.to else R.string.from),
+                        ref = ref,
+                        selectedId = if (s.panel == Panel.TO_ACCOUNT) s.toAccountId else s.accountId,
+                        grouped = device?.groupedAccountPicker == true,
+                        accent = typeColor,
+                        onToggleGrouped = { vm.setGroupedPicker(device?.groupedAccountPicker != true) },
+                        onSelect = vm::selectAccount,
+                        onEdit = { nav.navigate(AccountListKey()) },
+                        onAdd = { nav.navigate(AccountFormKey()) },
+                        onClose = vm::closePanel,
+                    )
+                    BottomKind.CATEGORY -> CategoryPanel(
+                        kind = if (s.type == EntryType.INCOME) CategoryKind.INCOME else CategoryKind.EXPENSE,
+                        ref = ref,
+                        selectedId = s.categoryId,
+                        accent = typeColor,
+                        onSelect = vm::selectCategory,
+                        onEdit = { nav.navigate(CategoryListKey(if (s.type == EntryType.INCOME) CategoryKind.INCOME else CategoryKind.EXPENSE)) },
+                        onClose = vm::closePanel,
+                    )
+                    BottomKind.PAD -> {
+                        val fee = s.panel == Panel.FEE
+                        val cur = ref.currency(if (fee) s.feeCurrencyId else s.currencyId)
+                        NumberPad(
+                            title = stringResource(if (fee) R.string.fees else R.string.amount),
+                            onKey = ::pressKey,
+                            onDone = vm::padDone,
+                            onCalculator = { showCalc = true },
+                            descending = device?.numberPadDescending == true,
+                            decimals = cur.decimals,
+                            signKey = !fee,
+                            currencies = ref.activeCurrencies,
+                            selectedCurrencyId = cur.id,
+                            onCurrency = { vm.setPadCurrency(it.id) },
+                            onGlobe = { nav.navigate(SubCurrenciesKey) },
+                            accent = typeColor,
+                            modifier = Modifier.navigationBarsPadding(),
+                        )
+                    }
+                    BottomKind.ACTIONS -> BottomButtons(
+                        s = s,
+                        onSave = { haptics.confirm(); vm.save(false) },
+                        onContinue = { haptics.confirm(); vm.save(true) },
+                        onDelete = { vm.setAskDelete(true) },
+                        onCopy = { showCopy = true },
+                        onBookmark = { haptics.confirm(); vm.bookmark() },
+                        onSkip = vm::skip,
+                        review = key.reviewUnassigned,
                     )
                 }
-                Panel.NONE -> BottomButtons(
-                    s = s,
-                    color = if (s.type == EntryType.TRANSFER) MaterialTheme.colorScheme.primary else typeColor,
-                    onSave = { vm.save(false) },
-                    onContinue = { vm.save(true) },
-                    onDelete = { vm.setAskDelete(true) },
-                    onCopy = { showCopy = true },
-                    onBookmark = vm::bookmark,
-                    onSkip = vm::skip,
-                    review = key.reviewUnassigned,
-                )
             }
         }
     }
@@ -618,14 +760,14 @@ fun EntryScreen(key: EntryKey) {
                 text = { Text(stringResource(R.string.confirm_delete)) },
                 confirmButton = {
                     Row {
-                        TextButton(onClick = { vm.setAskDelete(false); vm.delete(true) }) { Text(stringResource(R.string.delete_all)) }
-                        TextButton(onClick = { vm.setAskDelete(false); vm.delete(false) }) { Text(stringResource(R.string.action_delete)) }
+                        TextButton(onClick = { vm.setAskDelete(false); haptics.confirm(); vm.delete(true) }) { Text(stringResource(R.string.delete_all)) }
+                        TextButton(onClick = { vm.setAskDelete(false); haptics.confirm(); vm.delete(false) }) { Text(stringResource(R.string.action_delete)) }
                     }
                 },
                 dismissButton = { TextButton(onClick = { vm.setAskDelete(false) }) { Text(stringResource(R.string.action_cancel)) } },
             )
         } else {
-            ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.delete(false) }, onDismiss = { vm.setAskDelete(false) })
+            ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { haptics.confirm(); vm.delete(false) }, onDismiss = { vm.setAskDelete(false) })
         }
     }
     if (showCopy) {
@@ -649,90 +791,189 @@ fun EntryScreen(key: EntryKey) {
     }
 }
 
+private enum class BottomKind { PAD, ACCOUNT, CATEGORY, ACTIONS }
+
 private fun pluralStringResourceText(resources: android.content.res.Resources, n: Int): String =
     resources.getQuantityString(R.plurals.n_months, n, n)
 
 private fun categoryText(ref: RefData, s: EntryUi): String {
-    if (s.isBalance || (s.isBalanceAdjustment && s.categoryId == null)) return "-"
+    if (s.isBalance || (s.isBalanceAdjustment && s.categoryId == null)) return "—"
     val id = s.categoryId ?: return ""
     val main = ref.mainCategoryId(id)?.let { ref.categoryName(it) } ?: return ""
     val sub = ref.subCategoryId(id)?.let { ref.categoryName(it) }
-    return if (sub != null) "$main/$sub" else main
+    return if (sub != null) "$main › $sub" else main
 }
 
-/** Buffer shown while typing: locale grouping and the currency symbol. */
-private fun bufferText(buffer: String, symbol: String, position: com.nexo.app.core.model.SymbolPosition): String {
-    val sym = DecimalFormatSymbols.getInstance()
+/** The keypad buffer as display parts: locale grouping, the typed decimals, the currency symbol. */
+private fun bufferParts(buffer: String, currency: CurrencyEntity): AmountParts {
+    val separator = DecimalFormatSymbols.getInstance().decimalSeparator
     val negative = buffer.startsWith("-")
     val body = buffer.removePrefix("-")
     val intPart = body.substringBefore('.')
-    val grouped = intPart.toBigIntegerOrNull()?.let { java.text.NumberFormat.getIntegerInstance().format(it) } ?: intPart
-    val text = if (body.contains('.')) grouped + sym.decimalSeparator + body.substringAfter('.') else grouped
-    val withSymbol = if (position == com.nexo.app.core.model.SymbolPosition.PREFIX) "$symbol $text" else "$text$symbol"
-    return if (negative) "-$withSymbol" else withSymbol
+    val grouped = intPart.toBigIntegerOrNull()?.let { NumberFormat.getIntegerInstance().format(it) } ?: intPart.ifEmpty { "0" }
+    val fraction = if (body.contains('.')) separator + body.substringAfter('.') else ""
+    val prefix = currency.symbolPosition == SymbolPosition.PREFIX
+    return AmountParts(if (negative) AmountParts.MINUS else "", if (prefix) currency.symbol else "", grouped, fraction, if (prefix) "" else currency.symbol)
 }
 
-@Composable
-private fun flatFieldColors() = TextFieldDefaults.colors(
-    focusedContainerColor = Color.Transparent,
-    unfocusedContainerColor = Color.Transparent,
-    disabledContainerColor = Color.Transparent,
-)
+/** "0.00" in the currency's shape, shown dimmed before anything is typed. */
+private fun placeholderParts(currency: CurrencyEntity): AmountParts {
+    val separator = DecimalFormatSymbols.getInstance().decimalSeparator
+    val prefix = currency.symbolPosition == SymbolPosition.PREFIX
+    val fraction = if (currency.decimals > 0) separator + "0".repeat(currency.decimals) else ""
+    return AmountParts("", if (prefix) currency.symbol else "", "0", fraction, if (prefix) "" else currency.symbol)
+}
 
+/**
+ * The amount as the screen's centrepiece. Each keystroke gives it a small punch; a rejected key
+ * shakes it. While the keypad is open a short bar under it breathes in the entry's colour.
+ */
 @Composable
-private fun TypeToggles(selected: EntryType, income: Color, expense: Color, enabled: Boolean, highlight: Boolean = true, onSelect: (EntryType) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf(EntryType.INCOME to income, EntryType.EXPENSE to expense, EntryType.TRANSFER to MaterialTheme.colorScheme.onSurface).forEach { (t, c) ->
-            val sel = highlight && t == selected
-            OutlinedButton(
-                onClick = { if (enabled) onSelect(t) },
-                modifier = Modifier.weight(1f),
-                border = androidx.compose.foundation.BorderStroke(if (sel) 2.dp else 1.dp, if (sel) c else MaterialTheme.colorScheme.outlineVariant),
-                colors = ButtonDefaults.outlinedButtonColors(containerColor = if (sel) c.copy(alpha = 0.08f) else Color.Transparent),
-            ) {
-                Text(
-                    stringResource(
-                        when (t) {
-                            EntryType.INCOME -> R.string.income
-                            EntryType.EXPENSE -> R.string.expense
-                            EntryType.TRANSFER -> R.string.transfer
-                        },
-                    ),
-                    color = if (sel) c else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
-                )
-            }
+private fun AmountDisplay(s: EntryUi, currency: CurrencyEntity, color: Color, shake: Int, onClick: () -> Unit) {
+    val colors = LocalNexoColors.current
+    val typing = s.panel == Panel.AMOUNT && s.pad.buffer.isNotEmpty()
+    val parts = when {
+        typing -> bufferParts(s.pad.buffer, currency)
+        s.amount != null -> AmountParts.of(s.amount, currency)
+        else -> null
+    }
+    val punch = remember { Animatable(1f) }
+    LaunchedEffect(s.pad.buffer) {
+        if (s.panel == Panel.AMOUNT) {
+            punch.snapTo(1.04f)
+            punch.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = 700f))
+        }
+    }
+    val active = s.panel == Panel.AMOUNT
+    val tint by animateColorAsState(if (parts == null) colors.textTertiary else color, NexoMotion.standard(), label = "amountTint")
+    Column(
+        Modifier.fillMaxWidth().clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, role = Role.Button, onClick = onClick)
+            .padding(horizontal = Space.gutter, vertical = Space.m),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(Modifier.shakeOn(shake).graphicsLayer { scaleX = punch.value; scaleY = punch.value }, contentAlignment = Alignment.Center) {
+            AmountText(parts ?: placeholderParts(currency), Modifier.shrinkToFit(), style = NexoType.Hero, color = tint, minorScale = 0.5f)
+        }
+        AnimatedVisibility(active, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+            val pulse = rememberInfiniteTransition(label = "caret")
+            val alpha by pulse.animateFloat(0.35f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "caretAlpha")
+            Box(Modifier.padding(top = Space.s).size(width = 28.dp, height = 3.dp).clip(CircleShape).background(color.copy(alpha = alpha)))
         }
     }
 }
 
+/** The note, set as a centred title above the amount. */
 @Composable
-private fun FieldRow(
+private fun NoteField(value: String, onValueChange: (String) -> Unit, focused: Boolean, modifier: Modifier, onDone: () -> Unit, onClear: () -> Unit) {
+    val colors = LocalNexoColors.current
+    val style = TextStyle(
+        fontFamily = MaterialTheme.typography.titleLarge.fontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = MaterialTheme.typography.titleLarge.fontSize,
+        color = colors.text,
+        textAlign = TextAlign.Center,
+    )
+    Box(modifier, contentAlignment = Alignment.Center) {
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            textStyle = style,
+            cursorBrush = SolidColor(colors.text),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onDone() }),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 36.dp, vertical = Space.s),
+            decorationBox = { inner ->
+                Box(contentAlignment = Alignment.Center) {
+                    if (value.isEmpty()) Text(stringResource(R.string.note), style = style.copy(color = colors.textTertiary), modifier = Modifier.fillMaxWidth())
+                    inner()
+                }
+            },
+        )
+        if (focused && value.isNotEmpty()) {
+            RoundIconButton(Icons.Rounded.Close, stringResource(R.string.action_clear), onClear, modifier = Modifier.align(Alignment.CenterEnd), size = 28.dp, tint = colors.textSecondary)
+        }
+    }
+}
+
+/**
+ * A field as a pill: icon or tile, value (or its name, dimmed, when empty). The active field is
+ * ringed in the entry's colour. [onClear] adds a small remove control.
+ */
+@Composable
+private fun FieldPill(
+    text: String,
     label: String,
-    value: String,
-    active: Boolean,
     accent: Color,
+    modifier: Modifier = Modifier,
+    placeholder: Boolean = false,
+    active: Boolean = false,
+    icon: ImageVector? = null,
+    leading: (@Composable () -> Unit)? = null,
+    prefix: String? = null,
+    tint: Color? = null,
+    onClear: (() -> Unit)? = null,
     onClick: () -> Unit,
-    bold: Boolean = false,
-    trailing: @Composable () -> Unit = {},
 ) {
-    Column(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Row(Modifier.fillMaxWidth().height(52.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(label, Modifier.width(88.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(
-                value, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                fontSize = if (bold) 20.sp else 16.sp, fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal,
-            )
-            trailing()
+    val colors = LocalNexoColors.current
+    val interactions = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val bg by animateColorAsState(if (active) colors.tint(accent, colors.raised) else colors.raised, NexoMotion.standard(), label = "pillBg")
+    val ring by animateColorAsState(if (active) accent else Color.Transparent, NexoMotion.standard(), label = "pillRing")
+    Row(
+        modifier
+            .pressScale(interactions, 0.96f)
+            .height(40.dp)
+            .clip(CircleShape)
+            .background(bg)
+            .border(1.5.dp, ring, CircleShape)
+            .clickable(interactionSource = interactions, indication = null, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = if (placeholder) label else "$label: $text" }
+            .padding(start = if (leading != null || icon != null) Space.s else Space.m + Space.xxs, end = if (onClear != null) Space.xs else Space.m + Space.xxs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        when {
+            leading != null -> { leading(); Spacer(Modifier.width(Space.s)) }
+            icon != null -> { Icon(icon, null, tint = tint ?: colors.textSecondary, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(Space.s - Space.xxs)) }
         }
-        HorizontalDivider(thickness = if (active) 2.dp else 1.dp, color = if (active) accent else MaterialTheme.colorScheme.outlineVariant)
+        if (prefix != null) {
+            Text(prefix, style = MaterialTheme.typography.labelMedium, color = colors.textTertiary)
+            Spacer(Modifier.width(Space.xs))
+        }
+        Text(
+            text,
+            style = MaterialTheme.typography.labelLarge,
+            color = when {
+                tint != null -> tint
+                placeholder -> colors.textTertiary
+                else -> colors.text
+            },
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 220.dp),
+        )
+        if (onClear != null) {
+            Spacer(Modifier.width(Space.xxs))
+            RoundIconButton(Icons.Rounded.Close, stringResource(R.string.action_clear), onClear, size = 28.dp, tint = colors.textTertiary, container = Color.Transparent)
+        }
     }
+}
+
+@Composable
+private fun quietFieldColors() = LocalNexoColors.current.let { c ->
+    TextFieldDefaults.colors(
+        focusedContainerColor = Color.Transparent,
+        unfocusedContainerColor = Color.Transparent,
+        disabledContainerColor = Color.Transparent,
+        focusedIndicatorColor = c.hairline,
+        unfocusedIndicatorColor = Color.Transparent,
+        disabledIndicatorColor = Color.Transparent,
+        cursorColor = c.text,
+    )
 }
 
 @Composable
 private fun BottomButtons(
     s: EntryUi,
-    color: Color,
     onSave: () -> Unit,
     onContinue: () -> Unit,
     onDelete: () -> Unit,
@@ -741,27 +982,48 @@ private fun BottomButtons(
     onSkip: () -> Unit,
     review: Boolean,
 ) {
-    Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    val colors = LocalNexoColors.current
+    Row(
+        Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = Space.gutter, vertical = Space.m),
+        horizontalArrangement = Arrangement.spacedBy(Space.s),
+    ) {
         if (s.isEdit && s.viewing && !review) {
-            OutlinedButton(onClick = onDelete, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.action_delete)) }
-            OutlinedButton(onClick = onCopy, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.copy)) }
-            OutlinedButton(onClick = onBookmark, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.bookmark)) }
+            SoftButton(stringResource(R.string.action_delete), onDelete, Modifier.weight(1f), content = MaterialTheme.colorScheme.error)
+            SoftButton(stringResource(R.string.copy), onCopy, Modifier.weight(1f))
+            SoftButton(stringResource(R.string.bookmark), onBookmark, Modifier.weight(1f))
         } else {
             if (review) {
-                OutlinedButton(onClick = onSkip, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.skip)) }
-                OutlinedButton(onClick = onDelete, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.action_delete)) }
+                SoftButton(stringResource(R.string.skip), onSkip, Modifier.weight(1f))
+                SoftButton(stringResource(R.string.action_delete), onDelete, Modifier.weight(1f), content = MaterialTheme.colorScheme.error)
             }
+            val interactions = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             Button(
                 onClick = onSave,
                 enabled = !s.saving,
-                modifier = Modifier.weight(if (review) 1.4f else 2f).height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Color.White),
+                interactionSource = interactions,
+                modifier = Modifier.weight(if (review) 1.4f else 2f).height(52.dp).pressScale(interactions, 0.97f),
+                colors = ButtonDefaults.buttonColors(containerColor = colors.text, contentColor = colors.background),
             ) {
-                Text(if (review) stringResource(R.string.save_n, s.unassignedCount) else stringResource(R.string.action_save))
+                Text(if (review) stringResource(R.string.save_n, s.unassignedCount) else stringResource(R.string.action_save), style = MaterialTheme.typography.titleMedium)
             }
             if (s.showContinue && !review) {
-                OutlinedButton(onClick = onContinue, enabled = !s.saving, modifier = Modifier.weight(1f).height(48.dp)) { Text(stringResource(R.string.action_continue)) }
+                SoftButton(stringResource(R.string.action_continue), onContinue, Modifier.weight(1f), enabled = !s.saving)
             }
         }
+    }
+}
+
+@Composable
+private fun SoftButton(text: String, onClick: () -> Unit, modifier: Modifier, content: Color = LocalNexoColors.current.text, enabled: Boolean = true) {
+    val colors = LocalNexoColors.current
+    val interactions = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        interactionSource = interactions,
+        modifier = modifier.height(52.dp).pressScale(interactions, 0.97f),
+        colors = ButtonDefaults.buttonColors(containerColor = colors.raised, contentColor = content),
+    ) {
+        Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

@@ -1,5 +1,6 @@
 package com.nexo.app.core.database
 
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.nexo.app.core.database.dao.AccountDao
@@ -46,8 +47,12 @@ import com.nexo.app.core.database.entity.TransactionTagEntity
         MemoEntity::class,
         SettingEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
+    autoMigrations = [
+        // 2: category emoji and colour (two nullable columns).
+        AutoMigration(from = 1, to = 2),
+    ],
 )
 abstract class NexoDatabase : RoomDatabase() {
     abstract fun accountGroupDao(): AccountGroupDao

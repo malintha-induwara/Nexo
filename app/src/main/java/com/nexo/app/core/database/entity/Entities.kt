@@ -53,6 +53,10 @@ data class CategoryEntity(
     val isDeleted: Boolean = false,
     val createdAt: Long,
     val updatedAt: Long,
+    /** Emoji chosen for the category; null falls back to a suggestion or the monogram (see CategoryVisuals). */
+    val emoji: String? = null,
+    /** Index into the ten category hues; null derives one from the parent or the id. */
+    val colorIndex: Int? = null,
 )
 
 @Entity(tableName = "currencies")

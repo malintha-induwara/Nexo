@@ -27,6 +27,13 @@ data class RefData(
     val currencyById: Map<String, CurrencyEntity> = currencies.associateBy { it.id }
     val tagById: Map<String, TagEntity> = tags.associateBy { it.id }
 
+    /** Resolved look of every category (emoji or monogram, hue), by id. */
+    val visualById: Map<String, CategoryVisual> by lazy {
+        categories.associate { c -> c.id to CategoryVisuals.resolve(c, c.parentId?.let { categoryById[it] }) }
+    }
+
+    fun visual(categoryId: String?): CategoryVisual? = categoryId?.let { visualById[it] }
+
     val mainCurrency: CurrencyEntity = currencies.firstOrNull { it.isMain } ?: FALLBACK_MAIN
 
     /** Main first, then visible sub-currencies in order. */

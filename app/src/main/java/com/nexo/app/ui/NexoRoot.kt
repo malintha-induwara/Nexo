@@ -1,5 +1,6 @@
 package com.nexo.app.ui
 
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +17,8 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.nexo.app.ui.components.LocalSharedTransitionScope
+import com.nexo.app.ui.components.NavMotion
 import com.nexo.app.ui.lock.LockScreen
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MainKey
@@ -33,7 +36,7 @@ fun NexoRoot(app: AppViewModel, onEraseAll: suspend () -> Unit, onBiometricsInva
     val pending by app.pending.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val d = device
-    NexoTheme(mode = d?.themeMode ?: com.nexo.app.core.settings.ThemeMode.SYSTEM, color = d?.themeColor ?: com.nexo.app.core.settings.ThemeColor.WHITE, colorSet = book.colorSet) {
+    NexoTheme(mode = d?.themeMode ?: com.nexo.app.core.settings.ThemeMode.SYSTEM, colorSet = book.colorSet) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             if (d == null) return@Box
             if (!d.setupDone) {
@@ -42,16 +45,22 @@ fun NexoRoot(app: AppViewModel, onEraseAll: suspend () -> Unit, onBiometricsInva
             }
             val backStack = rememberNavBackStack(MainKey)
             val navigator = remember(backStack) { Navigator(backStack) }
-            CompositionLocalProvider(LocalNavigator provides navigator) {
-                NavDisplay(
-                    backStack = backStack,
-                    onBack = { navigator.back() },
-                    entryDecorators = listOf(
-                        rememberSaveableStateHolderNavEntryDecorator(),
-                        rememberViewModelStoreNavEntryDecorator(),
-                    ),
-                    entryProvider = nexoEntries(),
-                )
+            SharedTransitionLayout {
+                CompositionLocalProvider(LocalNavigator provides navigator, LocalSharedTransitionScope provides this) {
+                    NavDisplay(
+                        backStack = backStack,
+                        onBack = { navigator.back() },
+                        entryDecorators = listOf(
+                            rememberSaveableStateHolderNavEntryDecorator(),
+                            rememberViewModelStoreNavEntryDecorator(),
+                        ),
+                        sharedTransitionScope = this,
+                        transitionSpec = { NavMotion.push(this) },
+                        popTransitionSpec = { NavMotion.pop(this) },
+                        predictivePopTransitionSpec = { NavMotion.predictivePop(this) },
+                        entryProvider = nexoEntries(),
+                    )
+                }
             }
             // "What's new" once per release; a first install only stores the marker (UI-022 step 3).
             if (!locked && d.whatsNewVersion < com.nexo.app.BuildConfig.VERSION_CODE) {

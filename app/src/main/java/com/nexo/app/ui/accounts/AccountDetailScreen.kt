@@ -131,7 +131,7 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                         ExtendedFloatingActionButton(onClick = { nav.navigate(EntryKey(mode = EntryMode.PAY_CARD, accountId = account.id)) }, icon = { Icon(Icons.Outlined.Payments, null) }, text = { Text(stringResource(R.string.pay)) })
                     }
                     FloatingActionButton(onClick = { nav.navigate(EntryKey(accountId = account?.id)) }, containerColor = MaterialTheme.colorScheme.primary) {
-                        Icon(Icons.Filled.Add, stringResource(R.string.add_transaction), tint = Color.White)
+                        Icon(Icons.Filled.Add, stringResource(R.string.add_transaction), tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Delete
@@ -81,8 +82,13 @@ fun SelectionBar(
     var menu by remember { mutableStateOf(false) }
     Column {
         TopAppBar(
-            title = { Text(stringResource(R.string.action_edit)) },
-            navigationIcon = { IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back)) } },
+            title = { Text(if (count == 0) stringResource(R.string.please_select_item) else stringResource(R.string.n_selected, count), style = MaterialTheme.typography.titleLarge) },
+            navigationIcon = {
+                com.nexo.app.ui.components.RoundIconButton(
+                    androidx.compose.material.icons.Icons.Rounded.Close, stringResource(R.string.action_back), onClose,
+                    modifier = Modifier.padding(start = 12.dp, end = 4.dp),
+                )
+            },
             actions = {
                 IconButton(onClick = { onAction(null) }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
                 androidx.compose.foundation.layout.Box {
@@ -97,7 +103,7 @@ fun SelectionBar(
                 }
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
         )
         Row(Modifier.fillMaxWidth().padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             TriStateCheckbox(
@@ -108,11 +114,8 @@ fun SelectionBar(
                 },
                 onClick = onToggleAll,
             )
-            Text(
-                if (count == 0) stringResource(R.string.please_select_item) else stringResource(R.string.n_selected, count),
-                modifier = Modifier.weight(1f),
-            )
-            Text(AmountFormatter.format(net, main), fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.action_select_all), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            com.nexo.app.ui.components.RollingAmount(net, main, style = com.nexo.app.ui.theme.NexoType.Amount, minorScale = 0.8f)
         }
     }
 }

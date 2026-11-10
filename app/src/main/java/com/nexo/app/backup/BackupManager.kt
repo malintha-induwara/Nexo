@@ -170,7 +170,7 @@ class BackupManager @Inject constructor(
         const val EXTENSION = "nexobak"
         const val MIME = "application/vnd.nexo.backup"
         const val KEEP = 14
-        const val DB_VERSION = 1
+        const val DB_VERSION = 2
         val TABLES = listOf(
             "account_groups", "accounts", "categories", "currencies", "transactions", "transaction_tags", "tags", "photos",
             "repeat_rules", "favorites", "budgets", "budget_amounts", "memos", "settings",

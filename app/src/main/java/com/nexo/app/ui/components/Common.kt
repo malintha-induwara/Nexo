@@ -1,24 +1,24 @@
 package com.nexo.app.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -26,52 +26,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
 import com.nexo.app.core.database.entity.CurrencyEntity
-import com.nexo.app.core.money.AmountFormatter
-
-@Composable
-fun MoneyText(
-    value: Double,
-    currency: CurrencyEntity?,
-    color: Color = MaterialTheme.colorScheme.onSurface,
-    style: TextStyle = MaterialTheme.typography.bodyMedium,
-    modifier: Modifier = Modifier,
-    absolute: Boolean = false,
-    fontWeight: FontWeight? = null,
-) {
-    Text(
-        AmountFormatter.format(if (absolute) kotlin.math.abs(value) else value, currency),
-        color = color,
-        style = style,
-        modifier = modifier,
-        maxLines = 1,
-        fontWeight = fontWeight,
-        overflow = TextOverflow.Ellipsis,
-    )
-}
+import com.nexo.app.ui.theme.LocalNexoColors
+import com.nexo.app.ui.theme.NexoType
+import com.nexo.app.ui.theme.Space
+import java.util.Locale
 
 @Composable
 fun EmptyState(text: String = stringResource(R.string.no_data), modifier: Modifier = Modifier, icon: ImageVector = Icons.Outlined.Inbox) {
-    Column(modifier.fillMaxWidth().padding(vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(56.dp))
-        Spacer(Modifier.height(8.dp))
-        Text(text, color = MaterialTheme.colorScheme.outline, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+    val colors = LocalNexoColors.current
+    Column(modifier.fillMaxWidth().padding(horizontal = Space.xxl, vertical = 56.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(icon, null, tint = colors.textTertiary, modifier = Modifier.size(28.dp))
+        Spacer(Modifier.height(Space.m))
+        Text(text, color = colors.textSecondary, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
     }
 }
 
+/** Small upper-case label above a group of rows. */
 @Composable
 fun SectionHeader(text: String, modifier: Modifier = Modifier) {
     Text(
-        text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 6.dp),
+        text.uppercase(Locale.getDefault()),
+        style = NexoType.Caps,
+        color = LocalNexoColors.current.textTertiary,
+        modifier = modifier.fillMaxWidth().padding(start = Space.gutter, end = Space.gutter, top = Space.xl, bottom = Space.s),
     )
 }
 
@@ -86,37 +68,53 @@ fun SettingRow(
     trailing: (@Composable () -> Unit)? = null,
     enabled: Boolean = true,
 ) {
+    val colors = LocalNexoColors.current
     Row(
         Modifier
             .fillMaxWidth()
+            .heightIn(min = 56.dp)
             .then(if (onClick != null && enabled) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = Space.gutter, vertical = Space.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leading != null) {
-            Icon(leading, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.width(16.dp))
+            Icon(leading, null, tint = if (enabled) colors.textSecondary else colors.textTertiary, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(Space.l))
         }
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline)
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = if (enabled) colors.text else colors.textTertiary)
             if (!subtitle.isNullOrEmpty()) {
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
             }
         }
         if (trailing != null) trailing()
-        else if (showChevron) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.outline)
+        else if (showChevron) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = colors.textTertiary, modifier = Modifier.size(20.dp))
     }
 }
 
 @Composable
 fun SwitchRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit, subtitle: String? = null, enabled: Boolean = true) {
-    SettingRow(title, subtitle, onClick = { onChange(!checked) }, showChevron = false, enabled = enabled, trailing = {
-        Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
+    val haptics = rememberHaptics()
+    val toggle = { v: Boolean -> haptics.toggle(v); onChange(v) }
+    SettingRow(title, subtitle, onClick = { toggle(!checked) }, showChevron = false, enabled = enabled, trailing = {
+        Switch(checked = checked, onCheckedChange = toggle, enabled = enabled, colors = nexoSwitchColors())
     })
 }
 
 @Composable
-fun Divider() = HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+fun nexoSwitchColors() = LocalNexoColors.current.let { c ->
+    SwitchDefaults.colors(
+        checkedThumbColor = c.background,
+        checkedTrackColor = c.text,
+        checkedBorderColor = c.text,
+        uncheckedThumbColor = c.textTertiary,
+        uncheckedTrackColor = c.raised,
+        uncheckedBorderColor = c.hairline,
+    )
+}
+
+@Composable
+fun Divider() = HorizontalDivider(color = LocalNexoColors.current.hairline)
 
 /** Income / Expenses / Total strip (UI-006). */
 @Composable
@@ -130,23 +128,18 @@ fun TotalsBar(
     labels: Triple<String, String, String> = Triple(stringResource(R.string.income), stringResource(R.string.expenses), stringResource(R.string.total)),
     totalValue: Double = income - expense,
 ) {
-    Row(modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+    Row(modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.m), horizontalArrangement = Arrangement.spacedBy(Space.m)) {
         TotalCell(labels.first, income, currency, incomeColor, Modifier.weight(1f))
         TotalCell(labels.second, expense, currency, expenseColor, Modifier.weight(1f))
-        TotalCell(labels.third, totalValue, currency, MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+        TotalCell(labels.third, totalValue, currency, LocalNexoColors.current.text, Modifier.weight(1f))
     }
 }
 
 @Composable
 private fun TotalCell(label: String, value: Double, currency: CurrencyEntity?, color: Color, modifier: Modifier) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Box(Modifier.padding(horizontal = 4.dp)) {
-            Text(
-                AmountFormatter.format(value, currency),
-                color = color, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
-        }
+    Column(modifier) {
+        Text(label.uppercase(Locale.getDefault()), style = NexoType.Caps, color = LocalNexoColors.current.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(Space.xs))
+        AmountText(value, currency, style = NexoType.Amount, color = color)
     }
 }

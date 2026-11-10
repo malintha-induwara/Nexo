@@ -114,7 +114,7 @@ private fun Welcome(onStart: () -> Unit) {
         verticalArrangement = Arrangement.Center,
     ) {
         Box(Modifier.size(96.dp).background(MaterialTheme.colorScheme.primary, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(Icons.Outlined.AccountBalanceWallet, null, tint = Color.White, modifier = Modifier.size(52.dp))
+            Icon(Icons.Outlined.AccountBalanceWallet, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(52.dp))
         }
         Spacer(Modifier.height(24.dp))
         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)

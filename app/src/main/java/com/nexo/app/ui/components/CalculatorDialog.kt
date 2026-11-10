@@ -141,6 +141,6 @@ private fun RowScope.CalcKey(key: String, accent: Boolean, operator: Boolean, la
         contentAlignment = Alignment.Center,
     ) {
         if (key == "BS") Icon(Icons.AutoMirrored.Outlined.Backspace, stringResource(R.string.action_delete))
-        else Text(label, fontSize = 22.sp, color = if (accent) Color.White else MaterialTheme.colorScheme.onSurface)
+        else Text(label, fontSize = 22.sp, color = if (accent) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
     }
 }

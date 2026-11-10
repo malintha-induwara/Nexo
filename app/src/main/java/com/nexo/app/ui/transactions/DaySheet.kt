@@ -133,7 +133,7 @@ fun DaySheet(
                 }
                 Spacer(Modifier.padding(6.dp))
                 FloatingActionButton(onClick = { onShowMemos(false); nav.navigate(EntryKey(date = date.toString())) }, containerColor = MaterialTheme.colorScheme.primary) {
-                    Icon(Icons.Filled.Add, stringResource(R.string.add_transaction), tint = Color.White)
+                    Icon(Icons.Filled.Add, stringResource(R.string.add_transaction), tint = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }

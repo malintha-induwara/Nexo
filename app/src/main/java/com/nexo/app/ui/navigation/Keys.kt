@@ -29,6 +29,8 @@ data class EntryKey(
     val repeat: com.nexo.app.core.model.RepeatType? = null,
     /** When true the form opens on top of the main screen from a widget / shortcut. */
     val external: Boolean = false,
+    /** Opened from the bottom bar's add button: the button morphs into the form ("the drop"). */
+    val fromAdd: Boolean = false,
 ) : NavKey
 
 @Serializable

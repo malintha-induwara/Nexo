@@ -1,5 +1,13 @@
 package com.nexo.app.ui.transactions
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,44 +21,61 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.Repeat
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
 import com.nexo.app.core.database.entity.CurrencyEntity
 import com.nexo.app.core.database.entity.MemoEntity
+import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.MemoColor
-import com.nexo.app.core.money.AmountFormatter
+import com.nexo.app.core.money.AmountParts
+import com.nexo.app.ui.components.AmountText
+import com.nexo.app.ui.components.CategoryTile
 import com.nexo.app.ui.components.EmptyState
 import com.nexo.app.ui.components.Formats
+import com.nexo.app.ui.components.IconTile
+import com.nexo.app.ui.theme.CategoryHues
 import com.nexo.app.ui.theme.LocalMoneyColors
+import com.nexo.app.ui.theme.LocalNexoColors
+import com.nexo.app.ui.theme.NexoMotion
 import com.nexo.app.ui.theme.NexoPalette
+import com.nexo.app.ui.theme.NexoShapes
+import com.nexo.app.ui.theme.NexoType
+import com.nexo.app.ui.theme.Sizes
+import com.nexo.app.ui.theme.Space
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.util.Locale
 
 @Composable
 fun weekdayColor(d: DayOfWeek): Color = when (d) {
@@ -59,63 +84,147 @@ fun weekdayColor(d: DayOfWeek): Color = when (d) {
     else -> MaterialTheme.colorScheme.outline
 }
 
+/** "Today · Tue, Nov 10", "Yesterday · …" or "Fri, Nov 6". */
 @Composable
-fun DayHeader(group: DayGroup, main: CurrencyEntity, onClick: (() -> Unit)?) {
-    val money = LocalMoneyColors.current
-    Row(
-        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("%02d".format(group.date.dayOfMonth), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.width(8.dp))
-        Box(Modifier.background(weekdayColor(group.date.dayOfWeek), RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) {
-            Text(Formats.weekdayShort(group.date), color = Color.White, style = MaterialTheme.typography.labelSmall)
-        }
-        Spacer(Modifier.width(8.dp))
-        Text(Formats.yearMonthDots(group.date), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.weight(1f))
-        Text(AmountFormatter.format(group.income, main), color = money.income, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-        Spacer(Modifier.width(12.dp))
-        Text(AmountFormatter.format(group.expense, main), color = money.expense, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+fun dayLabel(date: LocalDate): String {
+    val today = LocalDate.now()
+    val base = Formats.weekdayMonthDay(date)
+    return when (date) {
+        today -> stringResource(R.string.today) + " · " + base
+        today.minusDays(1) -> stringResource(R.string.yesterday) + " · " + base
+        else -> base
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+/** Upper-case day label with the day's income and expenses on the right. Tapping it adds an entry on that day. */
 @Composable
-fun TxRow(row: TxRowUi, selected: Boolean, onClick: () -> Unit, onLongClick: (() -> Unit)?) {
+fun DayHeader(group: DayGroup, main: CurrencyEntity, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
     val money = LocalMoneyColors.current
+    val colors = LocalNexoColors.current
     Row(
-        Modifier.fillMaxWidth()
-            .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(start = Space.gutter, end = Space.gutter, top = Space.xl, bottom = Space.s),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (selected) {
-            Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
+        Text(
+            dayLabel(group.date).uppercase(Locale.getDefault()),
+            style = NexoType.Caps,
+            color = if (group.date == LocalDate.now()) colors.text else colors.textTertiary,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (group.income != 0.0) {
+            AmountText(group.income, main, style = NexoType.AmountSmall, color = money.income, sign = AmountParts.Sign.ALWAYS)
         }
-        Column(Modifier.width(84.dp)) {
-            Text(row.category, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            row.subCategory?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        if (group.income != 0.0 && group.expense != 0.0) Spacer(Modifier.width(Space.m))
+        if (group.expense != 0.0) {
+            AmountText(-group.expense, main, style = NexoType.AmountSmall, color = money.expense)
         }
-        Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
-            Text(
-                row.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                color = if (row.titleIsNote) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            val second = buildList {
-                row.time?.let { add(it) }
-                if (row.titleIsNote && row.accountText.isNotEmpty()) add(row.accountText)
-                row.tags?.let { add(it) }
-            }.joinToString(", ")
-            if (second.isNotEmpty()) Text(second, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            row.descriptionLine?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+    }
+}
+
+/** The tile at the start of a transaction row. */
+@Composable
+fun RowTile(row: TxRowUi) {
+    val colors = LocalNexoColors.current
+    val v = row.visual
+    val kind = row.tx?.kind
+    when {
+        row.isCarryOver -> IconTile(Icons.Rounded.History, colors.textSecondary)
+        v != null -> CategoryTile(v.emoji, v.monogram, CategoryHues.of(v.colorIndex, colors.isDark))
+        kind != null && kind.isTransfer -> IconTile(Icons.Rounded.SwapHoriz, colors.textSecondary)
+        kind != null && (kind.isBalance || row.tx?.isBalanceAdjustment == true) -> IconTile(Icons.Rounded.Tune, colors.textSecondary)
+        else -> CategoryTile(null, "?", colors.textSecondary)
+    }
+}
+
+/**
+ * One transaction: tile, title (the note, or the category when there is none), a meta line
+ * (category, account, time, tags) and the amount, signed and coloured by direction.
+ * [highlight] briefly washes the row, used when it has just been saved.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun TxRow(
+    row: TxRowUi,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    highlight: Boolean = false,
+) {
+    val money = LocalMoneyColors.current
+    val colors = LocalNexoColors.current
+    val background by animateColorAsState(if (selected) colors.raised else Color.Transparent, NexoMotion.standard(), label = "rowSelected")
+    val flash = remember { Animatable(0f) }
+    LaunchedEffect(highlight) {
+        if (highlight) {
+            flash.animateTo(1f, NexoMotion.enter(NexoMotion.SHORT))
+            flash.animateTo(0f, androidx.compose.animation.core.tween(900, delayMillis = 350))
         }
-        if (row.hasPhoto) Icon(Icons.Outlined.Image, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp).padding(end = 2.dp))
-        Text(row.amountText, color = money.of(row.flow), style = MaterialTheme.typography.bodyLarge, maxLines = 1, modifier = Modifier.widthIn(max = 160.dp))
+    }
+    val title = when {
+        row.isCarryOver || row.titleIsNote -> row.title
+        else -> row.subCategory ?: row.category
+    }
+    val meta = buildList {
+        if (!row.isCarryOver) {
+            when {
+                row.titleIsNote -> add(row.subCategory?.let { "${row.category} › $it" } ?: row.category)
+                row.subCategory != null -> add(row.category)
+            }
+            if (row.accountText.isNotEmpty()) add(row.accountText)
+        }
+        row.time?.let { add(it) }
+        row.tags?.let { t -> add(t.split(", ").joinToString(" ") { "#$it" }) }
+    }.joinToString(" · ")
+
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = Sizes.row)
+            .drawBehind {
+                drawRect(background)
+                if (flash.value > 0f) drawRect(colors.text.copy(alpha = 0.08f * flash.value))
+            }
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = Space.gutter, vertical = Space.s + Space.xxs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AnimatedContent(
+            targetState = selected,
+            transitionSpec = {
+                (scaleIn(NexoMotion.snappy(), initialScale = 0.6f) + fadeIn(NexoMotion.enter(NexoMotion.SHORT))) togetherWith
+                    (scaleOut(NexoMotion.exit(), targetScale = 0.6f) + fadeOut(NexoMotion.exit()))
+            },
+            label = "rowTile",
+        ) { on ->
+            if (on) {
+                Box(Modifier.size(Sizes.tile).clip(NexoShapes.tile).background(colors.text), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Check, null, tint = colors.background, modifier = Modifier.size(22.dp))
+                }
+            } else {
+                RowTile(row)
+            }
+        }
+        Spacer(Modifier.width(Space.m))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = NexoType.RowTitle, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (meta.isNotEmpty()) Text(meta, style = NexoType.Meta, color = colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            row.descriptionLine?.let { Text(it, style = NexoType.Meta, color = colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        }
+        Spacer(Modifier.width(Space.m))
+        if (row.hasPhoto) {
+            Icon(Icons.Outlined.Image, null, tint = colors.textTertiary, modifier = Modifier.padding(end = Space.s).size(16.dp))
+        }
+        when (row.flow) {
+            CashFlow.INCOME -> AmountText(row.amount, row.currency, color = money.income, sign = AmountParts.Sign.ALWAYS)
+            CashFlow.EXPENSE -> AmountText(-row.amount, row.currency, color = money.expense)
+            CashFlow.NEUTRAL -> AmountText(row.amount, row.currency, color = colors.text, sign = AmountParts.Sign.NONE)
+        }
     }
 }
 
@@ -129,16 +238,24 @@ fun MemoDot(color: MemoColor, size: Int = 8) {
 }
 
 @Composable
-fun MemoStrip(memos: List<MemoEntity>, onClick: () -> Unit) {
-    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).clickable(onClick = onClick).padding(start = 16.dp, end = 16.dp, bottom = 6.dp)) {
+fun MemoStrip(memos: List<MemoEntity>, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalNexoColors.current
+    Column(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = Space.l)
+            .clip(NexoShapes.control)
+            .clickable(onClick = onClick)
+            .padding(horizontal = Space.xs, vertical = Space.xs),
+    ) {
         memos.forEach { m ->
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.dp)) {
                 MemoDot(m.color)
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Space.s))
                 Text(
                     m.title.ifBlank { m.content.replace('\n', ' ').trim() },
-                    style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = NexoType.Meta, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    color = colors.textSecondary,
                 )
             }
         }
@@ -146,19 +263,24 @@ fun MemoStrip(memos: List<MemoEntity>, onClick: () -> Unit) {
 }
 
 @Composable
-fun RepeatPreviewRow(p: RepeatPreview, main: CurrencyEntity, onClick: () -> Unit) {
+fun RepeatPreviewRow(p: RepeatPreview, main: CurrencyEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalNexoColors.current
     Row(
-        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier.fillMaxWidth().heightIn(min = Sizes.row).clickable(onClick = onClick).padding(horizontal = Space.gutter, vertical = Space.s),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Outlined.Repeat, null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(12.dp))
+        IconTile(Icons.Rounded.Repeat, colors.textSecondary)
+        Spacer(Modifier.width(Space.m))
         Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.repeat), style = MaterialTheme.typography.bodyLarge)
-            Text(p.dates.joinToString(", ") { "${it.monthValue}/${it.dayOfMonth}" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (p.names.isNotEmpty()) Text(p.names.joinToString(", "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(stringResource(R.string.repeat), style = NexoType.RowTitle, color = colors.text)
+            val detail = buildList {
+                add(p.dates.joinToString(", ") { "${it.monthValue}/${it.dayOfMonth}" })
+                if (p.names.isNotEmpty()) add(p.names.joinToString(", "))
+            }.joinToString(" · ")
+            Text(detail, style = NexoType.Meta, color = colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Text(AmountFormatter.format(p.amount, main), style = MaterialTheme.typography.bodyLarge)
+        Spacer(Modifier.width(Space.m))
+        AmountText(p.amount, main, color = colors.textSecondary, sign = AmountParts.Sign.NONE)
     }
 }
 
@@ -178,29 +300,32 @@ fun DayGroupList(
     rowContent: (@Composable (TxRowUi) -> Unit)? = null,
     emptyText: String? = null,
     bottomPadding: Int = 96,
+    highlightId: String? = null,
 ) {
-    LazyColumn(modifier, state = state, contentPadding = PaddingValues(bottom = bottomPadding.dp)) {
+    LazyColumn(modifier, state = state, contentPadding = PaddingValues(bottom = bottomPadding.dp), verticalArrangement = Arrangement.Top) {
         header?.invoke(this)
         if (groups.isEmpty()) {
-            item { EmptyState(emptyText ?: stringResource(R.string.no_data)) }
+            item(key = "empty") { EmptyState(emptyText ?: stringResource(R.string.no_data), Modifier.animateItem()) }
         }
         groups.forEach { g ->
-            item(key = "h_${g.date}") {
-                Column {
-                    Spacer(Modifier.height(8.dp))
+            item(key = "h_${g.date}", contentType = "day") {
+                Column(Modifier.animateItem()) {
                     DayHeader(g, main, onDayClick?.let { { it(g.date) } })
-                    if (g.memos.isNotEmpty()) MemoStrip(g.memos) { onMemoClick?.invoke(g.date) }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    if (g.memos.isNotEmpty()) MemoStrip(g.memos, onClick = { onMemoClick?.invoke(g.date) })
                 }
             }
-            items(g.rows, key = { "r_${g.date}_${it.id}" }) { row ->
-                if (rowContent != null) rowContent(row)
-                else TxRow(
-                    row, selected = row.id in selection,
-                    onClick = { if (!row.isCarryOver) onRowClick(row) },
-                    onLongClick = if (row.isCarryOver || onRowLongClick == null) null else ({ onRowLongClick(row) }),
-                )
+            items(g.rows, key = { "r_${g.date}_${it.id}" }, contentType = { "row" }) { row ->
+                Box(Modifier.animateItem()) {
+                    if (rowContent != null) rowContent(row)
+                    else TxRow(
+                        row, selected = row.id in selection,
+                        onClick = { if (!row.isCarryOver) onRowClick(row) },
+                        onLongClick = if (row.isCarryOver || onRowLongClick == null) null else ({ onRowLongClick(row) }),
+                        highlight = row.id == highlightId,
+                    )
+                }
             }
         }
+        item(key = "end") { Spacer(Modifier.height(Space.s)) }
     }
 }

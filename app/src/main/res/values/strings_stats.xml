@@ -30,4 +30,12 @@
     <string name="to_subcategory_confirm">Category \'%1$s\' will become a subcategory of \'%2$s\'. All subcategories of \'%1$s\' will become subcategories of \'%2$s\'. Do you wish to continue?</string>
     <string name="tag_settings">Tag Settings</string>
     <string name="tag_help">Tags add information to a record. For example, a \'Travel\' tag makes it easy to find everything related to your trips.</string>
+    <string name="category_look">Look</string>
+    <string name="category_emoji">Emoji</string>
+    <string name="category_color">Colour</string>
+    <string name="category_emoji_auto">Auto</string>
+    <string name="category_emoji_auto_hint">Suggested from the name, or the first letter</string>
+    <string name="category_emoji_custom">Or type any emoji</string>
+    <string name="category_color_inherit">Same as main category</string>
+    <string name="category_color_n">Colour %1$d</string>
 </resources>

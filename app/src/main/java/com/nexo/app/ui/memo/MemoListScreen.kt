@@ -124,7 +124,7 @@ fun MemoListScreen(key: MemoListKey) {
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { nav.navigate(MemoEditorKey(date = vm.date.value.toString())) }, containerColor = MaterialTheme.colorScheme.primary) {
-                Icon(Icons.AutoMirrored.Outlined.StickyNote2, stringResource(R.string.new_memo), tint = Color.White)
+                Icon(Icons.AutoMirrored.Outlined.StickyNote2, stringResource(R.string.new_memo), tint = MaterialTheme.colorScheme.onPrimary)
             }
         },
     ) { padding ->

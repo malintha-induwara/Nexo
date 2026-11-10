@@ -1,6 +1,41 @@
 package com.nexo.app.ui.transactions
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.FilterList
+import androidx.compose.material.icons.rounded.NorthEast
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SouthWest
+import androidx.compose.material.icons.rounded.StarOutline
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Dp
+import com.nexo.app.ui.components.NavMotion
+import com.nexo.app.ui.components.RollingAmount
+import com.nexo.app.ui.components.RoundIconButton
+import com.nexo.app.ui.components.SegmentedPill
+import com.nexo.app.ui.components.collapsingHeader
+import com.nexo.app.ui.components.rememberCollapsingHeaderState
+import com.nexo.app.ui.components.rememberHaptics
+import com.nexo.app.ui.components.shrinkToFit
+import com.nexo.app.ui.theme.LocalNexoColors
+import com.nexo.app.ui.theme.NexoMotion
+import com.nexo.app.ui.theme.NexoType
+import com.nexo.app.ui.theme.Space
+import kotlin.math.sign
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -100,10 +135,12 @@ fun TransactionsTab(todaySignal: Int, vm: TransactionsViewModel = hiltViewModel(
     val filterOpen by vm.filterOpen.collectAsStateWithLifecycle()
     val selection by vm.selection.collectAsStateWithLifecycle()
     val selectedDate by vm.selectedDate.collectAsStateWithLifecycle()
+    val lastSaved by vm.lastSaved.collectAsStateWithLifecycle()
     val nav = LocalNavigator.current
     val shell = LocalShell.current
-    val header = LocalHeaderColors.current
     val money = LocalMoneyColors.current
+    val colors = LocalNexoColors.current
+    val haptics = rememberHaptics()
     val main = ref.mainCurrency
     val currentTab = tab ?: return
 
@@ -113,12 +150,36 @@ fun TransactionsTab(todaySignal: Int, vm: TransactionsViewModel = hiltViewModel(
     var bulkOpen by remember { mutableStateOf(false) }
     var bulkAction by remember { mutableStateOf<BulkAction?>(null) }
     var filterCollapsed by rememberSaveable { mutableStateOf(false) }
+    // A date the Daily list should scroll to once its data contains that day (after a save or "today").
+    var focusDate by remember { mutableStateOf<LocalDate?>(null) }
+    val header = rememberCollapsingHeaderState()
 
     LaunchedEffect(todaySignal) { if (todaySignal > 0) vm.goToday() }
+    LaunchedEffect(Unit) { vm.focusEvents.collect { focusDate = it } }
+    LaunchedEffect(currentTab, data.period?.key) { header.expand() }
+    // The highlight plays once; clear it so scrolling the row away and back does not replay it.
+    LaunchedEffect(lastSaved) {
+        if (lastSaved != null) {
+            kotlinx.coroutines.delay(2_500)
+            vm.clearLastSaved()
+        }
+    }
     val selecting = selection.isNotEmpty()
     DisposableEffect(filterOpen, selecting) {
         shell.bottomBarHidden = filterOpen || selecting
         onDispose { shell.bottomBarHidden = false }
+    }
+    // On the Notes view the bar's add button writes a memo instead of a transaction.
+    val memoDate by rememberUpdatedState(selectedDate)
+    DisposableEffect(currentTab) {
+        if (currentTab == SubTab.NOTE) {
+            shell.addOverride = { nav.navigate(MemoEditorKey(date = memoDate.toString())) }
+            shell.addLabelOverride = R.string.new_memo
+        }
+        onDispose {
+            shell.addOverride = null
+            shell.addLabelOverride = null
+        }
     }
     BackHandler(enabled = monthPicker || selecting || filterOpen) {
         when {
@@ -135,60 +196,76 @@ fun TransactionsTab(todaySignal: Int, vm: TransactionsViewModel = hiltViewModel(
 
     val title = if (currentTab == SubTab.MONTHLY) data.year.toString() else data.period?.let { Formats.monthYear(it.label) } ?: ""
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Column(Modifier.fillMaxSize().background(colors.background)) {
         val dailyRows = data.days.flatMap { it.rows }
-        if (selecting) {
-            Box(Modifier.statusBarsPadding()) {
-                SelectionBar(
-                    count = selection.size,
-                    total = dailyRows.count { !it.isCarryOver },
-                    net = selectedNet(dailyRows, selection),
-                    main = main,
-                    onToggleAll = {
-                        val all = dailyRows.filter { !it.isCarryOver }.map { it.id }.toSet()
-                        vm.setSelection(if (selection.size >= all.size) emptySet() else all)
-                    },
-                    onClose = vm::clearSelection,
-                    onAction = { bulkAction = it; bulkOpen = true },
-                )
-            }
-        } else {
-            Row(
-                Modifier.fillMaxWidth().background(if (filterOpen) MaterialTheme.colorScheme.secondaryContainer else header.container).statusBarsPadding().height(56.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                PeriodNavigator(
-                    title = title,
-                    onPrevious = { vm.step(false) },
-                    onNext = { vm.step(true) },
-                    onTitleClick = if (currentTab == SubTab.MONTHLY) null else ({ monthPicker = true }),
-                    color = if (filterOpen) MaterialTheme.colorScheme.onSecondaryContainer else header.content,
-                )
-                Spacer(Modifier.weight(1f))
-                val tint = if (filterOpen) MaterialTheme.colorScheme.onSecondaryContainer else header.content
-                if (!filterOpen) {
-                    IconButton(onClick = { nav.navigate(BookmarksKey()) }) { Icon(Icons.Outlined.StarOutline, stringResource(R.string.bookmarks), tint = tint) }
-                    IconButton(onClick = { nav.navigate(SearchKey()) }) { Icon(Icons.Outlined.Search, stringResource(R.string.search), tint = tint) }
+        AnimatedContent(
+            targetState = selecting,
+            transitionSpec = { fadeIn(NexoMotion.enter(NexoMotion.MEDIUM)) togetherWith fadeOut(NexoMotion.exit()) },
+            label = "header",
+        ) { sel ->
+            if (sel) {
+                Box(Modifier.statusBarsPadding()) {
+                    SelectionBar(
+                        count = selection.size,
+                        total = dailyRows.count { !it.isCarryOver },
+                        net = selectedNet(dailyRows, selection),
+                        main = main,
+                        onToggleAll = {
+                            val all = dailyRows.filter { !it.isCarryOver }.map { it.id }.toSet()
+                            vm.setSelection(if (selection.size >= all.size) emptySet() else all)
+                        },
+                        onClose = vm::clearSelection,
+                        onAction = { bulkAction = it; bulkOpen = true },
+                    )
                 }
-                IconButton(onClick = { vm.setFilterOpen(!filterOpen); filterCollapsed = false }) {
-                    Icon(if (filterOpen) Icons.Filled.Close else Icons.Outlined.FilterList, stringResource(R.string.filter), tint = tint)
-                }
-            }
-            androidx.compose.material3.PrimaryTabRow(
-                selectedTabIndex = visibleTabs.indexOf(currentTab).coerceAtLeast(0),
-                containerColor = MaterialTheme.colorScheme.surface,
-            ) {
-                visibleTabs.forEach { t ->
-                    Tab(selected = t == currentTab, onClick = { vm.setTab(t) }, text = { Text(stringResource(subTabLabel(t)), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelMedium) }, unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                Row(
+                    Modifier.fillMaxWidth().statusBarsPadding().height(56.dp).padding(start = Space.xs, end = Space.m),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PeriodNavigator(
+                        title = title,
+                        onPrevious = { vm.step(false) },
+                        onNext = { vm.step(true) },
+                        onTitleClick = if (currentTab == SubTab.MONTHLY) null else ({ monthPicker = true }),
+                        color = colors.text,
+                    )
+                    Spacer(Modifier.weight(1f))
+                    AnimatedVisibility(!filterOpen, enter = fadeIn(NexoMotion.enter()) + expandHorizontally(NexoMotion.snappy()), exit = fadeOut(NexoMotion.exit()) + shrinkHorizontally(NexoMotion.snappy())) {
+                        Row {
+                            HeaderAction(Icons.Rounded.StarOutline, stringResource(R.string.bookmarks)) { nav.navigate(BookmarksKey()) }
+                            HeaderAction(Icons.Rounded.Search, stringResource(R.string.search)) { nav.navigate(SearchKey()) }
+                        }
+                    }
+                    HeaderAction(if (filterOpen) Icons.Rounded.Close else Icons.Rounded.FilterList, stringResource(R.string.filter), active = filterOpen) {
+                        haptics.tick()
+                        vm.setFilterOpen(!filterOpen)
+                        filterCollapsed = false
+                    }
                 }
             }
         }
-        if (currentTab != SubTab.NOTE) {
-            TotalsBar(data.totals.income, data.totals.expense, main, money.income, money.expense)
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        AnimatedVisibility(
+            visible = currentTab != SubTab.NOTE && !selecting,
+            enter = expandVertically(NexoMotion.snappy()) + fadeIn(NexoMotion.enter()),
+            exit = shrinkVertically(NexoMotion.snappy()) + fadeOut(NexoMotion.exit()),
+        ) {
+            NetHero(data.totals.income, data.totals.expense, main, Modifier.collapsingHeader(header))
+        }
+        if (!selecting) {
+            SegmentedPill(
+                options = visibleTabs,
+                selected = currentTab,
+                onSelect = vm::setTab,
+                label = { stringResource(subTabLabel(it)) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Space.l, vertical = Space.s),
+                equalWidths = false,
+                textStyle = MaterialTheme.typography.labelMedium,
+                segmentPadding = 10.dp,
+            )
         }
 
-        Box(Modifier.weight(1f).fillMaxWidth()) {
+        Box(Modifier.weight(1f).fillMaxWidth().nestedScroll(header.connection)) {
             val swipe = if (selecting) SwipeMode.NONE else ref.settings.swipeMode
             val threshold = with(LocalDensity.current) { 90.dp.toPx() }
             val swipeModifier = if (swipe == SwipeMode.NONE) Modifier else Modifier.pointerInput(swipe, currentTab, visibleTabs) {
@@ -208,33 +285,46 @@ fun TransactionsTab(todaySignal: Int, vm: TransactionsViewModel = hiltViewModel(
                     },
                 )
             }
-            Box(Modifier.fillMaxSize().then(swipeModifier)) {
-                when (currentTab) {
-                    SubTab.DAILY -> DailyContent(data, main, selection, vm, onMemoStrip = { d -> daySheet = d.toString(); daySheetMemos = true })
-                    SubTab.CALENDAR -> CalendarContent(data, main, ref.settings.periods.weekStartDay) { d -> daySheet = d.toString(); daySheetMemos = false }
-                    SubTab.MONTHLY -> MonthlyContent(data, main, selectedDate) { vm.openMonth(it) }
-                    SubTab.TOTAL -> TotalContent(data, main)
-                    SubTab.NOTE -> NoteContent(data.memos, vm)
+            val bottom = shell.bottomInset
+            AnimatedContent(
+                targetState = data,
+                contentKey = { d -> Triple(d.tab, if (d.tab == SubTab.MONTHLY) d.year else d.period?.key, d.loaded) },
+                transitionSpec = {
+                    val a = initialState
+                    val b = targetState
+                    val direction = when {
+                        !a.loaded || !b.loaded -> 0
+                        a.tab != b.tab -> (tabs.indexOf(b.tab) - tabs.indexOf(a.tab)).sign
+                        b.tab == SubTab.MONTHLY -> (b.year - a.year).sign
+                        else -> compareValues(b.period?.start, a.period?.start).sign
+                    }
+                    NavMotion.lateral(this, direction)
+                },
+                modifier = Modifier.fillMaxSize().then(swipeModifier),
+                label = "homeContent",
+            ) { d ->
+                when (d.tab) {
+                    SubTab.DAILY -> DailyContent(d, main, selection, vm, focusDate, { focusDate = null }, lastSaved, bottom, onMemoStrip = { day -> daySheet = day.toString(); daySheetMemos = true })
+                    SubTab.CALENDAR -> CalendarContent(d, main, ref.settings.periods.weekStartDay, bottom) { day -> daySheet = day.toString(); daySheetMemos = false }
+                    SubTab.MONTHLY -> MonthlyContent(d, main, selectedDate, bottom) { vm.openMonth(it) }
+                    SubTab.TOTAL -> TotalContent(d, main, bottom)
+                    SubTab.NOTE -> NoteContent(d.memos, vm, bottom)
                 }
             }
-            if (!selecting) {
-                Column(Modifier.align(Alignment.BottomEnd).padding(16.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    val memoFab = currentTab == SubTab.NOTE || (ref.settings.memoButton && (currentTab == SubTab.DAILY || currentTab == SubTab.CALENDAR))
-                    if (memoFab && currentTab != SubTab.NOTE) {
-                        SmallFloatingActionButton(onClick = { nav.navigate(MemoEditorKey(date = selectedDate.toString())) }) {
-                            Icon(Icons.AutoMirrored.Outlined.StickyNote2, stringResource(R.string.new_memo))
-                        }
-                    }
-                    if (currentTab == SubTab.NOTE) {
-                        FloatingActionButton(onClick = { nav.navigate(MemoEditorKey(date = selectedDate.toString())) }, containerColor = MaterialTheme.colorScheme.primary) {
-                            Icon(Icons.AutoMirrored.Outlined.StickyNote2, stringResource(R.string.new_memo), tint = Color.White)
-                        }
-                    } else {
-                        FloatingActionButton(onClick = { nav.navigate(EntryKey()) }, containerColor = MaterialTheme.colorScheme.primary) {
-                            Icon(Icons.Filled.Add, stringResource(R.string.add_transaction), tint = Color.White)
-                        }
-                    }
-                }
+            val memoButton = !selecting && !filterOpen && ref.settings.memoButton && (currentTab == SubTab.DAILY || currentTab == SubTab.CALENDAR)
+            androidx.compose.animation.AnimatedVisibility(
+                memoButton,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = Space.gutter, bottom = bottom),
+                enter = scaleIn(NexoMotion.snappy()) + fadeIn(),
+                exit = scaleOut(NexoMotion.exit()) + fadeOut(),
+            ) {
+                RoundIconButton(
+                    Icons.AutoMirrored.Outlined.StickyNote2,
+                    stringResource(R.string.new_memo),
+                    onClick = { nav.navigate(MemoEditorKey(date = selectedDate.toString())) },
+                    size = 48.dp,
+                    container = if (colors.isDark) colors.raised else colors.surface,
+                )
             }
             if (filterOpen) {
                 FilterPanel(
@@ -264,6 +354,35 @@ fun TransactionsTab(todaySignal: Int, vm: TransactionsViewModel = hiltViewModel(
     }
 }
 
+/** A 40dp header action; [active] fills it to show a mode is on (the filter). */
+@Composable
+private fun HeaderAction(icon: ImageVector, description: String, active: Boolean = false, onClick: () -> Unit) {
+    val colors = LocalNexoColors.current
+    val container by animateColorAsState(if (active) colors.raised else Color.Transparent, NexoMotion.standard(), label = "headerAction")
+    RoundIconButton(icon, description, onClick, tint = if (active) colors.text else colors.textSecondary, container = container)
+}
+
+/** The period's net as the screen's one large number, with income and expenses beneath. */
+@Composable
+private fun NetHero(income: Double, expense: Double, main: CurrencyEntity, modifier: Modifier = Modifier) {
+    val money = LocalMoneyColors.current
+    val colors = LocalNexoColors.current
+    Column(modifier.fillMaxWidth().padding(start = Space.gutter, end = Space.gutter, top = Space.xs, bottom = Space.m)) {
+        Text(stringResource(R.string.net), style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+        RollingAmount(income - expense, main, Modifier.shrinkToFit(), color = colors.text)
+        Spacer(Modifier.height(Space.xs))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.SouthWest, null, tint = money.income, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(Space.xs))
+            RollingAmount(income, main, style = NexoType.Amount, color = money.income, minorScale = 0.8f)
+            Spacer(Modifier.width(Space.gutter))
+            Icon(Icons.Rounded.NorthEast, null, tint = money.expense, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(Space.xs))
+            RollingAmount(expense, main, style = NexoType.Amount, color = money.expense, minorScale = 0.8f)
+        }
+    }
+}
+
 fun subTabLabel(t: SubTab): Int = when (t) {
     SubTab.DAILY -> R.string.daily
     SubTab.CALENDAR -> R.string.calendar
@@ -273,18 +392,31 @@ fun subTabLabel(t: SubTab): Int = when (t) {
 }
 
 @Composable
-private fun DailyContent(data: HomeData, main: CurrencyEntity, selection: Set<String>, vm: TransactionsViewModel, onMemoStrip: (LocalDate) -> Unit) {
+private fun DailyContent(
+    data: HomeData,
+    main: CurrencyEntity,
+    selection: Set<String>,
+    vm: TransactionsViewModel,
+    focusDate: LocalDate?,
+    onFocused: () -> Unit,
+    highlightId: String?,
+    bottom: Dp,
+    onMemoStrip: (LocalDate) -> Unit,
+) {
     val nav = LocalNavigator.current
+    val haptics = rememberHaptics()
     val state = rememberLazyListState()
-    LaunchedEffect(Unit) {
-        vm.focusEvents.collect { date ->
-            var index = if (data.repeatPreview != null) 1 else 0
-            for (g in vm.data.value.days) {
-                if (!g.date.isAfter(date)) break
-                index += 1 + g.rows.size
-            }
-            runCatching { state.scrollToItem(index) }
+    // Scroll once this snapshot holds the day (it may arrive a frame after the period changes).
+    LaunchedEffect(focusDate, data) {
+        val date = focusDate ?: return@LaunchedEffect
+        if (data.period?.range?.let { date in it } != true) return@LaunchedEffect
+        var index = if (data.repeatPreview != null) 1 else 0
+        for (g in data.days) {
+            if (!g.date.isAfter(date)) break
+            index += 1 + g.rows.size
         }
+        runCatching { state.animateScrollToItem(index) }
+        onFocused()
     }
     DayGroupList(
         groups = data.days,
@@ -292,17 +424,19 @@ private fun DailyContent(data: HomeData, main: CurrencyEntity, selection: Set<St
         selection = selection,
         state = state,
         onRowClick = { row ->
-            if (selection.isNotEmpty()) vm.toggleSelect(row.id) else nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
+            if (selection.isNotEmpty()) { haptics.tick(); vm.toggleSelect(row.id) } else nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
         },
-        onRowLongClick = { row -> vm.toggleSelect(row.id) },
+        onRowLongClick = { row -> haptics.longPress(); vm.toggleSelect(row.id) },
         onDayClick = { d -> if (selection.isEmpty()) nav.navigate(EntryKey(date = d.toString())) },
         onMemoClick = onMemoStrip,
-        header = data.repeatPreview?.let { p -> { item(key = "repeat_preview") { RepeatPreviewRow(p, main) { nav.navigate(RepeatListKey) } } } },
+        header = data.repeatPreview?.let { p -> { item(key = "repeat_preview") { RepeatPreviewRow(p, main, { nav.navigate(RepeatListKey) }, Modifier.animateItem()) } } },
+        bottomPadding = bottom.value.toInt(),
+        highlightId = highlightId,
     )
 }
 
 @Composable
-private fun CalendarContent(data: HomeData, main: CurrencyEntity, weekStart: java.time.DayOfWeek, onDay: (LocalDate) -> Unit) {
+private fun CalendarContent(data: HomeData, main: CurrencyEntity, weekStart: java.time.DayOfWeek, bottom: Dp, onDay: (LocalDate) -> Unit) {
     val money = LocalMoneyColors.current
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(vertical = 4.dp)) {
@@ -312,7 +446,7 @@ private fun CalendarContent(data: HomeData, main: CurrencyEntity, weekStart: jav
             }
         }
         val weeks = data.cells.chunked(7)
-        Column(Modifier.fillMaxSize().padding(bottom = 80.dp)) {
+        Column(Modifier.fillMaxSize().padding(bottom = bottom)) {
             weeks.forEach { week ->
                 Row(Modifier.fillMaxWidth().weight(1f).heightIn(min = 64.dp)) {
                     week.forEach { cell ->
@@ -332,7 +466,7 @@ private fun CalendarContent(data: HomeData, main: CurrencyEntity, weekStart: jav
                                 Text(
                                     label, fontSize = 11.sp,
                                     color = when {
-                                        cell.isToday -> Color.White
+                                        cell.isToday -> MaterialTheme.colorScheme.onPrimary
                                         cell.date.dayOfWeek == java.time.DayOfWeek.SUNDAY && cell.inPeriod -> NexoPalette.Sunday
                                         else -> MaterialTheme.colorScheme.onSurface.copy(alpha = if (cell.inPeriod) 1f else 0.5f)
                                     },
@@ -360,7 +494,7 @@ private fun CalendarContent(data: HomeData, main: CurrencyEntity, weekStart: jav
 }
 
 @Composable
-private fun MonthlyContent(data: HomeData, main: CurrencyEntity, selected: LocalDate, onWeek: (com.nexo.app.core.period.MonthPeriod) -> Unit) {
+private fun MonthlyContent(data: HomeData, main: CurrencyEntity, selected: LocalDate, bottom: Dp, onWeek: (com.nexo.app.core.period.MonthPeriod) -> Unit) {
     val money = LocalMoneyColors.current
     var expanded by rememberSaveable(data.year) { mutableStateOf(data.months.firstOrNull { selected in it.period.range }?.period?.key ?: -1) }
     if (data.months.isEmpty()) {
@@ -368,7 +502,7 @@ private fun MonthlyContent(data: HomeData, main: CurrencyEntity, selected: Local
         return
     }
     val today = LocalDate.now()
-    LazyColumn(contentPadding = PaddingValues(bottom = 96.dp)) {
+    LazyColumn(contentPadding = PaddingValues(bottom = bottom)) {
         items(data.months, key = { it.period.key }) { m ->
             Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
                 Row(
@@ -413,7 +547,7 @@ private fun MonthlyContent(data: HomeData, main: CurrencyEntity, selected: Local
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun NoteContent(memos: List<MemoEntity>, vm: TransactionsViewModel) {
+private fun NoteContent(memos: List<MemoEntity>, vm: TransactionsViewModel, bottom: Dp) {
     val nav = LocalNavigator.current
     val saved by vm.savedMemo.collectAsStateWithLifecycle()
     val dark = LocalIsDark.current
@@ -421,7 +555,7 @@ private fun NoteContent(memos: List<MemoEntity>, vm: TransactionsViewModel) {
         com.nexo.app.ui.components.EmptyState(stringResource(R.string.no_memos))
         return
     }
-    LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = bottom), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         var lastDate: String? = null
         memos.forEach { m ->
             if (!m.pinned && m.date != lastDate) {
@@ -459,9 +593,9 @@ private fun NoteContent(memos: List<MemoEntity>, vm: TransactionsViewModel) {
 }
 
 @Composable
-private fun TotalContent(data: HomeData, main: CurrencyEntity) {
+private fun TotalContent(data: HomeData, main: CurrencyEntity, bottom: Dp) {
     val nav = LocalNavigator.current
-    LazyColumn(contentPadding = PaddingValues(12.dp, 12.dp, 12.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(contentPadding = PaddingValues(12.dp, 12.dp, 12.dp, bottom), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { data.period?.let { com.nexo.app.ui.budgets.BudgetBlock(it) } }
         item {
             val s = data.summary ?: return@item

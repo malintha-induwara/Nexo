@@ -47,7 +47,7 @@ fun AmountSheet(
     var input by remember { mutableStateOf(PadInput("", decimals, allowSign, maxLength)) }
     var current by remember { mutableStateOf(initial) }
     var calc by remember { mutableStateOf(false) }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state, containerColor = com.nexo.app.ui.theme.LocalNexoColors.current.surface) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
             if (subtitle != null) Text(subtitle, modifier = Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodyMedium)
             val shown = input.value ?: if (input.buffer.isEmpty()) current else null
@@ -55,7 +55,7 @@ fun AmountSheet(
                 text = if (input.buffer.isNotEmpty()) input.buffer.replace('.', java.text.DecimalFormatSymbols.getInstance().decimalSeparator)
                 else shown?.let(format) ?: "",
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-                textAlign = TextAlign.End, fontSize = 30.sp, fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.End, style = MaterialTheme.typography.displaySmall,
             )
             NumberPad(
                 title = title,

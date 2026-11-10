@@ -2,6 +2,7 @@ package com.nexo.app.ui.transactions
 
 import android.content.Context
 import com.nexo.app.R
+import com.nexo.app.core.database.entity.CurrencyEntity
 import com.nexo.app.core.database.entity.MemoEntity
 import com.nexo.app.core.database.entity.TransactionEntity
 import com.nexo.app.core.model.CashFlow
@@ -10,6 +11,7 @@ import com.nexo.app.core.model.TxKind
 import com.nexo.app.core.money.AmountFormatter
 import com.nexo.app.core.money.Money
 import com.nexo.app.data.Ledger
+import com.nexo.app.domain.CategoryVisual
 import com.nexo.app.domain.Classifier
 import com.nexo.app.domain.RefData
 import java.time.Instant
@@ -37,6 +39,10 @@ data class TxRowUi(
     val amountText: String,
     val amountMain: Double,
     val isCarryOver: Boolean = false,
+    /** Category look; null for transfers, balance adjustments, carry-over and uncategorised rows. */
+    val visual: CategoryVisual? = null,
+    /** Currency of [amount]. */
+    val currency: CurrencyEntity? = null,
 )
 
 data class DayGroup(
@@ -101,6 +107,8 @@ class RowFactory(private val context: Context, private val ref: RefData) {
             amount = tx.amount,
             amountText = AmountFormatter.format(tx.amount, currency),
             amountMain = tx.amountMain,
+            visual = if (tx.kind.isTransfer || tx.kind.isBalance || tx.isBalanceAdjustment) null else ref.visual(tx.categoryId),
+            currency = currency,
         )
     }
 
@@ -115,6 +123,7 @@ class RowFactory(private val context: Context, private val ref: RefData) {
             id = "carry_over", tx = null, category = label, subCategory = null, title = label, titleIsNote = true, accountText = "",
             time = null, tags = null, descriptionLine = null, hasPhoto = false, flow = flow, amount = kotlin.math.abs(amount),
             amountText = AmountFormatter.format(kotlin.math.abs(amount), ref.mainCurrency), amountMain = kotlin.math.abs(amount), isCarryOver = true,
+            currency = ref.mainCurrency,
         )
     }
 

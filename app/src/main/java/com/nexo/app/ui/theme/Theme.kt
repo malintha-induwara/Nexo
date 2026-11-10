@@ -1,22 +1,21 @@
 package com.nexo.app.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.ColorSet
 import com.nexo.app.core.model.MemoColor
-import com.nexo.app.core.settings.ThemeColor
 import com.nexo.app.core.settings.ThemeMode
 
-/** Colours of the header bar for the selected colour theme. */
+/** Colours of screen headers. Soft Tally headers sit on the page background. */
 @Immutable
 data class HeaderColors(val container: Color, val content: Color, val accent: Color, val lightStatusBar: Boolean)
 
@@ -37,22 +36,19 @@ data class MoneyColors(val income: Color, val expense: Color, val neutral: Color
     }
 }
 
-val LocalHeaderColors = staticCompositionLocalOf { HeaderColors(Color.White, Color.Black, Color(0xFF00897B), true) }
-val LocalMoneyColors = staticCompositionLocalOf { MoneyColors(Color(0xFF1F88FF), Color(0xFFFF603B), Color.Black) }
-val LocalIsDark = staticCompositionLocalOf { false }
+val LocalHeaderColors = staticCompositionLocalOf {
+    HeaderColors(DarkNexoColors.background, DarkNexoColors.text, DarkNexoColors.text, false)
+}
+val LocalMoneyColors = staticCompositionLocalOf {
+    MoneyColors(NexoPalette.IncomeBlueDark, NexoPalette.ExpenseRedDark, DarkNexoColors.text)
+}
+val LocalIsDark = staticCompositionLocalOf { true }
 
 object NexoPalette {
-    val Brand = Color(0xFF00897B)
-    val Red = Color(0xFFF55345)
-    val Pink = Color(0xFFFC7C9A)
-    val Green = Color(0xFF1DBF75)
-    val Blue = Color(0xFF1999FC)
-    val Black = Color(0xFF4A4A4A)
-
-    val IncomeBlue = Color(0xFF1F88FF)
-    val IncomeBlueDark = Color(0xFF52A2FF)
-    val ExpenseRed = Color(0xFFFF603B)
-    val ExpenseRedDark = Color(0xFFFD5F59)
+    val IncomeBlue = Color(0xFF1F6FE0)
+    val IncomeBlueDark = Color(0xFF7FB2FF)
+    val ExpenseRed = Color(0xFFE0482B)
+    val ExpenseRedDark = Color(0xFFFF8266)
 
     val Sunday = Color(0xFFE5533D)
     val Saturday = Color(0xFF2F7DE1)
@@ -94,15 +90,6 @@ object NexoPalette {
     }
 }
 
-fun ThemeColor.accent(): Color = when (this) {
-    ThemeColor.WHITE -> NexoPalette.Brand
-    ThemeColor.RED -> NexoPalette.Red
-    ThemeColor.PINK -> NexoPalette.Pink
-    ThemeColor.GREEN -> NexoPalette.Green
-    ThemeColor.BLUE -> NexoPalette.Blue
-    ThemeColor.BLACK -> NexoPalette.Black
-}
-
 @Composable
 fun isDarkTheme(mode: ThemeMode): Boolean = when (mode) {
     ThemeMode.LIGHT -> false
@@ -110,70 +97,42 @@ fun isDarkTheme(mode: ThemeMode): Boolean = when (mode) {
     ThemeMode.SYSTEM -> isSystemInDarkTheme()
 }
 
-private fun lightScheme(accent: Color): ColorScheme = lightColorScheme(
-    primary = accent,
-    onPrimary = Color.White,
-    primaryContainer = accent.copy(alpha = 0.14f),
-    onPrimaryContainer = Color(0xFF1B1B1B),
-    secondary = accent,
-    background = Color(0xFFF7F7F8),
-    surface = Color.White,
-    surfaceVariant = Color(0xFFF1F1F3),
-    surfaceContainer = Color(0xFFF4F4F6),
-    surfaceContainerLow = Color(0xFFF9F9FA),
-    surfaceContainerHigh = Color(0xFFEDEDF0),
-    surfaceContainerHighest = Color(0xFFE6E6EA),
-    outlineVariant = Color(0xFFE2E2E6),
-)
-
-private fun darkScheme(accent: Color): ColorScheme = darkColorScheme(
-    primary = accent,
-    onPrimary = Color.White,
-    primaryContainer = accent.copy(alpha = 0.28f),
-    secondary = accent,
-    background = Color(0xFF121212),
-    surface = Color(0xFF1C1C1E),
-    surfaceVariant = Color(0xFF2A2A2D),
-    surfaceContainer = Color(0xFF222225),
-    surfaceContainerLow = Color(0xFF1A1A1C),
-    surfaceContainerHigh = Color(0xFF2A2A2D),
-    surfaceContainerHighest = Color(0xFF333336),
-    outlineVariant = Color(0xFF3A3A3E),
-)
+/** Shortcut to the Soft Tally palette. */
+val MaterialTheme.nexo: NexoColors
+    @Composable get() = LocalNexoColors.current
 
 @Composable
 fun NexoTheme(
     mode: ThemeMode = ThemeMode.SYSTEM,
-    color: ThemeColor = ThemeColor.WHITE,
     colorSet: ColorSet = ColorSet.A,
     content: @Composable () -> Unit,
 ) {
     val dark = isDarkTheme(mode)
-    val accent = if (dark) Color(0xFF26A69A) else color.accent()
-    val scheme = if (dark) darkScheme(accent) else lightScheme(accent)
-    val header = when {
-        dark -> HeaderColors(Color(0xFF1C1C1E), Color.White, accent, false)
-        color == ThemeColor.WHITE -> HeaderColors(Color.White, Color(0xFF1B1B1B), accent, true)
-        else -> HeaderColors(accent, Color.White, accent, false)
-    }
+    val colors = if (dark) DarkNexoColors else LightNexoColors
+    val scheme = colors.toScheme()
+    val header = HeaderColors(colors.background, colors.text, colors.text, lightStatusBar = !dark)
     val blue = if (dark) NexoPalette.IncomeBlueDark else NexoPalette.IncomeBlue
     val red = if (dark) NexoPalette.ExpenseRedDark else NexoPalette.ExpenseRed
-    val money = if (colorSet == ColorSet.A) MoneyColors(blue, red, scheme.onSurface) else MoneyColors(red, blue, scheme.onSurface)
-    // Status / navigation bar icons follow the header and theme brightness.
-    val view = androidx.compose.ui.platform.LocalView.current
+    val money = if (colorSet == ColorSet.A) MoneyColors(blue, red, colors.text) else MoneyColors(red, blue, colors.text)
+    // Status / navigation bar icons follow the theme brightness.
+    val view = LocalView.current
     if (!view.isInEditMode) {
-        androidx.compose.runtime.SideEffect {
+        SideEffect {
             val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
-            val controller = androidx.core.view.WindowCompat.getInsetsController(window, view)
-            controller.isAppearanceLightStatusBars = header.lightStatusBar
+            val controller = WindowCompat.getInsetsController(window, view)
+            controller.isAppearanceLightStatusBars = !dark
             controller.isAppearanceLightNavigationBars = !dark
         }
     }
     CompositionLocalProvider(
+        LocalNexoColors provides colors,
         LocalHeaderColors provides header,
         LocalMoneyColors provides money,
         LocalIsDark provides dark,
     ) {
-        MaterialTheme(colorScheme = scheme, content = content)
+        MaterialTheme(colorScheme = scheme, typography = NexoTypography, shapes = NexoMaterialShapes) {
+            // Screens without a Scaffold or Surface (the tab roots) still get readable text by default.
+            CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides colors.text, content = content)
+        }
     }
 }

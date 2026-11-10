@@ -13,16 +13,21 @@ import javax.inject.Singleton
 class CategoryRepository @Inject constructor(private val db: NexoDatabase) {
     private fun now() = System.currentTimeMillis()
 
-    suspend fun add(kind: CategoryKind, name: String, parentId: String?): String {
+    suspend fun add(kind: CategoryKind, name: String, parentId: String?, emoji: String? = null, colorIndex: Int? = null): String {
         val id = UUID.randomUUID().toString()
         val order = db.categoryDao().maxOrder() + 1
-        db.categoryDao().upsert(listOf(CategoryEntity(id, name.trim(), kind, parentId, order, createdAt = now(), updatedAt = now())))
+        db.categoryDao().upsert(
+            listOf(CategoryEntity(id, name.trim(), kind, parentId, order, createdAt = now(), updatedAt = now(), emoji = emoji?.takeIf { it.isNotBlank() }, colorIndex = colorIndex)),
+        )
         return id
     }
 
-    suspend fun update(id: String, name: String, parentId: String?) {
+    /** [emoji] and [colorIndex] are written as given; null means "derive automatically" (see CategoryVisuals). */
+    suspend fun update(id: String, name: String, parentId: String?, emoji: String?, colorIndex: Int?) {
         val c = db.categoryDao().getById(id) ?: return
-        db.categoryDao().upsert(listOf(c.copy(name = name.trim(), parentId = parentId, updatedAt = now())))
+        db.categoryDao().upsert(
+            listOf(c.copy(name = name.trim(), parentId = parentId, emoji = emoji?.takeIf { it.isNotBlank() }, colorIndex = colorIndex, updatedAt = now())),
+        )
     }
 
     /** Soft delete; a main category takes its subcategories with it. */

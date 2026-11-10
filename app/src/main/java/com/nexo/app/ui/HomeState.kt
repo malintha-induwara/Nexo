@@ -28,6 +28,14 @@ class HomeState @Inject constructor() {
     private val _savedMemo = MutableStateFlow<String?>(null)
     val savedMemo: StateFlow<String?> = _savedMemo.asStateFlow()
 
+    /** Transaction just written by the entry form, so its row can light up when the list shows it. */
+    private val _lastSaved = MutableStateFlow<String?>(null)
+    val lastSaved: StateFlow<String?> = _lastSaved.asStateFlow()
+
+    fun saved(id: String?) {
+        _lastSaved.value = id
+    }
+
     fun select(date: LocalDate) {
         _selected.value = date
     }

@@ -108,7 +108,7 @@ fun SettingsTab(vm: SettingsViewModel = hiltViewModel()) {
         Card(Modifier.fillMaxWidth().padding(12.dp).clickable { nav.navigate(LockSettingsKey) }, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(44.dp).background(MaterialTheme.colorScheme.primary, CircleShape), contentAlignment = Alignment.Center) {
-                    Icon(if (device?.lockEnabled == true) Icons.Outlined.Lock else Icons.Outlined.LockOpen, null, tint = Color.White)
+                    Icon(if (device?.lockEnabled == true) Icons.Outlined.Lock else Icons.Outlined.LockOpen, null, tint = MaterialTheme.colorScheme.onPrimary)
                 }
                 Column(Modifier.weight(1f).padding(start = 12.dp)) {
                     Text(stringResource(R.string.app_lock), fontWeight = FontWeight.SemiBold)

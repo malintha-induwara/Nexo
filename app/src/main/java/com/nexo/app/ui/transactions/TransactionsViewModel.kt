@@ -59,6 +59,9 @@ class TransactionsViewModel @Inject constructor(
     val selectedDate = home.selectedDate
     val focusEvents = home.focus
     val savedMemo = home.savedMemo
+    val lastSaved = home.lastSaved
+
+    fun clearLastSaved() = home.saved(null)
 
     private val _tab = MutableStateFlow<SubTab?>(null)
     val tab: StateFlow<SubTab?> = _tab.asStateFlow()
