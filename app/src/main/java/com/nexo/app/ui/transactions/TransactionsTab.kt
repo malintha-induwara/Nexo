@@ -436,7 +436,7 @@ private fun DailyContent(
             if (selection.isNotEmpty()) { haptics.tick(); vm.toggleSelect(row.id) } else nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
         },
         onRowLongClick = { row -> haptics.longPress(); vm.toggleSelect(row.id) },
-        onDayClick = { d -> if (selection.isEmpty()) nav.navigate(EntryKey(date = d.toString())) },
+        onDayClick = { d -> if (selection.isEmpty()) nav.navigate(EntryKey(date = d.toString(), fromAdd = true)) },
         onMemoClick = onMemoStrip,
         header = data.repeatPreview?.let { p -> { item(key = "repeat_preview") { RepeatPreviewRow(p, main, { nav.navigate(RepeatListKey) }, Modifier.animateItem()) } } },
         bottomPadding = bottom.value.toInt(),

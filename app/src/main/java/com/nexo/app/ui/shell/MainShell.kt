@@ -49,7 +49,6 @@ import com.nexo.app.ui.accounts.AccountsTab
 import com.nexo.app.ui.components.BarItem
 import com.nexo.app.ui.components.PillBottomBar
 import com.nexo.app.ui.components.PillBottomBarHeight
-import com.nexo.app.ui.components.dropSource
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.settings.SettingsTab
@@ -147,8 +146,6 @@ fun MainShell() {
                     },
                     onAdd = { controller.addOverride?.invoke() ?: nav.navigate(EntryKey(fromAdd = true)) },
                     addLabel = stringResource(controller.addLabelOverride ?: R.string.add_transaction),
-                    // Only while the bar is showing: a sheet's own add button takes over the morph when the bar is hidden.
-                    addModifier = if (controller.addOverride == null && barVisible) Modifier.dropSource() else Modifier,
                 )
             }
         }

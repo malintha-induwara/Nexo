@@ -54,7 +54,7 @@ import com.nexo.app.ui.shell.MainShell
 /** Every screen of the app. */
 fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<MainKey> { MainShell() }
-    entry<EntryKey>(metadata = { key -> if (key.fromAdd) com.nexo.app.ui.components.Drop.navMetadata else emptyMap() }) { EntryScreen(it) }
+    entry<EntryKey>(metadata = { key -> if (key.fromAdd) SheetSceneStrategy.sheet(key) else emptyMap() }) { EntryScreen(it) }
     entry<BookmarksKey> { BookmarksScreen(it) }
     entry<RepeatListKey> { RepeatListScreen() }
     entry<SearchKey> { SearchScreen(it) }

@@ -1,6 +1,5 @@
 package com.nexo.app.ui
 
-import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,12 +16,12 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import com.nexo.app.ui.components.LocalSharedTransitionScope
 import com.nexo.app.ui.components.NavMotion
 import com.nexo.app.ui.lock.LockScreen
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MainKey
 import com.nexo.app.ui.navigation.Navigator
+import com.nexo.app.ui.navigation.SheetSceneStrategy
 import com.nexo.app.ui.navigation.nexoEntries
 import com.nexo.app.ui.onboarding.OnboardingScreen
 import com.nexo.app.ui.theme.NexoTheme
@@ -45,8 +44,10 @@ fun NexoRoot(app: AppViewModel, onEraseAll: suspend () -> Unit, onBiometricsInva
             }
             val backStack = rememberNavBackStack(MainKey)
             val navigator = remember(backStack) { Navigator(backStack) }
-            SharedTransitionLayout {
-                CompositionLocalProvider(LocalNavigator provides navigator, LocalSharedTransitionScope provides this) {
+            // Entry forms opened from an add button are drawers over the current screen.
+            val sheets = remember(backStack) { SheetSceneStrategy { it in backStack } }
+            Box(Modifier.fillMaxSize()) {
+                CompositionLocalProvider(LocalNavigator provides navigator) {
                     NavDisplay(
                         backStack = backStack,
                         onBack = { navigator.back() },
@@ -54,7 +55,7 @@ fun NexoRoot(app: AppViewModel, onEraseAll: suspend () -> Unit, onBiometricsInva
                             rememberSaveableStateHolderNavEntryDecorator(),
                             rememberViewModelStoreNavEntryDecorator(),
                         ),
-                        sharedTransitionScope = this,
+                        sceneStrategies = listOf(sheets),
                         transitionSpec = { NavMotion.push(this) },
                         popTransitionSpec = { NavMotion.pop(this) },
                         predictivePopTransitionSpec = { NavMotion.predictivePop(this) },

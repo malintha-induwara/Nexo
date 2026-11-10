@@ -137,7 +137,6 @@ import com.nexo.app.ui.components.AmountText
 import com.nexo.app.ui.components.CalculatorDialog
 import com.nexo.app.ui.components.CategoryTile
 import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.DropContainer
 import com.nexo.app.ui.components.Formats
 import com.nexo.app.ui.components.NexoDatePickerDialog
 import com.nexo.app.ui.components.NexoTimePickerDialog
@@ -289,10 +288,11 @@ fun EntryScreen(key: EntryKey) {
 
     // An edited entry loads from the database a moment after the screen appears; fade it in rather than pop.
     val reveal by animateFloatAsState(if (s.loaded) 1f else 0f, tween(180), label = "entryReveal")
-    DropContainer(enabled = key.fromAdd, background = colors.background) {
-        if (!s.loaded) return@DropContainer
+    // As a drawer (opened from an add button) the sheet supplies the background and already sits below the status bar.
+    Box(if (key.fromAdd) Modifier.fillMaxSize() else Modifier.fillMaxSize().background(colors.background).statusBarsPadding()) {
+        if (!s.loaded) return@Box
         Column(
-            Modifier.fillMaxSize().graphicsLayer { alpha = reveal }.statusBarsPadding().imePadding()
+            Modifier.fillMaxSize().graphicsLayer { alpha = reveal }.imePadding()
                 .onPreviewKeyEvent { ev ->
                     if (ev.type != KeyEventType.KeyDown || (s.panel != Panel.AMOUNT && s.panel != Panel.FEE)) return@onPreviewKeyEvent false
                     val k = when (ev.key) {

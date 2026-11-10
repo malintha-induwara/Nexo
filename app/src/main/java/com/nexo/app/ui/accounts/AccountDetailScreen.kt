@@ -130,7 +130,7 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                     if (isCard && account != null) {
                         ExtendedFloatingActionButton(onClick = { nav.navigate(EntryKey(mode = EntryMode.PAY_CARD, accountId = account.id)) }, icon = { Icon(Icons.Outlined.Payments, null) }, text = { Text(stringResource(R.string.pay)) })
                     }
-                    FloatingActionButton(onClick = { nav.navigate(EntryKey(accountId = account?.id)) }, containerColor = MaterialTheme.colorScheme.primary) {
+                    FloatingActionButton(onClick = { nav.navigate(EntryKey(accountId = account?.id, fromAdd = true)) }, containerColor = MaterialTheme.colorScheme.primary) {
                         Icon(Icons.Filled.Add, stringResource(R.string.add_transaction), tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
@@ -168,7 +168,7 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                     selection = selection,
                     onRowClick = { if (selection.isNotEmpty()) vm.toggleSelect(it.id) else nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = it.id)) },
                     onRowLongClick = { vm.toggleSelect(it.id) },
-                    onDayClick = if (key.deleted) null else ({ d -> nav.navigate(EntryKey(date = d.toString(), accountId = account?.id)) }),
+                    onDayClick = if (key.deleted) null else ({ d -> nav.navigate(EntryKey(date = d.toString(), accountId = account?.id, fromAdd = true)) }),
                     onMemoClick = { d -> nav.navigate(com.nexo.app.ui.navigation.MemoListKey(d.toString())) },
                     rowContent = { row ->
                         Column {

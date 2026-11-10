@@ -59,7 +59,6 @@ val PillBottomBarHeight = Sizes.bottomBar + Space.m * 2
 /**
  * Floating pill bar: two tabs, the add button, two tabs. A small dot slides to the selected
  * tab. The area behind the bar fades to the page background so list content can scroll under it.
- * [addModifier] is applied to the add button (used for its shared-bounds transition into the entry screen).
  */
 @Composable
 fun PillBottomBar(
@@ -69,7 +68,6 @@ fun PillBottomBar(
     onAdd: () -> Unit,
     addLabel: String,
     modifier: Modifier = Modifier,
-    addModifier: Modifier = Modifier,
 ) {
     require(items.size == 4) { "PillBottomBar takes two tabs either side of the add button" }
     val colors = LocalNexoColors.current
@@ -101,7 +99,7 @@ fun PillBottomBar(
         ) {
             Row(Modifier.fillMaxWidth().fillMaxHeight().selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
                 items.forEachIndexed { i, item ->
-                    if (i == 2) AddButton(onAdd, addLabel, Modifier.weight(1f), addModifier)
+                    if (i == 2) AddButton(onAdd, addLabel, Modifier.weight(1f))
                     BarTab(
                         item = item,
                         selected = i == selected,
@@ -151,12 +149,12 @@ private fun BarTab(item: BarItem, selected: Boolean, onClick: () -> Unit, modifi
 }
 
 @Composable
-private fun AddButton(onAdd: () -> Unit, label: String, modifier: Modifier, addModifier: Modifier) {
+private fun AddButton(onAdd: () -> Unit, label: String, modifier: Modifier) {
     val colors = LocalNexoColors.current
     val interactions = remember { MutableInteractionSource() }
     Box(modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
         Box(
-            addModifier
+            Modifier
                 .pressScale(interactions, 0.9f)
                 .size(48.dp)
                 .clip(CircleShape)

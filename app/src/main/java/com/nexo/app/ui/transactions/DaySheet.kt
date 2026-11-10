@@ -52,7 +52,6 @@ import com.nexo.app.ui.components.InlineBottomSheet
 import com.nexo.app.ui.components.NavMotion
 import com.nexo.app.ui.components.PeriodNavigator
 import com.nexo.app.ui.components.RoundIconButton
-import com.nexo.app.ui.components.dropSource
 import com.nexo.app.ui.components.pressScale
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
@@ -177,12 +176,10 @@ fun DaySheet(
                     size = 44.dp, container = colors.raisedHigh,
                 )
                 Spacer(Modifier.height(Space.m))
-                // The same morph as the bottom bar's add button: this button grows into the entry form.
                 val interactions = remember { MutableInteractionSource() }
                 val addLabel = stringResource(R.string.add_transaction)
                 Box(
                     Modifier
-                        .dropSource()
                         .pressScale(interactions, 0.9f)
                         .size(56.dp)
                         .clip(CircleShape)
