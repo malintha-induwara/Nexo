@@ -28,6 +28,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // Debug key: for personal testing only, not for distribution.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
