@@ -13,6 +13,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
@@ -286,10 +287,12 @@ fun EntryScreen(key: EntryKey) {
         vm.padKey(k)
     }
 
+    // An edited entry loads from the database a moment after the screen appears; fade it in rather than pop.
+    val reveal by animateFloatAsState(if (s.loaded) 1f else 0f, tween(180), label = "entryReveal")
     DropContainer(enabled = key.fromAdd, background = colors.background) {
         if (!s.loaded) return@DropContainer
         Column(
-            Modifier.fillMaxSize().statusBarsPadding().imePadding()
+            Modifier.fillMaxSize().graphicsLayer { alpha = reveal }.statusBarsPadding().imePadding()
                 .onPreviewKeyEvent { ev ->
                     if (ev.type != KeyEventType.KeyDown || (s.panel != Panel.AMOUNT && s.panel != Panel.FEE)) return@onPreviewKeyEvent false
                     val k = when (ev.key) {
@@ -613,9 +616,10 @@ fun EntryScreen(key: EntryKey) {
                     Panel.NONE -> BottomKind.ACTIONS
                 },
                 transitionSpec = {
-                    (slideInVertically(NexoMotion.snappy()) { it / 4 } + fadeIn(NexoMotion.enter(NexoMotion.MEDIUM))) togetherWith
-                        (slideOutVertically(NexoMotion.exit(NexoMotion.MEDIUM)) { it / 4 } + fadeOut(NexoMotion.exit())) using
-                        SizeTransform(clip = false) { _, _ -> spring(dampingRatio = 0.9f, stiffness = 420f) }
+                    // The old content is gone before the new one shows, so the two never overlap.
+                    (slideInVertically(NexoMotion.gentle()) { it / 5 } + fadeIn(tween(180, delayMillis = 90))) togetherWith
+                        (slideOutVertically(tween(140)) { it / 6 } + fadeOut(tween(90))) using
+                        SizeTransform(clip = true) { _, _ -> spring(dampingRatio = 1f, stiffness = 420f) }
                 },
                 label = "entryBottom",
             ) { kind ->

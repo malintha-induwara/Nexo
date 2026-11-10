@@ -1,139 +1,200 @@
 package com.nexo.app.ui.transactions
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.StickyNote2
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
-import com.nexo.app.core.money.AmountFormatter
+import com.nexo.app.core.money.AmountParts
 import com.nexo.app.domain.RefData
+import com.nexo.app.ui.components.AmountText
 import com.nexo.app.ui.components.EmptyState
 import com.nexo.app.ui.components.Formats
+import com.nexo.app.ui.components.InlineBottomSheet
+import com.nexo.app.ui.components.NavMotion
+import com.nexo.app.ui.components.PeriodNavigator
+import com.nexo.app.ui.components.RoundIconButton
+import com.nexo.app.ui.components.dropSource
+import com.nexo.app.ui.components.pressScale
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MemoEditorKey
 import com.nexo.app.ui.theme.LocalIsDark
 import com.nexo.app.ui.theme.LocalMoneyColors
+import com.nexo.app.ui.theme.LocalNexoColors
 import com.nexo.app.ui.theme.NexoPalette
+import com.nexo.app.ui.theme.NexoType
+import com.nexo.app.ui.theme.Space
 import java.time.LocalDate
+import java.util.Locale
 
-/** Calendar day sheet (UI-012). */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Calendar day sheet (UI-012). [date] null hides it. The sheet is part of the Transactions
+ * screen, so opening an entry from it and coming back animates as one screen.
+ */
 @Composable
 fun DaySheet(
-    date: LocalDate,
+    date: LocalDate?,
     data: HomeData,
     ref: RefData,
     showMemos: Boolean,
     onShowMemos: (Boolean) -> Unit,
     onDate: (LocalDate) -> Unit,
     onDismiss: () -> Unit,
+    highlightId: String? = null,
 ) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val money = LocalMoneyColors.current
+    val colors = LocalNexoColors.current
     val dark = LocalIsDark.current
-    val factory = RowFactory(context, ref)
-    val rows = data.gridRows.filter { it.date == date.toString() }
-    val carry = if (data.period?.start == date && data.carryOver != 0.0) date to data.carryOver else null
-    val group = factory.dayGroups(rows, data.ledger, carryOver = carry).firstOrNull()
-    val memos = data.memos.filter { it.pinned }.sortedByDescending { it.pinnedAt } + data.memos.filter { !it.pinned && it.date == date.toString() }
-    val panel = showMemos || (group == null && memos.any { !it.pinned })
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Box(Modifier.fillMaxWidth().fillMaxHeight(0.75f)) {
-            Column(Modifier.fillMaxSize()) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { onDate(date.minusDays(1)) }) { Icon(Icons.Filled.ChevronLeft, stringResource(R.string.action_previous)) }
-                    Text("%02d".format(date.dayOfMonth), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(6.dp))
-                    Box(Modifier.background(weekdayColor(date.dayOfWeek), RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) {
-                        Text(Formats.weekdayShort(date), color = Color.White, style = MaterialTheme.typography.labelSmall)
-                    }
-                    Spacer(Modifier.width(6.dp))
-                    Text(Formats.yearMonthDots(date), style = MaterialTheme.typography.bodySmall)
-                    IconButton(onClick = { onDate(date.plusDays(1)) }) { Icon(Icons.Filled.ChevronRight, stringResource(R.string.action_next)) }
-                    Spacer(Modifier.weight(1f))
-                    IconButton(onClick = { onShowMemos(!panel) }) {
-                        Icon(Icons.AutoMirrored.Outlined.StickyNote2, stringResource(R.string.memos), tint = if (panel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
-                    }
-                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
-                }
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.End) {
-                    Text(AmountFormatter.format(group?.income ?: 0.0, ref.mainCurrency), color = money.income)
-                    Spacer(Modifier.width(16.dp))
-                    Text(AmountFormatter.format(group?.expense ?: 0.0, ref.mainCurrency), color = money.expense)
-                }
-                if (panel) {
-                    if (memos.isEmpty()) EmptyState(stringResource(R.string.no_memos))
-                    LazyColumn(Modifier.padding(12.dp)) {
-                        items(memos, key = { it.id }) { m ->
-                            Card(
-                                onClick = { nav.navigate(MemoEditorKey(memoId = m.id)) },
-                                colors = CardDefaults.cardColors(containerColor = NexoPalette.memo(m.color, dark)),
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            ) {
-                                Column(Modifier.padding(12.dp)) {
-                                    if (m.title.isNotBlank()) Text(m.title, fontWeight = FontWeight.Bold)
-                                    if (m.content.isNotBlank()) Text(m.content.trimEnd(), maxLines = 4, overflow = TextOverflow.Ellipsis)
+    // Keep the last date so the content stays put while the sheet slides away.
+    val last = remember { arrayOfNulls<LocalDate>(1) }
+    if (date != null) last[0] = date
+
+    InlineBottomSheet(visible = date != null, onDismiss = onDismiss) {
+        val shown = last[0] ?: return@InlineBottomSheet
+        val factory = remember(ref) { RowFactory(context, ref) }
+        fun groupOf(d: LocalDate): DayGroup? {
+            val rows = data.gridRows.filter { it.date == d.toString() }
+            val carry = if (data.period?.start == d && data.carryOver != 0.0) d to data.carryOver else null
+            return factory.dayGroups(rows, data.ledger, carryOver = carry).firstOrNull()
+        }
+        fun memosOf(d: LocalDate) = data.memos.filter { it.pinned }.sortedByDescending { it.pinnedAt } + data.memos.filter { !it.pinned && it.date == d.toString() }
+        val group = groupOf(shown)
+        val panel = showMemos || (group == null && memosOf(shown).any { !it.pinned })
+
+        Row(Modifier.fillMaxWidth().padding(start = Space.xs, end = Space.m), verticalAlignment = Alignment.CenterVertically) {
+            PeriodNavigator(
+                title = Formats.weekdayMonthDay(shown),
+                onPrevious = { onDate(shown.minusDays(1)) },
+                onNext = { onDate(shown.plusDays(1)) },
+                color = colors.text,
+            )
+            Spacer(Modifier.weight(1f))
+            RoundIconButton(
+                Icons.AutoMirrored.Outlined.StickyNote2, stringResource(R.string.memos), { onShowMemos(!panel) },
+                tint = if (panel) colors.text else colors.textSecondary,
+                container = if (panel) colors.raisedHigh else Color.Transparent,
+            )
+            Spacer(Modifier.width(Space.xs))
+            RoundIconButton(Icons.Rounded.Close, stringResource(R.string.action_close), onDismiss)
+        }
+        Row(Modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.xs), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                (if (shown == LocalDate.now()) stringResource(R.string.today) else shown.year.toString()).uppercase(Locale.getDefault()),
+                style = NexoType.Caps, color = colors.textTertiary, modifier = Modifier.weight(1f),
+            )
+            AmountText(group?.income ?: 0.0, ref.mainCurrency, style = NexoType.AmountSmall, color = money.income, sign = AmountParts.Sign.ALWAYS)
+            Spacer(Modifier.width(Space.m))
+            AmountText(-(group?.expense ?: 0.0), ref.mainCurrency, style = NexoType.AmountSmall, color = money.expense)
+        }
+
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            AnimatedContent(
+                targetState = shown to panel,
+                transitionSpec = { NavMotion.lateral(this, targetState.first.compareTo(initialState.first).coerceIn(-1, 1)) },
+                modifier = Modifier.fillMaxSize(),
+                label = "daySheet",
+            ) { (day, memoPanel) ->
+                val dayGroup = groupOf(day)
+                val memos = memosOf(day)
+                when {
+                    memoPanel -> {
+                        if (memos.isEmpty()) EmptyState(stringResource(R.string.no_memos))
+                        LazyColumn(contentPadding = PaddingValues(start = Space.l, end = Space.l, top = Space.s, bottom = 140.dp), verticalArrangement = Arrangement.spacedBy(Space.s)) {
+                            items(memos, key = { it.id }) { m ->
+                                Card(
+                                    onClick = { nav.navigate(MemoEditorKey(memoId = m.id)) },
+                                    colors = CardDefaults.cardColors(containerColor = NexoPalette.memo(m.color, dark)),
+                                    modifier = Modifier.animateItem().fillMaxWidth(),
+                                ) {
+                                    Column(Modifier.padding(Space.m)) {
+                                        if (m.title.isNotBlank()) Text(m.title, fontWeight = FontWeight.Bold)
+                                        if (m.content.isNotBlank()) Text(m.content.trimEnd(), maxLines = 4, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+                                    }
                                 }
                             }
                         }
                     }
-                } else if (group == null) {
-                    EmptyState(modifier = Modifier.clickable { onShowMemos(true) })
-                } else {
-                    LazyColumn {
-                        items(group.rows, key = { it.id }) { row ->
-                            TxRow(row, selected = false, onClick = { if (!row.isCarryOver) nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id)) }, onLongClick = null)
+                    dayGroup == null -> EmptyState(modifier = Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onShowMemos(true) })
+                    else -> LazyColumn(contentPadding = PaddingValues(top = Space.xs, bottom = 140.dp)) {
+                        items(dayGroup.rows, key = { it.id }) { row ->
+                            TxRow(
+                                row, selected = false,
+                                onClick = { if (!row.isCarryOver) nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id)) },
+                                onLongClick = null,
+                                modifier = Modifier.animateItem(),
+                                highlight = row.id == highlightId,
+                            )
                         }
                     }
                 }
             }
-            Column(Modifier.align(Alignment.BottomEnd).padding(16.dp), horizontalAlignment = Alignment.End) {
-                SmallFloatingActionButton(onClick = { onShowMemos(true); nav.navigate(MemoEditorKey(date = date.toString())) }) {
-                    Icon(Icons.AutoMirrored.Outlined.StickyNote2, stringResource(R.string.new_memo))
-                }
-                Spacer(Modifier.padding(6.dp))
-                FloatingActionButton(onClick = { onShowMemos(false); nav.navigate(EntryKey(date = date.toString())) }, containerColor = MaterialTheme.colorScheme.primary) {
-                    Icon(Icons.Filled.Add, stringResource(R.string.add_transaction), tint = MaterialTheme.colorScheme.onPrimary)
+            Column(Modifier.align(Alignment.BottomEnd).padding(Space.gutter), horizontalAlignment = Alignment.End) {
+                RoundIconButton(
+                    Icons.AutoMirrored.Outlined.StickyNote2, stringResource(R.string.new_memo),
+                    onClick = { onShowMemos(true); nav.navigate(MemoEditorKey(date = shown.toString())) },
+                    size = 44.dp, container = colors.raisedHigh,
+                )
+                Spacer(Modifier.height(Space.m))
+                // The same morph as the bottom bar's add button: this button grows into the entry form.
+                val interactions = remember { MutableInteractionSource() }
+                val addLabel = stringResource(R.string.add_transaction)
+                Box(
+                    Modifier
+                        .dropSource()
+                        .pressScale(interactions, 0.9f)
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(colors.text)
+                        .clickable(interactionSource = interactions, indication = null, role = Role.Button) {
+                            onShowMemos(false)
+                            nav.navigate(EntryKey(date = shown.toString(), fromAdd = true))
+                        }
+                        .semantics { contentDescription = addLabel },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Rounded.Add, null, tint = colors.background, modifier = Modifier.size(28.dp))
                 }
             }
         }

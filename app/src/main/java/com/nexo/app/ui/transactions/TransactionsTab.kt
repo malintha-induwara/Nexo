@@ -173,10 +173,9 @@ fun TransactionsTab(todaySignal: Int, vm: TransactionsViewModel = hiltViewModel(
         }
     }
     val selecting = selection.isNotEmpty()
-    DisposableEffect(filterOpen, selecting) {
-        shell.bottomBarHidden = filterOpen || selecting
-        onDispose { shell.bottomBarHidden = false }
-    }
+    // Not reset on dispose: the value is saved with the screen so the bar does not flash in on return.
+    val hideBar = filterOpen || selecting || daySheet != null
+    LaunchedEffect(hideBar) { shell.bottomBarHidden = hideBar }
     // On the Notes view the bar's add button writes a memo instead of a transaction.
     val memoDate by rememberUpdatedState(selectedDate)
     DisposableEffect(currentTab) {
@@ -204,162 +203,164 @@ fun TransactionsTab(todaySignal: Int, vm: TransactionsViewModel = hiltViewModel(
 
     val title = if (currentTab == SubTab.MONTHLY) data.year.toString() else data.period?.let { Formats.monthYear(it.label) } ?: ""
 
-    Column(Modifier.fillMaxSize().background(colors.background)) {
-        val dailyRows = data.days.flatMap { it.rows }
-        AnimatedContent(
-            targetState = selecting,
-            transitionSpec = { fadeIn(NexoMotion.enter(NexoMotion.MEDIUM)) togetherWith fadeOut(NexoMotion.exit()) },
-            label = "header",
-        ) { sel ->
-            if (sel) {
-                Box(Modifier.statusBarsPadding()) {
-                    SelectionBar(
-                        count = selection.size,
-                        total = dailyRows.count { !it.isCarryOver },
-                        net = selectedNet(dailyRows, selection),
-                        main = main,
-                        onToggleAll = {
-                            val all = dailyRows.filter { !it.isCarryOver }.map { it.id }.toSet()
-                            vm.setSelection(if (selection.size >= all.size) emptySet() else all)
-                        },
-                        onClose = vm::clearSelection,
-                        onAction = { bulkAction = it; bulkOpen = true },
-                    )
-                }
-            } else {
-                Row(
-                    Modifier.fillMaxWidth().statusBarsPadding().height(56.dp).padding(start = Space.xs, end = Space.m),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    PeriodNavigator(
-                        title = title,
-                        onPrevious = { vm.step(false) },
-                        onNext = { vm.step(true) },
-                        onTitleClick = if (currentTab == SubTab.MONTHLY) null else ({ monthPicker = true }),
-                        color = colors.text,
-                    )
-                    Spacer(Modifier.weight(1f))
-                    AnimatedVisibility(!filterOpen, enter = fadeIn(NexoMotion.enter()) + expandHorizontally(NexoMotion.snappy()), exit = fadeOut(NexoMotion.exit()) + shrinkHorizontally(NexoMotion.snappy())) {
-                        Row {
-                            HeaderAction(Icons.Rounded.StarOutline, stringResource(R.string.bookmarks)) { nav.navigate(BookmarksKey()) }
-                            HeaderAction(Icons.Rounded.Search, stringResource(R.string.search)) { nav.navigate(SearchKey()) }
-                        }
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().background(colors.background)) {
+            val dailyRows = data.days.flatMap { it.rows }
+            AnimatedContent(
+                targetState = selecting,
+                transitionSpec = { fadeIn(NexoMotion.enter(NexoMotion.MEDIUM)) togetherWith fadeOut(NexoMotion.exit()) },
+                label = "header",
+            ) { sel ->
+                if (sel) {
+                    Box(Modifier.statusBarsPadding()) {
+                        SelectionBar(
+                            count = selection.size,
+                            total = dailyRows.count { !it.isCarryOver },
+                            net = selectedNet(dailyRows, selection),
+                            main = main,
+                            onToggleAll = {
+                                val all = dailyRows.filter { !it.isCarryOver }.map { it.id }.toSet()
+                                vm.setSelection(if (selection.size >= all.size) emptySet() else all)
+                            },
+                            onClose = vm::clearSelection,
+                            onAction = { bulkAction = it; bulkOpen = true },
+                        )
                     }
-                    HeaderAction(if (filterOpen) Icons.Rounded.Close else Icons.Rounded.FilterList, stringResource(R.string.filter), active = filterOpen) {
-                        haptics.tick()
-                        vm.setFilterOpen(!filterOpen)
-                        filterCollapsed = false
-                    }
-                }
-            }
-        }
-        AnimatedVisibility(
-            visible = currentTab != SubTab.NOTE && !selecting,
-            enter = expandVertically(NexoMotion.snappy()) + fadeIn(NexoMotion.enter()),
-            exit = shrinkVertically(NexoMotion.snappy()) + fadeOut(NexoMotion.exit()),
-        ) {
-            NetHero(data.totals.income, data.totals.expense, main, Modifier.collapsingHeader(header))
-        }
-        if (!selecting) {
-            SegmentedPill(
-                options = visibleTabs,
-                selected = currentTab,
-                onSelect = vm::setTab,
-                label = { stringResource(subTabLabel(it)) },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = Space.l, vertical = Space.s),
-                equalWidths = false,
-                textStyle = MaterialTheme.typography.labelMedium,
-                segmentPadding = 10.dp,
-            )
-        }
-
-        Box(Modifier.weight(1f).fillMaxWidth().nestedScroll(header.connection)) {
-            val swipe = if (selecting) SwipeMode.NONE else ref.settings.swipeMode
-            val threshold = with(LocalDensity.current) { 90.dp.toPx() }
-            val swipeModifier = if (swipe == SwipeMode.NONE) Modifier else Modifier.pointerInput(swipe, currentTab, visibleTabs) {
-                var total = 0f
-                detectHorizontalDragGestures(
-                    onDragStart = { total = 0f },
-                    onHorizontalDrag = { _, dx -> total += dx },
-                    onDragEnd = {
-                        if (abs(total) > threshold) {
-                            val forward = total < 0
-                            if (swipe == SwipeMode.CHANGE_DATE) vm.step(forward)
-                            else {
-                                val i = visibleTabs.indexOf(currentTab) + if (forward) 1 else -1
-                                visibleTabs.getOrNull(i)?.let(vm::setTab)
+                } else {
+                    Row(
+                        Modifier.fillMaxWidth().statusBarsPadding().height(56.dp).padding(start = Space.xs, end = Space.m),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        PeriodNavigator(
+                            title = title,
+                            onPrevious = { vm.step(false) },
+                            onNext = { vm.step(true) },
+                            onTitleClick = if (currentTab == SubTab.MONTHLY) null else ({ monthPicker = true }),
+                            color = colors.text,
+                        )
+                        Spacer(Modifier.weight(1f))
+                        AnimatedVisibility(!filterOpen, enter = fadeIn(NexoMotion.enter()) + expandHorizontally(NexoMotion.snappy()), exit = fadeOut(NexoMotion.exit()) + shrinkHorizontally(NexoMotion.snappy())) {
+                            Row {
+                                HeaderAction(Icons.Rounded.StarOutline, stringResource(R.string.bookmarks)) { nav.navigate(BookmarksKey()) }
+                                HeaderAction(Icons.Rounded.Search, stringResource(R.string.search)) { nav.navigate(SearchKey()) }
                             }
                         }
-                    },
-                )
-            }
-            val bottom = shell.bottomInset
-            AnimatedContent(
-                targetState = data,
-                contentKey = { d -> Triple(d.tab, if (d.tab == SubTab.MONTHLY) d.year else d.period?.key, d.loaded) },
-                transitionSpec = {
-                    val a = initialState
-                    val b = targetState
-                    val direction = when {
-                        !a.loaded || !b.loaded -> 0
-                        a.tab != b.tab -> (tabs.indexOf(b.tab) - tabs.indexOf(a.tab)).sign
-                        b.tab == SubTab.MONTHLY -> (b.year - a.year).sign
-                        else -> compareValues(b.period?.start, a.period?.start).sign
+                        HeaderAction(if (filterOpen) Icons.Rounded.Close else Icons.Rounded.FilterList, stringResource(R.string.filter), active = filterOpen) {
+                            haptics.tick()
+                            vm.setFilterOpen(!filterOpen)
+                            filterCollapsed = false
+                        }
                     }
-                    NavMotion.lateral(this, direction)
-                },
-                modifier = Modifier.fillMaxSize().then(swipeModifier),
-                label = "homeContent",
-            ) { d ->
-                when (d.tab) {
-                    SubTab.DAILY -> DailyContent(d, main, selection, vm, focusDate, { focusDate = null }, lastSaved, bottom, onMemoStrip = { day -> daySheet = day.toString(); daySheetMemos = true })
-                    SubTab.CALENDAR -> CalendarContent(d, main, ref.settings.periods.weekStartDay, bottom) { day -> daySheet = day.toString(); daySheetMemos = false }
-                    SubTab.MONTHLY -> MonthlyContent(d, main, selectedDate, bottom) { vm.openMonth(it) }
-                    SubTab.TOTAL -> TotalContent(d, main, bottom)
-                    SubTab.NOTE -> NoteContent(d.memos, vm, bottom)
                 }
             }
-            val memoButton = !selecting && !filterOpen && ref.settings.memoButton && (currentTab == SubTab.DAILY || currentTab == SubTab.CALENDAR)
-            androidx.compose.animation.AnimatedVisibility(
-                memoButton,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(end = Space.gutter, bottom = bottom),
-                enter = scaleIn(NexoMotion.snappy()) + fadeIn(),
-                exit = scaleOut(NexoMotion.exit()) + fadeOut(),
+            AnimatedVisibility(
+                visible = currentTab != SubTab.NOTE && !selecting,
+                enter = expandVertically(NexoMotion.snappy()) + fadeIn(NexoMotion.enter()),
+                exit = shrinkVertically(NexoMotion.snappy()) + fadeOut(NexoMotion.exit()),
             ) {
-                RoundIconButton(
-                    Icons.AutoMirrored.Outlined.StickyNote2,
-                    stringResource(R.string.new_memo),
-                    onClick = { nav.navigate(MemoEditorKey(date = selectedDate.toString())) },
-                    size = 48.dp,
-                    container = if (colors.isDark) colors.raised else colors.surface,
+                NetHero(data.totals.income, data.totals.expense, main, Modifier.collapsingHeader(header))
+            }
+            if (!selecting) {
+                SegmentedPill(
+                    options = visibleTabs,
+                    selected = currentTab,
+                    onSelect = vm::setTab,
+                    label = { stringResource(subTabLabel(it)) },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = Space.l, vertical = Space.s),
+                    equalWidths = false,
+                    textStyle = MaterialTheme.typography.labelMedium,
+                    segmentPadding = 10.dp,
                 )
             }
-            if (filterOpen) {
-                FilterPanel(
-                    ref = ref,
-                    rows = data.periodRows,
-                    criteria = filter,
-                    collapsed = filterCollapsed,
-                    onCollapsedChange = { filterCollapsed = it },
-                    onChange = vm::setFilter,
-                )
+
+            Box(Modifier.weight(1f).fillMaxWidth().nestedScroll(header.connection)) {
+                val swipe = if (selecting) SwipeMode.NONE else ref.settings.swipeMode
+                val threshold = with(LocalDensity.current) { 90.dp.toPx() }
+                val swipeModifier = if (swipe == SwipeMode.NONE) Modifier else Modifier.pointerInput(swipe, currentTab, visibleTabs) {
+                    var total = 0f
+                    detectHorizontalDragGestures(
+                        onDragStart = { total = 0f },
+                        onHorizontalDrag = { _, dx -> total += dx },
+                        onDragEnd = {
+                            if (abs(total) > threshold) {
+                                val forward = total < 0
+                                if (swipe == SwipeMode.CHANGE_DATE) vm.step(forward)
+                                else {
+                                    val i = visibleTabs.indexOf(currentTab) + if (forward) 1 else -1
+                                    visibleTabs.getOrNull(i)?.let(vm::setTab)
+                                }
+                            }
+                        },
+                    )
+                }
+                val bottom = shell.bottomInset
+                AnimatedContent(
+                    targetState = data,
+                    contentKey = { d -> Triple(d.tab, if (d.tab == SubTab.MONTHLY) d.year else d.period?.key, d.loaded) },
+                    transitionSpec = {
+                        val a = initialState
+                        val b = targetState
+                        val direction = when {
+                            !a.loaded || !b.loaded -> 0
+                            a.tab != b.tab -> (tabs.indexOf(b.tab) - tabs.indexOf(a.tab)).sign
+                            b.tab == SubTab.MONTHLY -> (b.year - a.year).sign
+                            else -> compareValues(b.period?.start, a.period?.start).sign
+                        }
+                        NavMotion.lateral(this, direction)
+                    },
+                    modifier = Modifier.fillMaxSize().then(swipeModifier),
+                    label = "homeContent",
+                ) { d ->
+                    when (d.tab) {
+                        SubTab.DAILY -> DailyContent(d, main, selection, vm, focusDate, { focusDate = null }, lastSaved, bottom, onMemoStrip = { day -> daySheet = day.toString(); daySheetMemos = true })
+                        SubTab.CALENDAR -> CalendarContent(d, main, ref.settings.periods.weekStartDay, bottom) { day -> daySheet = day.toString(); daySheetMemos = false }
+                        SubTab.MONTHLY -> MonthlyContent(d, main, selectedDate, bottom) { vm.openMonth(it) }
+                        SubTab.TOTAL -> TotalContent(d, main, bottom)
+                        SubTab.NOTE -> NoteContent(d.memos, vm, bottom)
+                    }
+                }
+                val memoButton = !selecting && !filterOpen && ref.settings.memoButton && (currentTab == SubTab.DAILY || currentTab == SubTab.CALENDAR)
+                androidx.compose.animation.AnimatedVisibility(
+                    memoButton,
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = Space.gutter, bottom = bottom),
+                    enter = scaleIn(NexoMotion.snappy()) + fadeIn(),
+                    exit = scaleOut(NexoMotion.exit()) + fadeOut(),
+                ) {
+                    RoundIconButton(
+                        Icons.AutoMirrored.Outlined.StickyNote2,
+                        stringResource(R.string.new_memo),
+                        onClick = { nav.navigate(MemoEditorKey(date = selectedDate.toString())) },
+                        size = 48.dp,
+                        container = if (colors.isDark) colors.raised else colors.surface,
+                    )
+                }
+                if (filterOpen) {
+                    FilterPanel(
+                        ref = ref,
+                        rows = data.periodRows,
+                        criteria = filter,
+                        collapsed = filterCollapsed,
+                        onCollapsedChange = { filterCollapsed = it },
+                        onChange = vm::setFilter,
+                    )
+                }
             }
         }
-    }
-
-    if (monthPicker) data.period?.let { p -> MonthPickerDialog(p.label, onPick = vm::pickMonth, onDismiss = { monthPicker = false }) }
-    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.writer, selection, onDone = vm::clearSelection, onDismiss = { bulkOpen = false })
-    daySheet?.let { d ->
+        // Part of this screen (not a dialog), so it travels with the screen during navigation.
         DaySheet(
-            date = LocalDate.parse(d),
+            date = daySheet?.let(LocalDate::parse),
             data = data,
             ref = ref,
             showMemos = daySheetMemos,
             onShowMemos = { daySheetMemos = it },
             onDate = { daySheet = it.toString(); vm.select(it) },
-            onDismiss = { vm.select(LocalDate.parse(d)); daySheet = null },
+            onDismiss = { daySheet?.let { vm.select(LocalDate.parse(it)) }; daySheet = null },
+            highlightId = lastSaved,
         )
     }
+
+    if (monthPicker) data.period?.let { p -> MonthPickerDialog(p.label, onPick = vm::pickMonth, onDismiss = { monthPicker = false }) }
+    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.writer, selection, onDone = vm::clearSelection, onDismiss = { bulkOpen = false })
 }
 
 /** A 40dp header action; [active] fills it to show a mode is on (the filter). */

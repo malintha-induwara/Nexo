@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.PieChart
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -69,8 +70,9 @@ enum class MainTab(val label: Int, val icon: ImageVector, val selectedIcon: Imag
  * take over the add button (the Notes view adds a memo), and read how much space the floating bar
  * covers so lists can scroll underneath it.
  */
-class ShellController {
-    var bottomBarHidden by mutableStateOf(false)
+class ShellController(hidden: MutableState<Boolean> = mutableStateOf(false)) {
+    /** Saved with the screen, so the bar is already hidden on the first frame when coming back to it. */
+    var bottomBarHidden by hidden
     var addOverride by mutableStateOf<(() -> Unit)?>(null)
     var addLabelOverride by mutableStateOf<Int?>(null)
     /** Bottom padding a scrolling list needs to clear the floating bar. */
@@ -87,7 +89,10 @@ private val EDGE_TO_EDGE = setOf(MainTab.TRANSACTIONS)
 fun MainShell() {
     var tab by rememberSaveable { mutableStateOf(MainTab.TRANSACTIONS) }
     var todaySignal by remember { mutableIntStateOf(0) }
-    val controller = remember { ShellController() }
+    val barHidden = rememberSaveable { mutableStateOf(false) }
+    val controller = remember(barHidden) { ShellController(barHidden) }
+    // Only the Transactions tab hides the bar (filter, multi-select, day sheet).
+    val barVisible = !(controller.bottomBarHidden && tab == MainTab.TRANSACTIONS)
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val colors = LocalNexoColors.current
@@ -117,7 +122,7 @@ fun MainShell() {
                 },
                 label = "tab",
             ) { t ->
-                val stopAbove = t !in EDGE_TO_EDGE && !controller.bottomBarHidden
+                val stopAbove = t !in EDGE_TO_EDGE && barVisible
                 Box(Modifier.fillMaxSize().padding(bottom = if (stopAbove) PillBottomBarHeight + navInset else 0.dp)) {
                     when (t) {
                         MainTab.TRANSACTIONS -> TransactionsTab(todaySignal)
@@ -128,7 +133,7 @@ fun MainShell() {
                 }
             }
             AnimatedVisibility(
-                visible = !controller.bottomBarHidden,
+                visible = barVisible,
                 modifier = Modifier.align(Alignment.BottomCenter),
                 enter = slideInVertically(NexoMotion.snappy()) { it } + fadeIn(NexoMotion.enter()),
                 exit = slideOutVertically(NexoMotion.exit(NexoMotion.MEDIUM)) { it } + fadeOut(NexoMotion.exit()),
@@ -142,7 +147,8 @@ fun MainShell() {
                     },
                     onAdd = { controller.addOverride?.invoke() ?: nav.navigate(EntryKey(fromAdd = true)) },
                     addLabel = stringResource(controller.addLabelOverride ?: R.string.add_transaction),
-                    addModifier = if (controller.addOverride == null) Modifier.dropSource() else Modifier,
+                    // Only while the bar is showing: a sheet's own add button takes over the morph when the bar is hidden.
+                    addModifier = if (controller.addOverride == null && barVisible) Modifier.dropSource() else Modifier,
                 )
             }
         }

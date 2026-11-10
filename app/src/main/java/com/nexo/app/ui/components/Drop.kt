@@ -1,9 +1,6 @@
 package com.nexo.app.ui.components
 
 import androidx.compose.animation.BoundsTransform
-import androidx.compose.animation.EnterExitState
-import androidx.compose.animation.animateColor
-import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -19,12 +16,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
@@ -79,22 +78,14 @@ fun DropContainer(enabled: Boolean, background: Color, seed: Color = LocalNexoCo
         return
     }
     val scope = LocalNavAnimatedContentScope.current
-    // Opening: the button's colour gives way to the page early. Closing: the page stays dark while it
-    // shrinks and only takes the button's colour and full rounding as it lands, so nothing flashes.
-    val fill by scope.transition.animateColor(
-        transitionSpec = {
-            if (targetState == EnterExitState.Visible) tween(260, easing = NexoMotion.Emphasized)
-            else tween(130, delayMillis = 240, easing = NexoMotion.Emphasized)
-        },
-        label = "dropFill",
-    ) { state -> if (state == EnterExitState.Visible) background else seed }
-    val corner by scope.transition.animateDp(
-        transitionSpec = {
-            if (targetState == EnterExitState.Visible) tween(320, easing = NexoMotion.Emphasized)
-            else tween(260, delayMillis = 100, easing = NexoMotion.Emphasized)
-        },
-        label = "dropCorner",
-    ) { state -> if (state == EnterExitState.Visible) 0.dp else 24.dp }
+    // Colour and rounding follow the container's current size rather than a clock: it is the button's
+    // colour and a full circle only near button size, and the page colour with square corners at full
+    // size. Whatever distance or direction the morph runs, nothing large is ever button-coloured.
+    val fullWidth = LocalWindowInfo.current.containerSize.width.toFloat()
+    val density = LocalDensity.current
+    val buttonPx = with(density) { 56.dp.toPx() }
+    val cornerPx = with(density) { 28.dp.toPx() }
+    fun grown(width: Float): Float = ((width - buttonPx) / (fullWidth - buttonPx).coerceAtLeast(1f)).coerceIn(0f, 1f)
     with(shared) {
         Box(
             Modifier
@@ -108,8 +99,11 @@ fun DropContainer(enabled: Boolean, background: Color, seed: Color = LocalNexoCo
                     zIndexInOverlay = 1f,
                 )
                 .fillMaxSize()
-                .clip(RoundedCornerShape(corner))
-                .drawBehind { drawRect(fill) },
+                .graphicsLayer {
+                    clip = true
+                    shape = RoundedCornerShape(cornerPx * (1f - grown(size.width)))
+                }
+                .drawBehind { drawRect(lerp(seed, background, (grown(size.width) / 0.2f).coerceIn(0f, 1f))) },
         ) {
             with(scope) {
                 Box(
