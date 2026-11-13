@@ -1,7 +1,6 @@
 package com.nexo.app.ui.components
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.Text
@@ -20,6 +19,9 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.FirstBaseline
+import androidx.compose.ui.layout.LastBaseline
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -166,27 +168,45 @@ private fun RowScope.DigitSlot(digit: Char, style: TextStyle, color: Color, dire
         progress.animateTo(1f, NexoMotion.snappy())
         outgoing = null
     }
-    // Layout never moves (graphicsLayer only), so the slot's baseline stays put while it rolls.
-    Box(Modifier.alignByBaseline().clipToBounds()) {
-        Text(
-            current.toString(),
-            Modifier.graphicsLayer {
-                translationY = (1f - progress.value) * size.height * dir
-                alpha = progress.value.coerceIn(0f, 1f)
-            },
-            style = style,
-            color = color,
-        )
-        outgoing?.let { old ->
+    // The slot states its baseline explicitly from the measured text. Left to inherit it, Compose
+    // maps each child's baseline through that child's graphicsLayer, so a layout pass that lands
+    // mid-roll (or as the outgoing digit sits a full line above) freezes a baseline one line off
+    // and the digit drops out of the row until something forces another layout.
+    Layout(
+        modifier = Modifier.alignByBaseline().clipToBounds(),
+        content = {
             Text(
-                old.toString(),
+                current.toString(),
                 Modifier.graphicsLayer {
-                    translationY = -progress.value * size.height * dir
-                    alpha = (1f - progress.value).coerceIn(0f, 1f)
+                    translationY = (1f - progress.value) * size.height * dir
+                    alpha = progress.value.coerceIn(0f, 1f)
                 },
                 style = style,
                 color = color,
             )
+            outgoing?.let { old ->
+                Text(
+                    old.toString(),
+                    Modifier.graphicsLayer {
+                        translationY = -progress.value * size.height * dir
+                        alpha = (1f - progress.value).coerceIn(0f, 1f)
+                    },
+                    style = style,
+                    color = color,
+                )
+            }
+        },
+    ) { measurables, constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val placeables = measurables.map { it.measure(loose) }
+        // Placeable alignment lines come from the text's own measure result, untouched by layers.
+        val face = placeables.first()
+        layout(
+            width = placeables.maxOf { it.width },
+            height = placeables.maxOf { it.height },
+            alignmentLines = mapOf(FirstBaseline to face[FirstBaseline], LastBaseline to face[LastBaseline]),
+        ) {
+            placeables.forEach { it.place(0, 0) }
         }
     }
 }
