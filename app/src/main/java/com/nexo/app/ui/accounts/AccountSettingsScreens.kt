@@ -157,7 +157,7 @@ fun CardTimingDialog(
 
 /** Account Group list with reorder and delete. */
 @Composable
-fun AccountGroupsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
+fun AccountGroupsScreen(vm: AccountGroupsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
@@ -234,7 +234,7 @@ fun AccountGroupsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun AccountGroupFormScreen(groupId: String?, vm: AccountSettingsViewModel = hiltViewModel()) {
+fun AccountGroupFormScreen(groupId: String?, vm: AccountGroupsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
@@ -306,7 +306,7 @@ fun AccountGroupFormScreen(groupId: String?, vm: AccountSettingsViewModel = hilt
 
 /** Accounts Setting list with reorder / show-hide / delete modes. */
 @Composable
-fun AccountListScreen(key: AccountListKey, vm: AccountSettingsViewModel = hiltViewModel()) {
+fun AccountListScreen(key: AccountListKey, vm: AccountListViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
@@ -507,7 +507,7 @@ private fun move(
 
 /** Deleted accounts and deleted groups. */
 @Composable
-fun DeletedAccountsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
+fun DeletedAccountsScreen(vm: DeletedItemsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
@@ -555,7 +555,7 @@ fun DeletedAccountsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun DeletedGroupsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
+fun DeletedGroupsScreen(vm: DeletedItemsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
