@@ -69,7 +69,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun ImportListScreen(vm: BackupViewModel = hiltViewModel()) {
+fun ImportListScreen(vm: ImportViewModel = hiltViewModel()) {
     val clock = LocalClock.current
     val nav = LocalNavigator.current
     val context = LocalContext.current
@@ -202,7 +202,7 @@ private fun errorText(row: ImportRow): String? {
 
 /** Import preview with row fixing. */
 @Composable
-fun ImportPreviewScreen(key: ImportPreviewKey, vm: BackupViewModel = hiltViewModel()) {
+fun ImportPreviewScreen(key: ImportPreviewKey, vm: ImportViewModel = hiltViewModel()) {
     val clock = LocalClock.current
     val nav = LocalNavigator.current
     val context = LocalContext.current

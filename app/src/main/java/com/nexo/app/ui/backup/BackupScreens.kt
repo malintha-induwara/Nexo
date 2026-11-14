@@ -272,7 +272,7 @@ fun BackupScreen(vm: BackupViewModel = hiltViewModel()) {
 
 /** Backup / restore on device. */
 @Composable
-fun BackupDeviceScreen(vm: BackupViewModel = hiltViewModel()) {
+fun BackupDeviceScreen(vm: RestoreViewModel = hiltViewModel()) {
     val clock = LocalClock.current
     val nav = LocalNavigator.current
     val context = LocalContext.current
@@ -385,7 +385,7 @@ fun displayName(context: Context, uri: Uri): String? = runCatching {
 
 /** Restore requested by opening a backup file with Nexo. */
 @Composable
-fun RestoreFileScreen(key: RestoreFileKey, vm: BackupViewModel = hiltViewModel()) {
+fun RestoreFileScreen(key: RestoreFileKey, vm: RestoreViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val busy = state.busy
@@ -418,7 +418,7 @@ fun RestoreFileScreen(key: RestoreFileKey, vm: BackupViewModel = hiltViewModel()
 }
 
 @Composable
-fun AutoBackupHistoryScreen(vm: BackupViewModel = hiltViewModel()) {
+fun AutoBackupHistoryScreen(vm: RestoreViewModel = hiltViewModel()) {
     val clock = LocalClock.current
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -533,7 +533,7 @@ fun AutoBackupHistoryScreen(vm: BackupViewModel = hiltViewModel()) {
 
 /** Excel period dialog. */
 @Composable
-fun ExcelExportScreen(key: ExcelExportKey, vm: BackupViewModel = hiltViewModel()) {
+fun ExcelExportScreen(key: ExcelExportKey, vm: ExcelExportViewModel = hiltViewModel()) {
     val clock = LocalClock.current
     val nav = LocalNavigator.current
     val context = LocalContext.current
