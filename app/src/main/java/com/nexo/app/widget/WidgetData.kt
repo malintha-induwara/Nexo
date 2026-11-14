@@ -3,12 +3,13 @@ package com.nexo.app.widget
 import android.app.UiModeManager
 import android.content.Context
 import android.content.res.Configuration
-import com.nexo.app.data.database.NexoDatabase
+import com.nexo.app.core.common.ApplicationScope
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
-import com.nexo.app.core.common.money.AmountFormatter
-import com.nexo.app.core.common.money.Money
+import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.datastore.DevicePrefs
 import com.nexo.app.data.datastore.ThemeMode
 import com.nexo.app.data.repository.RefRepository
@@ -19,6 +20,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import java.time.LocalDate
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -29,6 +31,9 @@ interface WidgetEntryPoint {
     fun db(): NexoDatabase
     fun refs(): RefRepository
     fun prefs(): DevicePrefs
+
+    @ApplicationScope
+    fun appScope(): CoroutineScope
 }
 
 data class WidgetColors(val background: Long, val text: Long, val muted: Long, val dark: Boolean, val opacity: Float)

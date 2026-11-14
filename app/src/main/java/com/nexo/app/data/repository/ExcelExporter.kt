@@ -2,6 +2,8 @@ package com.nexo.app.data.repository
 
 import android.content.Context
 import com.nexo.app.R
+import com.nexo.app.core.common.Dispatcher
+import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
@@ -21,7 +23,7 @@ import java.time.format.FormatStyle
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
 /** Excel export: 12 columns, income / expense / transfer-out rows, list order. */
@@ -31,6 +33,7 @@ class ExcelExporter @Inject constructor(
     private val db: NexoDatabase,
     private val refs: RefRepository,
     private val dirs: AppDirs,
+    @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     /** Device date order as an Excel number format, e.g. "yyyy/mm/dd" or "mm/dd/yyyy". */
     private fun excelDatePattern(): String {
@@ -39,7 +42,7 @@ class ExcelExporter @Inject constructor(
         return order.joinToString("/") { when (it) { 'y' -> "yyyy"; 'M' -> "mm"; else -> "dd" } }
     }
 
-    suspend fun export(range: DateRange, total: Boolean): File = withContext(Dispatchers.IO) {
+    suspend fun export(range: DateRange, total: Boolean): File = withContext(ioDispatcher) {
         val ref = refs.snapshot()
         val factory = RowFactory(context, ref)
         val all = db.transactionDao().getRange(range.startText, range.endText)

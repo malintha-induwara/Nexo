@@ -1,14 +1,16 @@
 package com.nexo.app.data.repository
 
 import android.os.SystemClock
+import com.nexo.app.core.common.ApplicationScope
+import com.nexo.app.core.common.Dispatcher
+import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.data.datastore.DevicePrefs
 import com.nexo.app.data.datastore.LockTimeout
 import com.nexo.app.data.lock.PinHasher
-import com.nexo.app.di.ApplicationScope
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +32,7 @@ sealed interface PinResult {
 class LockManager @Inject constructor(
     private val prefs: DevicePrefs,
     @ApplicationScope private val scope: CoroutineScope,
+    @Dispatcher(NexoDispatchers.Default) private val defaultDispatcher: CoroutineDispatcher,
 ) {
     private val _locked = MutableStateFlow(runBlocking { prefs.current().lockEnabled })
     val locked: StateFlow<Boolean> = _locked.asStateFlow()
@@ -75,7 +78,7 @@ class LockManager @Inject constructor(
         _locked.value = false
     }
 
-    suspend fun verifyPin(pin: String): PinResult = withContext(Dispatchers.Default) {
+    suspend fun verifyPin(pin: String): PinResult = withContext(defaultDispatcher) {
         val s = prefs.current()
         val now = System.currentTimeMillis()
         var lockoutUntil = s.pinLockoutUntil
@@ -96,7 +99,7 @@ class LockManager @Inject constructor(
     }
 
     suspend fun setPin(pin: String?) {
-        prefs.setPin(pin?.let { withContext(Dispatchers.Default) { PinHasher.hash(it) } })
+        prefs.setPin(pin?.let { withContext(defaultDispatcher) { PinHasher.hash(it) } })
         if (pin == null) _locked.value = false
     }
 

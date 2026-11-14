@@ -11,10 +11,9 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.nexo.app.core.common.Dispatcher
+import com.nexo.app.core.common.NexoDispatchers
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.time.LocalDate
 import javax.inject.Inject
@@ -23,25 +22,32 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.atan2
 import kotlin.math.hypot
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 
 /**
  * Reads a receipt photo on the device with ML Kit text recognition (Latin script, model bundled in the app) and hands
  * the lines to [ReceiptParser]. Nothing leaves the phone.
  */
 @Singleton
-class ReceiptScanner @Inject constructor(@ApplicationContext private val context: Context) {
+class ReceiptScanner @Inject constructor(
+    @ApplicationContext private val context: Context,
+    @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
+    @Dispatcher(NexoDispatchers.Default) private val defaultDispatcher: CoroutineDispatcher,
+) {
     private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
 
     /** Throws [IOException] when the photo cannot be opened or decoded. */
     suspend fun scan(uri: Uri, today: LocalDate = LocalDate.now()): ReceiptRead {
-        val bitmap = withContext(Dispatchers.IO) { decodeUpright(uri) } ?: throw IOException("Cannot decode the photo")
+        val bitmap = withContext(ioDispatcher) { decodeUpright(uri) } ?: throw IOException("Cannot decode the photo")
         val text = try {
             recognizer.process(InputImage.fromBitmap(bitmap, 0)).await()
         } finally {
             bitmap.recycle()
         }
         val lines = text.textBlocks.flatMap { it.lines }.map(::toOcrLine)
-        return withContext(Dispatchers.Default) { ReceiptParser.read(lines, today) }
+        return withContext(defaultDispatcher) { ReceiptParser.read(lines, today) }
     }
 
     /**

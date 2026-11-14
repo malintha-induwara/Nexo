@@ -5,9 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.nexo.app.data.sms.parser.SmsMessage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /**
@@ -25,7 +22,7 @@ class DebugSmsReceiver : BroadcastReceiver() {
         val now = System.currentTimeMillis()
         val timestamp = intent.getLongExtra("timestamp", now)
         val pending = goAsync()
-        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+        context.smsEntry().appScope().launch {
             try {
                 val changed = context.smsEntry().intake().receive(listOf(IncomingSms(SmsMessage(sender, body, timestamp), now)))
                 // Plain (non-ordered) broadcasts can't carry a result back; read it with `adb logcat -s DebugSmsReceiver`.

@@ -98,7 +98,7 @@ class FxTest {
         val db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
         Seeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
         val refs = RefRepository(db, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
-        Triple(db, FxRepository(db, refs, DevicePrefs(context), BankRatesClient()), refs)
+        Triple(db, FxRepository(db, refs, DevicePrefs(context), BankRatesClient(Dispatchers.IO)), refs)
     }
 
     private fun usdItem(occurredAt: Long, amount: Double = 20.0) = SmsItemEntity(

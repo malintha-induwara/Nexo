@@ -3,6 +3,8 @@ package com.nexo.app.data.backup
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import androidx.room.withTransaction
+import com.nexo.app.core.common.Dispatcher
+import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.common.period.toIsoText
 import com.nexo.app.core.model.AccountStatus
@@ -48,7 +50,7 @@ import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
@@ -70,10 +72,11 @@ private class Row(private val c: Cursor) {
 class LegacyImporter @Inject constructor(
     private val db: NexoDatabase,
     private val seeder: Seeder,
+    @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     private val zone: ZoneId get() = ZoneId.systemDefault()
 
-    suspend fun import(file: File): RestoreResult = withContext(Dispatchers.IO) {
+    suspend fun import(file: File): RestoreResult = withContext(ioDispatcher) {
         runCatching {
             SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY).use { src ->
                 if (!hasColumn(src, "INOUTCOME", "uid")) return@withContext RestoreResult.Unsupported

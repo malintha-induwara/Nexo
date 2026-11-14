@@ -6,15 +6,15 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.Configuration
-import com.nexo.app.data.repository.LockManager
+import com.nexo.app.core.common.ApplicationScope
 import com.nexo.app.data.datastore.DevicePrefs
+import com.nexo.app.data.repository.LockManager
 import com.nexo.app.data.repository.RepeatEngine
-import com.nexo.app.di.ApplicationScope
 import com.nexo.app.data.work.AutoBackupWorker
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @HiltAndroidApp
 class NexoApplication : Application(), Configuration.Provider {

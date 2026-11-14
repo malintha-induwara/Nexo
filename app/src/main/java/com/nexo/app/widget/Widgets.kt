@@ -337,7 +337,8 @@ class QuickTxWidgetReceiver : GlanceAppWidgetReceiver() {
 
 /** Removing a widget deletes its display mode. */
 private fun clearModes(context: Context, ids: IntArray) {
-    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-        runCatching { ids.forEach { WidgetData.entry(context).prefs().clearWidgetMode(it) } }
+    val entry = WidgetData.entry(context)
+    entry.appScope().launch {
+        runCatching { ids.forEach { entry.prefs().clearWidgetMode(it) } }
     }
 }

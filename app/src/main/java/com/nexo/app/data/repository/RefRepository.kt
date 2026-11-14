@@ -1,10 +1,12 @@
 package com.nexo.app.data.repository
 
+import com.nexo.app.core.common.ApplicationScope
+import com.nexo.app.core.model.BookSettings
+import com.nexo.app.core.model.RefData
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.SettingEntity
-import com.nexo.app.core.model.BookSettings
-import com.nexo.app.di.ApplicationScope
-import com.nexo.app.core.model.RefData
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
@@ -13,8 +15,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /** Reactive snapshot of all reference tables plus the book settings. */
 @Singleton

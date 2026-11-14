@@ -3,15 +3,16 @@ package com.nexo.app.data.repository
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.nexo.app.core.model.EntryType
+import com.nexo.app.core.model.FeeDraft
+import com.nexo.app.core.model.TxDraft
+import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.Seeder
 import com.nexo.app.data.file.AppDirs
 import com.nexo.app.data.file.PhotoStore
-import com.nexo.app.core.model.EntryType
-import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.model.FeeDraft
-import com.nexo.app.core.model.TxDraft
 import com.nexo.app.widget.WidgetRefresher
+import java.time.LocalDateTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,7 +26,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.time.LocalDateTime
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -40,7 +40,7 @@ class TransactionWriterTest {
         Seeder(context, db).seedFresh(com.nexo.app.core.common.money.CurrencyCatalog.find("USD")!!)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val refs = RefRepository(db, scope)
-        writer = TransactionWriter(context, db, refs, PhotoStore(context, AppDirs(context), db), WidgetRefresher(context, scope))
+        writer = TransactionWriter(context, db, refs, PhotoStore(context, AppDirs(context), db, Dispatchers.IO), WidgetRefresher(context, scope))
     }
 
     @After

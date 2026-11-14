@@ -1,14 +1,14 @@
 package com.nexo.app.widget
 
 import android.content.Context
-import com.nexo.app.di.ApplicationScope
+import com.nexo.app.core.common.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /** Debounced refresh of every home-screen widget after a data change. */
 @Singleton

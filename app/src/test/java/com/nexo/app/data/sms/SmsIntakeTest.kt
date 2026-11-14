@@ -51,7 +51,7 @@ class SmsIntakeTest {
         db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
         Seeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
         refs = RefRepository(db, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
-        intake = SmsIntake(context, db, DevicePrefs(context), SmsSuggester(db, refs, com.nexo.app.data.repository.FxRepository(db, refs, com.nexo.app.data.datastore.DevicePrefs(context), com.nexo.app.data.network.BankRatesClient())))
+        intake = SmsIntake(context, db, DevicePrefs(context), SmsSuggester(db, refs, com.nexo.app.data.repository.FxRepository(db, refs, com.nexo.app.data.datastore.DevicePrefs(context), com.nexo.app.data.network.BankRatesClient(Dispatchers.IO))))
     }
 
     @After

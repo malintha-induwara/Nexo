@@ -4,21 +4,21 @@ import android.content.Context
 import android.net.Uri
 import androidx.room.withTransaction
 import com.nexo.app.R
+import com.nexo.app.core.common.Dispatcher
+import com.nexo.app.core.common.NexoDispatchers
+import com.nexo.app.core.common.money.Conversion
+import com.nexo.app.core.common.money.Money
+import com.nexo.app.core.common.period.toIsoText
+import com.nexo.app.core.model.CategoryKind
+import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.data.file.AppDirs
 import com.nexo.app.data.file.PhotoStore
-import com.nexo.app.core.model.CategoryKind
-import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.common.money.Money
-import com.nexo.app.core.common.period.toIsoText
 import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.core.common.money.Conversion
-import com.nexo.app.core.model.RefData
 import com.nexo.app.widget.WidgetRefresher
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -31,6 +31,8 @@ import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 
 enum class DateOrder(val pattern: String) { YMD("yyyy-MM-dd"), YDM("yyyy-dd-MM"), MDY("MM-dd-yyyy"), DMY("dd-MM-yyyy"), MYD("MM-yyyy-dd"), DYM("dd-yyyy-MM") }
 
@@ -69,6 +71,7 @@ class TsvImporter @Inject constructor(
     private val dirs: AppDirs,
     private val photos: PhotoStore,
     private val widgets: WidgetRefresher,
+    @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     fun files(): List<File> = dirs.imports.listFiles()?.filter { it.name.endsWith(".tsv", true) || it.name.endsWith(".txt", true) }
         ?.sortedByDescending { it.lastModified() }.orEmpty()
@@ -76,7 +79,7 @@ class TsvImporter @Inject constructor(
     fun file(name: String) = File(dirs.imports, name)
 
     /** Copies a picked file into the import folder, renaming on clashes. Returns null when it isn't .tsv / .txt. */
-    suspend fun add(uri: Uri): File? = withContext(Dispatchers.IO) {
+    suspend fun add(uri: Uri): File? = withContext(ioDispatcher) {
         val name = photos.displayName(uri) ?: return@withContext null
         if (!name.endsWith(".tsv", true) && !name.endsWith(".txt", true)) return@withContext null
         val base = name.substringBeforeLast('.')
@@ -117,7 +120,7 @@ class TsvImporter @Inject constructor(
         else file.writeText(text, Charsets.UTF_8)
     }
 
-    suspend fun removeLine(fileName: String, index: Int) = withContext(Dispatchers.IO) {
+    suspend fun removeLine(fileName: String, index: Int) = withContext(ioDispatcher) {
         val f = file(fileName)
         if (!f.exists()) return@withContext
         val (header, lines) = dataLines(f)
@@ -135,7 +138,7 @@ class TsvImporter @Inject constructor(
         }
     }
 
-    suspend fun load(fileName: String, order: DateOrder?): ImportPreview = withContext(Dispatchers.IO) {
+    suspend fun load(fileName: String, order: DateOrder?): ImportPreview = withContext(ioDispatcher) {
         val f = file(fileName)
         if (!f.exists()) return@withContext ImportPreview(emptyList(), false)
         val (header, lines) = dataLines(f)
@@ -254,7 +257,7 @@ class TsvImporter @Inject constructor(
     }.getOrNull()
 
     /** Saves every valid row; failing rows stay in the file. Returns (saved, failed). */
-    suspend fun saveAll(fileName: String, order: DateOrder?): Pair<Int, Int> = withContext(Dispatchers.IO) {
+    suspend fun saveAll(fileName: String, order: DateOrder?): Pair<Int, Int> = withContext(ioDispatcher) {
         val f = file(fileName)
         val preview = load(fileName, order)
         val (header, _) = dataLines(f)
@@ -313,5 +316,5 @@ class TsvImporter @Inject constructor(
         saved to failed.size
     }
 
-    suspend fun delete(names: Collection<String>) = withContext(Dispatchers.IO) { names.forEach { file(it).delete() } }
+    suspend fun delete(names: Collection<String>) = withContext(ioDispatcher) { names.forEach { file(it).delete() } }
 }

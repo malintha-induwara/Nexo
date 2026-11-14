@@ -1,22 +1,22 @@
 package com.nexo.app.data.repository
 
-import com.nexo.app.data.database.NexoDatabase
+import com.nexo.app.core.common.Dispatcher
+import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.core.common.period.toIsoText
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.data.repository.RefRepository
 import com.nexo.app.core.model.Certainty
+import com.nexo.app.core.model.SmsStatus
+import com.nexo.app.data.database.NexoDatabase
+import com.nexo.app.data.database.entity.SmsItemEntity
+import com.nexo.app.data.datastore.DevicePrefs
+import com.nexo.app.data.repository.FxRepository
+import com.nexo.app.data.repository.RefRepository
+import com.nexo.app.data.sms.InboxReader
 import com.nexo.app.data.sms.MemorySmsStore
 import com.nexo.app.data.sms.SmsCorrelator
-import com.nexo.app.core.model.SmsStatus
-import com.nexo.app.domain.sms.SmsApprover
-import com.nexo.app.data.sms.InboxReader
 import com.nexo.app.data.sms.SmsSuggester
-import com.nexo.app.data.database.entity.SmsItemEntity
-import com.nexo.app.data.repository.FxRepository
 import com.nexo.app.data.sms.parser.Redactor
 import com.nexo.app.data.sms.parser.SmsParser
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.nexo.app.domain.sms.SmsApprover
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -24,6 +24,8 @@ import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 
 /** A past message the picker can offer. */
 data class HistoryRow(
@@ -46,6 +48,7 @@ class SmsHistory @Inject constructor(
     private val inbox: InboxReader,
     private val suggester: SmsSuggester,
     private val fx: FxRepository,
+    @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     /** Live capture covers everything from the start point on, so the picker stops there. */
     suspend fun upperBound(until: Long): Long {
@@ -53,7 +56,7 @@ class SmsHistory @Inject constructor(
         return if (started > 0) minOf(until, started) else until
     }
 
-    suspend fun scan(from: Long, until: Long): List<HistoryRow> = withContext(Dispatchers.IO) {
+    suspend fun scan(from: Long, until: Long): List<HistoryRow> = withContext(ioDispatcher) {
         val s = prefs.current()
         val bound = upperBound(until)
         if (from >= bound) return@withContext emptyList()

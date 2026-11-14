@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
+import com.nexo.app.core.common.ApplicationScope
 import com.nexo.app.data.repository.SmsCapture
 import com.nexo.app.data.sms.parser.SmsMessage
 import dagger.hilt.EntryPoint
@@ -11,8 +12,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 @EntryPoint
@@ -20,6 +19,9 @@ import kotlinx.coroutines.launch
 interface SmsEntryPoint {
     fun intake(): SmsIntake
     fun capture(): SmsCapture
+
+    @ApplicationScope
+    fun appScope(): CoroutineScope
 }
 
 fun Context.smsEntry(): SmsEntryPoint = EntryPointAccessors.fromApplication(applicationContext, SmsEntryPoint::class.java)
@@ -35,7 +37,7 @@ class SmsReceiver : BroadcastReceiver() {
             IncomingSms(SmsMessage(sender, list.joinToString("") { it.messageBody.orEmpty() }, list.first().timestampMillis), receivedAt)
         }
         val pending = goAsync()
-        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+        context.smsEntry().appScope().launch {
             try {
                 context.smsEntry().intake().receive(messages)
             } finally {

@@ -3,22 +3,23 @@ package com.nexo.app.data.sms
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.nexo.app.core.common.money.CurrencyCatalog
+import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.Seeder
+import com.nexo.app.data.database.entity.SmsSourceEntity
 import com.nexo.app.data.database.entity.TransactionEntity
-import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.data.datastore.DevicePrefs
+import com.nexo.app.data.network.BankRatesClient
+import com.nexo.app.data.repository.FxRepository
 import com.nexo.app.data.repository.RefRepository
+import com.nexo.app.data.repository.SmsHistory
 import com.nexo.app.data.sms.InboxReader
 import com.nexo.app.data.sms.IncomingSms
 import com.nexo.app.data.sms.SmsSuggester
-import com.nexo.app.data.database.entity.SmsSourceEntity
-import com.nexo.app.data.network.BankRatesClient
-import com.nexo.app.data.repository.FxRepository
-import com.nexo.app.data.repository.SmsHistory
 import com.nexo.app.data.sms.parser.BodyDate
 import com.nexo.app.data.sms.parser.SmsMessage
+import java.time.LocalDateTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,7 +33,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.time.LocalDateTime
 
 /** Picker scan over a fake inbox of synthetic messages. */
 @RunWith(RobolectricTestRunner::class)
@@ -43,8 +43,8 @@ class SmsHistoryTest {
     private val inbox = ArrayList<IncomingSms>()
     private fun at(day: Int, h: Int, m: Int) = LocalDateTime.of(2026, 11, day, h, m).atZone(BodyDate.ZONE).toInstant().toEpochMilli()
 
-    private class FakeInbox(context: Context, val messages: List<IncomingSms>) : InboxReader(context) {
-        override fun read(after: Long, from: Long, until: Long, limit: Int) =
+    private class FakeInbox(context: Context, val messages: List<IncomingSms>) : InboxReader(context, Dispatchers.IO) {
+        override suspend fun read(after: Long, from: Long, until: Long, limit: Int) =
             messages.filter { it.receivedAt > after && it.receivedAt >= from && it.receivedAt < until }.sortedBy { it.receivedAt }.take(limit)
     }
 
@@ -55,8 +55,8 @@ class SmsHistoryTest {
         Seeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
         val refs = RefRepository(db, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
         val prefs = DevicePrefs(context)
-        val fx = FxRepository(db, refs, prefs, BankRatesClient())
-        history = SmsHistory(db, prefs, refs, FakeInbox(context, inbox), SmsSuggester(db, refs, fx), fx)
+        val fx = FxRepository(db, refs, prefs, BankRatesClient(Dispatchers.IO))
+        history = SmsHistory(db, prefs, refs, FakeInbox(context, inbox), SmsSuggester(db, refs, fx), fx, Dispatchers.IO)
         db.smsDao().upsertSource(SmsSourceEntity("COMBANK", "4321", "1", 0))
     }
 

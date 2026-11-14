@@ -55,8 +55,8 @@ class SmsApproverTest {
         Seeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val refs = RefRepository(db, scope)
-        writer = TransactionWriter(context, db, refs, PhotoStore(context, AppDirs(context), db), WidgetRefresher(context, scope))
-        approver = SmsApprover(db, refs, writer, SmsSuggester(db, refs, com.nexo.app.data.repository.FxRepository(db, refs, com.nexo.app.data.datastore.DevicePrefs(context), com.nexo.app.data.network.BankRatesClient())))
+        writer = TransactionWriter(context, db, refs, PhotoStore(context, AppDirs(context), db, Dispatchers.IO), WidgetRefresher(context, scope))
+        approver = SmsApprover(db, refs, writer, SmsSuggester(db, refs, com.nexo.app.data.repository.FxRepository(db, refs, com.nexo.app.data.datastore.DevicePrefs(context), com.nexo.app.data.network.BankRatesClient(Dispatchers.IO))))
     }
 
     @After

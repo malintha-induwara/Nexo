@@ -1,14 +1,9 @@
 package com.nexo.app.data.network
 
 import com.nexo.app.BuildConfig
+import com.nexo.app.core.common.Dispatcher
+import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.data.database.entity.FxSnapshotEntity
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
@@ -17,19 +12,32 @@ import java.util.Currency
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 
 /**
  * AllRatesToday Sri Lankan bank boards. The request carries nothing about the user: no amounts, no merchants.
  * Rates are LKR per one unit of the foreign currency.
  */
 @Singleton
-class BankRatesClient @Inject constructor() {
+class BankRatesClient @Inject constructor(
+    @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
+) {
     private val key: String = BuildConfig.ALLRATESTODAY_API_KEY
 
     val hasKey: Boolean get() = key.isNotBlank()
 
     /** The latest boards, or the stored boards for [date] (that day or the nearest of the 5 before). Null on any failure. */
-    fun fetch(date: LocalDate? = null): List<FxSnapshotEntity>? {
+    suspend fun fetch(date: LocalDate? = null): List<FxSnapshotEntity>? = withContext(ioDispatcher) { fetchBlocking(date) }
+
+    private fun fetchBlocking(date: LocalDate?): List<FxSnapshotEntity>? {
         if (!hasKey) return null
         val url = URL(BASE + (date?.let { "?date=$it" } ?: ""))
         val connection = (url.openConnection() as HttpURLConnection).apply {

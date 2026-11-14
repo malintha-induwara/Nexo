@@ -11,6 +11,7 @@ import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.Seeder
 import com.nexo.app.data.repository.RestoreResult
 import java.io.File
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -79,7 +80,7 @@ class LegacyImporterTest {
                 "INSERT INTO ZETC (uid, ZDATATYPE, ZDATA, ZZDATA, isDel) VALUES ('s1',-23459,'25','',0), ('s2',-8457,'1234','60',0), ('s3',19810,'1','',0), ('s4',-6179,'1','',0), ('s5',10012,'2','',0)",
             ).forEach { src.execSQL(it) }
         }
-        runBlocking { assertEquals(RestoreResult.Success, LegacyImporter(db, Seeder(context, db)).import(file)) }
+        runBlocking { assertEquals(RestoreResult.Success, LegacyImporter(db, Seeder(context, db), Dispatchers.IO).import(file)) }
     }
 
     @After

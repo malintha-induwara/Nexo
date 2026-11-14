@@ -6,6 +6,8 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
 import androidx.room.withTransaction
+import com.nexo.app.core.common.Dispatcher
+import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.data.backup.LegacyImporter
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.datastore.DevicePrefs
@@ -19,7 +21,7 @@ import java.time.format.FormatStyle
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
 enum class BackupFormat { NEXO, LEGACY_ANDROID, LEGACY_IPHONE, UNKNOWN }
@@ -40,6 +42,7 @@ class BackupManager @Inject constructor(
     private val prefs: DevicePrefs,
     private val legacy: LegacyImporter,
     private val widgets: WidgetRefresher,
+    @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     /** "Nexo(<date>-<HHmmss>).nexobak" with a locale-dependent date part. */
     fun backupFileName(now: LocalDateTime = LocalDateTime.now(), prefix: String = "Nexo"): String {
@@ -56,7 +59,7 @@ class BackupManager @Inject constructor(
         db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(TRUNCATE)").use { it.moveToFirst() }
     }
 
-    suspend fun writeBackup(target: Uri): Boolean = withContext(Dispatchers.IO) {
+    suspend fun writeBackup(target: Uri): Boolean = withContext(ioDispatcher) {
         runCatching {
             checkpoint()
             context.contentResolver.openOutputStream(target, "wt")?.use { out -> dirs.database.inputStream().use { it.copyTo(out) } } ?: error("no stream")
@@ -64,7 +67,7 @@ class BackupManager @Inject constructor(
         }.getOrDefault(false)
     }
 
-    suspend fun writeBackup(target: File): Boolean = withContext(Dispatchers.IO) {
+    suspend fun writeBackup(target: File): Boolean = withContext(ioDispatcher) {
         runCatching {
             checkpoint()
             target.parentFile?.mkdirs()
@@ -74,13 +77,13 @@ class BackupManager @Inject constructor(
     }
 
     /** Copy in the temp folder for the share sheet. */
-    suspend fun shareCopy(): File? = withContext(Dispatchers.IO) {
+    suspend fun shareCopy(): File? = withContext(ioDispatcher) {
         val f = File(dirs.temp, "nexo_backup.$EXTENSION")
         if (writeBackup(f)) f else null
     }
 
     /** Automatic daily backup: keeps the 14 newest files. */
-    suspend fun autoBackup(): Boolean = withContext(Dispatchers.IO) {
+    suspend fun autoBackup(): Boolean = withContext(ioDispatcher) {
         val ok = writeBackup(File(dirs.backups, backupFileName()))
         if (ok) {
             prefs.setLastAutoBackup(System.currentTimeMillis())
@@ -98,7 +101,7 @@ class BackupManager @Inject constructor(
         return accepted.any { name.endsWith(it) } || name.endsWith("sql")
     }
 
-    suspend fun restore(uri: Uri): RestoreResult = withContext(Dispatchers.IO) {
+    suspend fun restore(uri: Uri): RestoreResult = withContext(ioDispatcher) {
         val temp = File(dirs.temp, "restore_candidate.db")
         runCatching {
             context.contentResolver.openInputStream(uri)?.use { input -> temp.outputStream().use { input.copyTo(it) } } ?: return@withContext RestoreResult.Failed(null)
@@ -106,7 +109,7 @@ class BackupManager @Inject constructor(
         restoreFile(temp).also { temp.delete() }
     }
 
-    suspend fun restoreFile(file: File): RestoreResult = withContext(Dispatchers.IO) {
+    suspend fun restoreFile(file: File): RestoreResult = withContext(ioDispatcher) {
         when (detect(file)) {
             BackupFormat.NEXO -> runCatching { copyNexo(file); RestoreResult.Success }.getOrElse { RestoreResult.Failed(it.message) }
             BackupFormat.LEGACY_ANDROID -> legacy.import(file)

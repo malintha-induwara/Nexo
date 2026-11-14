@@ -3,16 +3,18 @@ package com.nexo.app.data.repository
 import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
+import com.nexo.app.core.common.Dispatcher
+import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.file.AppDirs
 import com.nexo.app.data.file.PhotoStore
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 
 /** Photo export / import through a user-picked folder. */
 @Singleton
@@ -20,6 +22,7 @@ class PhotoTransfer @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dirs: AppDirs,
     private val db: NexoDatabase,
+    @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     fun localCount(): Int = dirs.photos.listFiles()?.size ?: 0
 
@@ -35,7 +38,7 @@ class PhotoTransfer @Inject constructor(
     }
 
     /** Copies referenced photos that the folder doesn't have yet. */
-    suspend fun export(tree: Uri, progress: (Int, Int) -> Unit): Int = withContext(Dispatchers.IO) {
+    suspend fun export(tree: Uri, progress: (Int, Int) -> Unit): Int = withContext(ioDispatcher) {
         val referenced = db.photoDao().getAll().map { it.fileName }.toSet()
         val files = dirs.photos.listFiles()?.filter { it.name in referenced }.orEmpty()
         val existing = children(tree).map { it.second }.toSet()
@@ -53,7 +56,7 @@ class PhotoTransfer @Inject constructor(
     }
 
     /** Copies every image file of the folder into the photo folder, overwriting same-named files. */
-    suspend fun import(tree: Uri, progress: (Int, Int) -> Unit): Int = withContext(Dispatchers.IO) {
+    suspend fun import(tree: Uri, progress: (Int, Int) -> Unit): Int = withContext(ioDispatcher) {
         val images = children(tree).filter { (_, name, _) -> name.substringAfterLast('.', "").lowercase(Locale.ROOT) in PhotoStore.SUPPORTED }
         images.forEachIndexed { i, (id, name, _) ->
             progress(i + 1, images.size)

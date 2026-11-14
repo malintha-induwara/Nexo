@@ -11,10 +11,10 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import com.nexo.app.core.common.Dispatcher
+import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.data.database.NexoDatabase
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.MessageDigest
@@ -22,6 +22,8 @@ import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 
 data class StoredPhoto(val fileName: String, val size: Long, val checksum: String)
 
@@ -31,6 +33,7 @@ class PhotoStore @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dirs: AppDirs,
     private val db: NexoDatabase,
+    @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     fun file(fileName: String): File = File(dirs.photos, fileName)
 
@@ -51,7 +54,7 @@ class PhotoStore @Inject constructor(
     fun isSupported(uri: Uri): Boolean = extensionOf(uri)?.let { it in SUPPORTED } ?: true
 
     /** Copies [uri] into the photo folder, reusing an identical stored file (MD5) and downscaling sources over 2 MB. */
-    suspend fun importUri(uri: Uri): StoredPhoto? = withContext(Dispatchers.IO) {
+    suspend fun importUri(uri: Uri): StoredPhoto? = withContext(ioDispatcher) {
         val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return@withContext null
         val checksum = md5(bytes)
         db.photoDao().byChecksum(checksum)?.let { existing ->
@@ -105,14 +108,14 @@ class PhotoStore @Inject constructor(
     }
 
     /** Removes files that no photo row references any more. */
-    suspend fun deleteUnreferenced(fileNames: Collection<String>) = withContext(Dispatchers.IO) {
+    suspend fun deleteUnreferenced(fileNames: Collection<String>) = withContext(ioDispatcher) {
         for (name in fileNames.toSet()) {
             if (db.photoDao().countByFileName(name) == 0) file(name).delete()
         }
     }
 
     /** Saves a copy into the shared Pictures/Nexo folder. */
-    suspend fun exportToGallery(fileName: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun exportToGallery(fileName: String): Boolean = withContext(ioDispatcher) {
         val src = file(fileName)
         if (!src.exists()) return@withContext false
         runCatching {

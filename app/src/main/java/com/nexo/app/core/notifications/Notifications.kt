@@ -15,6 +15,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.nexo.app.MainActivity
 import com.nexo.app.R
+import com.nexo.app.core.common.ApplicationScope
 import com.nexo.app.core.common.NexoIntents
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.data.datastore.DevicePrefs
@@ -28,8 +29,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 @EntryPoint
@@ -38,6 +37,9 @@ interface NotificationsEntryPoint {
     fun prefs(): DevicePrefs
     fun refs(): RefRepository
     fun widgets(): WidgetRefresher
+
+    @ApplicationScope
+    fun appScope(): CoroutineScope
 }
 
 object Notifications {
@@ -183,7 +185,7 @@ private fun Context.entry() = EntryPointAccessors.fromApplication(applicationCon
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val pending = goAsync()
-        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+        context.entry().appScope().launch {
             try {
                 val s = context.entry().prefs().current()
                 // DayOfWeek 1 = Monday … 7 = Sunday.
@@ -199,7 +201,7 @@ class ReminderReceiver : BroadcastReceiver() {
 class QuickAddRepostReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val pending = goAsync()
-        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+        context.entry().appScope().launch {
             try {
                 val e = context.entry()
                 if (e.prefs().current().setupDone && e.refs().snapshot().settings.quickAddNotification) Notifications.updateQuickAdd(context, true)
@@ -217,7 +219,7 @@ class BootReceiver : BroadcastReceiver() {
             intent.action != AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED
         ) return
         val pending = goAsync()
-        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+        context.entry().appScope().launch {
             try {
                 val e = context.entry()
                 val s = e.prefs().current()
