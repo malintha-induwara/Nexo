@@ -121,6 +121,18 @@
     <string name="fee_mode_auto">Always add %s</string>
     <string name="fee_mode_never">Never ask</string>
 
+    <!-- FX estimates (NQ-010/011) -->
+    <string name="fx_side_sell">sell</string>
+    <string name="fx_side_buy">buy</string>
+    <string name="fx_source_median">Bank median</string>
+    <string name="fx_source_official">CBSL rate + spread</string>
+    <string name="fx_source_manual">Your rate</string>
+    <string name="fx_rate_line">%1$s %2$s %3$s · %4$s</string>
+    <string name="fx_rate_line_manual">%1$s %2$s</string>
+    <string name="fx_estimate_note">%1$s ≈ %2$s · %3$s</string>
+    <string name="fx_edit_hint">This is an FX estimate. Change the amount to what your bank charged.</string>
+    <string name="fx_attribution">Rates: AllRatesToday. Indicative; your card network\'s rate may differ.</string>
+
     <!-- Settings -->
     <string name="sms_settings_title">Bank SMS</string>
     <string name="sms_capture_title">Auto-capture bank SMS</string>

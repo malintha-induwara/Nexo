@@ -62,6 +62,9 @@ data class EntryUi(
     val inputOrder: InputOrder = InputOrder.ACCOUNT_FIRST,
     val presetAccountId: String? = null,
     val presetCategoryId: String? = null,
+    /** NQ-011/012: the foreign amount and the rate behind an estimated amount; [fxFromApi] adds the attribution link. */
+    val fxNote: String? = null,
+    val fxFromApi: Boolean = false,
 ) {
     val isTransfer: Boolean get() = type == EntryType.TRANSFER
 

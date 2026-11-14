@@ -194,6 +194,7 @@ private fun statusText(item: SmsItemEntity, now: Long): String? {
         missing != null -> stringResource(missingLabel(missing))
         left <= 5 -> pluralStringResource(R.plurals.sms_expires_in, left.coerceAtLeast(1), left.coerceAtLeast(1))
         item.linkedItemId != null -> stringResource(R.string.sms_refund)
+        item.certainty == Certainty.ESTIMATED && item.fxRate != null -> fxRateLine(LocalContext.current, item)
         item.reason != null -> stringResource(reasonLabel(item.reason))
         ageDays >= 7 -> stringResource(R.string.sms_still_pending)
         item.evidenceCount > 1 && item.certainty == Certainty.UNVERIFIED ->

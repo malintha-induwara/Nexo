@@ -5,7 +5,9 @@ import android.util.Log
 import com.nexo.app.core.database.NexoDatabase
 import com.nexo.app.core.settings.DevicePrefs
 import com.nexo.app.core.settings.DeviceSettings
+import com.nexo.app.sms.Certainty
 import com.nexo.app.sms.SmsCorrelator
+import com.nexo.app.sms.fx.FxSyncWorker
 import com.nexo.app.sms.data.RoomSmsStore
 import com.nexo.app.sms.parse.Redactor
 import com.nexo.app.sms.parse.SmsMessage
@@ -34,7 +36,7 @@ class SmsIntake @Inject constructor(
     private val mutex = Mutex()
     private val correlator by lazy { SmsCorrelator(RoomSmsStore(db.smsDao())) }
 
-    /** Returns how many queue items were created or changed. */
+    /** Returns how many queue items were created or changed. [notify] also posts the notification and schedules rate syncs. */
     suspend fun receive(batch: List<IncomingSms>, notify: Boolean = true): Int = receive(batch, prefs.current(), notify)
 
     internal suspend fun receive(batch: List<IncomingSms>, s: DeviceSettings, notify: Boolean): Int = mutex.withLock {
@@ -42,6 +44,7 @@ class SmsIntake @Inject constructor(
         if (!s.setupDone || !s.smsCaptureEnabled || s.smsCaptureStartedAt == 0L) return@withLock 0
         val parser = SmsParser(s.smsCustomSenders)
         var changed = 0
+        var foreign = false
         for (incoming in batch.sortedBy { it.message.timestamp }) {
             if (incoming.receivedAt < s.smsCaptureStartedAt) continue
             val outcome = try {
@@ -54,8 +57,13 @@ class SmsIntake @Inject constructor(
                 continue
             }
             if (outcome.changesQueue) changed++
+            if ((outcome as? SmsCorrelator.Outcome.Created)?.item?.certainty == Certainty.ESTIMATED) foreign = true
         }
-        if (changed > 0 && notify) notifyPending()
+        if (notify) {
+            if (changed > 0) notifyPending()
+            // NQ-010: a new foreign-currency item asks for fresh rates once the phone is online.
+            if (foreign) FxSyncWorker.enqueue(context)
+        }
         changed
     }
 

@@ -165,18 +165,22 @@ interface SmsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSnapshots(rows: List<FxSnapshotEntity>)
 
-    @Query("SELECT MAX(capturedAt) FROM fx_snapshots")
-    suspend fun latestSnapshotAt(): Long?
+    @Query("SELECT * FROM fx_snapshots WHERE bank = :bank AND ccy = :ccy ORDER BY capturedAt DESC LIMIT 1")
+    suspend fun latestRate(bank: String, ccy: String): FxSnapshotEntity?
 
-    /** The newest fetch on or before [at] that has [ccy]; null when Nexo has no history that old. */
-    @Query("SELECT MAX(capturedAt) FROM fx_snapshots WHERE ccy = :ccy AND capturedAt <= :at")
-    suspend fun snapshotAtOrBefore(ccy: String, at: Long): Long?
+    /** Each bank's latest board for [ccy] captured at or before [at] (NQ-011 step 3). */
+    @Query(
+        "SELECT f.* FROM fx_snapshots f JOIN (SELECT bank, MAX(capturedAt) AS m FROM fx_snapshots WHERE ccy = :ccy AND capturedAt <= :at GROUP BY bank) l " +
+            "ON f.bank = l.bank AND f.capturedAt = l.m WHERE f.ccy = :ccy",
+    )
+    suspend fun boardAtOrBefore(ccy: String, at: Long): List<FxSnapshotEntity>
 
-    @Query("SELECT MIN(capturedAt) FROM fx_snapshots WHERE ccy = :ccy")
-    suspend fun earliestSnapshot(ccy: String): Long?
-
-    @Query("SELECT * FROM fx_snapshots WHERE capturedAt = :capturedAt AND ccy = :ccy")
-    suspend fun ratesAt(capturedAt: Long, ccy: String): List<FxSnapshotEntity>
+    /** Each bank's earliest board for [ccy]: for transactions older than Nexo's rate history. */
+    @Query(
+        "SELECT f.* FROM fx_snapshots f JOIN (SELECT bank, MIN(capturedAt) AS m FROM fx_snapshots WHERE ccy = :ccy GROUP BY bank) l " +
+            "ON f.bank = l.bank AND f.capturedAt = l.m WHERE f.ccy = :ccy",
+    )
+    suspend fun earliestBoard(ccy: String): List<FxSnapshotEntity>
 }
 
 /** Live capture's [com.nexo.app.sms.SmsStore]. */

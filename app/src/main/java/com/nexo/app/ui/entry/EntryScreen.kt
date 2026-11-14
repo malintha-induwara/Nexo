@@ -597,6 +597,18 @@ fun EntryScreen(key: EntryKey) {
                     colors = quietFieldColors(),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = Space.s, vertical = Space.xs).onFocusChanged { if (it.isFocused) { vm.closePanel(); vm.enterEdit() } },
                 )
+                s.fxNote?.let { note ->
+                    Column(Modifier.padding(horizontal = Space.gutter, vertical = Space.s)) {
+                        Text(note, style = NexoType.Meta, color = colors.textSecondary)
+                        if (s.fxFromApi) {
+                            Text(
+                                stringResource(R.string.fx_attribution),
+                                Modifier.clickable { com.nexo.app.ui.sms.openRatesAttribution(context) }.padding(top = Space.xs),
+                                style = NexoType.Meta, color = colors.textTertiary,
+                            )
+                        }
+                    }
+                }
                 s.sourceText?.let { src ->
                     Column(Modifier.padding(horizontal = Space.gutter, vertical = Space.s)) {
                         Text(stringResource(R.string.original_text).uppercase(Locale.getDefault()), style = NexoType.Caps, color = colors.textTertiary)

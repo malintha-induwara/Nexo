@@ -17,7 +17,11 @@ import javax.inject.Singleton
  * card digits first, then the bank's default account; categories only from what the user taught Nexo.
  */
 @Singleton
-class SmsSuggester @Inject constructor(private val db: NexoDatabase, private val refs: RefRepository) {
+class SmsSuggester @Inject constructor(
+    private val db: NexoDatabase,
+    private val refs: RefRepository,
+    private val fx: com.nexo.app.sms.fx.FxRepository,
+) {
 
     suspend fun prepare(item: SmsItemEntity, ref: RefData? = null): SmsItemEntity {
         val r = ref ?: refs.snapshot()
@@ -38,6 +42,7 @@ class SmsSuggester @Inject constructor(private val db: NexoDatabase, private val
         if (out.certainty == Certainty.ESTIMATED && account != null && r.accountCurrency(account).isoCode.equals(out.currency, ignoreCase = true)) {
             out = out.copy(certainty = Certainty.EXACT, reason = null, feeRoute = null)
         }
-        return out
+        // NQ-011 from local snapshots only; the sync worker fetches and fills "Rate pending" items later.
+        return fx.estimate(out, r)
     }
 }

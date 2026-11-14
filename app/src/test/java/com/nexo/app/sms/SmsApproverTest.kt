@@ -50,7 +50,7 @@ class SmsApproverTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val refs = RefRepository(db, scope)
         writer = TransactionWriter(context, db, refs, PhotoStore(context, AppDirs(context), db), WidgetRefresher(context, scope))
-        approver = SmsApprover(db, refs, writer, SmsSuggester(db, refs))
+        approver = SmsApprover(db, refs, writer, SmsSuggester(db, refs, com.nexo.app.sms.fx.FxRepository(db, refs, com.nexo.app.core.settings.DevicePrefs(context), com.nexo.app.sms.fx.BankRatesClient())))
     }
 
     @After

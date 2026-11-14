@@ -92,6 +92,7 @@ private sealed interface QueueSheet {
 @Composable
 fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
     val ref by vm.ref.collectAsStateWithLifecycle()
@@ -199,6 +200,15 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                             onRestore = { haptics.confirm(); vm.restore(listOf(item.id)) },
                             onAmount = { editAmount = item },
                         )
+                    }
+                    if (list.any { it.status == SmsStatus.PENDING && it.rateFromApi }) {
+                        item(key = "fx_attribution") {
+                            Text(
+                                stringResource(R.string.fx_attribution),
+                                Modifier.fillMaxWidth().clickable { openRatesAttribution(context) }.padding(horizontal = Space.xxl, vertical = Space.m),
+                                style = NexoType.Meta, color = colors.textSecondary, textAlign = TextAlign.Center,
+                            )
+                        }
                     }
                     item(key = "privacy") {
                         Text(

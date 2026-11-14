@@ -41,8 +41,12 @@ class NexoApplication : Application(), Configuration.Provider {
                         com.nexo.app.work.Notifications.updateQuickAdd(this@NexoApplication, refs.snapshot().settings.quickAddNotification)
                     }
                 }
-                // NQ-031 catch-up and NQ-033 expiry run at app start and on every foreground.
-                scope.launch { smsCapture.refresh() }
+                // NQ-031 catch-up and NQ-033 expiry run at app start and on every foreground; rates refresh at most every 6 hours.
+                scope.launch {
+                    smsCapture.refresh()
+                    val s = prefs.current()
+                    if (s.setupDone && s.smsCaptureEnabled) com.nexo.app.sms.fx.FxSyncWorker.enqueue(this@NexoApplication)
+                }
             }
 
             override fun onStop(owner: LifecycleOwner) {

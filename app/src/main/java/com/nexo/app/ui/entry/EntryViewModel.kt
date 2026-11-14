@@ -30,6 +30,7 @@ import com.nexo.app.domain.TxDraft
 import com.nexo.app.ui.HomeState
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
+import com.nexo.app.ui.sms.rateFromApi
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -91,7 +92,7 @@ class EntryViewModel @AssistedInject constructor(
             val r = refs.snapshot()
             val base = EntryUi(inputOrder = r.settings.inputOrder, currencyId = r.mainCurrency.id, feeCurrencyId = r.mainCurrency.id)
             val loaded = when (key.mode) {
-                EntryMode.EDIT -> loadExisting(r, base, copy = false)
+                EntryMode.EDIT -> loadExisting(r, base, copy = false).let { s -> key.txId?.let { withFxNote(s, it, r) } ?: s }
                 EntryMode.COPY -> loadExisting(r, base, copy = true)
                 EntryMode.FAVORITE -> applyFavorite(r, base.copy(mode = EntryMode.FAVORITE), key.favoriteId)
                 EntryMode.REPEAT_EDIT -> loadRule(r, base)
@@ -282,8 +283,11 @@ class EntryViewModel @AssistedInject constructor(
             is com.nexo.app.sms.approve.FeePlan.Ask -> plan.prefill.takeIf { !plan.fxDifference }
             com.nexo.app.sms.approve.FeePlan.None -> null
         }
+        val estimated = item.certainty == com.nexo.app.sms.Certainty.ESTIMATED
         return base.copy(
             mode = EntryMode.SMS,
+            fxNote = if (estimated) com.nexo.app.ui.sms.fxEstimateNote(context, item, r) else null,
+            fxFromApi = estimated && item.rateFromApi,
             feeExpanded = presetFee != null,
             feeAmount = presetFee,
             feeLoaded = true,
@@ -311,6 +315,16 @@ class EntryViewModel @AssistedInject constructor(
         val fee = d.fee ?: return d
         if (key.mode != EntryMode.SMS) return d
         return d.copy(fee = fee.copy(categoryId = writer.bankFeeCategory()))
+    }
+
+    /** An approved SMS transaction still booked at an FX estimate (NQ-012): editing its amount records the actual one. */
+    private var linkedEstimate: com.nexo.app.sms.data.SmsItemEntity? = null
+
+    private suspend fun withFxNote(s: EntryUi, txId: String, r: RefData): EntryUi {
+        val item = db.smsDao().byTransaction(txId)?.takeIf { it.awaitingActual } ?: return s
+        linkedEstimate = item
+        val note = com.nexo.app.ui.sms.fxEstimateNote(context, item, r) ?: return s
+        return s.copy(fxNote = note + "\n" + context.getString(R.string.fx_edit_hint), fxFromApi = item.rateFromApi)
     }
 
     /** NQ-003 Deny from the form. Nothing is written to the ledger. */
@@ -598,11 +612,20 @@ class EntryViewModel @AssistedInject constructor(
                     home.saved(id)
                     if (key.mode == EntryMode.SMS && key.smsItemId != null) {
                         val s = _ui.value
+                        // NQ-012: changing an estimate's amount records what the bank actually charged.
+                        smsItem?.let { item ->
+                            val estimate = item.estimatedAmount
+                            if (item.certainty == com.nexo.app.sms.Certainty.ESTIMATED && s.amount != null && estimate != null && s.amount != estimate) sms.setAmount(item.id, s.amount)
+                        }
                         val bankAccount = if (smsItem?.kind == com.nexo.app.sms.SmsKind.TRANSFER_IN) s.toAccountId else s.accountId
                         val fee = s.feeAmount?.takeIf { s.feeExpanded && it > 0 }
                         if (fee != null && !s.isTransfer) writer.addFee(id, fee)
                         sms.markApproved(key.smsItemId, id, bankAccount, if (s.isTransfer) null else s.categoryId)
                         smsItem?.let { item -> if (fee != null) sms.recordFee(item, bankAccount, com.nexo.app.sms.approve.FeeChoice(fee)) }
+                    }
+                    linkedEstimate?.let { item ->
+                        val amount = _ui.value.amount
+                        if (key.mode == EntryMode.EDIT && amount != null && amount != original?.amount) sms.setAmount(item.id, amount)
                     }
                     afterSave(continueAfter)
                 }

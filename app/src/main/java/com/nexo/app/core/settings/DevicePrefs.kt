@@ -75,6 +75,8 @@ data class DeviceSettings(
     /** NQ-030 re-enable hint: messages in [smsGapFrom, smsGapUntil) were not captured. 0 = no hint. */
     val smsGapFrom: Long = 0,
     val smsGapUntil: Long = 0,
+    /** Last successful AllRatesToday fetch (NQ-010: at most every 6 hours). */
+    val fxFetchedAt: Long = 0,
 ) {
     val lockEnabled: Boolean get() = pinHash != null
 }
@@ -118,6 +120,7 @@ class DevicePrefs @Inject constructor(@ApplicationContext private val context: C
         val smsSeenAt = longPreferencesKey("sms_seen_at")
         val smsGapFrom = longPreferencesKey("sms_gap_from")
         val smsGapUntil = longPreferencesKey("sms_gap_until")
+        val fxFetchedAt = longPreferencesKey("fx_fetched_at")
     }
 
     private fun widgetModeKey(id: Int) = intPreferencesKey("widget_mode_$id")
@@ -160,6 +163,7 @@ class DevicePrefs @Inject constructor(@ApplicationContext private val context: C
             smsSeenAt = p[K.smsSeenAt] ?: 0,
             smsGapFrom = p[K.smsGapFrom] ?: 0,
             smsGapUntil = p[K.smsGapUntil] ?: 0,
+            fxFetchedAt = p[K.fxFetchedAt] ?: 0,
         )
     }
 
@@ -230,6 +234,7 @@ class DevicePrefs @Inject constructor(@ApplicationContext private val context: C
     suspend fun setSmsStoreFullText(v: Boolean) = context.dataStore.edit { it[K.smsStoreFullText] = v }
     suspend fun setSmsCustomSenders(v: Set<String>) = context.dataStore.edit { it[K.smsCustomSenders] = v }
     suspend fun setSmsSeenAt(v: Long) = context.dataStore.edit { it[K.smsSeenAt] = v }
+    suspend fun setFxFetchedAt(v: Long) = context.dataStore.edit { it[K.fxFetchedAt] = v }
     suspend fun clearSmsGap() = context.dataStore.edit {
         it[K.smsGapFrom] = 0
         it[K.smsGapUntil] = 0

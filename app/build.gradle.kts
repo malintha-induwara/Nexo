@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -6,6 +8,12 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.room)
 }
+
+// AllRatesToday API key for FX estimates (spec-money-master-sl 04 NQ-010). Lives in local.properties, which is
+// never committed: allratestoday.apiKey=… Without it the app falls back to the rates set in Nexo's currency settings.
+val allRatesTodayKey: String = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}.getProperty("allratestoday.apiKey").orEmpty().trim()
 
 android {
     namespace = "com.nexo.app"
@@ -18,6 +26,7 @@ android {
         versionCode = 1
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "ALLRATESTODAY_API_KEY", "\"$allRatesTodayKey\"")
     }
 
     buildTypes {

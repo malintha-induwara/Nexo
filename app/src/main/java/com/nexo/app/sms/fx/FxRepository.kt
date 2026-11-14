@@ -1,0 +1,118 @@
+package com.nexo.app.sms.fx
+
+import com.nexo.app.core.database.NexoDatabase
+import com.nexo.app.core.settings.DevicePrefs
+import com.nexo.app.data.RefRepository
+import com.nexo.app.domain.RefData
+import com.nexo.app.sms.Certainty
+import com.nexo.app.sms.RateSide
+import com.nexo.app.sms.SmsStatus
+import com.nexo.app.sms.data.FxSnapshotEntity
+import com.nexo.app.sms.data.SmsItemEntity
+import com.nexo.app.sms.parse.BodyDate
+import com.nexo.app.sms.parse.Banks
+import java.time.Instant
+import java.time.LocalDate
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * Exchange-rate snapshots (NQ-010) and the LKR estimates of foreign-currency queue items (NQ-011).
+ * Without an API key, or before the first fetch, Nexo's own currency rate is used where one is set.
+ */
+@Singleton
+class FxRepository @Inject constructor(
+    private val db: NexoDatabase,
+    private val refs: RefRepository,
+    private val prefs: DevicePrefs,
+    private val client: BankRatesClient,
+) {
+    private val dao get() = db.smsDao()
+
+    val online: Boolean get() = client.hasKey
+
+    /** NQ-010 fetch policy: at most every 6 hours. Returns whether a fetch succeeded. */
+    suspend fun refreshIfStale(now: Long = System.currentTimeMillis()): Boolean {
+        if (!online || now - prefs.current().fxFetchedAt < REFRESH_MS) return false
+        val rows = client.fetch() ?: return false
+        store(rows)
+        prefs.setFxFetchedAt(now)
+        return true
+    }
+
+    /**
+     * New boards are kept only when a bank's rates changed since its last stored board, so the history stays small.
+     * Older boards (a past day fetched with `date=`) always fill the history.
+     */
+    suspend fun store(rows: List<FxSnapshotEntity>) {
+        val fresh = rows.filter { r ->
+            val last = dao.latestRate(r.bank, r.ccy)
+            last == null || r.capturedAt < last.capturedAt ||
+                (r.capturedAt > last.capturedAt && (last.buy != r.buy || last.sell != r.sell || last.official != r.official))
+        }
+        if (fresh.isNotEmpty()) dao.insertSnapshots(fresh)
+    }
+
+    /**
+     * Fills [item]'s estimate. The board is each bank's latest snapshot captured on or before the transaction's date
+     * (Sri Lankan time). Older than Nexo's history: with [allowNetwork], the API's stored board for that day is fetched;
+     * otherwise the earliest snapshot is used and its date shows.
+     */
+    suspend fun estimate(item: SmsItemEntity, ref: RefData? = null, allowNetwork: Boolean = false): SmsItemEntity {
+        if (item.certainty != Certainty.ESTIMATED || item.actualAmount != null) return item
+        val r = ref ?: refs.snapshot()
+        val side = if (item.kind.isInflow) RateSide.BUY else RateSide.SELL
+        val day = Instant.ofEpochMilli(item.occurredAt).atZone(BodyDate.ZONE).toLocalDate()
+        val endOfDay = day.plusDays(1).atStartOfDay(BodyDate.ZONE).toInstant().toEpochMilli() - 1
+        var board = recent(dao.boardAtOrBefore(item.currency, endOfDay), endOfDay)
+        if (board.isEmpty() && allowNetwork && online) {
+            client.fetch(day)?.let { store(it) }
+            board = recent(dao.boardAtOrBefore(item.currency, endOfDay), endOfDay)
+        }
+        if (board.isEmpty()) board = dao.earliestBoard(item.currency)
+        val issuer = Banks.byName(item.bank)?.rateCode
+        val choice = RateChooser.choose(board, issuer, side) ?: manual(item.currency, r) ?: return item
+        return item.copy(
+            fxRate = choice.rate,
+            fxSide = side,
+            fxSource = choice.source,
+            fxSnapshotAt = choice.snapshotAt,
+            estimatedAmount = RateChooser.estimate(item.amount, choice.rate),
+        )
+    }
+
+    /** Re-estimates pending foreign items that have no confirmed amount, e.g. after a fetch. Returns how many changed. */
+    suspend fun fillPending(allowNetwork: Boolean = false): Int {
+        val ref = refs.snapshot()
+        var changed = 0
+        for (item in dao.pending().filter { it.certainty == Certainty.ESTIMATED && it.actualAmount == null && it.status == SmsStatus.PENDING }) {
+            val updated = estimate(item, ref, allowNetwork)
+            if (updated != item) {
+                dao.update(updated.copy(updatedAt = System.currentTimeMillis()))
+                changed++
+            }
+        }
+        return changed
+    }
+
+    /** NQ-011 last fallback before asking: the rate the user keeps in Nexo's currency settings, when LKR is the main currency. */
+    private fun manual(currency: String, ref: RefData): RateChoice? {
+        if (!ref.mainCurrency.isoCode.equals(LKR, ignoreCase = true)) return null
+        val c = ref.currencies.firstOrNull { it.isoCode.equals(currency, ignoreCase = true) } ?: return null
+        return c.rate.takeIf { it > 0 && !c.isMain }?.let { RateChoice(it, RateChoice.MANUAL, null) }
+    }
+
+    /** Drops banks whose latest board is much older than the transaction (a bank that stopped publishing). */
+    private fun recent(board: List<FxSnapshotEntity>, at: Long): List<FxSnapshotEntity> {
+        val fresh = board.filter { at - it.capturedAt <= STALE_MS }
+        return fresh.ifEmpty { board }
+    }
+
+    companion object {
+        const val REFRESH_MS = 6 * 60 * 60 * 1000L
+        private const val STALE_MS = 10 * 24 * 60 * 60 * 1000L
+        private const val LKR = "LKR"
+
+        fun dayOf(ms: Long): LocalDate = Instant.ofEpochMilli(ms).atZone(BodyDate.ZONE).toLocalDate()
+    }
+}

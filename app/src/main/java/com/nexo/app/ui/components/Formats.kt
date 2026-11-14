@@ -36,6 +36,7 @@ object Formats {
     fun range(start: LocalDate, end: LocalDate): String = "${monthDay(start)} ~ ${monthDay(end)}"
     fun rangeFull(start: LocalDate, end: LocalDate): String = "${shortDate(start)} ~ ${shortDate(end)}"
     /** "Tue, Nov 10" (locale order), for day headers. */
+    fun dayMonth(d: LocalDate): String = d.format(DateTimeFormatter.ofPattern(bestPattern("MMMd"), locale))
     fun weekdayMonthDay(d: LocalDate): String = d.format(DateTimeFormatter.ofPattern(bestPattern("MMMEd"), locale))
     fun dateTime(dt: LocalDateTime): String = dt.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT).withLocale(locale))
     fun isoDate(d: LocalDate): String = d.format(DateTimeFormatter.ISO_LOCAL_DATE)
