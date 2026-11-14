@@ -46,6 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,6 +55,7 @@ import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SwipeMode
 import com.nexo.app.ui.accounts.GroupVisuals
+import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.CategoryTile
@@ -76,6 +78,8 @@ import com.nexo.app.ui.designsystem.component.pressScale
 import com.nexo.app.ui.designsystem.component.rememberCollapsingHeaderState
 import com.nexo.app.ui.designsystem.component.rememberHaptics
 import com.nexo.app.ui.designsystem.component.shrinkToFit
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
@@ -89,6 +93,8 @@ import com.nexo.app.ui.navigation.StatsDetailKind
 import com.nexo.app.ui.navigation.StatsScope
 import com.nexo.app.ui.shell.LocalShell
 import java.math.RoundingMode
+import java.time.LocalDate
+import java.time.YearMonth
 import kotlin.math.abs
 
 @Composable
@@ -105,13 +111,48 @@ private fun percentText(percent: Double, decimals: Int): String =
     percent.toBigDecimal().setScale(decimals, RoundingMode.HALF_UP).toPlainString() + "%"
 
 @Composable
-fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
+fun StatsTabRoute(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val nav = LocalNavigator.current
+    LaunchedEffect(todaySignal) { if (todaySignal > 0) vm.goToday() }
+    StatsTab(
+        state = state,
+        onStep = vm::step,
+        onSetRange = vm::setRange,
+        onSetIncome = vm::setIncome,
+        onSetScope = vm::setScope,
+        onSetMonth = vm::setMonth,
+        onSetAnchor = vm::setAnchor,
+        onOpenRow = { r ->
+            nav.navigate(
+                StatsDetailKey(
+                    r.key,
+                    r.kind,
+                    state.query.scope,
+                    state.data.range.startText,
+                    state.data.range.endText,
+                    r.colorIndex,
+                ),
+            )
+        },
+    )
+}
+
+@Composable
+internal fun StatsTab(
+    state: StatsUiState,
+    onStep: (forward: Boolean) -> Unit,
+    onSetRange: (from: LocalDate, to: LocalDate) -> Unit,
+    onSetIncome: (Boolean) -> Unit,
+    onSetScope: (StatsScope) -> Unit,
+    onSetMonth: (YearMonth) -> Unit,
+    onSetAnchor: (LocalDate) -> Unit,
+    onOpenRow: (StatsRow) -> Unit,
+) {
     val ref = state.ref
     val data = state.data
     val q = state.query
     val income = state.income
-    val nav = LocalNavigator.current
     val colors = LocalNexoColors.current
     val money = LocalMoneyColors.current
     val haptics = rememberHaptics()
@@ -119,7 +160,6 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
     var titlePicker by rememberSaveable { mutableStateOf(false) }
     var selectedSlice by rememberSaveable { mutableIntStateOf(-1) }
     val hero = rememberCollapsingHeaderState()
-    LaunchedEffect(todaySignal) { if (todaySignal > 0) vm.goToday() }
     LaunchedEffect(income, data.range) { hero.expand() }
     val main = ref.mainCurrency
     val rows = if (income) data.income else data.expense
@@ -134,7 +174,7 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
             if (q.scope == StatsScope.PERIOD) {
                 DateRangeChips(q.from, q.to, onChange = { f, t ->
                     selectedSlice = -1
-                    vm.setRange(f, t)
+                    onSetRange(f, t)
                 }, color = colors.text)
             } else {
                 val label = when (q.scope) {
@@ -150,11 +190,11 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
                     label,
                     {
                         selectedSlice = -1
-                        vm.step(false)
+                        onStep(false)
                     },
                     {
                         selectedSlice = -1
-                        vm.step(true)
+                        onStep(true)
                     },
                     if (q.scope == StatsScope.ANNUALLY) null else ({ titlePicker = true }),
                     color = colors.text,
@@ -193,7 +233,7 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
             options = listOf(true, false),
             selected = income,
             onSelect = {
-                vm.setIncome(it)
+                onSetIncome(it)
                 selectedSlice = -1
             },
             label = { isIncome ->
@@ -218,9 +258,9 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
                     if (abs(total) > threshold) {
                         selectedSlice = -1
                         if (swipe == SwipeMode.CHANGE_DATE) {
-                            vm.step(total < 0)
+                            onStep(total < 0)
                         } else {
-                            vm.setIncome(total > 0)
+                            onSetIncome(total > 0)
                         }
                     }
                 })
@@ -264,18 +304,7 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
                     r,
                     ref,
                     main,
-                    onClick = {
-                        nav.navigate(
-                            StatsDetailKey(
-                                r.key,
-                                r.kind,
-                                q.scope,
-                                data.range.startText,
-                                data.range.endText,
-                                r.colorIndex,
-                            ),
-                        )
-                    },
+                    onClick = { onOpenRow(r) },
                     modifier = Modifier.animateItem().padding(
                         horizontal = Space.l,
                         vertical = 3.dp,
@@ -289,7 +318,7 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
             scopeLabel(it)
         }, onSelect = {
             selectedSlice = -1
-            vm.setScope(it)
+            onSetScope(it)
         }, onDismiss = { scopePicker = false })
     }
     if (titlePicker) {
@@ -298,14 +327,14 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
                 ref.settings.periods.monthPeriodContaining(q.anchor).label,
                 onPick = {
                     selectedSlice = -1
-                    vm.setMonth(it)
+                    onSetMonth(it)
                 },
                 onDismiss = { titlePicker = false },
             )
         } else {
             NexoDatePickerDialog(q.anchor, onPick = {
                 selectedSlice = -1
-                vm.setAnchor(it)
+                onSetAnchor(it)
             }, onDismiss = {
                 titlePicker = false
             })
@@ -420,4 +449,42 @@ private fun CategoryCard(
         Spacer(Modifier.width(Space.m))
         AmountText(row.amount, main, style = NexoType.Amount, color = colors.text)
     }
+}
+
+private val previewStatsState = StatsUiState(
+    ref = PreviewData.ref,
+    query = StatsQuery(anchor = PreviewData.today),
+    data = StatsData(
+        range = PreviewData.ref.settings.periods.monthPeriodContaining(PreviewData.today).range,
+        income = listOf(
+            StatsRow("salary", UiText.Raw("Salary"), 250_000.0, 100.0, 0, StatsDetailKind.INCOME),
+        ),
+        expense = listOf(
+            StatsRow("food", UiText.Raw("Food"), 42_500.0, 62.5, 0, StatsDetailKind.EXPENSE),
+            StatsRow(
+                "transport",
+                UiText.Raw("Transport"),
+                18_000.0,
+                26.5,
+                1,
+                StatsDetailKind.EXPENSE,
+            ),
+            StatsRow(KEY_NONE, UiText.Raw("None"), 7_500.0, 11.0, 2, StatsDetailKind.EXPENSE),
+        ),
+    ),
+)
+
+@Preview
+@Composable
+private fun StatsTabPreview() = NexoPreview {
+    StatsTab(
+        state = previewStatsState,
+        onStep = {},
+        onSetRange = { _, _ -> },
+        onSetIncome = {},
+        onSetScope = {},
+        onSetMonth = {},
+        onSetAnchor = {},
+        onOpenRow = {},
+    )
 }

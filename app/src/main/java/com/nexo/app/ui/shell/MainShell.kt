@@ -82,7 +82,7 @@ import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SmsQueueKey
 import com.nexo.app.ui.settings.SettingsTab
-import com.nexo.app.ui.stats.StatsTab
+import com.nexo.app.ui.stats.StatsTabRoute
 import com.nexo.app.ui.transactions.TransactionsTab
 
 enum class MainTab(val label: Int, val icon: ImageVector, val selectedIcon: ImageVector) {
@@ -171,7 +171,7 @@ fun MainShell(vm: MainShellViewModel = hiltViewModel()) {
                 Box(Modifier.fillMaxSize()) {
                     when (t) {
                         MainTab.TRANSACTIONS -> TransactionsTab(todaySignal, queue)
-                        MainTab.STATS -> StatsTab(todaySignal)
+                        MainTab.STATS -> StatsTabRoute(todaySignal)
                         MainTab.ACCOUNTS -> AccountsTab(todaySignal)
                         MainTab.MORE -> SettingsTab()
                     }

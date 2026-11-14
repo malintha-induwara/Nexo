@@ -28,11 +28,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.model.Currency
+import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.AreaChart
@@ -45,6 +47,8 @@ import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.component.PeriodNavigator
 import com.nexo.app.ui.designsystem.component.rememberHaptics
 import com.nexo.app.ui.designsystem.component.shrinkToFit
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoPalette
 import com.nexo.app.ui.designsystem.theme.NexoShapes
@@ -59,30 +63,64 @@ import com.nexo.app.ui.navigation.StatsDetailKind
 import com.nexo.app.ui.navigation.StatsScope
 import com.nexo.app.ui.transactions.BulkAction
 import com.nexo.app.ui.transactions.BulkDialogs
+import com.nexo.app.ui.transactions.BulkEditActions
 import com.nexo.app.ui.transactions.DayGroupList
 import com.nexo.app.ui.transactions.SelectionBar
 import com.nexo.app.ui.transactions.selectedNet
+import java.time.LocalDate
+import java.time.YearMonth
 import java.util.Locale
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
 @Composable
-fun StatsDetailScreen(key: StatsDetailKey) {
+fun StatsDetailRoute(key: StatsDetailKey) {
     val vm =
         hiltViewModel<StatsDetailViewModel, StatsDetailViewModel.Factory>(creationCallback = {
             it.create(key)
         })
     val ui by vm.uiState.collectAsStateWithLifecycle()
+    val nav = LocalNavigator.current
+    StatsDetailScreen(
+        kind = key.kind,
+        ui = ui,
+        bulkActions = vm.bulkActions,
+        onBack = nav::back,
+        onStep = vm::step,
+        onSetRange = vm::setRange,
+        onPickMonth = vm::setMonth,
+        onSelectBreakdown = vm::select,
+        onToggleSelect = vm::toggleSelect,
+        onSetSelection = vm::setSelection,
+        onOpenTransaction = { nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = it)) },
+        onOpenMemos = { nav.navigate(MemoListKey(it.toString())) },
+    )
+}
+
+@Composable
+internal fun StatsDetailScreen(
+    kind: StatsDetailKind,
+    ui: StatsDetailUiState,
+    bulkActions: BulkEditActions,
+    onBack: () -> Unit,
+    onStep: (forward: Boolean) -> Unit,
+    onSetRange: (from: LocalDate, to: LocalDate) -> Unit,
+    onPickMonth: (YearMonth) -> Unit,
+    onSelectBreakdown: (key: String) -> Unit,
+    onToggleSelect: (txId: String) -> Unit,
+    onSetSelection: (Set<String>) -> Unit,
+    onOpenTransaction: (txId: String) -> Unit,
+    onOpenMemos: (date: LocalDate) -> Unit,
+) {
     val ref = ui.ref
     val q = ui.query
     val sel = ui.selected
     val selection = ui.selection
-    val nav = LocalNavigator.current
     var picker by rememberSaveable { mutableStateOf(false) }
     var bulkOpen by remember { mutableStateOf(false) }
     var bulkAction by remember { mutableStateOf<BulkAction?>(null) }
     val main = ref.mainCurrency
-    BackHandler(enabled = selection.isNotEmpty()) { vm.setSelection(emptySet()) }
+    BackHandler(enabled = selection.isNotEmpty()) { onSetSelection(emptySet()) }
     val periodLabel = when (q.scope) {
         StatsScope.WEEKLY -> Formats.range(ui.range.start, ui.range.end)
 
@@ -100,8 +138,8 @@ fun StatsDetailScreen(key: StatsDetailKey) {
 
             StatsScope.WEEKLY -> R.string.weekly_total
 
-            StatsScope.ANNUALLY -> if (key.kind == StatsDetailKind.INCOME ||
-                key.kind == StatsDetailKind.TRANSFER_INCOME_GROUP
+            StatsScope.ANNUALLY -> if (kind == StatsDetailKind.INCOME ||
+                kind == StatsDetailKind.TRANSFER_INCOME_GROUP
             ) {
                 R.string.annual_income
             } else {
@@ -120,7 +158,7 @@ fun StatsDetailScreen(key: StatsDetailKey) {
                 selectedNet(rows, selection),
                 main,
                 onToggleAll = {
-                    vm.setSelection(
+                    onSetSelection(
                         if (selection.size >= rows.size) {
                             emptySet()
                         } else {
@@ -128,24 +166,24 @@ fun StatsDetailScreen(key: StatsDetailKey) {
                         },
                     )
                 },
-                onClose = { vm.setSelection(emptySet()) },
+                onClose = { onSetSelection(emptySet()) },
                 onAction = {
                     bulkAction = it
                     bulkOpen = true
                 },
             )
         } else {
-            NexoTopBar(ui.title.asString(), onBack = { nav.back() })
+            NexoTopBar(ui.title.asString(), onBack = onBack)
         }
     }) { p ->
         Column(Modifier.fillMaxSize().padding(p)) {
             if (q.scope == StatsScope.PERIOD) {
-                DateRangeChips(q.from, q.to, vm::setRange)
+                DateRangeChips(q.from, q.to, onSetRange)
             } else {
                 PeriodNavigator(
                     periodLabel,
-                    { vm.step(false) },
-                    { vm.step(true) },
+                    { onStep(false) },
+                    { onStep(true) },
                     if (q.scope == StatsScope.MONTHLY) {
                         ({ picker = true })
                     } else {
@@ -161,13 +199,13 @@ fun StatsDetailScreen(key: StatsDetailKey) {
                 selection = selection,
                 onRowClick = { row ->
                     if (selection.isNotEmpty()) {
-                        vm.toggleSelect(row.id)
+                        onToggleSelect(row.id)
                     } else {
-                        nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
+                        onOpenTransaction(row.id)
                     }
                 },
-                onRowLongClick = { row -> vm.toggleSelect(row.id) },
-                onMemoClick = { d -> nav.navigate(MemoListKey(d.toString())) },
+                onRowLongClick = { row -> onToggleSelect(row.id) },
+                onMemoClick = { d -> onOpenMemos(d) },
                 header = {
                     item(key = "summary") {
                         val colors = LocalNexoColors.current
@@ -204,7 +242,7 @@ fun StatsDetailScreen(key: StatsDetailKey) {
                                             .background(
                                                 if (on) colors.primarySoft else Color.Transparent,
                                             )
-                                            .clickable { vm.select(b.key) }
+                                            .clickable { onSelectBreakdown(b.key) }
                                             .padding(horizontal = Space.s, vertical = 10.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
@@ -261,13 +299,13 @@ fun StatsDetailScreen(key: StatsDetailKey) {
     if (picker) {
         MonthPickerDialog(
             ref.settings.periods.monthPeriodContaining(q.anchor).label,
-            onPick = vm::setMonth,
+            onPick = onPickMonth,
             onDismiss = {
                 picker = false
             },
         )
     }
-    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.bulkActions, onDismiss = {
+    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, bulkActions, onDismiss = {
         bulkOpen = false
     })
 }
@@ -304,4 +342,36 @@ private fun TrendCard(
             })
         }
     }
+}
+
+@Preview
+@Composable
+private fun StatsDetailScreenPreview() = NexoPreview {
+    val month = PreviewData.ref.settings.periods.monthPeriodContaining(PreviewData.today)
+    StatsDetailScreen(
+        kind = StatsDetailKind.EXPENSE,
+        ui = StatsDetailUiState(
+            ref = PreviewData.ref,
+            query = StatsQuery(anchor = PreviewData.today),
+            title = UiText.Raw("Food"),
+            range = month.range,
+            total = 42_500.0,
+            breakdown = listOf(
+                Breakdown("all", UiText.Raw("All"), 42_500.0, null),
+                Breakdown("groceries", UiText.Raw("Groceries"), 30_000.0, 71),
+            ),
+            trendLabels = listOf("Jun", "Jul", "Aug", "Sep", "Oct", "Nov"),
+            trend = listOf(38_000.0, 41_200.0, 36_900.0, 44_100.0, 39_800.0, 42_500.0),
+        ),
+        bulkActions = BulkEditActions({}, {}, {}, {}, {}, { _, _ -> }),
+        onBack = {},
+        onStep = {},
+        onSetRange = { _, _ -> },
+        onPickMonth = {},
+        onSelectBreakdown = {},
+        onToggleSelect = {},
+        onSetSelection = {},
+        onOpenTransaction = {},
+        onOpenMemos = {},
+    )
 }
