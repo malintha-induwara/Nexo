@@ -195,24 +195,24 @@ fun AccountDetailScreen(key: AccountDetailKey) {
     BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.writer, selection, onDone = { vm.setSelection(emptySet()) }, onDismiss = { bulkOpen = false })
 }
 
-/** The statement for the period on screen: the balance set large, with money in, out and the net beneath. */
+/** The statement for the period on screen: the balance on one line, with money in, out and the net beneath. */
 @Composable
 private fun SummaryBlock(ui: AccountDetailUi, cur: CurrencyEntity, tab: DetailTab, charts: Boolean, onToggleCharts: () -> Unit, onEdit: () -> Unit, onHelp: () -> Unit) {
     val colors = LocalNexoColors.current
     val money = LocalMoneyColors.current
     GroupCard(Modifier.padding(horizontal = Space.l, vertical = Space.xs)) {
-        Column(Modifier.padding(start = Space.l, end = Space.m, top = Space.m, bottom = Space.l)) {
+        Column(Modifier.padding(start = Space.l, end = Space.m, top = 10.dp, bottom = Space.m)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     (stringResource(R.string.statement) + if (ui.range != com.nexo.app.core.period.DateRange.ALL) " " + Formats.rangeFull(ui.range.start, ui.range.end) else "").uppercase(Locale.getDefault()),
                     style = NexoType.Caps, color = colors.textTertiary, maxLines = 1, modifier = Modifier.weight(1f),
                 )
-                RoundIconButton(if (charts) Icons.AutoMirrored.Outlined.List else Icons.Outlined.BarChart, stringResource(R.string.toggle_charts), onToggleCharts, size = 36.dp)
+                RoundIconButton(if (charts) Icons.AutoMirrored.Outlined.List else Icons.Outlined.BarChart, stringResource(R.string.toggle_charts), onToggleCharts, size = 32.dp)
                 Spacer(Modifier.width(Space.s))
-                RoundIconButton(Icons.Outlined.Edit, stringResource(R.string.action_edit), onEdit, size = 36.dp)
+                RoundIconButton(Icons.Outlined.Edit, stringResource(R.string.action_edit), onEdit, size = 32.dp)
             }
             if (tab != DetailTab.ANNUALLY) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.padding(top = Space.xs, end = Space.xs), verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.balance), style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
                     if (ui.showHelp) {
                         Icon(
@@ -220,21 +220,22 @@ private fun SummaryBlock(ui: AccountDetailUi, cur: CurrencyEntity, tab: DetailTa
                             modifier = Modifier.padding(start = Space.xs).size(28.dp).clip(CircleShape).clickable(onClick = onHelp).padding(6.dp),
                         )
                     }
+                    Spacer(Modifier.width(Space.m))
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                        val b = ui.balance
+                        if (b == null) Text("-", style = NexoType.AmountLarge, color = colors.text)
+                        else AmountText(b, cur, Modifier.shrinkToFit(), style = NexoType.AmountLarge, color = if (b < 0) money.expense else colors.text)
+                    }
                 }
-                val b = ui.balance
-                if (b == null) Text("-", style = MaterialTheme.typography.displaySmall, color = colors.text)
-                else AmountText(b, cur, Modifier.shrinkToFit(), style = MaterialTheme.typography.displaySmall, color = if (b < 0) money.expense else colors.text)
-                Spacer(Modifier.height(Space.m))
-            } else {
-                Spacer(Modifier.height(Space.s))
             }
+            Spacer(Modifier.height(Space.s))
             Row(Modifier.padding(end = Space.xs), horizontalArrangement = Arrangement.spacedBy(Space.m)) {
                 Figure(stringResource(R.string.deposit), ui.deposit, cur, money.income, Modifier.weight(1f))
                 Figure(stringResource(R.string.withdrawal), ui.withdrawal, cur, money.expense, Modifier.weight(1f))
                 Figure(stringResource(R.string.total), ui.deposit - ui.withdrawal, cur, colors.text, Modifier.weight(1f))
             }
             ui.card?.let { c ->
-                Spacer(Modifier.height(Space.m))
+                Spacer(Modifier.height(Space.s))
                 Row(Modifier.padding(end = Space.xs), horizontalArrangement = Arrangement.spacedBy(Space.m)) {
                     Figure(stringResource(R.string.payable), kotlin.math.abs(c.payable), cur, money.signed(c.payable), Modifier.weight(1f))
                     Figure(stringResource(R.string.outstanding), kotlin.math.abs(c.outstanding), cur, money.signed(c.outstanding), Modifier.weight(1f))
@@ -249,8 +250,7 @@ private fun SummaryBlock(ui: AccountDetailUi, cur: CurrencyEntity, tab: DetailTa
 private fun Figure(label: String, value: Double, cur: CurrencyEntity, color: Color, modifier: Modifier) {
     Column(modifier) {
         Text(label.uppercase(Locale.getDefault()), style = NexoType.Caps, color = LocalNexoColors.current.textTertiary, maxLines = 1)
-        Spacer(Modifier.height(Space.xxs))
-        FlowAmount(value, cur, color, Modifier.shrinkToFit())
+        FlowAmount(value, cur, color, Modifier.shrinkToFit(), NexoType.AmountSmall)
     }
 }
 

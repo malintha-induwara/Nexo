@@ -1,7 +1,6 @@
 package com.nexo.app.ui.stats
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -14,24 +13,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Inbox
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,7 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -203,7 +196,7 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
                 CategoryCard(
                     r, ref, main,
                     onClick = { nav.navigate(StatsDetailKey(r.key, r.kind, q.scope, data.range.startText, data.range.endText, r.colorIndex)) },
-                    modifier = Modifier.animateItem().padding(horizontal = Space.l, vertical = Space.xs),
+                    modifier = Modifier.animateItem().padding(horizontal = Space.l, vertical = 3.dp),
                 )
             }
         }
@@ -233,7 +226,7 @@ private fun ShareLabel(row: StatsRow, main: CurrencyEntity) {
     }
 }
 
-/** One category: its tile in the ring's colour, the total set large, and its share as a bar. */
+/** One category: its tile in the ring's colour, its name over its share, and the total. */
 @Composable
 private fun CategoryCard(row: StatsRow, ref: RefData, main: CurrencyEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = LocalNexoColors.current
@@ -246,38 +239,23 @@ private fun CategoryCard(row: StatsRow, ref: RefData, main: CurrencyEntity, onCl
             .clip(NexoShapes.panel)
             .background(colors.surface)
             .clickable(interactionSource = interactions, indication = null, role = Role.Button, onClick = onClick)
-            .padding(start = Space.l, top = 14.dp, bottom = 14.dp, end = Space.m),
+            .padding(start = Space.m, top = 10.dp, bottom = 10.dp, end = Space.l),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val grouped = row.kind == StatsDetailKind.TRANSFER_EXPENSE_GROUP || row.kind == StatsDetailKind.TRANSFER_INCOME_GROUP
         val visual = if (grouped) null else ref.visual(row.key)
         when {
-            grouped -> IconTile(ref.groupById[row.key]?.let { GroupVisuals.of(it).icon } ?: Icons.Rounded.SwapHoriz, color, size = 48.dp, over = colors.surface)
-            visual != null -> CategoryTile(visual.emoji, visual.monogram, color, size = 48.dp, over = colors.surface)
-            row.key == KEY_MODIFIED -> IconTile(Icons.Rounded.Tune, color, size = 48.dp, over = colors.surface)
-            else -> IconTile(Icons.Rounded.Inbox, color, size = 48.dp, over = colors.surface)
+            grouped -> IconTile(ref.groupById[row.key]?.let { GroupVisuals.of(it).icon } ?: Icons.Rounded.SwapHoriz, color, over = colors.surface)
+            visual != null -> CategoryTile(visual.emoji, visual.monogram, color, over = colors.surface)
+            row.key == KEY_MODIFIED -> IconTile(Icons.Rounded.Tune, color, over = colors.surface)
+            else -> IconTile(Icons.Rounded.Inbox, color, over = colors.surface)
         }
-        Spacer(Modifier.width(Space.l))
+        Spacer(Modifier.width(Space.m))
         Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(row.name, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                Text(percentText(row.percent, 0), style = NexoType.Amount, color = colors.text)
-            }
-            Spacer(Modifier.height(Space.xxs))
-            AmountText(row.amount, main, Modifier.shrinkToFit(), style = NexoType.Balance, color = colors.text)
-            Spacer(Modifier.height(Space.s))
-            ShareBar(row.percent, color, colors.raised)
+            Text(row.name, style = MaterialTheme.typography.bodyMedium, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(percentText(row.percent, 0), style = NexoType.Meta, color = colors.textSecondary, maxLines = 1)
         }
-        Spacer(Modifier.width(Space.xs))
-        Icon(Icons.Rounded.ChevronRight, null, tint = colors.textTertiary, modifier = Modifier.size(20.dp))
-    }
-}
-
-/** A thin bar filled to the category's share of the total. */
-@Composable
-private fun ShareBar(percent: Double, color: Color, track: Color) {
-    val fraction by animateFloatAsState((percent / 100).toFloat().coerceIn(0f, 1f), NexoMotion.gentle(), label = "share")
-    Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(track)) {
-        if (fraction > 0f) Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().clip(CircleShape).background(color))
+        Spacer(Modifier.width(Space.m))
+        AmountText(row.amount, main, style = NexoType.Amount, color = colors.text)
     }
 }

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,7 +22,6 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -35,7 +33,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.nexo.app.R
 import com.nexo.app.core.database.entity.CurrencyEntity
 import com.nexo.app.domain.CardFigures
@@ -55,7 +52,6 @@ import com.nexo.app.ui.theme.Space
 import java.util.Locale
 import kotlin.math.abs
 
-private val SplitAmount = NexoType.AmountLarge.copy(fontSize = 19.sp, lineHeight = 24.sp)
 
 @Composable
 private fun AccountUi.hue(): Color = CategoryHues.of(visual.hue, LocalNexoColors.current.isDark)
@@ -79,11 +75,11 @@ private fun CardSplit(card: CardFigures, currency: CurrencyEntity, label: Color,
         Row(horizontalArrangement = Arrangement.spacedBy(Space.l)) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.payable).uppercase(Locale.getDefault()), style = NexoType.Caps, color = label, maxLines = 1)
-                AmountText(abs(card.payable), currency, Modifier.shrinkToFit(), style = SplitAmount, color = value(card.payable))
+                AmountText(abs(card.payable), currency, Modifier.shrinkToFit(), style = NexoType.Amount, color = value(card.payable))
             }
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.outstanding).uppercase(Locale.getDefault()), style = NexoType.Caps, color = label, maxLines = 1)
-                AmountText(abs(card.outstanding), currency, Modifier.shrinkToFit(), style = SplitAmount, color = value(card.outstanding))
+                AmountText(abs(card.outstanding), currency, Modifier.shrinkToFit(), style = NexoType.Amount, color = value(card.outstanding))
             }
         }
         if (card.other < 0) {
@@ -120,7 +116,7 @@ private fun SectionLabel(section: AccountSection, main: CurrencyEntity, onToggle
         modifier
             .fillMaxWidth()
             .then(if (section.collapsible) Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onToggle(section.id) } else Modifier)
-            .padding(start = Space.gutter, end = Space.l, top = Space.gutter, bottom = Space.s),
+            .padding(start = Space.gutter, end = Space.l, top = Space.l, bottom = Space.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(section.title.uppercase(Locale.getDefault()), style = NexoType.Caps, color = colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
@@ -149,7 +145,7 @@ internal fun AccountCards(ui: AccountsUi, onToggle: (String) -> Unit, onOpen: (A
             item(key = "g_${s.id}") { SectionLabel(s, ui.main, onToggle, Modifier.animateItem()) }
             if (!s.collapsed) {
                 items(s.accounts, key = { it.key }) { a ->
-                    AccountCard(a, { onOpen(a) }, Modifier.animateItem().padding(horizontal = Space.l, vertical = Space.xs))
+                    AccountCard(a, { onOpen(a) }, Modifier.animateItem().padding(horizontal = Space.l, vertical = 3.dp))
                 }
             }
         }
@@ -168,19 +164,18 @@ private fun AccountCard(a: AccountUi, onClick: () -> Unit, modifier: Modifier = 
             .clip(NexoShapes.panel)
             .background(colors.surface)
             .clickable(interactionSource = interactions, indication = null, role = Role.Button, onClick = onClick)
-            .padding(start = Space.l, top = 14.dp, bottom = 14.dp, end = Space.m),
+            .padding(start = Space.m, top = 10.dp, bottom = 10.dp, end = Space.s),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconTile(a.visual.icon, a.hue(), size = 48.dp, over = colors.surface)
-        Spacer(Modifier.width(Space.l))
+        IconTile(a.visual.icon, a.hue(), over = colors.surface)
+        Spacer(Modifier.width(Space.m))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(a.name, style = MaterialTheme.typography.bodyMedium, color = if (a.muted) colors.textTertiary else colors.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(a.name, style = NexoType.Meta, color = if (a.muted) colors.textTertiary else colors.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 if (a.muted) {
                     Text(" · " + stringResource(R.string.not_in_totals), style = NexoType.Meta, color = colors.textTertiary, maxLines = 1)
                 }
             }
-            Spacer(Modifier.height(Space.xxs))
             val card = a.card
             if (card != null) {
                 CardSplit(card, a.currency, colors.textTertiary, { money.signed(it) }, Modifier.padding(top = Space.xs))
@@ -189,6 +184,6 @@ private fun AccountCard(a: AccountUi, onClick: () -> Unit, modifier: Modifier = 
             }
             a.change?.let { ChangeCaption(it, a.currency, colors.textSecondary, Modifier.padding(top = Space.xxs)) }
         }
-        Icon(Icons.Rounded.ChevronRight, null, tint = colors.textTertiary, modifier = Modifier.size(20.dp))
+        Icon(Icons.Rounded.ChevronRight, null, tint = colors.textTertiary, modifier = Modifier.size(18.dp))
     }
 }
