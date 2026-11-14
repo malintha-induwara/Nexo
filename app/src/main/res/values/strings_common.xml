@@ -76,14 +76,15 @@
     <string name="shortcut_add_long">Add transaction</string>
 
     <!-- Onboarding -->
-    <string name="welcome_text">Your records stay on this phone. There is no internet connection and no sign-up with any service.</string>
+    <string name="welcome_text">Track your spending, income and budgets across all your accounts, and see where your money goes each month.</string>
     <string name="get_started">Get started</string>
-    <string name="starting_data_title">Choose starting data</string>
-    <string name="starting_data_text">Start with default categories and accounts, or bring your data in from a backup file.</string>
+    <string name="starting_data_title">How would you like to start?</string>
+    <string name="starting_data_text">You can change the currency, categories and accounts later.</string>
     <string name="start_fresh">Start fresh</string>
-    <string name="start_fresh_text">Set up default categories and accounts.</string>
+    <string name="start_fresh_text">Begin with ready-made categories and accounts.</string>
     <string name="restore_from_file">Restore from a backup file</string>
     <string name="restore_from_file_text">Use a backup made by Nexo, or by Money Manager on Android.</string>
+    <string name="choose_backup_file">Choose backup file</string>
     <string name="restore_not_backup">This file isn\'t a backup file.</string>
     <string name="restore_unsupported">This backup format isn\'t supported yet.</string>
     <string name="restore_failed">Restore failed.</string>
