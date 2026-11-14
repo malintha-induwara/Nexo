@@ -2,8 +2,6 @@ package com.nexo.app.ui.accounts
 
 import androidx.annotation.MainThread
 import androidx.annotation.StringRes
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R

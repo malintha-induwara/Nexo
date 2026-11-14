@@ -1,7 +1,5 @@
 package com.nexo.app.ui.entry
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.model.RefData
