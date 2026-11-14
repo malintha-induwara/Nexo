@@ -551,7 +551,11 @@ fun EntryScreen(key: EntryKey) {
                 // Details: tags and Scan receipt as pills, then the description and any photos already attached.
                 Spacer(Modifier.height(Space.section))
                 val photosAllowed = !s.repeatMode && s.repeat == RepeatType.NONE
-                FlowRow(Modifier.fillMaxWidth().padding(horizontal = Space.gutter), horizontalArrangement = Arrangement.spacedBy(Space.s), verticalArrangement = Arrangement.spacedBy(Space.s)) {
+                FlowRow(
+                    Modifier.fillMaxWidth().padding(horizontal = Space.gutter),
+                    horizontalArrangement = Arrangement.spacedBy(Space.s, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(Space.s),
+                ) {
                     if (s.repeat == RepeatType.NONE) {
                         s.tagIds.mapNotNull { id -> ref.tagById[id]?.takeIf { !it.isDeleted } }.forEach { t ->
                             FieldPill(text = "#" + t.name, label = stringResource(R.string.tags), accent = typeColor, onClear = { vm.removeTag(t.id) }) { vm.enterEdit(); showTags = true }
