@@ -80,6 +80,8 @@ object NexoType {
     val Hero = nunito(56, 60, tracking = -0.02)
     /** Large amount inside a section, e.g. the entry display while typing small sums. */
     val AmountLarge = nunito(22, 28)
+    /** The figure a card is about: an account's balance, a category's total. */
+    val Balance = nunito(24, 30)
     /** Trailing amount on a 64dp row. */
     val Amount = nunito(16, 22, FontWeight.Bold)
     val AmountSmall = nunito(13, 18, FontWeight.Bold)

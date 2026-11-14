@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.nexo.app.R
 import com.nexo.app.ui.theme.LocalHeaderColors
 import com.nexo.app.ui.theme.LocalNexoColors
+import com.nexo.app.ui.theme.Space
 
 /** A 40dp round button on a raised fill: back, close and other single-icon actions in headers. */
 @Composable
@@ -164,5 +166,25 @@ private fun StepButton(icon: ImageVector, description: String, color: Color, onC
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, description, tint = color, modifier = Modifier.size(22.dp))
+    }
+}
+
+/** A quiet pill with a caret that opens a chooser, e.g. the period mode in a tab header. */
+@Composable
+fun ModePill(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val colors = LocalNexoColors.current
+    val interactions = remember { MutableInteractionSource() }
+    Row(
+        modifier
+            .pressScale(interactions)
+            .height(36.dp)
+            .clip(CircleShape)
+            .background(colors.raised)
+            .clickable(interactionSource = interactions, indication = null, role = Role.Button, onClick = onClick)
+            .padding(start = 14.dp, end = Space.s),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.labelLarge, color = colors.text)
+        Icon(Icons.Rounded.KeyboardArrowDown, null, tint = colors.textSecondary, modifier = Modifier.size(18.dp))
     }
 }

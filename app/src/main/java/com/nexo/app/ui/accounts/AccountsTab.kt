@@ -1,8 +1,6 @@
 package com.nexo.app.ui.accounts
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,17 +9,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BarChart
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,10 +27,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -49,11 +41,11 @@ import com.nexo.app.ui.components.ChoiceDialog
 import com.nexo.app.ui.components.DateRangeChips
 import com.nexo.app.ui.components.EmptyState
 import com.nexo.app.ui.components.Formats
+import com.nexo.app.ui.components.ModePill
 import com.nexo.app.ui.components.MonthPickerDialog
 import com.nexo.app.ui.components.NexoDatePickerDialog
 import com.nexo.app.ui.components.PeriodNavigator
 import com.nexo.app.ui.components.RoundIconButton
-import com.nexo.app.ui.components.pressScale
 import com.nexo.app.ui.components.rememberHaptics
 import com.nexo.app.ui.navigation.AccountDetailKey
 import com.nexo.app.ui.navigation.AccountFormKey
@@ -190,25 +182,5 @@ fun AccountsTab(todaySignal: Int, vm: AccountsViewModel = hiltViewModel()) {
         } else {
             NexoDatePickerDialog(q.anchor, onPick = vm::setAnchor, onDismiss = { datePicker = false })
         }
-    }
-}
-
-/** The period-mode chooser: a quiet pill with a caret. */
-@Composable
-private fun ModePill(label: String, onClick: () -> Unit) {
-    val colors = LocalNexoColors.current
-    val interactions = remember { MutableInteractionSource() }
-    Row(
-        Modifier
-            .pressScale(interactions)
-            .height(36.dp)
-            .clip(CircleShape)
-            .background(colors.raised)
-            .clickable(interactionSource = interactions, indication = null, role = Role.Button, onClick = onClick)
-            .padding(start = 14.dp, end = Space.s),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = colors.text)
-        Icon(Icons.Rounded.KeyboardArrowDown, null, tint = colors.textSecondary, modifier = Modifier.size(18.dp))
     }
 }

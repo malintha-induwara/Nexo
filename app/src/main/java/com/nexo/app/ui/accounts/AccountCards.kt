@@ -41,7 +41,8 @@ import com.nexo.app.core.database.entity.CurrencyEntity
 import com.nexo.app.domain.CardFigures
 import com.nexo.app.ui.components.AmountText
 import com.nexo.app.ui.components.IconTile
-import com.nexo.app.ui.components.RollingAmount
+import com.nexo.app.ui.components.HeroStat
+import com.nexo.app.ui.components.HeroSummary
 import com.nexo.app.ui.components.pressScale
 import com.nexo.app.ui.components.shrinkToFit
 import com.nexo.app.ui.shell.LocalShell
@@ -54,7 +55,6 @@ import com.nexo.app.ui.theme.Space
 import java.util.Locale
 import kotlin.math.abs
 
-private val Balance = NexoType.AmountLarge.copy(fontSize = 24.sp, lineHeight = 30.sp)
 private val SplitAmount = NexoType.AmountLarge.copy(fontSize = 19.sp, lineHeight = 24.sp)
 
 @Composable
@@ -108,31 +108,6 @@ private fun ChangeCaption(change: Double, currency: CurrencyEntity, color: Color
     }
 }
 
-/** Net worth as the screen's one large number, with assets and liabilities beneath. */
-@Composable
-private fun NetWorthHero(ui: AccountsUi, modifier: Modifier = Modifier) {
-    val colors = LocalNexoColors.current
-    val money = LocalMoneyColors.current
-    Column(modifier.fillMaxWidth().padding(start = Space.gutter, end = Space.gutter, top = Space.xs, bottom = Space.m)) {
-        Text(stringResource(R.string.net_worth), style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
-        RollingAmount(ui.summary.total, ui.main, Modifier.shrinkToFit(), color = colors.text)
-        Spacer(Modifier.height(Space.s))
-        Row(horizontalArrangement = Arrangement.spacedBy(Space.xl)) {
-            HeroFigure(stringResource(R.string.assets), ui.summary.assets, ui.main, money.income, colors.textTertiary)
-            HeroFigure(stringResource(R.string.liabilities), ui.summary.liabilities, ui.main, money.expense, colors.textTertiary)
-        }
-    }
-}
-
-@Composable
-private fun HeroFigure(label: String, value: Double, currency: CurrencyEntity, color: Color, labelColor: Color) {
-    Column {
-        Text(label.uppercase(Locale.getDefault()), style = NexoType.Caps, color = labelColor)
-        Spacer(Modifier.height(Space.xxs))
-        RollingAmount(value, currency, style = NexoType.Amount, color = color, minorScale = 0.8f)
-    }
-}
-
 /** Group name over its cards, with the group's total; tap to fold the group. */
 @Composable
 private fun SectionLabel(section: AccountSection, main: CurrencyEntity, onToggle: (String) -> Unit, modifier: Modifier = Modifier) {
@@ -159,8 +134,17 @@ private fun SectionLabel(section: AccountSection, main: CurrencyEntity, onToggle
 /** One neutral full-width card per account, grouped, with the balance set large under the name. */
 @Composable
 internal fun AccountCards(ui: AccountsUi, onToggle: (String) -> Unit, onOpen: (AccountUi) -> Unit) {
+    val money = LocalMoneyColors.current
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalShell.current.bottomInset + Space.m)) {
-        item(key = "hero") { NetWorthHero(ui) }
+        item(key = "hero") {
+            HeroSummary(
+                stringResource(R.string.net_worth), ui.summary.total, ui.main,
+                listOf(
+                    HeroStat(stringResource(R.string.assets), ui.summary.assets, money.income),
+                    HeroStat(stringResource(R.string.liabilities), ui.summary.liabilities, money.expense),
+                ),
+            )
+        }
         ui.sections.forEach { s ->
             item(key = "g_${s.id}") { SectionLabel(s, ui.main, onToggle, Modifier.animateItem()) }
             if (!s.collapsed) {
@@ -201,7 +185,7 @@ private fun AccountCard(a: AccountUi, onClick: () -> Unit, modifier: Modifier = 
             if (card != null) {
                 CardSplit(card, a.currency, colors.textTertiary, { money.signed(it) }, Modifier.padding(top = Space.xs))
             } else {
-                AmountText(a.balance, a.currency, Modifier.shrinkToFit(), style = Balance, color = a.balanceColor())
+                AmountText(a.balance, a.currency, Modifier.shrinkToFit(), style = NexoType.Balance, color = a.balanceColor())
             }
             a.change?.let { ChangeCaption(it, a.currency, colors.textSecondary, Modifier.padding(top = Space.xxs)) }
         }

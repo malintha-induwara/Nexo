@@ -1,11 +1,14 @@
 package com.nexo.app.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -14,7 +17,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
+import com.nexo.app.ui.theme.NexoMotion
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -171,21 +177,50 @@ fun LineChart(labels: List<String>, values: List<Double>, color: Color, modifier
 
 data class PieSlice(val label: String, val value: Double, val color: Color)
 
-/** Pie of the stats rows. Tapping a slice reports it. */
+/**
+ * Ring of the stats rows. Tapping a slice reports its index; tapping the middle reports -1.
+ * The ring sweeps in clockwise when the data changes. A picked slice thickens and the rest dim.
+ */
 @Composable
-fun PieChart(slices: List<PieSlice>, modifier: Modifier = Modifier, onSlice: ((Int) -> Unit)? = null, selected: Int? = null) {
+fun DonutChart(
+    slices: List<PieSlice>,
+    modifier: Modifier = Modifier,
+    selected: Int? = null,
+    onSlice: ((Int) -> Unit)? = null,
+    content: @Composable () -> Unit = {},
+) {
     val total = slices.sumOf { max(it.value, 0.0) }
-    val bg = MaterialTheme.colorScheme.surface
-    if (total <= 0.0) {
-        Box(modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) { Text(stringResource(R.string.no_data), color = MaterialTheme.colorScheme.outline) }
-        return
+    if (total <= 0.0) return
+    val reveal = remember { Animatable(0f) }
+    LaunchedEffect(slices) {
+        reveal.snapTo(0f)
+        reveal.animateTo(1f, NexoMotion.enter(600))
     }
-    Box(modifier.fillMaxWidth().height(240.dp), contentAlignment = Alignment.Center) {
+    // +1 = the picked slice, -1 = dimmed behind it, 0 = nothing picked.
+    val emphasis = slices.indices.map { i ->
+        key(i) {
+            animateFloatAsState(
+                when (selected) {
+                    null -> 0f
+                    i -> 1f
+                    else -> -1f
+                },
+                NexoMotion.snappy(), label = "slice",
+            )
+        }
+    }
+    val solo = slices.count { it.value > 0 } == 1
+    Box(modifier.size(224.dp), contentAlignment = Alignment.Center) {
         Canvas(
-            Modifier.size(220.dp).pointerInput(slices) {
+            Modifier.fillMaxSize().pointerInput(slices) {
                 detectTapGestures { pos ->
                     val c = Offset(size.width / 2f, size.height / 2f)
-                    if (hypot(pos.x - c.x, pos.y - c.y) > size.width / 2f) return@detectTapGestures
+                    val distance = hypot(pos.x - c.x, pos.y - c.y)
+                    if (distance > size.width / 2f) return@detectTapGestures
+                    if (distance < size.width / 2f - 48.dp.toPx()) {
+                        onSlice?.invoke(-1)
+                        return@detectTapGestures
+                    }
                     var angle = Math.toDegrees(atan2((pos.y - c.y).toDouble(), (pos.x - c.x).toDouble())) + 90
                     if (angle < 0) angle += 360
                     var acc = 0.0
@@ -200,20 +235,30 @@ fun PieChart(slices: List<PieSlice>, modifier: Modifier = Modifier, onSlice: ((I
                 }
             },
         ) {
-            var start = -90f
-            val r = size.minDimension / 2f
+            val band = 26.dp.toPx()
+            val lift = 8.dp.toPx()
+            val radius = (size.minDimension - band - lift) / 2f
+            val topLeft = Offset(center.x - radius, center.y - radius)
+            val arc = Size(radius * 2, radius * 2)
+            val shown = 360f * reveal.value
+            var start = 0f
             slices.forEachIndexed { i, s ->
                 val sweep = (max(s.value, 0.0) / total * 360).toFloat()
                 if (sweep <= 0f) return@forEachIndexed
-                val pull = if (i == selected) 10.dp.toPx() else 0f
-                val mid = Math.toRadians((start + sweep / 2).toDouble())
-                val off = Offset((cos(mid) * pull).toFloat(), (sin(mid) * pull).toFloat())
-                val inset = 10.dp.toPx()
-                drawArc(s.color, start, sweep, true, Offset(inset, inset) + off, Size(size.width - inset * 2, size.height - inset * 2))
-                drawArc(bg, start, sweep, true, Offset(inset, inset) + off, Size(size.width - inset * 2, size.height - inset * 2), style = Stroke(1.5.dp.toPx()))
+                val e = emphasis.getOrNull(i)?.value ?: 0f
+                val gap = if (solo) 0f else min(2.5f, sweep * 0.4f)
+                val visible = min(sweep - gap, shown - start - gap / 2)
+                if (visible > 0f) {
+                    drawArc(
+                        s.color.copy(alpha = 1f + 0.65f * min(e, 0f)),
+                        start - 90f + gap / 2, visible, false, topLeft, arc,
+                        style = Stroke(band + lift * max(e, 0f)),
+                    )
+                }
                 start += sweep
             }
         }
+        content()
     }
 }
 
