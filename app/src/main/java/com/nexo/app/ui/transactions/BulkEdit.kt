@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
@@ -43,7 +42,6 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
-import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.CategoryKind
@@ -62,7 +60,6 @@ import com.nexo.app.ui.designsystem.component.TextFieldDialog
 import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.nexo
 import java.time.LocalDate
-import kotlinx.coroutines.launch
 
 enum class BulkAction { DATE, CATEGORY, ACCOUNT, NOTE }
 

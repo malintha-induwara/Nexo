@@ -63,6 +63,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -74,6 +75,7 @@ import com.nexo.app.ui.designsystem.component.BarItem
 import com.nexo.app.ui.designsystem.component.PillBottomBar
 import com.nexo.app.ui.designsystem.component.PillBottomBarHeight
 import com.nexo.app.ui.designsystem.component.rememberHaptics
+import com.nexo.app.ui.designsystem.preview.NexoPreview
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 import com.nexo.app.ui.designsystem.theme.NexoShapes
@@ -82,6 +84,7 @@ import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SmsQueueKey
 import com.nexo.app.ui.settings.SettingsTabRoute
+import com.nexo.app.ui.sms.QueueBadge
 import com.nexo.app.ui.stats.StatsTabRoute
 import com.nexo.app.ui.transactions.TransactionsTabRoute
 
@@ -117,38 +120,67 @@ class ShellController(hidden: MutableState<Boolean> = mutableStateOf(false)) {
 
 val LocalShell = staticCompositionLocalOf { ShellController() }
 
-/** App shell with the four top-level tabs. Re-selecting a tab sends a "go to today" signal. */
 @Composable
-fun MainShell(vm: MainShellViewModel = hiltViewModel()) {
+fun MainShellRoute(vm: MainShellViewModel = hiltViewModel()) {
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val nav = LocalNavigator.current
+    val context = LocalContext.current
     val clock = LocalClock.current
+    var lastBack by remember { mutableLongStateOf(0L) }
+    val pressAgain = stringResource(R.string.press_back_again)
+    MainShell(
+        state = state,
+        onBack = {
+            val now = clock.millis()
+            if (now - lastBack < 5_000) {
+                (context as? Activity)?.finish()
+            } else {
+                lastBack = now
+                Toast.makeText(context, pressAgain, Toast.LENGTH_SHORT).show()
+            }
+        },
+        onAddTransaction = { nav.navigate(EntryKey(fromAdd = true)) },
+        onOpenSmsQueue = { nav.navigate(SmsQueueKey) },
+        tabContent = { tab, todaySignal ->
+            when (tab) {
+                MainTab.TRANSACTIONS -> TransactionsTabRoute(todaySignal, state.smsBadge)
+                MainTab.STATS -> StatsTabRoute(todaySignal)
+                MainTab.ACCOUNTS -> AccountsTabRoute(todaySignal)
+                MainTab.MORE -> SettingsTabRoute()
+            }
+        },
+    )
+}
+
+/**
+ * App shell with the four top-level tabs. Re-selecting a tab sends a "go to today" signal.
+ * [onBack] runs for Back once the add menu is closed; [tabContent] draws a tab's page.
+ */
+@Composable
+internal fun MainShell(
+    state: MainShellUiState,
+    onBack: () -> Unit,
+    onAddTransaction: () -> Unit,
+    onOpenSmsQueue: () -> Unit,
+    tabContent: @Composable (tab: MainTab, todaySignal: Int) -> Unit,
+) {
     var tab by rememberSaveable { mutableStateOf(MainTab.TRANSACTIONS) }
     var todaySignal by remember { mutableIntStateOf(0) }
     val barHidden = rememberSaveable { mutableStateOf(false) }
     val controller = remember(barHidden) { ShellController(barHidden) }
     // Only the Transactions tab hides the bar (filter, multi-select, day sheet).
     val barVisible = !(controller.bottomBarHidden && tab == MainTab.TRANSACTIONS)
-    val nav = LocalNavigator.current
-    val context = LocalContext.current
     val colors = LocalNexoColors.current
-    var lastBack by remember { mutableLongStateOf(0L) }
-    val state by vm.uiState.collectAsStateWithLifecycle()
     val queue = state.smsBadge
     var addMenu by remember { mutableStateOf(false) }
     val haptics = rememberHaptics()
-    val pressAgain = stringResource(R.string.press_back_again)
 
     BackHandler {
         if (addMenu) {
             addMenu = false
             return@BackHandler
         }
-        val now = clock.millis()
-        if (now - lastBack < 5_000) {
-            (context as? Activity)?.finish()
-        } else {
-            lastBack = now
-            Toast.makeText(context, pressAgain, Toast.LENGTH_SHORT).show()
-        }
+        onBack()
     }
 
     val navInset: Dp = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -168,14 +200,7 @@ fun MainShell(vm: MainShellViewModel = hiltViewModel()) {
                 label = "tab",
             ) { t ->
                 // Every tab draws under the floating bar; its list pads its end by [ShellController.bottomInset].
-                Box(Modifier.fillMaxSize()) {
-                    when (t) {
-                        MainTab.TRANSACTIONS -> TransactionsTabRoute(todaySignal, queue)
-                        MainTab.STATS -> StatsTabRoute(todaySignal)
-                        MainTab.ACCOUNTS -> AccountsTabRoute(todaySignal)
-                        MainTab.MORE -> SettingsTabRoute()
-                    }
-                }
+                Box(Modifier.fillMaxSize()) { tabContent(t, todaySignal) }
             }
             // Holding the add button: the add action, and the way into the Review Queue whether or not anything waits.
             AnimatedVisibility(
@@ -226,7 +251,7 @@ fun MainShell(vm: MainShellViewModel = hiltViewModel()) {
                         0,
                     ) {
                         addMenu = false
-                        controller.addOverride?.invoke() ?: nav.navigate(EntryKey(fromAdd = true))
+                        controller.addOverride?.invoke() ?: onAddTransaction()
                     }
                     AddMenuRow(
                         Icons.Rounded.Inbox,
@@ -234,7 +259,7 @@ fun MainShell(vm: MainShellViewModel = hiltViewModel()) {
                         queue.count,
                     ) {
                         addMenu = false
-                        nav.navigate(SmsQueueKey)
+                        onOpenSmsQueue()
                     }
                 }
             }
@@ -261,8 +286,7 @@ fun MainShell(vm: MainShellViewModel = hiltViewModel()) {
                         if (tab == t) todaySignal++ else tab = t
                     },
                     onAdd = {
-                        controller.addOverride?.invoke()
-                            ?: nav.navigate(EntryKey(fromAdd = true))
+                        controller.addOverride?.invoke() ?: onAddTransaction()
                     },
                     addLabel = stringResource(
                         controller.addLabelOverride ?: R.string.add_transaction,
@@ -305,4 +329,20 @@ private fun AddMenuRow(icon: ImageVector, label: String, count: Int, onClick: ()
             )
         }
     }
+}
+
+@Preview
+@Composable
+private fun MainShellPreview() = NexoPreview {
+    MainShell(
+        state = MainShellUiState(QueueBadge(count = 3)),
+        onBack = {},
+        onAddTransaction = {},
+        onOpenSmsQueue = {},
+        tabContent = { tab, _ ->
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(tab.name, color = LocalNexoColors.current.textSecondary)
+            }
+        },
+    )
 }

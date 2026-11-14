@@ -46,7 +46,7 @@ import com.nexo.app.ui.settings.ReminderRoute
 import com.nexo.app.ui.settings.StyleRoute
 import com.nexo.app.ui.settings.SubCurrenciesRoute
 import com.nexo.app.ui.settings.SubCurrencyEditRoute
-import com.nexo.app.ui.shell.MainShell
+import com.nexo.app.ui.shell.MainShellRoute
 import com.nexo.app.ui.sms.SmsCardsRoute
 import com.nexo.app.ui.sms.SmsFeesRoute
 import com.nexo.app.ui.sms.SmsHistoryRoute
@@ -58,7 +58,7 @@ import com.nexo.app.ui.tags.TagSettingsRoute
 
 /** Every screen of the app. */
 fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
-    entry<MainKey> { MainShell() }
+    entry<MainKey> { MainShellRoute() }
     entry<SmsQueueKey> { SmsQueueRoute() }
     entry<SmsSettingsKey> { SmsSettingsRoute() }
     entry<SmsCardsKey> { SmsCardsRoute() }
