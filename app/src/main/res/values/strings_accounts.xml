@@ -5,6 +5,11 @@
     <string name="modify_orders">Modify Orders</string>
     <string name="assets">Assets</string>
     <string name="liabilities">Liabilities</string>
+    <string name="net_worth">Net worth</string>
+    <string name="payable">Payable</string>
+    <string name="outstanding">Outstanding</string>
+    <string name="overdue">Overdue</string>
+    <string name="not_in_totals">Not in totals</string>
     <string name="balance_payable">Balance Payable</string>
     <string name="outstanding_balance">Outst. Balance</string>
     <string name="pay">Pay</string>
