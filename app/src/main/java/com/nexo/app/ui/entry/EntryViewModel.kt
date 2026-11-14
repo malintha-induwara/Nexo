@@ -536,7 +536,8 @@ class EntryViewModel @AssistedInject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                android.util.Log.w("ReceiptScan", "Receipt read failed: ${e.javaClass.simpleName}: ${e.message}")
+                // The stack trace carries no receipt text, and it is what a release-only failure needs.
+                android.util.Log.w("ReceiptScan", "Receipt read failed", e)
                 null
             }
             if (read == null) {
