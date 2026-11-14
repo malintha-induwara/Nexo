@@ -42,7 +42,7 @@ class DefaultBackupRepository @Inject constructor(
             .replace(Regex("-+"), "-")
             .trim('-')
         val time = now.format(DateTimeFormatter.ofPattern("HHmmss"))
-        return "$prefix($date-$time).$BackupRepository.EXTENSION"
+        return "$prefix($date-$time).${BackupRepository.EXTENSION}"
     }
 
     /** Flushes the WAL so the main file is a consistent copy. */
@@ -74,7 +74,7 @@ class DefaultBackupRepository @Inject constructor(
 
     /** Copy in the temp folder for the share sheet. */
     override suspend fun shareCopy(): File? = withContext(ioDispatcher) {
-        val f = File(dirs.temp, "nexo_backup.$BackupRepository.EXTENSION")
+        val f = File(dirs.temp, "nexo_backup.${BackupRepository.EXTENSION}")
         if (writeBackup(f)) f else null
     }
 
@@ -98,7 +98,7 @@ class DefaultBackupRepository @Inject constructor(
         if (name.contains("weple.sqlite")) return false
         val accepted =
             listOf(
-                ".$BackupRepository.EXTENSION",
+                ".${BackupRepository.EXTENSION}",
                 ".mmbak",
                 ".sqlite",
                 ".MoneyManager",

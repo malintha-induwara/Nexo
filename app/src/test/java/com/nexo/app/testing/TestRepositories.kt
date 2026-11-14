@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.notifications.Notifier
+import com.nexo.app.data.backup.LegacyImporter
 import com.nexo.app.data.database.BookSeeder
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.datastore.DevicePreferencesDataSource
@@ -12,6 +13,7 @@ import com.nexo.app.data.file.PhotoFileDataSource
 import com.nexo.app.data.network.FxRatesNetworkDataSource
 import com.nexo.app.data.receipt.ReceiptTextDataSource
 import com.nexo.app.data.repository.DefaultAccountsRepository
+import com.nexo.app.data.repository.DefaultBackupRepository
 import com.nexo.app.data.repository.DefaultBookSettingsRepository
 import com.nexo.app.data.repository.DefaultBudgetsRepository
 import com.nexo.app.data.repository.DefaultFavoritesRepository
@@ -149,6 +151,15 @@ class TestBook(val context: Context, scope: CoroutineScope, currency: String = "
         DefaultReceiptRepository(
             ReceiptTextDataSource(context, Dispatchers.IO),
             Dispatchers.Default,
+        )
+    val backups =
+        DefaultBackupRepository(
+            context,
+            db,
+            AppDirs(context),
+            prefs,
+            LegacyImporter(db, BookSeeder(context, db), Dispatchers.IO),
+            Dispatchers.IO,
         )
     val getFeePlan = GetSmsFeePlanUseCase(sms, refs)
     val approveSms =
