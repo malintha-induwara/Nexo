@@ -549,10 +549,11 @@ fun EntryScreen(key: EntryKey) {
                 }
 
                 // Details: tags and Scan receipt as pills, then the description and any photos already attached.
-                Spacer(Modifier.height(Space.section))
+                // Same gap and side padding as the rows above, so all the pill rows read as one evenly spaced block.
+                Spacer(Modifier.height(Space.s))
                 val photosAllowed = !s.repeatMode && s.repeat == RepeatType.NONE
                 FlowRow(
-                    Modifier.fillMaxWidth().padding(horizontal = Space.gutter),
+                    Modifier.fillMaxWidth().padding(horizontal = Space.l),
                     horizontalArrangement = Arrangement.spacedBy(Space.s, Alignment.CenterHorizontally),
                     verticalArrangement = Arrangement.spacedBy(Space.s),
                 ) {
