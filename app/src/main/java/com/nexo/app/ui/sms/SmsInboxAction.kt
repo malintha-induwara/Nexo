@@ -77,10 +77,10 @@ fun SmsInboxAction(vm: SmsBadgeViewModel = hiltViewModel()) {
                     .offset(x = (-2).dp, y = 2.dp)
                     .defaultMinSize(minWidth = 16.dp)
                     .clip(CircleShape)
-                    .background(colors.text)
+                    .background(colors.primary)
                     .padding(horizontal = 4.dp),
                 style = MaterialTheme.typography.labelSmall,
-                color = colors.background,
+                color = colors.onPrimary,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
             )

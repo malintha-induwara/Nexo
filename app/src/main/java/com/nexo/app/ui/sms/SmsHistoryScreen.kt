@@ -186,7 +186,7 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                     onClick = { haptics.confirm(); vm.add() },
                     enabled = !adding,
                     modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = Space.gutter, vertical = Space.m).height(52.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = colors.text, contentColor = colors.background),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
                 ) {
                     Text(pluralStringResource(R.plurals.sms_history_add, selection.size, selection.size), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.width(Space.s))
@@ -223,8 +223,8 @@ private fun <T> ChipRow(options: List<T>, selected: T, label: @Composable (T) ->
     ) {
         options.forEach { option ->
             val on = option == selected
-            val container by animateColorAsState(if (on) colors.text else colors.raised, NexoMotion.standard(), label = "chip")
-            val content by animateColorAsState(if (on) colors.background else colors.textSecondary, NexoMotion.standard(), label = "chipText")
+            val container by animateColorAsState(if (on) colors.primarySoft else colors.raised, NexoMotion.standard(), label = "chip")
+            val content by animateColorAsState(if (on) colors.primaryText else colors.textSecondary, NexoMotion.standard(), label = "chipText")
             Text(
                 label(option),
                 Modifier.clip(NexoShapes.pill).background(container).clickable { onSelect(option) }.padding(horizontal = Space.m + Space.xxs, vertical = Space.s),

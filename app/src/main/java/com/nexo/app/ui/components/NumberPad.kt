@@ -123,8 +123,8 @@ fun NumberPad(
 private fun CurrencyPill(text: String, selected: Boolean, onClick: () -> Unit) {
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
-    val bg by animateColorAsState(if (selected) colors.text else colors.raised, NexoMotion.standard(), label = "currencyBg")
-    val fg by animateColorAsState(if (selected) colors.background else colors.textSecondary, NexoMotion.standard(), label = "currencyFg")
+    val bg by animateColorAsState(if (selected) colors.primarySoft else colors.raised, NexoMotion.standard(), label = "currencyBg")
+    val fg by animateColorAsState(if (selected) colors.primaryText else colors.textSecondary, NexoMotion.standard(), label = "currencyFg")
     Box(
         Modifier.height(30.dp).clip(CircleShape).background(bg).clickable(role = Role.RadioButton) { haptics.tick(); onClick() }.padding(horizontal = Space.m),
         contentAlignment = Alignment.Center,

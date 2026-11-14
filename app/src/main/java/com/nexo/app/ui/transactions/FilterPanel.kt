@@ -54,6 +54,7 @@ import com.nexo.app.domain.Classifier
 import com.nexo.app.domain.RefData
 import com.nexo.app.domain.Totals
 import com.nexo.app.ui.theme.LocalMoneyColors
+import com.nexo.app.ui.theme.nexo
 
 private data class FilterItem(val key: String, val label: String, val amount: Double, val indent: Boolean = false)
 
@@ -259,7 +260,7 @@ private fun AccountFilterList(ref: RefData, rows: List<TransactionEntity>, f: Fi
             if (a.groupId != group) {
                 group = a.groupId
                 item(key = "g_${a.groupId}") {
-                    Text(ref.groupById[a.groupId]?.name ?: "", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, top = 12.dp))
+                    Text(ref.groupById[a.groupId]?.name ?: "", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.nexo.primaryText, modifier = Modifier.padding(start = 16.dp, top = 12.dp))
                 }
             }
             item(key = a.id) {

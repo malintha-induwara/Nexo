@@ -45,10 +45,11 @@ val LocalMoneyColors = staticCompositionLocalOf {
 val LocalIsDark = staticCompositionLocalOf { true }
 
 object NexoPalette {
-    val IncomeBlue = Color(0xFF1F6FE0)
-    val IncomeBlueDark = Color(0xFF7FB2FF)
-    val ExpenseRed = Color(0xFFE0482B)
-    val ExpenseRedDark = Color(0xFFFF8266)
+    // Loop palette: income shares the brand's text blue, expense is the danger red.
+    val IncomeBlue = LightNexoColors.primaryText
+    val IncomeBlueDark = DarkNexoColors.primaryText
+    val ExpenseRed = LightNexoColors.danger
+    val ExpenseRedDark = DarkNexoColors.danger
 
     val Sunday = Color(0xFFE5533D)
     val Saturday = Color(0xFF2F7DE1)
@@ -97,7 +98,7 @@ fun isDarkTheme(mode: ThemeMode): Boolean = when (mode) {
     ThemeMode.SYSTEM -> isSystemInDarkTheme()
 }
 
-/** Shortcut to the Soft Tally palette. */
+/** Shortcut to the Loop palette. */
 val MaterialTheme.nexo: NexoColors
     @Composable get() = LocalNexoColors.current
 

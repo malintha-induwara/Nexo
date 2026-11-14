@@ -183,7 +183,7 @@ fun DaySheet(
                         .pressScale(interactions, 0.9f)
                         .size(56.dp)
                         .clip(CircleShape)
-                        .background(colors.text)
+                        .background(colors.primary)
                         .clickable(interactionSource = interactions, indication = null, role = Role.Button) {
                             onShowMemos(false)
                             nav.navigate(EntryKey(date = shown.toString(), fromAdd = true))
@@ -191,7 +191,7 @@ fun DaySheet(
                         .semantics { contentDescription = addLabel },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Rounded.Add, null, tint = colors.background, modifier = Modifier.size(28.dp))
+                    Icon(Icons.Rounded.Add, null, tint = colors.onPrimary, modifier = Modifier.size(28.dp))
                 }
             }
         }

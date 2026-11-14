@@ -118,7 +118,7 @@ fun PillBottomBar(
                         .offset { IntOffset((dotX.value - 2.dp.toPx()).toInt(), -10.dp.roundToPx()) }
                         .size(4.dp)
                         .clip(CircleShape)
-                        .background(colors.text),
+                        .background(colors.primaryText),
                 )
             }
         }
@@ -128,7 +128,7 @@ fun PillBottomBar(
 @Composable
 private fun BarTab(item: BarItem, selected: Boolean, onClick: () -> Unit, modifier: Modifier) {
     val colors = LocalNexoColors.current
-    val tint by animateColorAsState(if (selected) colors.text else colors.textTertiary, NexoMotion.standard(), label = "tab")
+    val tint by animateColorAsState(if (selected) colors.primaryText else colors.textTertiary, NexoMotion.standard(), label = "tab")
     val bump by animateFloatAsState(if (selected) 1f else 0.92f, NexoMotion.snappy(), label = "tabScale")
     Box(
         modifier
@@ -158,12 +158,12 @@ private fun AddButton(onAdd: () -> Unit, label: String, modifier: Modifier) {
                 .pressScale(interactions, 0.9f)
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(colors.text)
+                .background(colors.primary)
                 .clickable(interactionSource = interactions, indication = null, role = Role.Button, onClick = onAdd)
                 .semantics { contentDescription = label },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Rounded.Add, null, tint = colors.background, modifier = Modifier.size(26.dp))
+            Icon(Icons.Rounded.Add, null, tint = colors.onPrimary, modifier = Modifier.size(26.dp))
         }
     }
 }

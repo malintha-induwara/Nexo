@@ -9,8 +9,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 
 /**
- * Soft Tally palette. The interface is neutral; colour only carries meaning
- * (money direction and category identity).
+ * Loop palette (Nexo-docs/branding/palettes/nexo-loop-palette.json), built from the launcher icon.
+ * Structure is strictly neutral: pure white in light mode, graphite in dark. Blue marks actions and
+ * emphasis only (buttons, the add button, switches, the active tab, selected states); every other
+ * colour carries meaning (money direction and category identity).
  */
 @Immutable
 data class NexoColors(
@@ -25,50 +27,78 @@ data class NexoColors(
     val text: Color,
     val textSecondary: Color,
     val textTertiary: Color,
+    /** Brand blue as a fill: buttons, the add button, switches, selected marks. */
+    val primary: Color,
+    val primaryPressed: Color,
+    /** Label and icon colour on [primary]. */
+    val onPrimary: Color,
+    /** Brand blue for text and icons on the page: links, the active tab. */
+    val primaryText: Color,
+    /** Quiet blue container: selected chips, banners. */
+    val primarySoft: Color,
+    val success: Color,
+    val warning: Color,
+    val danger: Color,
     val isDark: Boolean,
 ) {
     /** Tile tint for a category hue: the hue at low strength over the bare background. */
     fun tint(hue: Color, over: Color = background): Color = hue.copy(alpha = if (isDark) 0.18f else 0.16f).compositeOver(over)
 }
 
+/** Graphite dark base. */
 val DarkNexoColors = NexoColors(
-    background = Color(0xFF121110),
-    surface = Color(0xFF1C1B19),
-    raised = Color(0xFF272522),
-    raisedHigh = Color(0xFF312E2A),
-    hairline = Color(0xFF33302C),
-    text = Color(0xFFF4F1EA),
-    textSecondary = Color(0xFFA39E94),
-    textTertiary = Color(0xFF857F75),
+    background = Color(0xFF121212),
+    surface = Color(0xFF1C1C1C),
+    raised = Color(0xFF282828),
+    raisedHigh = Color(0xFF333333),
+    hairline = Color(0xFF333333),
+    text = Color(0xFFF5F5F5),
+    textSecondary = Color(0xFFA8A8A8),
+    textTertiary = Color(0xFF8E8E8E),
+    primary = Color(0xFF3378F8),
+    primaryPressed = Color(0xFF2666ED),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryText = Color(0xFF64AFFD),
+    primarySoft = Color(0xFF21304C),
+    success = Color(0xFF4CD787),
+    warning = Color(0xFFFFB340),
+    danger = Color(0xFFFF6961),
     isDark = true,
 )
 
 val LightNexoColors = NexoColors(
-    background = Color(0xFFF6F4EF),
-    surface = Color(0xFFFFFFFF),
-    raised = Color(0xFFEEEBE4),
-    raisedHigh = Color(0xFFE4E0D7),
-    hairline = Color(0xFFE2DED6),
-    text = Color(0xFF1A1917),
-    textSecondary = Color(0xFF6B675F),
-    textTertiary = Color(0xFF7F7A71),
+    background = Color(0xFFFFFFFF),
+    surface = Color(0xFFF5F5F5),
+    raised = Color(0xFFEBEBEB),
+    raisedHigh = Color(0xFFE0E0E0),
+    hairline = Color(0xFFE2E2E2),
+    text = Color(0xFF111111),
+    textSecondary = Color(0xFF5C5C5C),
+    textTertiary = Color(0xFF707070),
+    primary = Color(0xFF2666ED),
+    primaryPressed = Color(0xFF1C5AD5),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryText = Color(0xFF2462E4),
+    primarySoft = Color(0xFFE9F0FD),
+    success = Color(0xFF167540),
+    warning = Color(0xFF8F5200),
+    danger = Color(0xFFD92D20),
     isDark = false,
 )
 
 val LocalNexoColors = staticCompositionLocalOf { DarkNexoColors }
 
 /**
- * Material roles mapped onto the neutral palette. `primary` is the text colour and
- * `onPrimary` the background, so every stock button, switch and FAB renders inverted
- * rather than in an accent.
+ * Material roles mapped onto the palette. `primary` is the brand blue, so stock buttons, switches,
+ * FABs and text buttons pick it up; everything else stays neutral.
  */
 internal fun NexoColors.toScheme(): ColorScheme = if (isDark) {
     darkColorScheme(
-        primary = text,
-        onPrimary = background,
-        primaryContainer = raised,
-        onPrimaryContainer = text,
-        inversePrimary = textSecondary,
+        primary = primary,
+        onPrimary = onPrimary,
+        primaryContainer = primarySoft,
+        onPrimaryContainer = primaryText,
+        inversePrimary = LightNexoColors.primary,
         secondary = textSecondary,
         onSecondary = background,
         secondaryContainer = raised,
@@ -86,34 +116,34 @@ internal fun NexoColors.toScheme(): ColorScheme = if (isDark) {
         surfaceTint = Color.Transparent,
         inverseSurface = text,
         inverseOnSurface = background,
-        error = Color(0xFFFF7B6B),
+        error = danger,
         onError = background,
-        errorContainer = Color(0xFF4A211B),
-        onErrorContainer = Color(0xFFFFDAD3),
+        errorContainer = Color(0xFF4A1F1C),
+        onErrorContainer = Color(0xFFFFDAD6),
         outline = textTertiary,
         outlineVariant = hairline,
         scrim = Color.Black,
         surfaceBright = raisedHigh,
         surfaceDim = background,
-        surfaceContainerLowest = Color(0xFF0D0C0B),
-        surfaceContainerLow = Color(0xFF171614),
+        surfaceContainerLowest = Color(0xFF0D0D0D),
+        surfaceContainerLow = Color(0xFF171717),
         surfaceContainer = surface,
         surfaceContainerHigh = raised,
         surfaceContainerHighest = raisedHigh,
     )
 } else {
     lightColorScheme(
-        primary = text,
-        onPrimary = background,
-        primaryContainer = raised,
-        onPrimaryContainer = text,
-        inversePrimary = textTertiary,
+        primary = primary,
+        onPrimary = onPrimary,
+        primaryContainer = primarySoft,
+        onPrimaryContainer = primaryText,
+        inversePrimary = DarkNexoColors.primaryText,
         secondary = textSecondary,
-        onSecondary = surface,
+        onSecondary = background,
         secondaryContainer = raised,
         onSecondaryContainer = text,
         tertiary = textSecondary,
-        onTertiary = surface,
+        onTertiary = background,
         tertiaryContainer = raised,
         onTertiaryContainer = text,
         background = background,
@@ -125,19 +155,20 @@ internal fun NexoColors.toScheme(): ColorScheme = if (isDark) {
         surfaceTint = Color.Transparent,
         inverseSurface = text,
         inverseOnSurface = background,
-        error = Color(0xFFC9372C),
-        onError = surface,
-        errorContainer = Color(0xFFFCE3DE),
-        onErrorContainer = Color(0xFF5C1710),
+        error = danger,
+        onError = background,
+        errorContainer = Color(0xFFFDE7E5),
+        onErrorContainer = Color(0xFF5C1510),
         outline = textTertiary,
         outlineVariant = hairline,
         scrim = Color.Black,
-        surfaceBright = surface,
+        surfaceBright = background,
         surfaceDim = raisedHigh,
-        surfaceContainerLowest = surface,
-        surfaceContainerLow = Color(0xFFFBFAF7),
-        surfaceContainer = surface,
-        surfaceContainerHigh = surface,
+        // Floating containers (dialogs, menus, pickers) stay white over the page.
+        surfaceContainerLowest = background,
+        surfaceContainerLow = Color(0xFFFAFAFA),
+        surfaceContainer = background,
+        surfaceContainerHigh = background,
         surfaceContainerHighest = raised,
     )
 }

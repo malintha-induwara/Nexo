@@ -1,5 +1,6 @@
 package com.nexo.app.widget
 
+import android.app.UiModeManager
 import android.content.Context
 import android.content.res.Configuration
 import com.nexo.app.core.database.NexoDatabase
@@ -47,8 +48,8 @@ data class MonthFigures(
     val expenseDiff: Double = 0.0,
     val incomeDiffText: String = "",
     val expenseDiffText: String = "",
-    val incomeColor: Long = 0xFF1F88FF,
-    val expenseColor: Long = 0xFFFF603B,
+    val incomeColor: Long = 0xFF2462E4,
+    val expenseColor: Long = 0xFFD92D20,
 )
 
 data class CardLine(val id: String, val name: String, val payable: String, val outstanding: String, val payableNegative: Boolean, val outstandingNegative: Boolean)
@@ -63,16 +64,23 @@ object WidgetData {
 
     fun entry(context: Context): WidgetEntryPoint = EntryPointAccessors.fromApplication(context.applicationContext, WidgetEntryPoint::class.java)
 
+    private fun isDark(context: Context, theme: ThemeMode): Boolean = when (theme) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        // The app's own configuration follows the in-app theme (MainActivity hands it to the system),
+        // so ask for the phone's setting first; scheduled dark mode falls back to the configuration.
+        ThemeMode.SYSTEM -> when (context.getSystemService(UiModeManager::class.java)?.nightMode) {
+            UiModeManager.MODE_NIGHT_YES -> true
+            UiModeManager.MODE_NIGHT_NO -> false
+            else -> (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        }
+    }
+
+    /** Loop palette: graphite surface in dark, pure white in light. */
     suspend fun colors(context: Context): WidgetColors {
         val s = entry(context).prefs().current()
-        val systemDark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        val dark = when (s.widgetTheme) {
-            ThemeMode.DARK -> true
-            ThemeMode.LIGHT -> false
-            ThemeMode.SYSTEM -> systemDark
-        }
-        return if (dark) WidgetColors(0xFF1E1E1E, 0xFFFFFFFF, 0xFFAAAAAA, true, s.widgetOpacity)
-        else WidgetColors(0xFFFFFFFF, 0xFF1B1B1B, 0xFF777777, false, s.widgetOpacity)
+        return if (isDark(context, s.widgetTheme)) WidgetColors(0xFF1C1C1C, 0xFFF5F5F5, 0xFFA8A8A8, true, s.widgetOpacity)
+        else WidgetColors(0xFFFFFFFF, 0xFF111111, 0xFF5C5C5C, false, s.widgetOpacity)
     }
 
     /** UI-028 figures for the current month period, with the "vs. MoM" comparison (BR-9). */
@@ -99,8 +107,9 @@ object WidgetData {
             return "$arrow ${AmountFormatter.format(kotlin.math.abs(d), main)}" + if (pct != null && pct < 500) " (${pct.toInt()}%)" else ""
         }
         val set = ref.settings.colorSet
-        val blue = 0xFF1F88FF
-        val red = 0xFFFF603B
+        val dark = isDark(context, e.prefs().current().widgetTheme)
+        val blue = if (dark) 0xFF64AFFD else 0xFF2462E4
+        val red = if (dark) 0xFFFF6961 else 0xFFD92D20
         return MonthFigures(
             ready = true,
             income = AmountFormatter.format(inc, main),

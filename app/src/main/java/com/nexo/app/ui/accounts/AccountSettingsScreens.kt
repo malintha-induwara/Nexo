@@ -85,6 +85,7 @@ import com.nexo.app.ui.navigation.DeletedGroupsKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.TransferExpenseKey
 import com.nexo.app.ui.theme.LocalMoneyColors
+import com.nexo.app.ui.theme.nexo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -242,7 +243,7 @@ fun AccountListScreen(key: AccountListKey, vm: AccountSettingsViewModel = hiltVi
                 if (a.groupId != lastGroup) {
                     lastGroup = a.groupId
                     item(key = "g_${a.groupId}") {
-                        Text(ref.groupById[a.groupId]?.name ?: "", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp))
+                        Text(ref.groupById[a.groupId]?.name ?: "", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.nexo.primaryText, modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp))
                     }
                 }
                 item(key = a.id) {
@@ -346,7 +347,7 @@ fun DeletedGroupsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
                 Row(Modifier.fillMaxWidth().clickable { restore = g.id }.padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f).padding(vertical = 12.dp)) {
                         Text("${g.name} ($count)")
-                        Text(stringResource(R.string.action_restore), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(R.string.action_restore), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.nexo.primaryText)
                     }
                     IconButton(onClick = { vm.launch { vm.repo.setGroupStatus(g.id, GroupStatus.PURGED) } }) { Icon(Icons.Filled.RemoveCircle, stringResource(R.string.delete_permanently), tint = MaterialTheme.colorScheme.error) }
                 }
@@ -378,7 +379,7 @@ fun TransferExpenseScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
             eligible.forEach { a ->
                 if (a.groupId != lastGroup) {
                     lastGroup = a.groupId
-                    item(key = "g_${a.groupId}") { Text(ref.groupById[a.groupId]?.name ?: "", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, top = 16.dp)) }
+                    item(key = "g_${a.groupId}") { Text(ref.groupById[a.groupId]?.name ?: "", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.nexo.primaryText, modifier = Modifier.padding(start = 16.dp, top = 16.dp)) }
                 }
                 item(key = a.id) {
                     Row(Modifier.fillMaxWidth().clickable { vm.launch { vm.repo.setTransferExpense(a.id, !a.transferExpense) } }.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {

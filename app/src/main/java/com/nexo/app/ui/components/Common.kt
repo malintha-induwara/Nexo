@@ -104,9 +104,9 @@ fun SwitchRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit, subt
 @Composable
 fun nexoSwitchColors() = LocalNexoColors.current.let { c ->
     SwitchDefaults.colors(
-        checkedThumbColor = c.background,
-        checkedTrackColor = c.text,
-        checkedBorderColor = c.text,
+        checkedThumbColor = c.onPrimary,
+        checkedTrackColor = c.primary,
+        checkedBorderColor = c.primary,
         uncheckedThumbColor = c.textTertiary,
         uncheckedTrackColor = c.raised,
         uncheckedBorderColor = c.hairline,

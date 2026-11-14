@@ -188,7 +188,7 @@ fun TxRow(
             .heightIn(min = Sizes.row)
             .drawBehind {
                 drawRect(background)
-                if (flash.value > 0f) drawRect(colors.text.copy(alpha = 0.08f * flash.value))
+                if (flash.value > 0f) drawRect(colors.primary.copy(alpha = 0.10f * flash.value))
             }
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = Space.gutter, vertical = Space.s + Space.xxs),
@@ -203,8 +203,8 @@ fun TxRow(
             label = "rowTile",
         ) { on ->
             if (on) {
-                Box(Modifier.size(Sizes.tile).clip(NexoShapes.tile).background(colors.text), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Check, null, tint = colors.background, modifier = Modifier.size(22.dp))
+                Box(Modifier.size(Sizes.tile).clip(NexoShapes.tile).background(colors.primary), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Check, null, tint = colors.onPrimary, modifier = Modifier.size(22.dp))
                 }
             } else {
                 RowTile(row)

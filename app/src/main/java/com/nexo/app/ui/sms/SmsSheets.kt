@@ -118,7 +118,7 @@ fun SmsPromptCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             androidx.compose.material3.Button(
                 onClick = onPrimary,
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = colors.text, contentColor = colors.background),
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
             ) { Text(primary, style = MaterialTheme.typography.labelLarge) }
             if (secondary != null && onSecondary != null) {
                 androidx.compose.material3.TextButton(onClick = onSecondary, modifier = Modifier.padding(start = Space.s)) {

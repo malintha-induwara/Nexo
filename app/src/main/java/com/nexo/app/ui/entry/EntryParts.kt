@@ -60,6 +60,7 @@ import com.nexo.app.domain.PhotoItem
 import com.nexo.app.ui.components.ConfirmDialog
 import com.nexo.app.ui.components.MessageDialog
 import com.nexo.app.ui.components.TextFieldDialog
+import com.nexo.app.ui.theme.nexo
 import kotlinx.coroutines.launch
 
 @Composable
@@ -120,7 +121,7 @@ fun TagSelectSheet(
                     ) {
                         if (!editMode) Checkbox(checked = tag.id in selected, onCheckedChange = null, modifier = Modifier.padding(8.dp))
                         Text(tag.name, modifier = Modifier.weight(1f).padding(vertical = 14.dp, horizontal = 8.dp))
-                        if (!editMode && tag.id in selected) Text("${selected.indexOf(tag.id) + 1}", color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(end = 12.dp))
+                        if (!editMode && tag.id in selected) Text("${selected.indexOf(tag.id) + 1}", color = MaterialTheme.nexo.primaryText, modifier = Modifier.padding(end = 12.dp))
                         if (editMode) {
                             IconButton(onClick = { scope.launch { repo.reorder(live.map { it.id }.toMutableList().apply { if (index > 0) add(index - 1, removeAt(index)) }) } }, enabled = index > 0) {
                                 Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up))

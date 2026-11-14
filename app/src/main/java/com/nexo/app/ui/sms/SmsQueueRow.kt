@@ -105,8 +105,8 @@ fun SmsQueueRow(
             label = "smsTile",
         ) { on ->
             if (on) {
-                Box(Modifier.size(Sizes.tile).clip(NexoShapes.tile).background(colors.text), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Check, null, tint = colors.background, modifier = Modifier.size(22.dp))
+                Box(Modifier.size(Sizes.tile).clip(NexoShapes.tile).background(colors.primary), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Check, null, tint = colors.onPrimary, modifier = Modifier.size(22.dp))
                 }
             } else {
                 ItemTile(item, ref)

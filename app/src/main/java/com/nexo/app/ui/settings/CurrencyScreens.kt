@@ -63,6 +63,7 @@ import com.nexo.app.ui.navigation.AddSubCurrencyKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MainCurrencyPickerKey
 import com.nexo.app.ui.navigation.SubCurrencyEditKey
+import com.nexo.app.ui.theme.nexo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -134,7 +135,7 @@ fun MainCurrencyPickerScreen(vm: CurrencyViewModel = hiltViewModel()) {
             items(CurrencyCatalog.all, key = { it.code }) { c ->
                 Text(
                     "${c.displayName()} (${c.mainSymbol})",
-                    color = if (c.code == ref.mainCurrency.isoCode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    color = if (c.code == ref.mainCurrency.isoCode) MaterialTheme.nexo.primaryText else MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.fillMaxWidth().clickable { if (c.code != ref.mainCurrency.isoCode) target = c }.padding(16.dp),
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -250,7 +251,7 @@ fun AddSubCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
                 list.forEach { c ->
                     if (c.code.first() != letter) {
                         letter = c.code.first()
-                        item(key = "h_$letter") { Text(letter.toString(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, top = 8.dp)) }
+                        item(key = "h_$letter") { Text(letter.toString(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.nexo.primaryText, modifier = Modifier.padding(start = 16.dp, top = 8.dp)) }
                     }
                     item(key = c.code) {
                         Text("${c.displayName()} (${c.subSymbol})", Modifier.fillMaxWidth().clickable { nav.replace(SubCurrencyEditKey(isoCode = c.code)) }.padding(16.dp))

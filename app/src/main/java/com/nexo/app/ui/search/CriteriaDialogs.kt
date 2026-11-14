@@ -31,6 +31,7 @@ import com.nexo.app.R
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.domain.RefData
 import com.nexo.app.ui.transactions.FilterCriteria
+import com.nexo.app.ui.theme.nexo
 
 data class CheckItem(val id: String, val label: String, val header: Boolean = false, val indent: Boolean = false)
 
@@ -59,7 +60,7 @@ fun MultiSelectDialog(title: String, items: List<CheckItem>, initial: Set<String
                     items.forEach { item ->
                         item(key = item.id + item.header) {
                             if (item.header) {
-                                Text(item.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 10.dp, start = 8.dp))
+                                Text(item.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.nexo.primaryText, modifier = Modifier.padding(top = 10.dp, start = 8.dp))
                             } else {
                                 Row(
                                     Modifier.fillMaxWidth().clickable { selected = if (item.id in selected) selected - item.id else selected + item.id }

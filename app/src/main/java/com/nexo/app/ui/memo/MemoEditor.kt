@@ -61,6 +61,7 @@ import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MemoEditorKey
 import com.nexo.app.ui.theme.LocalIsDark
 import com.nexo.app.ui.theme.NexoPalette
+import com.nexo.app.ui.theme.nexo
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -185,7 +186,7 @@ fun MemoEditorScreen(key: MemoEditorKey) {
             Text(
                 "${Formats.monthDay(s.date)} (${Formats.weekdayShort(s.date)})",
                 Modifier.clickable { pickDate = true }.padding(horizontal = 16.dp, vertical = 8.dp),
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.nexo.primaryText,
             )
             val colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,

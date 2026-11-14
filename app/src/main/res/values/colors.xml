@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Loop palette (Nexo-docs/branding/palettes/nexo-loop-palette.json). Compose colours live in ui/theme/Color.kt. -->
 <resources>
-    <color name="brand">#00897B</color>
-    <color name="brand_dark">#00695C</color>
-    <color name="window_background">#F6F4EF</color>
-    <!-- Splash mark follows the text colour so it reads on the page background. -->
-    <color name="splash_mark">#1A1917</color>
-    <color name="splash_link">#7F7A71</color>
-    <color name="ic_launcher_background">#00897B</color>
+    <color name="brand">#2666ED</color>
+    <color name="window_background">#FFFFFF</color>
 </resources>

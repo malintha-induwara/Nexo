@@ -50,6 +50,7 @@ import com.nexo.app.ui.navigation.BudgetEditorKey
 import com.nexo.app.ui.navigation.BudgetSettingsKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.theme.NexoPalette
+import com.nexo.app.ui.theme.nexo
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -76,7 +77,7 @@ fun BudgetBlock(period: MonthPeriod, vm: BudgetBlockViewModel = hiltViewModel(ke
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Savings, null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Outlined.Savings, null, tint = MaterialTheme.nexo.primaryText)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.budget), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 TextButton(onClick = { nav.navigate(BudgetSettingsKey) }) {
@@ -88,7 +89,7 @@ fun BudgetBlock(period: MonthPeriod, vm: BudgetBlockViewModel = hiltViewModel(ke
                 Text(stringResource(R.string.budget_empty_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                 return@Column
             }
-            if (today != null) Text(stringResource(R.string.today), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            if (today != null) Text(stringResource(R.string.today), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.nexo.primaryText)
             val anyChildren = d.rows.any { it.children.isNotEmpty() }
             BudgetRowView(d.total, ref.mainCurrency, today, onClick = {
                 if (d.total.budgetId != null) nav.navigate(BudgetEditorKey(d.total.budgetId)) else nav.navigate(BudgetAddKey(presetTotal = true, preset = true))

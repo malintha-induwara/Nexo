@@ -53,6 +53,7 @@ import com.nexo.app.ui.components.ConfirmDialog
 import com.nexo.app.ui.components.MessageDialog
 import com.nexo.app.ui.components.NexoDatePickerDialog
 import com.nexo.app.ui.components.TextFieldDialog
+import com.nexo.app.ui.theme.nexo
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -229,7 +230,7 @@ fun AccountPickerDialog(ref: RefData, onAccount: (String) -> Unit, onTransfer: (
                     if (a.groupId != lastGroup) {
                         lastGroup = a.groupId
                         item(key = "g_${a.groupId}") {
-                            Text(ref.groupById[a.groupId]?.name ?: "", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 10.dp))
+                            Text(ref.groupById[a.groupId]?.name ?: "", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.nexo.primaryText, modifier = Modifier.padding(top = 10.dp))
                         }
                     }
                     item(key = a.id) {
@@ -242,7 +243,7 @@ fun AccountPickerDialog(ref: RefData, onAccount: (String) -> Unit, onTransfer: (
                                     from != a.id -> onTransfer?.invoke(from!!, a.id)
                                 }
                             }.padding(vertical = 12.dp),
-                            color = if (a.id == from) MaterialTheme.colorScheme.primary else Color.Unspecified,
+                            color = if (a.id == from) MaterialTheme.nexo.primaryText else Color.Unspecified,
                         )
                     }
                 }

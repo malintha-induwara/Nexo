@@ -64,6 +64,7 @@ import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.LockSettingsKey
 import com.nexo.app.ui.navigation.StyleKey
 import com.nexo.app.ui.theme.LocalHeaderColors
+import com.nexo.app.ui.theme.nexo
 
 data class HubItem(val label: Int, val icon: ImageVector, val key: NavKey)
 
@@ -127,7 +128,7 @@ fun SettingsTab(vm: SettingsViewModel = hiltViewModel()) {
                     Modifier.background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp)).clickable { nav.navigate(item.key) }.padding(vertical = 18.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Icon(item.icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                    Icon(item.icon, null, tint = MaterialTheme.nexo.primaryText, modifier = Modifier.size(28.dp))
                     Spacer(Modifier.height(8.dp))
                     Text(stringResource(item.label), style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
                 }

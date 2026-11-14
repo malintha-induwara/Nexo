@@ -356,7 +356,7 @@ fun CategoryFormScreen(key: CategoryFormKey, vm: CategoryViewModel = hiltViewMod
 private fun EmojiCell(emoji: String?, selected: Boolean, label: String? = null, onClick: () -> Unit) {
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
-    val ring by animateColorAsState(if (selected) colors.text else Color.Transparent, NexoMotion.standard(), label = "emojiRing")
+    val ring by animateColorAsState(if (selected) colors.primary else Color.Transparent, NexoMotion.standard(), label = "emojiRing")
     val scale by animateFloatAsState(if (selected) 1f else 0.94f, NexoMotion.snappy(), label = "emojiScale")
     Box(
         Modifier

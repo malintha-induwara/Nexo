@@ -363,7 +363,7 @@ private fun SelectionHeader(count: Int, onClose: () -> Unit, onAssign: () -> Uni
         Spacer(Modifier.width(Space.xs))
         Button(
             onClick = onApprove,
-            colors = ButtonDefaults.buttonColors(containerColor = colors.text, contentColor = colors.background),
+            colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
             contentPadding = PaddingValues(horizontal = Space.l),
         ) {
             androidx.compose.material3.Icon(Icons.Rounded.DoneAll, null, Modifier.size(18.dp))
@@ -383,7 +383,7 @@ private fun CapturePill(label: String, on: Boolean, onClick: () -> Unit) {
     ) {
         Box(
             Modifier.size(8.dp).clip(CircleShape)
-                .then(if (on) Modifier.background(colors.text) else Modifier.border(1.5.dp, colors.textTertiary, CircleShape)),
+                .then(if (on) Modifier.background(colors.primary) else Modifier.border(1.5.dp, colors.textTertiary, CircleShape)),
         )
         Spacer(Modifier.width(Space.s))
         Text(label, style = MaterialTheme.typography.labelMedium, color = if (on) colors.text else colors.textSecondary)
@@ -399,8 +399,8 @@ private fun FilterChips(selected: QueueFilter, pendingCount: Int, attentionCount
     ) {
         QueueFilter.entries.forEach { f ->
             val on = f == selected
-            val container by animateColorAsState(if (on) colors.text else colors.raised, NexoMotion.standard(), label = "chip")
-            val content by animateColorAsState(if (on) colors.background else colors.textSecondary, NexoMotion.standard(), label = "chipText")
+            val container by animateColorAsState(if (on) colors.primarySoft else colors.raised, NexoMotion.standard(), label = "chip")
+            val content by animateColorAsState(if (on) colors.primaryText else colors.textSecondary, NexoMotion.standard(), label = "chipText")
             val count = when (f) {
                 QueueFilter.ALL -> pendingCount
                 QueueFilter.ATTENTION -> attentionCount

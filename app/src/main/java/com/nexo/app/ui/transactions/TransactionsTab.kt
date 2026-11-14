@@ -508,7 +508,7 @@ private fun CalendarDay(cell: CalendarCell, main: CurrencyEntity, money: MoneyCo
                 .height(24.dp)
                 .widthIn(min = 24.dp)
                 .clip(CircleShape)
-                .then(if (cell.isToday) Modifier.background(colors.text) else Modifier)
+                .then(if (cell.isToday) Modifier.background(colors.primary) else Modifier)
                 .padding(horizontal = 6.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -518,7 +518,7 @@ private fun CalendarDay(cell: CalendarCell, main: CurrencyEntity, money: MoneyCo
                 fontWeight = if (cell.isToday) FontWeight.Bold else FontWeight.Medium,
                 maxLines = 1,
                 color = when {
-                    cell.isToday -> colors.background
+                    cell.isToday -> colors.onPrimary
                     !cell.inPeriod -> colors.textTertiary.copy(alpha = 0.7f)
                     cell.date.dayOfWeek == java.time.DayOfWeek.SUNDAY -> NexoPalette.Sunday
                     else -> colors.text

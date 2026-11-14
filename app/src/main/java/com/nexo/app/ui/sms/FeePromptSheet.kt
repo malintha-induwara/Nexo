@@ -125,7 +125,7 @@ fun ColumnScope.FeePromptContent(prompt: FeePrompt, ref: RefData, onAnswer: (Fee
             Checkbox(
                 checked = remember,
                 onCheckedChange = { remember = it },
-                colors = CheckboxDefaults.colors(checkedColor = colors.text, uncheckedColor = colors.textTertiary, checkmarkColor = colors.background),
+                colors = CheckboxDefaults.colors(checkedColor = colors.primary, uncheckedColor = colors.textTertiary, checkmarkColor = colors.onPrimary),
             )
             Text(
                 stringResource(R.string.fee_remember, stringResource(feeRouteInline(plan.route)), account),
@@ -161,7 +161,7 @@ fun ColumnScope.FeePromptContent(prompt: FeePrompt, ref: RefData, onAnswer: (Fee
                     }
                 },
                 modifier = Modifier.weight(1.3f).height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = colors.text, contentColor = colors.background),
+                colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
                 contentPadding = PaddingValues(horizontal = Space.s),
             ) { Text(stringResource(if (plan.fxDifference) R.string.fee_record_difference else R.string.fee_add), style = MaterialTheme.typography.titleSmall, maxLines = 1) }
         }

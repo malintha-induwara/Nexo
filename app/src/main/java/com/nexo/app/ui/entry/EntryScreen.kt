@@ -1022,7 +1022,7 @@ private fun BottomButtons(
                 enabled = !s.saving,
                 interactionSource = interactions,
                 modifier = Modifier.weight(if (review) 1.4f else 2f).height(52.dp).pressScale(interactions, 0.97f),
-                colors = ButtonDefaults.buttonColors(containerColor = colors.text, contentColor = colors.background),
+                colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
             ) {
                 Text(
                     when {

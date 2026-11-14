@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Nexo mark: an "N" built from two rising bars and a link, on the adaptive-icon safe zone. -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path android:fillColor="@color/splash_mark" android:pathData="M36,72 L36,40 Q36,36 40,36 L44,36 Q48,36 48,40 L48,72 Q48,76 44,76 L40,76 Q36,76 36,72 Z" />
-    <path android:fillColor="@color/splash_mark" android:pathData="M60,68 L60,36 Q60,32 64,32 L68,32 Q72,32 72,36 L72,68 Q72,72 68,72 L64,72 Q60,72 60,68 Z" />
-    <path android:fillColor="@color/splash_link" android:pathData="M44,38 L47,36 L68,68 L65,70 Z" />
-</vector>
+<!--
+    Splash icon: the app icon as a rounded-square tile (not the launcher's mask shape), sized so its
+    corners stay inside the circle the splash screen shows. A plain layer list rather than the
+    adaptive icon, because core-splashscreen crops adaptive icons on API 26-30.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_splash_tile" />
+    <item android:drawable="@drawable/ic_splash_foreground" />
+</layer-list>

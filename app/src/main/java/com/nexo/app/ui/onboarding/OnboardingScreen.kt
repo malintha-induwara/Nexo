@@ -56,6 +56,7 @@ import com.nexo.app.backup.RestoreResult
 import com.nexo.app.core.money.CatalogCurrency
 import com.nexo.app.core.money.CurrencyCatalog
 import com.nexo.app.ui.components.MessageDialog
+import com.nexo.app.ui.theme.nexo
 
 @Composable
 fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
@@ -133,7 +134,7 @@ private fun StartingData(state: OnboardingState, vm: OnboardingViewModel) {
         Text(stringResource(R.string.starting_data_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
         Text(stringResource(R.string.starting_data_text), color = MaterialTheme.colorScheme.onSurfaceVariant)
         ChoiceCard(
-            icon = { Icon(Icons.Outlined.RocketLaunch, null, tint = MaterialTheme.colorScheme.primary) },
+            icon = { Icon(Icons.Outlined.RocketLaunch, null, tint = MaterialTheme.nexo.primaryText) },
             title = stringResource(R.string.start_fresh),
             text = stringResource(R.string.start_fresh_text),
             onClick = vm::startFresh,
@@ -144,7 +145,7 @@ private fun StartingData(state: OnboardingState, vm: OnboardingViewModel) {
             }
         }
         ChoiceCard(
-            icon = { Icon(Icons.Outlined.Restore, null, tint = MaterialTheme.colorScheme.primary) },
+            icon = { Icon(Icons.Outlined.Restore, null, tint = MaterialTheme.nexo.primaryText) },
             title = stringResource(R.string.restore_from_file),
             text = stringResource(R.string.restore_from_file_text),
             onClick = { picker.launch(arrayOf("*/*")) },
