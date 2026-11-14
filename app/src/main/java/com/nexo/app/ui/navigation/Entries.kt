@@ -54,7 +54,7 @@ import com.nexo.app.ui.sms.SmsQueueScreen
 import com.nexo.app.ui.sms.SmsSendersScreen
 import com.nexo.app.ui.sms.SmsSettingsScreen
 import com.nexo.app.ui.stats.StatsDetailScreen
-import com.nexo.app.ui.tags.TagSettingsScreen
+import com.nexo.app.ui.tags.TagSettingsRoute
 
 /** Every screen of the app. */
 fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
@@ -91,7 +91,7 @@ fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<CategoryListKey> { CategoryListScreen(it) }
     entry<SubcategoryListKey> { SubcategoryListScreen(it) }
     entry<CategoryFormKey> { CategoryFormScreen(it) }
-    entry<TagSettingsKey> { TagSettingsScreen() }
+    entry<TagSettingsKey> { TagSettingsRoute() }
     entry<ConfigurationKey> { ConfigurationScreen() }
     entry<MonthStartKey> { MonthStartScreen() }
     entry<MainCurrencyKey> { MainCurrencyScreen() }
