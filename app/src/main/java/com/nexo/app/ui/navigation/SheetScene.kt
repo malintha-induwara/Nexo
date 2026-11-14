@@ -37,9 +37,9 @@ import androidx.navigation3.scene.OverlayScene
 import androidx.navigation3.scene.Scene
 import androidx.navigation3.scene.SceneStrategy
 import androidx.navigation3.scene.SceneStrategyScope
-import com.nexo.app.ui.theme.LocalNexoColors
-import com.nexo.app.ui.theme.NexoMotion
-import com.nexo.app.ui.theme.NexoShapes
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.NexoMotion
+import com.nexo.app.ui.designsystem.theme.NexoShapes
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 

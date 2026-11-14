@@ -2,8 +2,8 @@ package com.nexo.app.ui.transactions
 
 import androidx.activity.compose.BackHandler
 import java.util.Locale
-import com.nexo.app.ui.theme.NexoShapes
-import com.nexo.app.ui.theme.MoneyColors
+import com.nexo.app.ui.designsystem.theme.NexoShapes
+import com.nexo.app.ui.designsystem.theme.MoneyColors
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.CircleShape
@@ -33,18 +33,18 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Dp
-import com.nexo.app.ui.components.NavMotion
-import com.nexo.app.ui.components.RollingAmount
-import com.nexo.app.ui.components.RoundIconButton
-import com.nexo.app.ui.components.SegmentedPill
-import com.nexo.app.ui.components.collapsingHeader
-import com.nexo.app.ui.components.rememberCollapsingHeaderState
-import com.nexo.app.ui.components.rememberHaptics
-import com.nexo.app.ui.components.shrinkToFit
-import com.nexo.app.ui.theme.LocalNexoColors
-import com.nexo.app.ui.theme.NexoMotion
-import com.nexo.app.ui.theme.NexoType
-import com.nexo.app.ui.theme.Space
+import com.nexo.app.ui.designsystem.component.NavMotion
+import com.nexo.app.ui.designsystem.component.RollingAmount
+import com.nexo.app.ui.designsystem.component.RoundIconButton
+import com.nexo.app.ui.designsystem.component.SegmentedPill
+import com.nexo.app.ui.designsystem.component.collapsingHeader
+import com.nexo.app.ui.designsystem.component.rememberCollapsingHeaderState
+import com.nexo.app.ui.designsystem.component.rememberHaptics
+import com.nexo.app.ui.designsystem.component.shrinkToFit
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.NexoMotion
+import com.nexo.app.ui.designsystem.theme.NexoType
+import com.nexo.app.ui.designsystem.theme.Space
 import kotlin.math.sign
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -113,14 +113,14 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.core.database.entity.CurrencyEntity
-import com.nexo.app.core.database.entity.MemoEntity
+import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.data.database.entity.MemoEntity
 import com.nexo.app.core.model.SwipeMode
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.MonthPickerDialog
-import com.nexo.app.ui.components.PeriodNavigator
-import com.nexo.app.ui.components.TotalsBar
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.ui.designsystem.component.Formats
+import com.nexo.app.ui.designsystem.component.MonthPickerDialog
+import com.nexo.app.ui.designsystem.component.PeriodNavigator
+import com.nexo.app.ui.designsystem.component.TotalsBar
 import com.nexo.app.ui.navigation.BookmarksKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
@@ -129,10 +129,10 @@ import com.nexo.app.ui.navigation.MemoEditorKey
 import com.nexo.app.ui.navigation.RepeatListKey
 import com.nexo.app.ui.navigation.SearchKey
 import com.nexo.app.ui.shell.LocalShell
-import com.nexo.app.ui.theme.LocalHeaderColors
-import com.nexo.app.ui.theme.LocalIsDark
-import com.nexo.app.ui.theme.LocalMoneyColors
-import com.nexo.app.ui.theme.NexoPalette
+import com.nexo.app.ui.designsystem.theme.LocalHeaderColors
+import com.nexo.app.ui.designsystem.theme.LocalIsDark
+import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
+import com.nexo.app.ui.designsystem.theme.NexoPalette
 import java.time.LocalDate
 import kotlin.math.abs
 
@@ -544,11 +544,11 @@ private fun CalendarDay(cell: CalendarCell, main: CurrencyEntity, money: MoneyCo
 
 /** One card per month: its income, expenses and net, opening to the weeks inside it. */
 @Composable
-private fun MonthlyContent(data: HomeData, main: CurrencyEntity, selected: LocalDate, bottom: Dp, onWeek: (com.nexo.app.core.period.MonthPeriod) -> Unit) {
+private fun MonthlyContent(data: HomeData, main: CurrencyEntity, selected: LocalDate, bottom: Dp, onWeek: (com.nexo.app.core.common.period.MonthPeriod) -> Unit) {
     val haptics = rememberHaptics()
     var expanded by rememberSaveable(data.year) { mutableStateOf(data.months.firstOrNull { selected in it.period.range }?.period?.key ?: -1) }
     if (data.months.isEmpty()) {
-        com.nexo.app.ui.components.EmptyState()
+        com.nexo.app.ui.designsystem.component.EmptyState()
         return
     }
     val today = LocalDate.now()
@@ -573,7 +573,7 @@ private fun MonthCard(month: MonthRow, main: CurrencyEntity, open: Boolean, show
     val money = LocalMoneyColors.current
     val interactions = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val turn by androidx.compose.animation.core.animateFloatAsState(if (open) 180f else 0f, NexoMotion.snappy(), label = "chevron")
-    com.nexo.app.ui.components.GroupCard(modifier, interactions = interactions) {
+    com.nexo.app.ui.designsystem.component.GroupCard(modifier, interactions = interactions) {
         Row(
             Modifier
                 .fillMaxWidth()
@@ -586,9 +586,9 @@ private fun MonthCard(month: MonthRow, main: CurrencyEntity, open: Boolean, show
                 if (showRange) Text(Formats.range(month.period.start, month.period.end), style = NexoType.Meta, color = colors.textTertiary)
             }
             Column(horizontalAlignment = Alignment.End) {
-                com.nexo.app.ui.components.FlowAmount(month.income, main, money.income)
-                com.nexo.app.ui.components.FlowAmount(month.expense, main, money.expense)
-                com.nexo.app.ui.components.AmountText(month.income - month.expense, main, style = NexoType.AmountSmall, color = colors.textSecondary)
+                com.nexo.app.ui.designsystem.component.FlowAmount(month.income, main, money.income)
+                com.nexo.app.ui.designsystem.component.FlowAmount(month.expense, main, money.expense)
+                com.nexo.app.ui.designsystem.component.AmountText(month.income - month.expense, main, style = NexoType.AmountSmall, color = colors.textSecondary)
             }
             Icon(
                 Icons.Rounded.KeyboardArrowDown, null, tint = colors.textTertiary,
@@ -629,13 +629,13 @@ private fun WeekLine(week: WeekRow, main: CurrencyEntity, onClick: () -> Unit) {
             maxLines = 1, modifier = Modifier.width(88.dp),
         )
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-            com.nexo.app.ui.components.FlowAmount(week.income, main, money.income, Modifier.shrinkToFit(), NexoType.AmountSmall)
+            com.nexo.app.ui.designsystem.component.FlowAmount(week.income, main, money.income, Modifier.shrinkToFit(), NexoType.AmountSmall)
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-            com.nexo.app.ui.components.FlowAmount(week.expense, main, money.expense, Modifier.shrinkToFit(), NexoType.AmountSmall)
+            com.nexo.app.ui.designsystem.component.FlowAmount(week.expense, main, money.expense, Modifier.shrinkToFit(), NexoType.AmountSmall)
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-            com.nexo.app.ui.components.FlowAmount(net, main, colors.text, Modifier.shrinkToFit(), NexoType.AmountSmall)
+            com.nexo.app.ui.designsystem.component.FlowAmount(net, main, colors.text, Modifier.shrinkToFit(), NexoType.AmountSmall)
         }
     }
 }
@@ -647,7 +647,7 @@ private fun NoteContent(memos: List<MemoEntity>, vm: TransactionsViewModel, bott
     val saved by vm.savedMemo.collectAsStateWithLifecycle()
     val dark = LocalIsDark.current
     if (memos.isEmpty()) {
-        com.nexo.app.ui.components.EmptyState(stringResource(R.string.no_memos))
+        com.nexo.app.ui.designsystem.component.EmptyState(stringResource(R.string.no_memos))
         return
     }
     LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = bottom), verticalArrangement = Arrangement.spacedBy(8.dp)) {

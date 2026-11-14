@@ -16,7 +16,7 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import com.nexo.app.ui.components.NavMotion
+import com.nexo.app.ui.designsystem.component.NavMotion
 import com.nexo.app.ui.lock.LockScreen
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MainKey
@@ -24,7 +24,7 @@ import com.nexo.app.ui.navigation.Navigator
 import com.nexo.app.ui.navigation.SheetSceneStrategy
 import com.nexo.app.ui.navigation.nexoEntries
 import com.nexo.app.ui.onboarding.OnboardingScreen
-import com.nexo.app.ui.theme.NexoTheme
+import com.nexo.app.ui.designsystem.theme.NexoTheme
 import kotlinx.coroutines.launch
 
 @Composable
@@ -35,7 +35,7 @@ fun NexoRoot(app: AppViewModel, onEraseAll: suspend () -> Unit, onBiometricsInva
     val pending by app.pending.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val d = device
-    NexoTheme(mode = d?.themeMode ?: com.nexo.app.core.settings.ThemeMode.SYSTEM, colorSet = book.colorSet) {
+    NexoTheme(mode = d?.themeMode ?: com.nexo.app.data.datastore.ThemeMode.SYSTEM, colorSet = book.colorSet) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             if (d == null) return@Box
             if (!d.setupDone) {

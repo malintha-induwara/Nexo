@@ -45,17 +45,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
-import com.nexo.app.core.database.entity.CurrencyEntity
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.core.money.AmountParts
-import com.nexo.app.ui.components.AmountSheet
-import com.nexo.app.ui.components.AmountText
-import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.rememberHaptics
-import com.nexo.app.ui.theme.LocalNexoColors
-import com.nexo.app.ui.theme.NexoShapes
-import com.nexo.app.ui.theme.NexoType
-import com.nexo.app.ui.theme.Space
+import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.common.money.AmountParts
+import com.nexo.app.ui.designsystem.component.AmountSheet
+import com.nexo.app.ui.designsystem.component.AmountText
+import com.nexo.app.ui.designsystem.component.Formats
+import com.nexo.app.ui.designsystem.component.rememberHaptics
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.NexoShapes
+import com.nexo.app.ui.designsystem.theme.NexoType
+import com.nexo.app.ui.designsystem.theme.Space
 import java.util.Locale
 
 /**

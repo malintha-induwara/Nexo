@@ -34,54 +34,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
-import com.nexo.app.core.database.entity.RepeatRuleEntity
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.common.money.Conversion
+import com.nexo.app.core.common.period.DateRange
+import com.nexo.app.core.common.period.MonthPeriod
+import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.RepeatReflect
 import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.core.period.DateRange
-import com.nexo.app.core.period.MonthPeriod
-import com.nexo.app.data.RefRepository
-import com.nexo.app.data.RepeatEngine
-import com.nexo.app.data.RepeatRepository
-import com.nexo.app.domain.Conversion
-import com.nexo.app.domain.RefData
-import com.nexo.app.domain.RepeatSchedule
-import com.nexo.app.ui.components.ChoiceDialog
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.NexoTopBar
-import com.nexo.app.ui.components.SettingRow
+import com.nexo.app.data.database.entity.RepeatRuleEntity
+import com.nexo.app.ui.designsystem.component.ChoiceDialog
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.Formats
+import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.component.SettingRow
+import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.theme.LocalMoneyColors
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
-import javax.inject.Inject
-
-@HiltViewModel
-class RepeatListViewModel @Inject constructor(
-    private val repo: RepeatRepository,
-    private val refs: RefRepository,
-    private val engine: RepeatEngine,
-) : ViewModel() {
-    val rules = repo.rules.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    val ref = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    fun delete(ids: List<String>) = viewModelScope.launch { repo.delete(ids) }
-    fun setReflect(r: RepeatReflect) = viewModelScope.launch {
-        refs.updateSettings { it.copy(repeatReflect = r) }
-        engine.run()
-    }
-}
 
 /** Estimated occurrences of a rule in the current month period. */
 fun estimatedCount(rule: RepeatRuleEntity, period: MonthPeriod): Int {

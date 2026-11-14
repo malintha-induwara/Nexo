@@ -1,7 +1,7 @@
 package com.nexo.app.ui.budgets
 
-import com.nexo.app.ui.theme.LocalNexoColors
-import com.nexo.app.ui.theme.LocalMoneyColors
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -43,16 +43,16 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.core.database.entity.CurrencyEntity
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.core.period.MonthPeriod
+import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.common.period.MonthPeriod
 import com.nexo.app.domain.BudgetRow
 import com.nexo.app.ui.navigation.BudgetAddKey
 import com.nexo.app.ui.navigation.BudgetDetailKey
 import com.nexo.app.ui.navigation.BudgetEditorKey
 import com.nexo.app.ui.navigation.BudgetSettingsKey
 import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.theme.nexo
+import com.nexo.app.ui.designsystem.theme.nexo
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 

@@ -33,18 +33,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.domain.RefData
-import com.nexo.app.sms.FeeRoute
-import com.nexo.app.sms.approve.FeeChoice
-import com.nexo.app.sms.approve.SmsApprover
-import com.nexo.app.ui.components.AmountSheet
-import com.nexo.app.ui.components.AmountText
-import com.nexo.app.ui.components.rememberHaptics
-import com.nexo.app.ui.theme.LocalNexoColors
-import com.nexo.app.ui.theme.NexoShapes
-import com.nexo.app.ui.theme.NexoType
-import com.nexo.app.ui.theme.Space
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.FeeRoute
+import com.nexo.app.domain.sms.FeeChoice
+import com.nexo.app.domain.sms.SmsApprover
+import com.nexo.app.ui.designsystem.component.AmountSheet
+import com.nexo.app.ui.designsystem.component.AmountText
+import com.nexo.app.ui.designsystem.component.rememberHaptics
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.NexoShapes
+import com.nexo.app.ui.designsystem.theme.NexoType
+import com.nexo.app.ui.designsystem.theme.Space
 
 fun feeRouteLabel(route: FeeRoute): Int = when (route) {
     FeeRoute.INTERBANK_TRANSFER -> R.string.fee_route_interbank
@@ -111,7 +111,7 @@ fun ColumnScope.FeePromptContent(prompt: FeePrompt, ref: RefData, onAnswer: (Fee
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(stringResource(R.string.fee_amount), style = MaterialTheme.typography.bodyLarge, color = colors.textSecondary, modifier = Modifier.weight(1f))
-            if (amount != null) AmountText(amount!!, currency, sign = com.nexo.app.core.money.AmountParts.Sign.NONE)
+            if (amount != null) AmountText(amount!!, currency, sign = com.nexo.app.core.common.money.AmountParts.Sign.NONE)
             else Text("—", style = NexoType.Amount, color = colors.textTertiary)
         }
         if (confirmLarge && tooLarge) {

@@ -58,30 +58,30 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.core.settings.SmsHistoryImport
-import com.nexo.app.sms.Certainty
-import com.nexo.app.sms.SmsStatus
-import com.nexo.app.sms.data.SmsItemEntity
-import com.nexo.app.sms.needsAttention
-import com.nexo.app.sms.needsDetails
-import com.nexo.app.ui.components.AmountSheet
-import com.nexo.app.ui.components.EmptyState
-import com.nexo.app.ui.components.InlineBottomSheet
-import com.nexo.app.ui.components.RoundIconButton
-import com.nexo.app.ui.components.SwipeAction
-import com.nexo.app.ui.components.SwipeActionRow
-import com.nexo.app.ui.components.UndoBar
-import com.nexo.app.ui.components.rememberHaptics
+import com.nexo.app.data.datastore.SmsHistoryImport
+import com.nexo.app.core.model.Certainty
+import com.nexo.app.core.model.SmsStatus
+import com.nexo.app.data.database.entity.SmsItemEntity
+import com.nexo.app.data.sms.needsAttention
+import com.nexo.app.data.sms.needsDetails
+import com.nexo.app.ui.designsystem.component.AmountSheet
+import com.nexo.app.ui.designsystem.component.EmptyState
+import com.nexo.app.ui.designsystem.component.InlineBottomSheet
+import com.nexo.app.ui.designsystem.component.RoundIconButton
+import com.nexo.app.ui.designsystem.component.SwipeAction
+import com.nexo.app.ui.designsystem.component.SwipeActionRow
+import com.nexo.app.ui.designsystem.component.UndoBar
+import com.nexo.app.ui.designsystem.component.rememberHaptics
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SmsHistoryKey
 import com.nexo.app.ui.navigation.SmsSettingsKey
-import com.nexo.app.ui.theme.LocalNexoColors
-import com.nexo.app.ui.theme.NexoMotion
-import com.nexo.app.ui.theme.NexoShapes
-import com.nexo.app.ui.theme.NexoType
-import com.nexo.app.ui.theme.Space
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.NexoMotion
+import com.nexo.app.ui.designsystem.theme.NexoShapes
+import com.nexo.app.ui.designsystem.theme.NexoType
+import com.nexo.app.ui.designsystem.theme.Space
 import kotlinx.coroutines.delay
 
 private sealed interface QueueSheet {
@@ -256,7 +256,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
             when (val s = sheet) {
                 is QueueSheet.MapCard -> {
                     SheetTitle(
-                        stringResource(R.string.sms_card_question, com.nexo.app.sms.parse.Banks.byName(s.card.bank)?.displayName.orEmpty(), s.card.last4),
+                        stringResource(R.string.sms_card_question, com.nexo.app.data.sms.parser.Banks.byName(s.card.bank)?.displayName.orEmpty(), s.card.last4),
                         stringResource(R.string.sms_card_hint),
                     )
                     AccountPickList(ref, null) { id ->
@@ -309,7 +309,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
 @Composable
 private fun QueueItem(
     item: SmsItemEntity,
-    ref: com.nexo.app.domain.RefData,
+    ref: com.nexo.app.core.model.RefData,
     now: Long,
     selected: Boolean,
     selecting: Boolean,
@@ -417,7 +417,7 @@ private fun FilterChips(selected: QueueFilter, pendingCount: Int, attentionCount
 /** Card mapping, asked once per card at the top of a list. */
 @Composable
 fun CardQuestion(card: CardRef, modifier: Modifier, onChoose: () -> Unit) {
-    val bank = com.nexo.app.sms.parse.Banks.byName(card.bank)?.displayName.orEmpty()
+    val bank = com.nexo.app.data.sms.parser.Banks.byName(card.bank)?.displayName.orEmpty()
     SmsPromptCard(
         stringResource(R.string.sms_card_question, bank, card.last4),
         stringResource(R.string.sms_card_hint),

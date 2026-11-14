@@ -6,11 +6,11 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.Configuration
-import com.nexo.app.core.lock.LockManager
-import com.nexo.app.core.settings.DevicePrefs
-import com.nexo.app.data.RepeatEngine
+import com.nexo.app.data.repository.LockManager
+import com.nexo.app.data.datastore.DevicePrefs
+import com.nexo.app.data.repository.RepeatEngine
 import com.nexo.app.di.ApplicationScope
-import com.nexo.app.work.AutoBackupWorker
+import com.nexo.app.data.work.AutoBackupWorker
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -23,8 +23,8 @@ class NexoApplication : Application(), Configuration.Provider {
     @Inject lateinit var prefs: DevicePrefs
     @Inject lateinit var repeats: RepeatEngine
     @Inject @ApplicationScope lateinit var scope: CoroutineScope
-    @Inject lateinit var refs: com.nexo.app.data.RefRepository
-    @Inject lateinit var smsCapture: com.nexo.app.sms.capture.SmsCapture
+    @Inject lateinit var refs: com.nexo.app.data.repository.RefRepository
+    @Inject lateinit var smsCapture: com.nexo.app.data.repository.SmsCapture
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
@@ -38,14 +38,14 @@ class NexoApplication : Application(), Configuration.Provider {
                     if (prefs.current().setupDone) {
                         repeats.runIfNewDay()
                         // The quick-add notification is refreshed on every resume.
-                        com.nexo.app.work.Notifications.updateQuickAdd(this@NexoApplication, refs.snapshot().settings.quickAddNotification)
+                        com.nexo.app.core.notifications.Notifications.updateQuickAdd(this@NexoApplication, refs.snapshot().settings.quickAddNotification)
                     }
                 }
                 // SMS catch-up and expiry run at app start and on every foreground; rates refresh at most every 6 hours.
                 scope.launch {
                     smsCapture.refresh()
                     val s = prefs.current()
-                    if (s.setupDone && s.smsCaptureEnabled) com.nexo.app.sms.fx.FxSyncWorker.enqueue(this@NexoApplication)
+                    if (s.setupDone && s.smsCaptureEnabled) com.nexo.app.data.work.FxSyncWorker.enqueue(this@NexoApplication)
                 }
             }
 

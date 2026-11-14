@@ -3,24 +3,24 @@ package com.nexo.app.ui.transactions
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nexo.app.core.database.NexoDatabase
-import com.nexo.app.core.database.entity.MemoEntity
-import com.nexo.app.core.database.entity.RepeatRuleEntity
-import com.nexo.app.core.database.entity.TransactionEntity
+import com.nexo.app.data.database.NexoDatabase
+import com.nexo.app.data.database.entity.MemoEntity
+import com.nexo.app.data.database.entity.RepeatRuleEntity
+import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.model.StartScreen
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.money.Money
-import com.nexo.app.core.period.DateRange
-import com.nexo.app.core.period.MonthPeriod
-import com.nexo.app.data.LedgerRepository
-import com.nexo.app.data.RefRepository
-import com.nexo.app.data.TransactionWriter
+import com.nexo.app.core.common.money.Money
+import com.nexo.app.core.common.period.DateRange
+import com.nexo.app.core.common.period.MonthPeriod
+import com.nexo.app.data.repository.LedgerRepository
+import com.nexo.app.data.repository.RefRepository
+import com.nexo.app.data.repository.TransactionWriter
 import com.nexo.app.domain.Classifier
 import com.nexo.app.domain.InOut
-import com.nexo.app.domain.RefData
-import com.nexo.app.domain.RepeatSchedule
+import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.RepeatSchedule
 import com.nexo.app.domain.Totals
 import com.nexo.app.ui.HomeState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -123,7 +123,7 @@ class TransactionsViewModel @Inject constructor(
         p: Params,
         period: MonthPeriod,
         year: Int,
-        l: com.nexo.app.data.Ledger,
+        l: com.nexo.app.data.repository.Ledger,
         memos: List<MemoEntity>,
         rules: List<RepeatRuleEntity>,
         carry: Double,

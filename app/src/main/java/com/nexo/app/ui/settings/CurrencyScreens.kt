@@ -41,42 +41,25 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
-import com.nexo.app.core.database.entity.CurrencyEntity
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.common.money.CatalogCurrency
+import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.model.SymbolPosition
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.core.money.CatalogCurrency
-import com.nexo.app.core.money.CurrencyCatalog
-import com.nexo.app.data.CurrencyRepository
-import com.nexo.app.data.RefRepository
-import com.nexo.app.domain.RefData
-import com.nexo.app.ui.components.AmountSheet
-import com.nexo.app.ui.components.ChoiceDialog
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.EmptyState
-import com.nexo.app.ui.components.NexoTopBar
-import com.nexo.app.ui.components.SettingRow
+import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.ui.designsystem.component.AmountSheet
+import com.nexo.app.ui.designsystem.component.ChoiceDialog
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.EmptyState
+import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.component.SettingRow
+import com.nexo.app.ui.designsystem.theme.nexo
 import com.nexo.app.ui.navigation.AddSubCurrencyKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MainCurrencyPickerKey
 import com.nexo.app.ui.navigation.SubCurrencyEditKey
-import com.nexo.app.ui.theme.nexo
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-
-@HiltViewModel
-class CurrencyViewModel @Inject constructor(refs: RefRepository, val repo: CurrencyRepository) : ViewModel() {
-    val ref = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    val busy = MutableStateFlow(false)
-    fun launch(block: suspend () -> Unit) = viewModelScope.launch { block() }
-}
 
 private val DECIMALS = listOf(0, 1, 2, 3, 4, 5, 8)
 

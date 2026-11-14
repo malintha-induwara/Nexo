@@ -27,29 +27,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
-import com.nexo.app.core.database.entity.TagEntity
-import com.nexo.app.data.TagRepository
-import com.nexo.app.data.TagResult
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.EmptyState
-import com.nexo.app.ui.components.NexoTopBar
-import com.nexo.app.ui.components.TextFieldDialog
+import com.nexo.app.data.database.entity.TagEntity
+import com.nexo.app.data.repository.TagRepository
+import com.nexo.app.data.repository.TagResult
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.EmptyState
+import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.component.TextFieldDialog
 import com.nexo.app.ui.navigation.LocalNavigator
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-
-@HiltViewModel
-class TagSettingsViewModel @Inject constructor(val repo: TagRepository) : ViewModel() {
-    val tags = repo.tags.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    fun launch(block: suspend () -> Unit) = viewModelScope.launch { block() }
-}
 
 @Composable
 fun TagSettingsScreen(vm: TagSettingsViewModel = hiltViewModel()) {

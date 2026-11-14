@@ -1,16 +1,16 @@
 package com.nexo.app.ui.budgets
 
-import com.nexo.app.ui.components.NexoMenuItem
-import com.nexo.app.ui.components.NexoMenu
+import com.nexo.app.ui.designsystem.component.NexoMenuItem
+import com.nexo.app.ui.designsystem.component.NexoMenu
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Arrangement
-import com.nexo.app.ui.theme.Space
-import com.nexo.app.ui.theme.LocalNexoColors
-import com.nexo.app.ui.components.KeyFigure
-import com.nexo.app.ui.components.GroupCard
-import com.nexo.app.ui.components.ColumnChart
-import com.nexo.app.ui.components.ChartTitle
+import com.nexo.app.ui.designsystem.theme.Space
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.component.KeyFigure
+import com.nexo.app.ui.designsystem.component.GroupCard
+import com.nexo.app.ui.designsystem.component.ColumnChart
+import com.nexo.app.ui.designsystem.component.ChartTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -51,24 +51,24 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.model.CategoryKind
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.domain.BudgetMath
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.model.BudgetMath
 import com.nexo.app.domain.BudgetRow
-import com.nexo.app.ui.components.AmountSheet
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.EmptyState
-import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.MonthPickerDialog
-import com.nexo.app.ui.components.NexoTopBar
-import com.nexo.app.ui.components.PeriodNavigator
-import com.nexo.app.ui.components.SettingRow
+import com.nexo.app.ui.designsystem.component.AmountSheet
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.EmptyState
+import com.nexo.app.ui.designsystem.component.Formats
+import com.nexo.app.ui.designsystem.component.MonthPickerDialog
+import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.component.PeriodNavigator
+import com.nexo.app.ui.designsystem.component.SettingRow
 import com.nexo.app.ui.navigation.BudgetAddKey
 import com.nexo.app.ui.navigation.BudgetDetailKey
 import com.nexo.app.ui.navigation.BudgetEditorKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.theme.LocalMoneyColors
+import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.transactions.CategoryPickerDialog
 import com.nexo.app.ui.transactions.DayGroupList
 import java.time.LocalDate
@@ -190,7 +190,7 @@ fun BudgetSettingsScreen(vm: BudgetSettingsViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun SettingsBudgetRow(row: BudgetRow, main: com.nexo.app.core.database.entity.CurrencyEntity, onClick: () -> Unit, onDelete: (() -> Unit)?, onEdit: (() -> Unit)? = null, virtual: Boolean = false) {
+private fun SettingsBudgetRow(row: BudgetRow, main: com.nexo.app.data.database.entity.CurrencyEntity, onClick: () -> Unit, onDelete: (() -> Unit)?, onEdit: (() -> Unit)? = null, virtual: Boolean = false) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(row.name + if (row.children.isNotEmpty()) "  ▾" else "", Modifier.weight(1f).padding(vertical = 14.dp), fontWeight = if (row.isTotal) FontWeight.SemiBold else FontWeight.Normal)
         if (!virtual) Text(AmountFormatter.format(row.amount, main), style = MaterialTheme.typography.bodyMedium)

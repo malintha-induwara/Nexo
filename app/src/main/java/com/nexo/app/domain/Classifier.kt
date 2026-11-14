@@ -2,6 +2,7 @@ package com.nexo.app.domain
 
 import com.nexo.app.core.model.CardAccounting
 import com.nexo.app.core.model.CashFlow
+import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.TxKind
 
 /**
@@ -65,7 +66,7 @@ data class InOut(val income: Double = 0.0, val expense: Double = 0.0) {
 
 /** Income/expense totals from aggregates or rows, in main currency. */
 object Totals {
-    fun fromAggregates(ref: RefData, rows: List<com.nexo.app.core.database.dao.TxAggregate>): InOut {
+    fun fromAggregates(ref: RefData, rows: List<com.nexo.app.data.database.dao.TxAggregate>): InOut {
         val c = Classifier(ref)
         var inc = java.math.BigDecimal.ZERO
         var exp = java.math.BigDecimal.ZERO
@@ -79,7 +80,7 @@ object Totals {
         return InOut(inc.toDouble(), exp.toDouble())
     }
 
-    fun fromRows(ref: RefData, rows: List<com.nexo.app.core.database.entity.TransactionEntity>): InOut {
+    fun fromRows(ref: RefData, rows: List<com.nexo.app.data.database.entity.TransactionEntity>): InOut {
         val c = Classifier(ref)
         var inc = java.math.BigDecimal.ZERO
         var exp = java.math.BigDecimal.ZERO

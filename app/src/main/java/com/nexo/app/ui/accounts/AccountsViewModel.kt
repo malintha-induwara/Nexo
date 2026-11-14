@@ -2,18 +2,18 @@ package com.nexo.app.ui.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nexo.app.core.database.NexoDatabase
+import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.core.model.GroupType
-import com.nexo.app.core.period.DateRange
-import com.nexo.app.core.period.toIsoText
-import com.nexo.app.core.settings.DevicePrefs
-import com.nexo.app.data.AccountRepository
-import com.nexo.app.data.RefRepository
+import com.nexo.app.core.common.period.DateRange
+import com.nexo.app.core.common.period.toIsoText
+import com.nexo.app.data.datastore.DevicePrefs
+import com.nexo.app.data.repository.AccountRepository
+import com.nexo.app.data.repository.RefRepository
 import com.nexo.app.domain.AccountFigure
 import com.nexo.app.domain.AccountsSummary
 import com.nexo.app.domain.AccountsSummaryCalculator
 import com.nexo.app.domain.Balances
-import com.nexo.app.domain.RefData
+import com.nexo.app.core.model.RefData
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow

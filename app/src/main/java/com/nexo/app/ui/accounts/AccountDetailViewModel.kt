@@ -3,22 +3,22 @@ package com.nexo.app.ui.accounts
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nexo.app.core.database.NexoDatabase
-import com.nexo.app.core.database.entity.AccountEntity
-import com.nexo.app.core.database.entity.TransactionEntity
+import com.nexo.app.data.database.NexoDatabase
+import com.nexo.app.data.database.entity.AccountEntity
+import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.core.period.DateRange
-import com.nexo.app.core.period.PeriodEngine
-import com.nexo.app.data.AccountRepository
-import com.nexo.app.data.LedgerRepository
-import com.nexo.app.data.RefRepository
-import com.nexo.app.data.TransactionWriter
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.common.period.DateRange
+import com.nexo.app.core.common.period.PeriodEngine
+import com.nexo.app.data.repository.AccountRepository
+import com.nexo.app.data.repository.LedgerRepository
+import com.nexo.app.data.repository.RefRepository
+import com.nexo.app.data.repository.TransactionWriter
 import com.nexo.app.domain.CardFigures
 import com.nexo.app.domain.CardStatement
-import com.nexo.app.domain.RefData
+import com.nexo.app.core.model.RefData
 import com.nexo.app.ui.navigation.AccountDetailKey
 import com.nexo.app.ui.transactions.DayGroup
 import com.nexo.app.ui.transactions.RowFactory
@@ -157,11 +157,11 @@ class AccountDetailViewModel @AssistedInject constructor(
                 val help = !isDebit && LocalDate.now() in range && all.any { val d = LocalDate.parse(it.date); d.isAfter(range.end) && d.isBefore(LocalDate.of(2050, 1, 1)) }
                 val chart = if (charts) {
                     var p = period
-                    val list = ArrayList<com.nexo.app.core.period.MonthPeriod>()
+                    val list = ArrayList<com.nexo.app.core.common.period.MonthPeriod>()
                     repeat(6) { list.add(0, p); p = engine.previous(p) }
                     val nonBalance = { l: List<TransactionEntity> -> l.filter { !it.kind.isBalance } }
                     ChartData(
-                        list.map { com.nexo.app.ui.components.Formats.monthShort(it.label.monthValue) },
+                        list.map { com.nexo.app.ui.designsystem.component.Formats.monthShort(it.label.monthValue) },
                         list.map { net(upTo(it.end)) },
                         list.map { inflow(nonBalance(inRange(it.range))) },
                         list.map { outflow(nonBalance(inRange(it.range))) },
@@ -169,7 +169,7 @@ class AccountDetailViewModel @AssistedInject constructor(
                 } else null
                 return AccountDetailUi(
                     loaded = true, account = account, type = type, range = range,
-                    title = com.nexo.app.ui.components.Formats.monthYear(period.label),
+                    title = com.nexo.app.ui.designsystem.component.Formats.monthYear(period.label),
                     days = days, running = runningMap, deposit = inflow(rows), withdrawal = outflow(rows),
                     balance = if (isDebit) null else endBalance, showHelp = help, chart = chart, card = card,
                 )
@@ -182,7 +182,7 @@ class AccountDetailViewModel @AssistedInject constructor(
                 val rowsUi = periods.map { p ->
                     val rows = inRange(p.range)
                     bal += BigDecimal.valueOf(net(rows))
-                    PeriodRowUi(com.nexo.app.ui.components.Formats.monthShort(p.label.monthValue), p.range, inflow(rows), outflow(rows), bal.toDouble(), today in p.range, month = p.label)
+                    PeriodRowUi(com.nexo.app.ui.designsystem.component.Formats.monthShort(p.label.monthValue), p.range, inflow(rows), outflow(rows), bal.toDouble(), today in p.range, month = p.label)
                 }.reversed()
                 val yr = DateRange(periods.first().start, periods.last().end)
                 val rows = inRange(yr)

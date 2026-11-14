@@ -29,79 +29,24 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
-import com.nexo.app.core.database.NexoDatabase
-import com.nexo.app.core.settings.DevicePrefs
-import com.nexo.app.data.RefRepository
-import com.nexo.app.ui.components.EmptyState
-import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.MonthPickerDialog
-import com.nexo.app.ui.components.NexoTopBar
-import com.nexo.app.ui.components.PeriodNavigator
+import com.nexo.app.ui.designsystem.component.EmptyState
+import com.nexo.app.ui.designsystem.component.Formats
+import com.nexo.app.ui.designsystem.component.MonthPickerDialog
+import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.component.PeriodNavigator
+import com.nexo.app.ui.designsystem.theme.LocalIsDark
+import com.nexo.app.ui.designsystem.theme.NexoPalette
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MemoEditorKey
 import com.nexo.app.ui.navigation.MemoListKey
-import com.nexo.app.ui.theme.LocalIsDark
-import com.nexo.app.ui.theme.NexoPalette
-import dagger.assisted.Assisted
-import dagger.assisted.AssistedFactory
-import dagger.assisted.AssistedInject
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import java.time.LocalDate
-
-@OptIn(ExperimentalCoroutinesApi::class)
-@HiltViewModel(assistedFactory = MemoListViewModel.Factory::class)
-class MemoListViewModel @AssistedInject constructor(
-    @Assisted key: MemoListKey,
-    private val db: NexoDatabase,
-    private val refs: RefRepository,
-    private val prefs: DevicePrefs,
-) : ViewModel() {
-    @AssistedFactory
-    interface Factory {
-        fun create(key: MemoListKey): MemoListViewModel
-    }
-
-    val date = MutableStateFlow(key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now())
-    val ref = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, com.nexo.app.domain.RefData())
-    val device = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
-    val period = combine(ref, date) { r, d -> r.settings.periods.monthPeriodContaining(d) }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
-    val memos = combine(ref, date) { r, d -> r.settings.periods.monthPeriodContaining(d) }.flatMapLatest { p ->
-        db.memoDao().observeForRange(p.startText(), p.endText()).map { list ->
-            list.filter { it.pinned }.sortedByDescending { it.pinnedAt } +
-                list.filter { !it.pinned && LocalDate.parse(it.date) in p.range }.sortedWith(compareByDescending<com.nexo.app.core.database.entity.MemoEntity> { it.date }.thenByDescending { it.dateTime })
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    private fun com.nexo.app.core.period.MonthPeriod.startText() = range.startText
-    private fun com.nexo.app.core.period.MonthPeriod.endText() = range.endText
-
-    fun step(forward: Boolean) {
-        val e = ref.value.settings.periods
-        val p = e.monthPeriodContaining(date.value)
-        date.value = (if (forward) e.next(p) else e.previous(p)).end
-    }
-
-    fun setMemoButton(v: Boolean) = viewModelScope.launch { refs.updateSettings { it.copy(memoButton = v) } }
-    fun setHelpHidden(v: Boolean) = viewModelScope.launch { prefs.setMemoHelpHidden(v) }
-}
 
 /** Standalone memo list. */
 @Composable

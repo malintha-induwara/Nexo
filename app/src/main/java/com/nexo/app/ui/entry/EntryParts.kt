@@ -51,16 +51,16 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import com.nexo.app.R
-import com.nexo.app.core.database.entity.TagEntity
-import com.nexo.app.core.files.PhotoStore
+import com.nexo.app.data.database.entity.TagEntity
+import com.nexo.app.data.file.PhotoStore
 import com.nexo.app.core.model.RepeatType
-import com.nexo.app.data.TagRepository
-import com.nexo.app.data.TagResult
-import com.nexo.app.domain.PhotoItem
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.MessageDialog
-import com.nexo.app.ui.components.TextFieldDialog
-import com.nexo.app.ui.theme.nexo
+import com.nexo.app.data.repository.TagRepository
+import com.nexo.app.data.repository.TagResult
+import com.nexo.app.core.model.PhotoItem
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.MessageDialog
+import com.nexo.app.ui.designsystem.component.TextFieldDialog
+import com.nexo.app.ui.designsystem.theme.nexo
 import kotlinx.coroutines.launch
 
 @Composable

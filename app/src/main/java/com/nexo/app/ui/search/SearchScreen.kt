@@ -55,22 +55,22 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.ui.components.AmountSheet
-import com.nexo.app.ui.components.ChoiceDialog
-import com.nexo.app.ui.components.DateRangeChips
-import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.NexoTopBar
-import com.nexo.app.ui.components.PeriodNavigator
-import com.nexo.app.ui.components.TotalsBar
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.ui.designsystem.component.AmountSheet
+import com.nexo.app.ui.designsystem.component.ChoiceDialog
+import com.nexo.app.ui.designsystem.component.DateRangeChips
+import com.nexo.app.ui.designsystem.component.Formats
+import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.component.PeriodNavigator
+import com.nexo.app.ui.designsystem.component.TotalsBar
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MemoEditorKey
 import com.nexo.app.ui.navigation.SearchKey
-import com.nexo.app.ui.theme.LocalIsDark
-import com.nexo.app.ui.theme.LocalMoneyColors
-import com.nexo.app.ui.theme.NexoPalette
+import com.nexo.app.ui.designsystem.theme.LocalIsDark
+import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
+import com.nexo.app.ui.designsystem.theme.NexoPalette
 import com.nexo.app.ui.transactions.BulkAction
 import com.nexo.app.ui.transactions.BulkDialogs
 import com.nexo.app.ui.transactions.SelectionBar
@@ -189,7 +189,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
                         }
                     }
                 } else {
-                    if (r.loaded && r.rows.isEmpty()) item { com.nexo.app.ui.components.EmptyState() }
+                    if (r.loaded && r.rows.isEmpty()) item { com.nexo.app.ui.designsystem.component.EmptyState() }
                     items(r.rows, key = { it.second.id }) { (date, row) ->
                         Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
                             Text(date.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(start = 16.dp, top = 6.dp))
@@ -220,7 +220,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun categorySummary(ref: com.nexo.app.domain.RefData, c: SearchCriteria): String? {
+private fun categorySummary(ref: com.nexo.app.core.model.RefData, c: SearchCriteria): String? {
     val f = c.categories
     if (!f.hasCategoryPart) return null
     val parts = buildList {

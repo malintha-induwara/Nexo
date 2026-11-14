@@ -4,12 +4,12 @@ import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import androidx.activity.result.IntentSenderRequest
-import com.nexo.app.core.lock.expectReturn
+import com.nexo.app.data.repository.expectReturn
 import androidx.compose.material.icons.rounded.DateRange
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.PhotoCamera
-import com.nexo.app.ui.components.NexoMenuItem
-import com.nexo.app.ui.components.NexoMenu
+import com.nexo.app.ui.designsystem.component.NexoMenuItem
+import com.nexo.app.ui.designsystem.component.NexoMenu
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -128,34 +128,34 @@ import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.core.database.entity.CurrencyEntity
+import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.core.money.AmountParts
-import com.nexo.app.core.money.Money
-import com.nexo.app.domain.Conversion
-import com.nexo.app.domain.PadKey
-import com.nexo.app.domain.RefData
-import com.nexo.app.ui.components.AmountSheet
-import com.nexo.app.ui.components.AmountText
-import com.nexo.app.ui.components.CalculatorDialog
-import com.nexo.app.ui.components.CategoryTile
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.InlineBottomSheet
-import com.nexo.app.ui.components.NexoDatePickerDialog
-import com.nexo.app.ui.components.NexoTimePickerDialog
-import com.nexo.app.ui.components.NumberPad
-import com.nexo.app.ui.components.RoundIconButton
-import com.nexo.app.ui.components.SegmentedPill
-import com.nexo.app.ui.components.pressScale
-import com.nexo.app.ui.components.rememberHaptics
-import com.nexo.app.ui.components.shakeOn
-import com.nexo.app.ui.components.shrinkToFit
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.common.money.AmountParts
+import com.nexo.app.core.common.money.Money
+import com.nexo.app.core.common.money.Conversion
+import com.nexo.app.ui.designsystem.component.PadKey
+import com.nexo.app.core.model.RefData
+import com.nexo.app.ui.designsystem.component.AmountSheet
+import com.nexo.app.ui.designsystem.component.AmountText
+import com.nexo.app.ui.designsystem.component.CalculatorDialog
+import com.nexo.app.ui.designsystem.component.CategoryTile
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.Formats
+import com.nexo.app.ui.designsystem.component.InlineBottomSheet
+import com.nexo.app.ui.designsystem.component.NexoDatePickerDialog
+import com.nexo.app.ui.designsystem.component.NexoTimePickerDialog
+import com.nexo.app.ui.designsystem.component.NumberPad
+import com.nexo.app.ui.designsystem.component.RoundIconButton
+import com.nexo.app.ui.designsystem.component.SegmentedPill
+import com.nexo.app.ui.designsystem.component.pressScale
+import com.nexo.app.ui.designsystem.component.rememberHaptics
+import com.nexo.app.ui.designsystem.component.shakeOn
+import com.nexo.app.ui.designsystem.component.shrinkToFit
 import com.nexo.app.ui.navigation.AccountFormKey
 import com.nexo.app.ui.navigation.AccountListKey
 import com.nexo.app.ui.navigation.BookmarksKey
@@ -164,13 +164,13 @@ import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SubCurrenciesKey
-import com.nexo.app.ui.theme.CategoryHues
-import com.nexo.app.ui.theme.LocalMoneyColors
-import com.nexo.app.ui.theme.LocalNexoColors
-import com.nexo.app.ui.theme.NexoMotion
-import com.nexo.app.ui.theme.NexoShapes
-import com.nexo.app.ui.theme.NexoType
-import com.nexo.app.ui.theme.Space
+import com.nexo.app.ui.designsystem.theme.CategoryHues
+import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.NexoMotion
+import com.nexo.app.ui.designsystem.theme.NexoShapes
+import com.nexo.app.ui.designsystem.theme.NexoType
+import com.nexo.app.ui.designsystem.theme.Space
 import java.io.File
 import java.text.DecimalFormatSymbols
 import java.text.NumberFormat
@@ -734,7 +734,7 @@ fun EntryScreen(key: EntryKey) {
     if (showRepeatEnd) NexoDatePickerDialog(s.repeatEnd ?: s.date.plusYears(1), onPick = { vm.setRepeatEnd(if (it.isBefore(s.date)) s.date else it) }, onDismiss = { showRepeatEnd = false })
     if (showCalc) CalculatorDialog(if (s.panel == Panel.FEE) s.feeAmount else s.amount, onResult = vm::calculatorResult, onDismiss = { showCalc = false })
     if (showRepeatList) {
-        com.nexo.app.ui.components.ChoiceDialog(
+        com.nexo.app.ui.designsystem.component.ChoiceDialog(
             title = stringResource(R.string.repeat),
             options = RepeatType.pickerOrder,
             selected = s.repeat,

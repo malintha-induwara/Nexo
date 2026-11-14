@@ -27,12 +27,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
 import com.nexo.app.core.model.GroupStatus
-import com.nexo.app.domain.RefData
-import com.nexo.app.sms.DenyReason
-import com.nexo.app.ui.components.SectionHeader
-import com.nexo.app.ui.components.rememberHaptics
-import com.nexo.app.ui.theme.LocalNexoColors
-import com.nexo.app.ui.theme.Space
+import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.DenyReason
+import com.nexo.app.ui.designsystem.component.SectionHeader
+import com.nexo.app.ui.designsystem.component.rememberHaptics
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.Space
 
 /** Title and optional hint at the top of an inline sheet. */
 @Composable
@@ -107,12 +107,12 @@ fun SmsPromptCard(
     val colors = LocalNexoColors.current
     Column(
         modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.s)
-            .clip(com.nexo.app.ui.theme.NexoShapes.panel).background(colors.surface).padding(Space.l),
+            .clip(com.nexo.app.ui.designsystem.theme.NexoShapes.panel).background(colors.surface).padding(Space.l),
     ) {
         Text(title, style = MaterialTheme.typography.titleSmall, color = colors.text)
         if (text != null) {
             Spacer(Modifier.size(Space.xxs))
-            Text(text, style = com.nexo.app.ui.theme.NexoType.Meta, color = colors.textSecondary)
+            Text(text, style = com.nexo.app.ui.designsystem.theme.NexoType.Meta, color = colors.textSecondary)
         }
         Spacer(Modifier.size(Space.m))
         Row(verticalAlignment = Alignment.CenterVertically) {

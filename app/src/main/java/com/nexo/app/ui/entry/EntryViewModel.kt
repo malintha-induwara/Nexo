@@ -4,29 +4,29 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
-import com.nexo.app.core.database.NexoDatabase
-import com.nexo.app.core.database.entity.RepeatRuleEntity
-import com.nexo.app.core.database.entity.TransactionEntity
+import com.nexo.app.data.database.NexoDatabase
+import com.nexo.app.data.database.entity.RepeatRuleEntity
+import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.money.Money
-import com.nexo.app.core.period.toIsoText
-import com.nexo.app.core.settings.DevicePrefs
-import com.nexo.app.data.FavoriteRepository
-import com.nexo.app.data.RefRepository
-import com.nexo.app.data.RepeatRepository
-import com.nexo.app.data.TransactionWriter
+import com.nexo.app.core.common.money.Money
+import com.nexo.app.core.common.period.toIsoText
+import com.nexo.app.data.datastore.DevicePrefs
+import com.nexo.app.data.repository.FavoriteRepository
+import com.nexo.app.data.repository.RefRepository
+import com.nexo.app.data.repository.RepeatRepository
+import com.nexo.app.data.repository.TransactionWriter
 import com.nexo.app.domain.CardStatement
-import com.nexo.app.domain.Conversion
-import com.nexo.app.domain.FeeDraft
-import com.nexo.app.domain.PadInput
-import com.nexo.app.domain.PadKey
-import com.nexo.app.domain.PhotoItem
-import com.nexo.app.domain.RefData
-import com.nexo.app.domain.RepeatSchedule
-import com.nexo.app.domain.TxDraft
+import com.nexo.app.core.common.money.Conversion
+import com.nexo.app.core.model.FeeDraft
+import com.nexo.app.ui.designsystem.component.PadInput
+import com.nexo.app.ui.designsystem.component.PadKey
+import com.nexo.app.core.model.PhotoItem
+import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.RepeatSchedule
+import com.nexo.app.core.model.TxDraft
 import com.nexo.app.ui.HomeState
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
@@ -63,11 +63,11 @@ class EntryViewModel @AssistedInject constructor(
     private val repeats: RepeatRepository,
     private val prefs: DevicePrefs,
     private val home: HomeState,
-    val photoStore: com.nexo.app.core.files.PhotoStore,
-    val tagRepo: com.nexo.app.data.TagRepository,
-    private val importer: com.nexo.app.backup.TsvImporter,
-    private val sms: com.nexo.app.sms.approve.SmsApprover,
-    private val receipts: com.nexo.app.receipt.ReceiptScanner,
+    val photoStore: com.nexo.app.data.file.PhotoStore,
+    val tagRepo: com.nexo.app.data.repository.TagRepository,
+    private val importer: com.nexo.app.data.repository.TsvImporter,
+    private val sms: com.nexo.app.domain.sms.SmsApprover,
+    private val receipts: com.nexo.app.data.receipt.ReceiptScanner,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -268,7 +268,7 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     /** The Review Queue item being reviewed in [EntryMode.SMS]. */
-    private var smsItem: com.nexo.app.sms.data.SmsItemEntity? = null
+    private var smsItem: com.nexo.app.data.database.entity.SmsItemEntity? = null
 
     /** The form opens with everything the SMS gave; saving approves the item. */
     private suspend fun loadSmsItem(r: RefData, base: EntryUi): EntryUi {
@@ -277,16 +277,16 @@ class EntryViewModel @AssistedInject constructor(
         val (currency, amount) = sms.amountIn(item, r)
         val kind = item.kind
         // A payment to someone outside Nexo starts as an expense; picking a destination account turns it into a transfer.
-        val transfer = kind.isTransfer && (kind != com.nexo.app.sms.SmsKind.TRANSFER_OUT || item.toAccountId != null)
-        val (from, to) = if (kind == com.nexo.app.sms.SmsKind.TRANSFER_IN) item.toAccountId to item.accountId else item.accountId to item.toAccountId
-        val dt = com.nexo.app.sms.approve.SmsApprover.localDateTime(item.occurredAt)
+        val transfer = kind.isTransfer && (kind != com.nexo.app.core.model.SmsKind.TRANSFER_OUT || item.toAccountId != null)
+        val (from, to) = if (kind == com.nexo.app.core.model.SmsKind.TRANSFER_IN) item.toAccountId to item.accountId else item.accountId to item.toAccountId
+        val dt = com.nexo.app.domain.sms.SmsApprover.localDateTime(item.occurredAt)
         // The fee field starts filled when the route's preset knows the fee.
         val presetFee = when (val plan = sms.feePlan(item)) {
-            is com.nexo.app.sms.approve.FeePlan.Auto -> plan.amount
-            is com.nexo.app.sms.approve.FeePlan.Ask -> plan.prefill.takeIf { !plan.fxDifference }
-            com.nexo.app.sms.approve.FeePlan.None -> null
+            is com.nexo.app.domain.sms.FeePlan.Auto -> plan.amount
+            is com.nexo.app.domain.sms.FeePlan.Ask -> plan.prefill.takeIf { !plan.fxDifference }
+            com.nexo.app.domain.sms.FeePlan.None -> null
         }
-        val estimated = item.certainty == com.nexo.app.sms.Certainty.ESTIMATED
+        val estimated = item.certainty == com.nexo.app.core.model.Certainty.ESTIMATED
         return base.copy(
             mode = EntryMode.SMS,
             fxNote = if (estimated) com.nexo.app.ui.sms.fxEstimateNote(context, item, r) else null,
@@ -307,21 +307,21 @@ class EntryViewModel @AssistedInject constructor(
             amount = amount,
             currencyId = currency.id,
             feeCurrencyId = r.accountCurrency(from).id,
-            note = com.nexo.app.sms.approve.SmsApprover.noteFor(item),
+            note = com.nexo.app.domain.sms.SmsApprover.noteFor(item),
             description = item.note,
             sourceText = item.text,
         )
     }
 
     /** An SMS transfer's fee goes to the system Bank fee category. */
-    private suspend fun withBankFeeCategory(d: com.nexo.app.domain.TxDraft): com.nexo.app.domain.TxDraft {
+    private suspend fun withBankFeeCategory(d: com.nexo.app.core.model.TxDraft): com.nexo.app.core.model.TxDraft {
         val fee = d.fee ?: return d
         if (key.mode != EntryMode.SMS) return d
         return d.copy(fee = fee.copy(categoryId = writer.bankFeeCategory()))
     }
 
     /** An approved SMS transaction still booked at an FX estimate: editing its amount records the actual one. */
-    private var linkedEstimate: com.nexo.app.sms.data.SmsItemEntity? = null
+    private var linkedEstimate: com.nexo.app.data.database.entity.SmsItemEntity? = null
 
     private suspend fun withFxNote(s: EntryUi, txId: String, r: RefData): EntryUi {
         val item = db.smsDao().byTransaction(txId)?.takeIf { it.awaitingActual } ?: return s
@@ -339,7 +339,7 @@ class EntryViewModel @AssistedInject constructor(
     /** Pre-fill from a spreadsheet import row. */
     private suspend fun loadImportRow(r: RefData, base: EntryUi): EntryUi {
         val file = key.importFile ?: return newEntry(r, base)
-        val order = key.importOrder?.let { runCatching { com.nexo.app.backup.DateOrder.valueOf(it) }.getOrNull() }
+        val order = key.importOrder?.let { runCatching { com.nexo.app.data.repository.DateOrder.valueOf(it) }.getOrNull() }
         val row = importer.load(file, order).rows.getOrNull(key.importLine)?.parsed ?: return newEntry(r, base).copy(mode = EntryMode.IMPORT_FIX)
         val kind = row.kind ?: TxKind.EXPENSE
         val transferIn = kind == TxKind.TRANSFER_IN
@@ -671,13 +671,13 @@ class EntryViewModel @AssistedInject constructor(
                         // Changing an estimate's amount records what the bank actually charged.
                         smsItem?.let { item ->
                             val estimate = item.estimatedAmount
-                            if (item.certainty == com.nexo.app.sms.Certainty.ESTIMATED && s.amount != null && estimate != null && s.amount != estimate) sms.setAmount(item.id, s.amount)
+                            if (item.certainty == com.nexo.app.core.model.Certainty.ESTIMATED && s.amount != null && estimate != null && s.amount != estimate) sms.setAmount(item.id, s.amount)
                         }
-                        val bankAccount = if (smsItem?.kind == com.nexo.app.sms.SmsKind.TRANSFER_IN) s.toAccountId else s.accountId
+                        val bankAccount = if (smsItem?.kind == com.nexo.app.core.model.SmsKind.TRANSFER_IN) s.toAccountId else s.accountId
                         val fee = s.feeAmount?.takeIf { s.feeExpanded && it > 0 }
                         if (fee != null && !s.isTransfer) writer.addFee(id, fee)
                         sms.markApproved(key.smsItemId, id, bankAccount, if (s.isTransfer) null else s.categoryId)
-                        smsItem?.let { item -> if (fee != null) sms.recordFee(item, bankAccount, com.nexo.app.sms.approve.FeeChoice(fee)) }
+                        smsItem?.let { item -> if (fee != null) sms.recordFee(item, bankAccount, com.nexo.app.domain.sms.FeeChoice(fee)) }
                     }
                     linkedEstimate?.let { item ->
                         val amount = _ui.value.amount

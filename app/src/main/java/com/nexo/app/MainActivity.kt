@@ -10,9 +10,9 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
-import com.nexo.app.core.settings.DevicePrefs
-import com.nexo.app.core.settings.ThemeMode
-import com.nexo.app.data.DataReset
+import com.nexo.app.data.datastore.DevicePrefs
+import com.nexo.app.data.datastore.ThemeMode
+import com.nexo.app.data.repository.DataReset
 import com.nexo.app.ui.AppViewModel
 import com.nexo.app.ui.IntentRouter
 import com.nexo.app.ui.NexoRoot

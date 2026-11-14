@@ -26,7 +26,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,43 +33,21 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
-import com.nexo.app.core.database.entity.FavoriteEntity
+import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.model.AccountStatus
+import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.data.FavoriteRepository
-import com.nexo.app.data.RefRepository
-import com.nexo.app.domain.RefData
-import com.nexo.app.ui.HomeState
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.EmptyState
-import com.nexo.app.ui.components.NexoTopBar
+import com.nexo.app.data.database.entity.FavoriteEntity
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.EmptyState
+import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.navigation.BookmarksKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.theme.LocalMoneyColors
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
-import javax.inject.Inject
-
-@HiltViewModel
-class BookmarksViewModel @Inject constructor(
-    val repo: FavoriteRepository,
-    refs: RefRepository,
-    val home: HomeState,
-) : ViewModel() {
-    val favorites = repo.favorites.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    val ref = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    fun move(ids: List<String>) = viewModelScope.launch { repo.reorder(ids) }
-    fun delete(ids: List<String>) = viewModelScope.launch { repo.delete(ids) }
-}
 
 @Composable
 fun accountLabel(ref: RefData, id: String?): String {

@@ -1,9 +1,11 @@
 package com.nexo.app.domain
 
-import com.nexo.app.core.database.entity.BudgetAmountEntity
-import com.nexo.app.core.database.entity.BudgetEntity
-import com.nexo.app.core.database.entity.TransactionEntity
+import com.nexo.app.core.model.BudgetMath
+import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.TxKind
+import com.nexo.app.data.database.entity.BudgetAmountEntity
+import com.nexo.app.data.database.entity.BudgetEntity
+import com.nexo.app.data.database.entity.TransactionEntity
 import java.math.BigDecimal
 
 data class BudgetRow(

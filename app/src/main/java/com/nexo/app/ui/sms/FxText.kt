@@ -4,15 +4,15 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import com.nexo.app.R
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.domain.RefData
-import com.nexo.app.sms.RateSide
-import com.nexo.app.sms.data.SmsItemEntity
-import com.nexo.app.sms.fx.BankRatesClient
-import com.nexo.app.sms.fx.FxRepository
-import com.nexo.app.sms.fx.RateChoice
-import com.nexo.app.sms.parse.Bank
-import com.nexo.app.ui.components.Formats
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.RateSide
+import com.nexo.app.data.database.entity.SmsItemEntity
+import com.nexo.app.data.network.BankRatesClient
+import com.nexo.app.data.repository.FxRepository
+import com.nexo.app.data.sms.RateChoice
+import com.nexo.app.data.sms.parser.Bank
+import com.nexo.app.ui.designsystem.component.Formats
 
 /** "Commercial Bank sell 336.50 · Nov 14". Null when the item has no rate. */
 fun fxRateLine(context: Context, item: SmsItemEntity): String? {

@@ -14,9 +14,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import com.nexo.app.R
-import com.nexo.app.ui.components.NexoTopBar
-import com.nexo.app.ui.components.SectionHeader
-import com.nexo.app.ui.components.SettingRow
+import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.component.SectionHeader
+import com.nexo.app.ui.designsystem.component.SettingRow
 import com.nexo.app.ui.navigation.HelpPageKey
 import com.nexo.app.ui.navigation.LocalNavigator
 

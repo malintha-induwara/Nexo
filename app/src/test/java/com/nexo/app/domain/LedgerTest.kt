@@ -1,20 +1,22 @@
 package com.nexo.app.domain
 
-import com.nexo.app.core.database.entity.AccountEntity
-import com.nexo.app.core.database.entity.AccountGroupEntity
-import com.nexo.app.core.database.entity.CurrencyEntity
-import com.nexo.app.core.database.entity.TransactionEntity
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.common.money.Conversion
+import com.nexo.app.core.model.BookSettings
 import com.nexo.app.core.model.CardAccounting
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.GroupType
+import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.core.settings.BookSettings
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import com.nexo.app.data.database.entity.AccountEntity
+import com.nexo.app.data.database.entity.AccountGroupEntity
+import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.data.database.entity.TransactionEntity
 import java.time.LocalDate
 import java.util.Locale
+import org.junit.Assert.assertEquals
+import org.junit.Test
 
 class LedgerTest {
     private val usd = CurrencyEntity("USD", "USD", "USD", "$", SymbolPosition.PREFIX, 2, 1.0, true, true, 0, 0)

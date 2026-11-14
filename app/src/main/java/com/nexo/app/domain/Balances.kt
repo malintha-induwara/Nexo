@@ -1,14 +1,15 @@
 package com.nexo.app.domain
 
-import com.nexo.app.core.database.dao.TxAggregate
-import com.nexo.app.core.database.entity.AccountEntity
-import com.nexo.app.core.database.entity.TransactionEntity
+import com.nexo.app.core.common.money.Money
+import com.nexo.app.core.common.period.DateRange
+import com.nexo.app.core.common.period.PeriodEngine
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
-import com.nexo.app.core.money.Money
-import com.nexo.app.core.period.DateRange
-import com.nexo.app.core.period.PeriodEngine
+import com.nexo.app.core.model.RefData
+import com.nexo.app.data.database.dao.TxAggregate
+import com.nexo.app.data.database.entity.AccountEntity
+import com.nexo.app.data.database.entity.TransactionEntity
 import java.math.BigDecimal
 import java.time.LocalDate
 

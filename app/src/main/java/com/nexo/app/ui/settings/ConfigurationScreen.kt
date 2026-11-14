@@ -35,13 +35,13 @@ import com.nexo.app.core.model.TimeDisplay
 import com.nexo.app.core.model.WeekendRule
 import com.nexo.app.ui.accounts.CardTimingDialog
 import com.nexo.app.ui.accounts.cardAccountingLabel
-import com.nexo.app.ui.components.AmountSheet
-import com.nexo.app.ui.components.ChoiceDialog
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.NexoTopBar
-import com.nexo.app.ui.components.SectionHeader
-import com.nexo.app.ui.components.SettingRow
+import com.nexo.app.ui.designsystem.component.AmountSheet
+import com.nexo.app.ui.designsystem.component.ChoiceDialog
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.Formats
+import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.component.SectionHeader
+import com.nexo.app.ui.designsystem.component.SettingRow
 import com.nexo.app.ui.navigation.AccountGroupsKey
 import com.nexo.app.ui.navigation.AccountListKey
 import com.nexo.app.ui.navigation.BudgetSettingsKey
@@ -154,7 +154,7 @@ fun ConfigurationScreen(vm: SettingsViewModel = hiltViewModel()) {
         "memo" -> ChoiceDialog(stringResource(R.string.memo_button_setting), listOf(false, true), s.memoButton, { onOff(it) }, onSelect = { v -> vm.update { it.copy(memoButton = v) } }, onDismiss = close, description = stringResource(R.string.memo_button_text))
         "quick" -> ChoiceDialog(stringResource(R.string.quick_add), listOf(false, true), s.quickAddNotification, { onOff(it) }, onSelect = { v ->
             vm.update { it.copy(quickAddNotification = v) }
-            com.nexo.app.work.Notifications.updateQuickAdd(context, v)
+            com.nexo.app.core.notifications.Notifications.updateQuickAdd(context, v)
         }, onDismiss = close, description = stringResource(R.string.quick_add_text))
         "pad" -> ChoiceDialog(stringResource(R.string.number_pad_order), listOf(false, true), device?.numberPadDescending == true, { stringResource(if (it) R.string.pad_descending else R.string.pad_ascending) }, onSelect = { v -> vm.device { setNumberPadDescending(v) } }, onDismiss = close)
         "lang" -> LanguageDialog(onDismiss = close)

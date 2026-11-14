@@ -4,8 +4,8 @@ import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Event
-import com.nexo.app.ui.components.NexoMenuItem
-import com.nexo.app.ui.components.NexoMenu
+import com.nexo.app.ui.designsystem.component.NexoMenuItem
+import com.nexo.app.ui.designsystem.component.NexoMenu
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,19 +44,19 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
-import com.nexo.app.ui.components.IncomeExpensePill
-import com.nexo.app.core.database.entity.CurrencyEntity
+import com.nexo.app.ui.designsystem.component.IncomeExpensePill
+import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.CategoryKind
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.core.money.Money
-import com.nexo.app.data.TransactionWriter
-import com.nexo.app.domain.RefData
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.MessageDialog
-import com.nexo.app.ui.components.NexoDatePickerDialog
-import com.nexo.app.ui.components.TextFieldDialog
-import com.nexo.app.ui.theme.nexo
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.common.money.Money
+import com.nexo.app.data.repository.TransactionWriter
+import com.nexo.app.core.model.RefData
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.MessageDialog
+import com.nexo.app.ui.designsystem.component.NexoDatePickerDialog
+import com.nexo.app.ui.designsystem.component.TextFieldDialog
+import com.nexo.app.ui.designsystem.theme.nexo
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -88,7 +88,7 @@ fun SelectionBar(
         TopAppBar(
             title = { Text(if (count == 0) stringResource(R.string.please_select_item) else stringResource(R.string.n_selected, count), style = MaterialTheme.typography.titleLarge) },
             navigationIcon = {
-                com.nexo.app.ui.components.RoundIconButton(
+                com.nexo.app.ui.designsystem.component.RoundIconButton(
                     androidx.compose.material.icons.Icons.Rounded.Close, stringResource(R.string.action_back), onClose,
                     modifier = Modifier.padding(start = 12.dp, end = 4.dp),
                 )
@@ -119,7 +119,7 @@ fun SelectionBar(
                 onClick = onToggleAll,
             )
             Text(stringResource(R.string.action_select_all), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            com.nexo.app.ui.components.RollingAmount(net, main, style = com.nexo.app.ui.theme.NexoType.Amount, minorScale = 0.8f)
+            com.nexo.app.ui.designsystem.component.RollingAmount(net, main, style = com.nexo.app.ui.designsystem.theme.NexoType.Amount, minorScale = 0.8f)
         }
     }
 }

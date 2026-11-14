@@ -4,24 +4,24 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
-import com.nexo.app.core.database.NexoDatabase
-import com.nexo.app.core.settings.DevicePrefs
-import com.nexo.app.data.RefRepository
-import com.nexo.app.domain.RefData
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.sms.DenyReason
-import com.nexo.app.sms.FeeRoute
-import com.nexo.app.sms.SmsStatus
-import com.nexo.app.sms.approve.ApproveResult
-import com.nexo.app.sms.approve.FeeChoice
-import com.nexo.app.sms.approve.FeePlan
-import com.nexo.app.sms.approve.SmsApprover
-import com.nexo.app.sms.capture.SmsCapture
-import com.nexo.app.sms.data.SmsItemEntity
-import com.nexo.app.sms.needsAttention
-import com.nexo.app.sms.needsDetails
-import com.nexo.app.ui.components.UndoMessage
-import com.nexo.app.work.Notifications
+import com.nexo.app.data.database.NexoDatabase
+import com.nexo.app.data.datastore.DevicePrefs
+import com.nexo.app.data.repository.RefRepository
+import com.nexo.app.core.model.RefData
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.model.DenyReason
+import com.nexo.app.core.model.FeeRoute
+import com.nexo.app.core.model.SmsStatus
+import com.nexo.app.domain.sms.ApproveResult
+import com.nexo.app.domain.sms.FeeChoice
+import com.nexo.app.domain.sms.FeePlan
+import com.nexo.app.domain.sms.SmsApprover
+import com.nexo.app.data.repository.SmsCapture
+import com.nexo.app.data.database.entity.SmsItemEntity
+import com.nexo.app.data.sms.needsAttention
+import com.nexo.app.data.sms.needsDetails
+import com.nexo.app.ui.designsystem.component.UndoMessage
+import com.nexo.app.core.notifications.Notifications
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -199,7 +199,7 @@ class SmsQueueViewModel @Inject constructor(
     fun clearGap() = viewModelScope.launch { prefs.clearSmsGap() }
 
     /** "Not now". The picker stays in Settings. */
-    fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.core.settings.SmsHistoryImport.SKIPPED) }
+    fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.data.datastore.SmsHistoryImport.SKIPPED) }
 
     fun dismissUndo() {
         _undo.value = null

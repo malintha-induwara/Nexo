@@ -43,7 +43,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -60,49 +59,34 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
-import com.nexo.app.core.database.entity.CategoryEntity
 import com.nexo.app.core.model.CategoryKind
-import com.nexo.app.data.CategoryRepository
-import com.nexo.app.data.RefRepository
-import com.nexo.app.domain.CategoryVisual
-import com.nexo.app.domain.CategoryVisuals
-import com.nexo.app.domain.RefData
-import com.nexo.app.ui.components.CategoryTile
-import com.nexo.app.ui.components.ChoiceDialog
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.EmptyState
-import com.nexo.app.ui.components.NexoTopBar
-import com.nexo.app.ui.components.SectionHeader
-import com.nexo.app.ui.components.SettingRow
-import com.nexo.app.ui.components.SwitchRow
-import com.nexo.app.ui.components.rememberHaptics
+import com.nexo.app.core.model.CategoryVisual
+import com.nexo.app.core.model.CategoryVisuals
+import com.nexo.app.core.model.RefData
+import com.nexo.app.data.database.entity.CategoryEntity
+import com.nexo.app.ui.designsystem.component.CategoryTile
+import com.nexo.app.ui.designsystem.component.ChoiceDialog
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.EmptyState
+import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.component.SectionHeader
+import com.nexo.app.ui.designsystem.component.SettingRow
+import com.nexo.app.ui.designsystem.component.SwitchRow
+import com.nexo.app.ui.designsystem.component.rememberHaptics
+import com.nexo.app.ui.designsystem.theme.CategoryHues
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.NexoMotion
+import com.nexo.app.ui.designsystem.theme.NexoShapes
+import com.nexo.app.ui.designsystem.theme.NexoType
+import com.nexo.app.ui.designsystem.theme.Space
 import com.nexo.app.ui.navigation.CategoryFormKey
 import com.nexo.app.ui.navigation.CategoryListKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SubcategoryListKey
-import com.nexo.app.ui.theme.CategoryHues
-import com.nexo.app.ui.theme.LocalNexoColors
-import com.nexo.app.ui.theme.NexoMotion
-import com.nexo.app.ui.theme.NexoShapes
-import com.nexo.app.ui.theme.NexoType
-import com.nexo.app.ui.theme.Space
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import java.text.BreakIterator
-import javax.inject.Inject
-
-@HiltViewModel
-class CategoryViewModel @Inject constructor(private val refs: RefRepository, val repo: CategoryRepository) : ViewModel() {
-    val ref = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    fun launch(block: suspend () -> Unit) = viewModelScope.launch { block() }
-    fun setSubcategories(v: Boolean) = viewModelScope.launch { refs.updateSettings { it.copy(subcategories = v) } }
-}
+import kotlinx.coroutines.launch
 
 /** Curated picks for the category form; anything else can be typed. */
 private val EMOJI_CHOICES = listOf(

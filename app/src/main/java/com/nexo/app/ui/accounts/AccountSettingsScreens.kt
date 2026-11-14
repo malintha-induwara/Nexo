@@ -1,12 +1,5 @@
 package com.nexo.app.ui.accounts
 
-import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.SwapVert
-import androidx.compose.material.icons.rounded.Visibility
-import com.nexo.app.ui.components.NexoMenuItem
-import com.nexo.app.ui.components.NexoMenu
-import com.nexo.app.ui.theme.Space
-import com.nexo.app.ui.components.FlowCharts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -26,6 +19,9 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.SwapVert
+import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
@@ -48,32 +44,30 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
-import com.nexo.app.core.database.NexoDatabase
-import com.nexo.app.core.database.entity.AccountEntity
+import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.CardAccounting
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
-import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.core.period.MonthPeriod
-import com.nexo.app.data.AccountRepository
-import com.nexo.app.data.RefRepository
+import com.nexo.app.core.model.RefData
+import com.nexo.app.data.database.entity.AccountEntity
 import com.nexo.app.domain.Balances
-import com.nexo.app.domain.RefData
-import com.nexo.app.ui.components.ChoiceDialog
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.EmptyState
-import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.MonthPickerDialog
-import com.nexo.app.ui.components.NexoTopBar
-import com.nexo.app.ui.components.PeriodNavigator
-import com.nexo.app.ui.components.SettingRow
-import com.nexo.app.ui.components.SwitchRow
+import com.nexo.app.ui.designsystem.component.ChoiceDialog
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.EmptyState
+import com.nexo.app.ui.designsystem.component.FlowCharts
+import com.nexo.app.ui.designsystem.component.Formats
+import com.nexo.app.ui.designsystem.component.MonthPickerDialog
+import com.nexo.app.ui.designsystem.component.NexoMenu
+import com.nexo.app.ui.designsystem.component.NexoMenuItem
+import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.component.PeriodNavigator
+import com.nexo.app.ui.designsystem.component.SettingRow
+import com.nexo.app.ui.designsystem.component.SwitchRow
+import com.nexo.app.ui.designsystem.theme.Space
+import com.nexo.app.ui.designsystem.theme.nexo
 import com.nexo.app.ui.navigation.AccountDetailKey
 import com.nexo.app.ui.navigation.AccountFormKey
 import com.nexo.app.ui.navigation.AccountGroupFormKey
@@ -84,32 +78,7 @@ import com.nexo.app.ui.navigation.DeletedAccountsKey
 import com.nexo.app.ui.navigation.DeletedGroupsKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.TransferExpenseKey
-import com.nexo.app.ui.theme.nexo
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
-import java.time.LocalDate
-import javax.inject.Inject
-
-@HiltViewModel
-class AccountSettingsViewModel @Inject constructor(
-    val repo: AccountRepository,
-    private val refs: RefRepository,
-    private val db: NexoDatabase,
-) : ViewModel() {
-    val ref: StateFlow<RefData> = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    val balances: StateFlow<Map<String?, com.nexo.app.domain.Net>> = db.transactionDao().observeAggregatesUpTo("9999-12-31")
-        .mapLatest { Balances.netByAccount(it) }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
-
-    fun launch(block: suspend () -> Unit) = viewModelScope.launch { block() }
-    fun updateSettings(transform: (com.nexo.app.core.settings.BookSettings) -> com.nexo.app.core.settings.BookSettings) = viewModelScope.launch { refs.updateSettings(transform) }
-}
 
 @Composable
 fun cardAccountingLabel(c: CardAccounting) = stringResource(if (c == CardAccounting.AT_USE) R.string.card_at_time else R.string.card_lump_sum)
@@ -386,44 +355,6 @@ fun TransferExpenseScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
                 }
             }
         }
-    }
-}
-
-data class TotalStatsUi(val periods: List<MonthPeriod> = emptyList(), val balances: List<Double> = emptyList(), val income: List<Double> = emptyList(), val expense: List<Double> = emptyList())
-
-@HiltViewModel
-class TotalStatsViewModel @Inject constructor(refs: RefRepository, private val db: NexoDatabase) : ViewModel() {
-    val ref = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    val anchor = MutableStateFlow(LocalDate.now())
-
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val ui = combine(ref, anchor, db.transactionDao().observeStamp()) { r, a, _ -> r to a }.mapLatest { (r, a) ->
-        val e = r.settings.periods
-        var p = e.monthPeriodContaining(a)
-        val periods = ArrayList<MonthPeriod>()
-        repeat(6) { periods.add(0, p); p = e.previous(p) }
-        // B10: included accounts (non-debit, not deleted, included in totals) + their debit cards + unassigned rows.
-        val included = r.accounts.filter { acc ->
-            val g = r.groupById[acc.groupId] ?: return@filter false
-            g.type != GroupType.DEBIT_CARD && acc.status != AccountStatus.DELETED && acc.status != AccountStatus.PURGED && acc.includeInTotals
-        }.map { it.id }.toSet()
-        val withDebits = included + r.accounts.filter { it.linkedAccountId in included && r.groupType(it.id) == GroupType.DEBIT_CARD }.map { it.id }
-        val balances = periods.map { per ->
-            db.transactionDao().aggregatesUpTo(per.range.endText).filter { it.accountId == null || it.accountId in withDebits }
-                .fold(BigDecimal.ZERO) { acc, x -> acc + BigDecimal.valueOf(if (x.kind.isInflow) x.main else -x.main) }.toDouble()
-        }
-        val sums = periods.map { per -> db.transactionDao().aggregatesBetween(per.range.startText, per.range.endText) }
-        TotalStatsUi(
-            periods, balances,
-            sums.map { s -> s.filter { it.kind == TxKind.INCOME }.sumOf { it.main } },
-            sums.map { s -> s.filter { it.kind == TxKind.EXPENSE }.sumOf { it.main } },
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TotalStatsUi())
-
-    fun step(forward: Boolean) {
-        val e = ref.value.settings.periods
-        val p = e.monthPeriodContaining(anchor.value)
-        anchor.value = (if (forward) e.next(p) else e.previous(p)).end
     }
 }
 

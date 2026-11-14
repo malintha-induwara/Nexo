@@ -1,6 +1,6 @@
 package com.nexo.app.ui.backup
 
-import com.nexo.app.core.lock.expectReturn
+import com.nexo.app.data.repository.expectReturn
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -45,16 +45,16 @@ import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.backup.BackupManager
-import com.nexo.app.backup.RestoreResult
-import com.nexo.app.core.period.DateRange
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.EmptyState
-import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.MessageDialog
-import com.nexo.app.ui.components.NexoTopBar
-import com.nexo.app.ui.components.SectionHeader
-import com.nexo.app.ui.components.SettingRow
+import com.nexo.app.data.repository.BackupManager
+import com.nexo.app.data.repository.RestoreResult
+import com.nexo.app.core.common.period.DateRange
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.EmptyState
+import com.nexo.app.ui.designsystem.component.Formats
+import com.nexo.app.ui.designsystem.component.MessageDialog
+import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.component.SectionHeader
+import com.nexo.app.ui.designsystem.component.SettingRow
 import com.nexo.app.ui.navigation.AutoBackupHistoryKey
 import com.nexo.app.ui.navigation.BackupDeviceKey
 import com.nexo.app.ui.navigation.ExcelExportKey

@@ -2,12 +2,12 @@ package com.nexo.app.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nexo.app.core.lock.LockManager
-import com.nexo.app.core.settings.BookSettings
-import com.nexo.app.core.settings.DevicePrefs
-import com.nexo.app.data.RefRepository
-import com.nexo.app.data.RepeatEngine
-import com.nexo.app.domain.RefData
+import com.nexo.app.data.repository.LockManager
+import com.nexo.app.core.model.BookSettings
+import com.nexo.app.data.datastore.DevicePrefs
+import com.nexo.app.data.repository.RefRepository
+import com.nexo.app.data.repository.RepeatEngine
+import com.nexo.app.core.model.RefData
 import com.nexo.app.widget.WidgetRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted

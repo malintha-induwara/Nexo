@@ -1,0 +1,16 @@
+package com.nexo.app.data.database.entity
+
+import androidx.room.Entity
+import androidx.room.Index
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "photos", indices = [Index("transactionId"), Index("fileName")])
+data class PhotoEntity(
+    @PrimaryKey val id: String,
+    val transactionId: String,
+    val fileName: String,
+    val fileSize: Long,
+    val orderIndex: Int,
+    val checksum: String,
+    val createdAt: Long,
+)

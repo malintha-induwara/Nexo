@@ -2,7 +2,7 @@ package com.nexo.app.di
 
 import android.content.Context
 import androidx.room.Room
-import com.nexo.app.core.database.NexoDatabase
+import com.nexo.app.data.database.NexoDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

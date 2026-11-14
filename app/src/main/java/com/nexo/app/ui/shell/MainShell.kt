@@ -2,9 +2,9 @@ package com.nexo.app.ui.shell
 
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.scaleOut
-import com.nexo.app.ui.components.rememberHaptics
-import com.nexo.app.ui.theme.Space
-import com.nexo.app.ui.theme.NexoShapes
+import com.nexo.app.ui.designsystem.component.rememberHaptics
+import com.nexo.app.ui.designsystem.theme.Space
+import com.nexo.app.ui.designsystem.theme.NexoShapes
 import com.nexo.app.ui.sms.SmsBadgeViewModel
 import com.nexo.app.ui.navigation.SmsQueueKey
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -73,15 +73,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
 import com.nexo.app.ui.accounts.AccountsTab
-import com.nexo.app.ui.components.BarItem
-import com.nexo.app.ui.components.PillBottomBar
-import com.nexo.app.ui.components.PillBottomBarHeight
+import com.nexo.app.ui.designsystem.component.BarItem
+import com.nexo.app.ui.designsystem.component.PillBottomBar
+import com.nexo.app.ui.designsystem.component.PillBottomBarHeight
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.settings.SettingsTab
 import com.nexo.app.ui.stats.StatsTab
-import com.nexo.app.ui.theme.LocalNexoColors
-import com.nexo.app.ui.theme.NexoMotion
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.NexoMotion
 import com.nexo.app.ui.transactions.TransactionsTab
 
 enum class MainTab(val label: Int, val icon: ImageVector, val selectedIcon: ImageVector) {

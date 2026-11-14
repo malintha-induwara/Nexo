@@ -14,12 +14,12 @@ import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.nexo.app.core.database.entity.AccountGroupEntity
-import com.nexo.app.core.database.entity.CurrencyEntity
+import com.nexo.app.data.database.entity.AccountGroupEntity
+import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.domain.AccountsSummary
 import com.nexo.app.domain.CardFigures
-import com.nexo.app.domain.CategoryVisuals
+import com.nexo.app.core.model.CategoryVisuals
 
 /** How an account group looks: an icon and one of the ten category hues. */
 data class GroupVisual(val icon: ImageVector, val hue: Int)

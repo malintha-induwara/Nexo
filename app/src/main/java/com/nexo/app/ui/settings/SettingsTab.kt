@@ -65,8 +65,8 @@ import com.nexo.app.ui.navigation.HelpKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.LockSettingsKey
 import com.nexo.app.ui.navigation.StyleKey
-import com.nexo.app.ui.theme.LocalHeaderColors
-import com.nexo.app.ui.theme.nexo
+import com.nexo.app.ui.designsystem.theme.LocalHeaderColors
+import com.nexo.app.ui.designsystem.theme.nexo
 
 data class HubItem(val label: Int, val icon: ImageVector, val key: NavKey)
 

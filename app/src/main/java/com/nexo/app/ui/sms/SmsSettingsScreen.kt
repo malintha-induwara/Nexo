@@ -33,94 +33,32 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.core.app.ActivityCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
-import com.nexo.app.core.database.NexoDatabase
-import com.nexo.app.core.settings.DevicePrefs
-import com.nexo.app.data.RefRepository
-import com.nexo.app.domain.RefData
-import com.nexo.app.sms.approve.SmsApprover
-import com.nexo.app.sms.capture.SmsCapture
-import com.nexo.app.sms.capture.SmsPermissions
-import com.nexo.app.sms.FeeMode
-import com.nexo.app.sms.data.FeePresetEntity
-import com.nexo.app.sms.data.SmsSourceEntity
-import com.nexo.app.sms.parse.Banks
-import com.nexo.app.sms.smsCashAccount
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.EmptyState
-import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.InlineBottomSheet
-import com.nexo.app.ui.components.NexoTopBar
-import com.nexo.app.ui.components.RoundIconButton
-import com.nexo.app.ui.components.SectionHeader
-import com.nexo.app.ui.components.SettingRow
-import com.nexo.app.ui.components.SwitchRow
+import com.nexo.app.core.model.FeeMode
+import com.nexo.app.data.database.entity.FeePresetEntity
+import com.nexo.app.data.database.entity.SmsSourceEntity
+import com.nexo.app.data.repository.SmsPermissions
+import com.nexo.app.data.sms.parser.Banks
+import com.nexo.app.data.sms.smsCashAccount
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.EmptyState
+import com.nexo.app.ui.designsystem.component.Formats
+import com.nexo.app.ui.designsystem.component.InlineBottomSheet
+import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.component.RoundIconButton
+import com.nexo.app.ui.designsystem.component.SectionHeader
+import com.nexo.app.ui.designsystem.component.SettingRow
+import com.nexo.app.ui.designsystem.component.SwitchRow
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SmsCardsKey
 import com.nexo.app.ui.navigation.SmsFeesKey
 import com.nexo.app.ui.navigation.SmsQueueKey
-import com.nexo.app.ui.theme.LocalNexoColors
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
-import javax.inject.Inject
-
-@HiltViewModel
-class SmsSettingsViewModel @Inject constructor(
-    db: NexoDatabase,
-    private val refs: RefRepository,
-    private val prefs: DevicePrefs,
-    private val capture: SmsCapture,
-    private val approver: SmsApprover,
-) : ViewModel() {
-    private val dao = db.smsDao()
-    val ref: StateFlow<RefData> = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    val device = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
-    val pendingCount = dao.observePendingCount().stateIn(viewModelScope, SharingStarted.Eagerly, 0)
-    val sources = dao.observeSources().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    val presets = dao.observeFeePresets().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-
-    private val _permitted = MutableStateFlow(capture.hasPermission())
-    val permitted: StateFlow<Boolean> = _permitted.asStateFlow()
-
-    /** Coming back from the permission dialog or App info. */
-    fun refresh() = viewModelScope.launch {
-        _permitted.value = capture.hasPermission()
-        capture.refresh()
-    }
-
-    fun setEnabled(on: Boolean) = viewModelScope.launch {
-        capture.setEnabled(on)
-        _permitted.value = capture.hasPermission()
-    }
-
-    fun offerHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.core.settings.SmsHistoryImport.OFFERED) }
-
-    fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.core.settings.SmsHistoryImport.SKIPPED) }
-
-    fun addSender(raw: String) = viewModelScope.launch {
-        val id = com.nexo.app.sms.parse.Banks.normalizeSender(raw)
-        if (id.isNotEmpty()) prefs.setSmsCustomSenders(prefs.current().smsCustomSenders + id)
-    }
-
-    fun removeSender(id: String) = viewModelScope.launch { prefs.setSmsCustomSenders(prefs.current().smsCustomSenders - id) }
-
-    fun setFullText(on: Boolean) = viewModelScope.launch { prefs.setSmsStoreFullText(on) }
-    fun setCashAccount(id: String) = viewModelScope.launch { refs.updateSettings { it.copy(smsCashAccountId = id) } }
-    fun mapSource(source: SmsSourceEntity, accountId: String) = viewModelScope.launch { approver.mapCard(source.bank, source.last4, accountId) }
-    fun removeSource(source: SmsSourceEntity) = viewModelScope.launch { approver.unmapCard(source.bank, source.last4) }
-    fun setFeeMode(preset: FeePresetEntity, mode: FeeMode) = viewModelScope.launch { approver.setFeeMode(preset.accountId, preset.route, mode) }
-}
+import kotlinx.coroutines.launch
 
 private fun Context.findActivity(): Activity? {
     var c: Context? = this
@@ -157,7 +95,7 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
         if (result.values.all { it }) {
             vm.setEnabled(true)
             // Offered once, right after permission is granted.
-            if (device?.smsHistoryImport == com.nexo.app.core.settings.SmsHistoryImport.NOT_OFFERED) dialog = "offer"
+            if (device?.smsHistoryImport == com.nexo.app.data.datastore.SmsHistoryImport.NOT_OFFERED) dialog = "offer"
         } else {
             // No rationale after a denial means Android won't ask again (or the setting is restricted): send them to App info.
             val activity = context.findActivity()
@@ -233,8 +171,8 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                 )
                 Text(
                     stringResource(R.string.sms_privacy_line),
-                    Modifier.padding(horizontal = com.nexo.app.ui.theme.Space.gutter, vertical = com.nexo.app.ui.theme.Space.xl),
-                    style = com.nexo.app.ui.theme.NexoType.Meta, color = colors.textTertiary,
+                    Modifier.padding(horizontal = com.nexo.app.ui.designsystem.theme.Space.gutter, vertical = com.nexo.app.ui.designsystem.theme.Space.xl),
+                    style = com.nexo.app.ui.designsystem.theme.NexoType.Meta, color = colors.textTertiary,
                 )
             }
         }
@@ -349,7 +287,7 @@ fun SmsFeesScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
 
     @Composable
     fun modeText(p: FeePresetEntity): String {
-        val last = p.lastFee?.let { com.nexo.app.core.money.AmountFormatter.format(it, ref.accountCurrency(p.accountId)) }
+        val last = p.lastFee?.let { com.nexo.app.core.common.money.AmountFormatter.format(it, ref.accountCurrency(p.accountId)) }
         return when {
             p.mode == FeeMode.NEVER -> stringResource(R.string.fee_mode_never)
             p.mode == FeeMode.AUTO && last != null -> stringResource(R.string.fee_mode_auto, last)
@@ -377,7 +315,7 @@ fun SmsFeesScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
             val preset = editing
             if (preset != null) {
                 SheetTitle(stringResource(feeRouteLabel(preset.route)), ref.accountById[preset.accountId]?.name)
-                val last = preset.lastFee?.let { com.nexo.app.core.money.AmountFormatter.format(it, ref.accountCurrency(preset.accountId)) }
+                val last = preset.lastFee?.let { com.nexo.app.core.common.money.AmountFormatter.format(it, ref.accountCurrency(preset.accountId)) }
                 listOfNotNull(
                     FeeMode.ASK to stringResource(R.string.fee_mode_ask),
                     last?.let { FeeMode.AUTO to stringResource(R.string.fee_mode_auto, it) },
@@ -407,7 +345,7 @@ fun SmsSendersScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     Scaffold(
         topBar = {
             NexoTopBar(stringResource(R.string.sms_senders_title), onBack = { nav.back() }) {
-                RoundIconButton(androidx.compose.material.icons.Icons.Rounded.Add, stringResource(R.string.sms_senders_add), { adding = true }, modifier = Modifier.padding(end = com.nexo.app.ui.theme.Space.m))
+                RoundIconButton(androidx.compose.material.icons.Icons.Rounded.Add, stringResource(R.string.sms_senders_add), { adding = true }, modifier = Modifier.padding(end = com.nexo.app.ui.designsystem.theme.Space.m))
             }
         },
         containerColor = colors.background,
@@ -417,8 +355,8 @@ fun SmsSendersScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
             if (custom.isEmpty()) {
                 Text(
                     stringResource(R.string.sms_senders_custom_empty),
-                    Modifier.padding(horizontal = com.nexo.app.ui.theme.Space.gutter),
-                    style = com.nexo.app.ui.theme.NexoType.Meta, color = colors.textSecondary,
+                    Modifier.padding(horizontal = com.nexo.app.ui.designsystem.theme.Space.gutter),
+                    style = com.nexo.app.ui.designsystem.theme.NexoType.Meta, color = colors.textSecondary,
                 )
             }
             custom.forEach { id ->
@@ -428,17 +366,17 @@ fun SmsSendersScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
             }
             Text(
                 stringResource(R.string.sms_senders_note),
-                Modifier.padding(horizontal = com.nexo.app.ui.theme.Space.gutter, vertical = com.nexo.app.ui.theme.Space.s),
-                style = com.nexo.app.ui.theme.NexoType.Meta, color = colors.textTertiary,
+                Modifier.padding(horizontal = com.nexo.app.ui.designsystem.theme.Space.gutter, vertical = com.nexo.app.ui.designsystem.theme.Space.s),
+                style = com.nexo.app.ui.designsystem.theme.NexoType.Meta, color = colors.textTertiary,
             )
             SectionHeader(stringResource(R.string.sms_senders_builtin))
-            com.nexo.app.sms.parse.Bank.entries.filter { it.senders.isNotEmpty() }.forEach { bank ->
+            com.nexo.app.data.sms.parser.Bank.entries.filter { it.senders.isNotEmpty() }.forEach { bank ->
                 SettingRow(bank.senders.joinToString(" · "), bank.displayName)
             }
         }
     }
     if (adding) {
-        com.nexo.app.ui.components.TextFieldDialog(
+        com.nexo.app.ui.designsystem.component.TextFieldDialog(
             title = stringResource(R.string.sms_senders_add),
             initial = "",
             label = stringResource(R.string.sms_senders_hint),

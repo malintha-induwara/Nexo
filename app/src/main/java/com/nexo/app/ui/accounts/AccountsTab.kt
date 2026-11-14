@@ -4,8 +4,8 @@ import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.Add
-import com.nexo.app.ui.components.NexoMenuItem
-import com.nexo.app.ui.components.NexoMenu
+import com.nexo.app.ui.designsystem.component.NexoMenuItem
+import com.nexo.app.ui.designsystem.component.NexoMenu
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,25 +40,25 @@ import com.nexo.app.R
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
-import com.nexo.app.core.money.Money
-import com.nexo.app.ui.components.ChoiceDialog
-import com.nexo.app.ui.components.DateRangeChips
-import com.nexo.app.ui.components.EmptyState
-import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.ModePill
-import com.nexo.app.ui.components.MonthPickerDialog
-import com.nexo.app.ui.components.NexoDatePickerDialog
-import com.nexo.app.ui.components.PeriodNavigator
-import com.nexo.app.ui.components.RoundIconButton
-import com.nexo.app.ui.components.rememberHaptics
+import com.nexo.app.core.common.money.Money
+import com.nexo.app.ui.designsystem.component.ChoiceDialog
+import com.nexo.app.ui.designsystem.component.DateRangeChips
+import com.nexo.app.ui.designsystem.component.EmptyState
+import com.nexo.app.ui.designsystem.component.Formats
+import com.nexo.app.ui.designsystem.component.ModePill
+import com.nexo.app.ui.designsystem.component.MonthPickerDialog
+import com.nexo.app.ui.designsystem.component.NexoDatePickerDialog
+import com.nexo.app.ui.designsystem.component.PeriodNavigator
+import com.nexo.app.ui.designsystem.component.RoundIconButton
+import com.nexo.app.ui.designsystem.component.rememberHaptics
 import com.nexo.app.ui.navigation.AccountDetailKey
 import com.nexo.app.ui.navigation.AccountFormKey
 import com.nexo.app.ui.navigation.AccountListKey
 import com.nexo.app.ui.navigation.AccountListMode
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.TotalStatsKey
-import com.nexo.app.ui.theme.LocalNexoColors
-import com.nexo.app.ui.theme.Space
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.Space
 
 @Composable
 fun accountsModeLabel(m: AccountsMode): String = stringResource(

@@ -45,11 +45,11 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import kotlinx.coroutines.launch
 import com.nexo.app.MainActivity
 import com.nexo.app.R
+import com.nexo.app.core.common.NexoIntents
 import com.nexo.app.core.model.EntryType
-import com.nexo.app.ui.IntentRouter
+import kotlinx.coroutines.launch
 
 object NexoWidgets {
     suspend fun updateAll(context: Context) {
@@ -61,7 +61,7 @@ object NexoWidgets {
     }
 }
 
-private fun launch(context: Context, action: String = IntentRouter.ACTION_MAIN, extra: (Intent.() -> Unit)? = null): Intent =
+private fun launch(context: Context, action: String = NexoIntents.ACTION_MAIN, extra: (Intent.() -> Unit)? = null): Intent =
     Intent(context, MainActivity::class.java).apply {
         this.action = action
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -233,7 +233,7 @@ class CardWidget : GlanceAppWidget() {
                         }
                         cards.take(5).forEach { c ->
                             Row(
-                                GlanceModifier.fillMaxWidth().padding(vertical = 4.dp).clickable(actionStartActivity(launch(context, IntentRouter.ACTION_ACCOUNT) { putExtra(IntentRouter.EXTRA_ACCOUNT, c.id) })),
+                                GlanceModifier.fillMaxWidth().padding(vertical = 4.dp).clickable(actionStartActivity(launch(context, NexoIntents.ACTION_ACCOUNT) { putExtra(NexoIntents.EXTRA_ACCOUNT, c.id) })),
                             ) {
                                 Text(c.name, style = TextStyle(color = color(colors.text), fontSize = 13.sp), maxLines = 1, modifier = GlanceModifier.defaultWeight())
                                 Text(c.payable, style = TextStyle(color = color(if (c.payableNegative) figures.expenseColor else figures.incomeColor), fontSize = 12.sp), maxLines = 1, modifier = GlanceModifier.width(90.dp))
@@ -262,7 +262,7 @@ private fun QuickButton(context: Context, label: String, colors: WidgetColors, i
     }
 }
 
-private fun addIntent(context: Context, type: EntryType) = launch(context, IntentRouter.ACTION_ADD) { putExtra(IntentRouter.EXTRA_TYPE, type.name) }
+private fun addIntent(context: Context, type: EntryType) = launch(context, NexoIntents.ACTION_ADD) { putExtra(NexoIntents.EXTRA_TYPE, type.name) }
 
 /** Quick Add widget 4×1. */
 class QuickAddWidget : GlanceAppWidget() {
@@ -273,10 +273,10 @@ class QuickAddWidget : GlanceAppWidget() {
             Shell(colors) {
                 Row(GlanceModifier.fillMaxSize()) {
                     QuickButton(context, context.getString(R.string.app_name), colors, launch(context), modifier = GlanceModifier.defaultWeight())
-                    QuickButton(context, context.getString(R.string.search), colors, launch(context, IntentRouter.ACTION_SEARCH), modifier = GlanceModifier.defaultWeight())
+                    QuickButton(context, context.getString(R.string.search), colors, launch(context, NexoIntents.ACTION_SEARCH), modifier = GlanceModifier.defaultWeight())
                     QuickButton(context, context.getString(R.string.income), colors, addIntent(context, EntryType.INCOME), f.incomeColor, GlanceModifier.defaultWeight())
                     QuickButton(context, context.getString(R.string.expense), colors, addIntent(context, EntryType.EXPENSE), f.expenseColor, GlanceModifier.defaultWeight())
-                    QuickButton(context, context.getString(R.string.bookmarks), colors, launch(context, IntentRouter.ACTION_BOOKMARKS), modifier = GlanceModifier.defaultWeight())
+                    QuickButton(context, context.getString(R.string.bookmarks), colors, launch(context, NexoIntents.ACTION_BOOKMARKS), modifier = GlanceModifier.defaultWeight())
                 }
             }
         }
@@ -299,7 +299,7 @@ class QuickTxWidget : GlanceAppWidget() {
                         QuickButton(context, context.getString(R.string.expense), colors, addIntent(context, EntryType.EXPENSE), f.expenseColor, GlanceModifier.defaultWeight())
                     }
                     if (tall) Row(GlanceModifier.fillMaxWidth().defaultWeight()) {
-                        QuickButton(context, context.getString(R.string.bookmarks), colors, launch(context, IntentRouter.ACTION_BOOKMARKS), modifier = GlanceModifier.defaultWeight())
+                        QuickButton(context, context.getString(R.string.bookmarks), colors, launch(context, NexoIntents.ACTION_BOOKMARKS), modifier = GlanceModifier.defaultWeight())
                     }
                 }
             }

@@ -59,11 +59,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.backup.RestoreResult
-import com.nexo.app.core.money.CatalogCurrency
-import com.nexo.app.core.money.CurrencyCatalog
-import com.nexo.app.ui.components.MessageDialog
-import com.nexo.app.ui.theme.nexo
+import com.nexo.app.data.repository.RestoreResult
+import com.nexo.app.core.common.money.CatalogCurrency
+import com.nexo.app.core.common.money.CurrencyCatalog
+import com.nexo.app.ui.designsystem.component.MessageDialog
+import com.nexo.app.ui.designsystem.theme.nexo
 
 @Composable
 fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {

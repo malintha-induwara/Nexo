@@ -60,23 +60,23 @@ import androidx.fragment.app.FragmentActivity
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.core.lock.BiometricHelper
-import com.nexo.app.core.lock.PinHasher
-import com.nexo.app.core.settings.LockTimeout
-import com.nexo.app.core.settings.ThemeMode
-import com.nexo.app.ui.components.ChoiceDialog
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.NexoTimePickerDialog
-import com.nexo.app.ui.components.NexoTopBar
-import com.nexo.app.ui.components.SectionHeader
-import com.nexo.app.ui.components.SettingRow
-import com.nexo.app.ui.components.SwitchRow
+import com.nexo.app.data.lock.BiometricHelper
+import com.nexo.app.data.lock.PinHasher
+import com.nexo.app.data.datastore.LockTimeout
+import com.nexo.app.data.datastore.ThemeMode
+import com.nexo.app.ui.designsystem.component.ChoiceDialog
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.Formats
+import com.nexo.app.ui.designsystem.component.NexoTimePickerDialog
+import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.component.SectionHeader
+import com.nexo.app.ui.designsystem.component.SettingRow
+import com.nexo.app.ui.designsystem.component.SwitchRow
 import com.nexo.app.ui.lock.PinDots
 import com.nexo.app.ui.lock.PinKeypad
 import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.theme.LocalIsDark
-import com.nexo.app.work.ReminderScheduler
+import com.nexo.app.ui.designsystem.theme.LocalIsDark
+import com.nexo.app.core.notifications.ReminderScheduler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
@@ -166,7 +166,7 @@ fun ReminderScreen(vm: SettingsViewModel = hiltViewModel()) {
     Scaffold(topBar = { NexoTopBar(stringResource(R.string.alarm_setting), onBack = { nav.back() }) }) { p ->
         Column(Modifier.padding(p)) {
             SwitchRow(stringResource(R.string.alarm), d.reminderEnabled, { on ->
-                if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !com.nexo.app.work.Notifications.canPost(context)) permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !com.nexo.app.core.notifications.Notifications.canPost(context)) permission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 else apply(on, d.reminderHour, d.reminderMinute, d.reminderDays)
             })
             if (d.reminderEnabled) {

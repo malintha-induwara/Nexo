@@ -1,15 +1,15 @@
 package com.nexo.app.ui.transactions
 
-import com.nexo.app.core.database.entity.MemoEntity
-import com.nexo.app.core.database.entity.TransactionEntity
+import com.nexo.app.data.database.entity.MemoEntity
+import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.MemoColor
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.period.DateRange
-import com.nexo.app.core.period.MonthPeriod
+import com.nexo.app.core.common.period.DateRange
+import com.nexo.app.core.common.period.MonthPeriod
 import com.nexo.app.domain.Classifier
 import com.nexo.app.domain.InOut
-import com.nexo.app.domain.RefData
+import com.nexo.app.core.model.RefData
 import java.time.LocalDate
 
 enum class SubTab { DAILY, CALENDAR, MONTHLY, TOTAL, NOTE }
@@ -59,7 +59,7 @@ data class HomeData(
     val periodRows: List<TransactionEntity> = emptyList(),
     val gridRows: List<TransactionEntity> = emptyList(),
     val carryOver: Double = 0.0,
-    val ledger: com.nexo.app.data.Ledger = com.nexo.app.data.Ledger(),
+    val ledger: com.nexo.app.data.repository.Ledger = com.nexo.app.data.repository.Ledger(),
 )
 
 /** Main-screen filter. */

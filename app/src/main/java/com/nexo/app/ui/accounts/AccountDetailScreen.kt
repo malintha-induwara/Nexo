@@ -1,10 +1,10 @@
 package com.nexo.app.ui.accounts
 
-import com.nexo.app.ui.components.FlowCharts
+import com.nexo.app.ui.designsystem.component.FlowCharts
 import androidx.activity.compose.BackHandler
 import java.util.Locale
-import com.nexo.app.ui.components.RoundIconButton
-import com.nexo.app.ui.components.AmountText
+import com.nexo.app.ui.designsystem.component.RoundIconButton
+import com.nexo.app.ui.designsystem.component.AmountText
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.size
@@ -50,28 +50,28 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.ui.components.SegmentedPill
-import com.nexo.app.ui.theme.Space
-import com.nexo.app.core.database.entity.CurrencyEntity
+import com.nexo.app.ui.designsystem.component.SegmentedPill
+import com.nexo.app.ui.designsystem.theme.Space
+import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.core.model.GroupType
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.FlowAmount
-import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.GroupCard
-import com.nexo.app.ui.components.MessageDialog
-import com.nexo.app.ui.components.MonthPickerDialog
-import com.nexo.app.ui.components.NexoTopBar
-import com.nexo.app.ui.components.PeriodNavigator
-import com.nexo.app.ui.components.shrinkToFit
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.FlowAmount
+import com.nexo.app.ui.designsystem.component.Formats
+import com.nexo.app.ui.designsystem.component.GroupCard
+import com.nexo.app.ui.designsystem.component.MessageDialog
+import com.nexo.app.ui.designsystem.component.MonthPickerDialog
+import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.component.PeriodNavigator
+import com.nexo.app.ui.designsystem.component.shrinkToFit
 import com.nexo.app.ui.navigation.AccountDetailKey
 import com.nexo.app.ui.navigation.AccountFormKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.theme.LocalMoneyColors
-import com.nexo.app.ui.theme.LocalNexoColors
-import com.nexo.app.ui.theme.NexoType
+import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.transactions.BulkAction
 import com.nexo.app.ui.transactions.BulkDialogs
 import com.nexo.app.ui.transactions.DayGroupList
@@ -196,7 +196,7 @@ private fun SummaryBlock(ui: AccountDetailUi, cur: CurrencyEntity, tab: DetailTa
         Column(Modifier.padding(start = Space.l, end = Space.m, top = 10.dp, bottom = Space.m)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    (stringResource(R.string.statement) + if (ui.range != com.nexo.app.core.period.DateRange.ALL) " " + Formats.rangeFull(ui.range.start, ui.range.end) else "").uppercase(Locale.getDefault()),
+                    (stringResource(R.string.statement) + if (ui.range != com.nexo.app.core.common.period.DateRange.ALL) " " + Formats.rangeFull(ui.range.start, ui.range.end) else "").uppercase(Locale.getDefault()),
                     style = NexoType.Caps, color = colors.textTertiary, maxLines = 1, modifier = Modifier.weight(1f),
                 )
                 RoundIconButton(if (charts) Icons.AutoMirrored.Outlined.List else Icons.Outlined.BarChart, stringResource(R.string.toggle_charts), onToggleCharts, size = 32.dp)

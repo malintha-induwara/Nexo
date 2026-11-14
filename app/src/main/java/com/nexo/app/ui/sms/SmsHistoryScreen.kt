@@ -44,20 +44,20 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.core.money.AmountFormatter
-import com.nexo.app.sms.approve.SmsApprover
-import com.nexo.app.ui.components.DateRangeChips
-import com.nexo.app.ui.components.EmptyState
-import com.nexo.app.ui.components.InlineBottomSheet
-import com.nexo.app.ui.components.RoundIconButton
-import com.nexo.app.ui.components.rememberHaptics
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.domain.sms.SmsApprover
+import com.nexo.app.ui.designsystem.component.DateRangeChips
+import com.nexo.app.ui.designsystem.component.EmptyState
+import com.nexo.app.ui.designsystem.component.InlineBottomSheet
+import com.nexo.app.ui.designsystem.component.RoundIconButton
+import com.nexo.app.ui.designsystem.component.rememberHaptics
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SmsHistoryKey
-import com.nexo.app.ui.theme.LocalNexoColors
-import com.nexo.app.ui.theme.NexoMotion
-import com.nexo.app.ui.theme.NexoShapes
-import com.nexo.app.ui.theme.NexoType
-import com.nexo.app.ui.theme.Space
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.NexoMotion
+import com.nexo.app.ui.designsystem.theme.NexoShapes
+import com.nexo.app.ui.designsystem.theme.NexoType
+import com.nexo.app.ui.designsystem.theme.Space
 
 /** "Add past transactions": nothing selected by default, picked rows go straight to the ledger. */
 @Composable
@@ -197,7 +197,7 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
         InlineBottomSheet(mappingOpen, onDismiss = { mappingOpen = false }, heightFraction = 0.72f) {
             mapping?.let { c ->
                 SheetTitle(
-                    stringResource(R.string.sms_card_question, com.nexo.app.sms.parse.Banks.byName(c.bank)?.displayName.orEmpty(), c.last4),
+                    stringResource(R.string.sms_card_question, com.nexo.app.data.sms.parser.Banks.byName(c.bank)?.displayName.orEmpty(), c.last4),
                     stringResource(R.string.sms_card_hint),
                 )
                 AccountPickList(ref, null) { id ->

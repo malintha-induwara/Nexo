@@ -125,17 +125,17 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_tx" />
         </receiver>
-        <receiver android:name=".work.ReminderReceiver" android:exported="false" />
-        <receiver android:name=".work.QuickAddRepostReceiver" android:exported="false" />
+        <receiver android:name=".core.notifications.ReminderReceiver" android:exported="false" />
+        <receiver android:name=".core.notifications.QuickAddRepostReceiver" android:exported="false" />
         <receiver
-            android:name=".sms.capture.SmsReceiver"
+            android:name=".data.sms.SmsReceiver"
             android:exported="true"
             android:permission="android.permission.BROADCAST_SMS">
             <intent-filter>
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
             </intent-filter>
         </receiver>
-        <receiver android:name=".work.BootReceiver" android:exported="true">
+        <receiver android:name=".core.notifications.BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />

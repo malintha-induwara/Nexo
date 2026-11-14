@@ -39,12 +39,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import com.nexo.app.R
-import com.nexo.app.core.lock.BiometricHelper
-import com.nexo.app.core.lock.LockManager
-import com.nexo.app.core.lock.PinResult
-import com.nexo.app.core.settings.DeviceSettings
-import com.nexo.app.ui.components.ConfirmDialog
-import com.nexo.app.ui.components.TextFieldDialog
+import com.nexo.app.data.lock.BiometricHelper
+import com.nexo.app.data.repository.LockManager
+import com.nexo.app.data.repository.PinResult
+import com.nexo.app.data.datastore.DeviceSettings
+import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.TextFieldDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
