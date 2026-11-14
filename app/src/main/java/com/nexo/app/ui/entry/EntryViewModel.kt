@@ -35,6 +35,8 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -65,6 +67,7 @@ class EntryViewModel @AssistedInject constructor(
     val tagRepo: com.nexo.app.data.TagRepository,
     private val importer: com.nexo.app.backup.TsvImporter,
     private val sms: com.nexo.app.sms.approve.SmsApprover,
+    private val receipts: com.nexo.app.receipt.ReceiptScanner,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -519,6 +522,59 @@ class EntryViewModel @AssistedInject constructor(
     fun removeTag(id: String) = edit { it.copy(tagIds = it.tagIds - id) }
     fun addPhotos(uris: List<Uri>) = edit { s -> s.copy(photos = (s.photos + uris.map { PhotoItem.Picked(it) }).take(3)) }
     fun removePhoto(index: Int) = edit { s -> s.copy(photos = s.photos.filterIndexed { i, _ -> i != index }) }
+
+    // ---- Receipt scan --------------------------------------------------------------------------------------------------
+
+    private var scanJob: Job? = null
+
+    /** Reads [uri] on the device; the confirm sheet shows while it runs and then shows what was read. */
+    fun scanReceipt(uri: Uri) {
+        scanJob?.cancel()
+        _ui.update { it.copy(scan = ScanUi.Reading(uri), panel = Panel.NONE) }
+        scanJob = viewModelScope.launch {
+            val read = try {
+                receipts.scan(uri)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.w("ReceiptScan", "Receipt read failed: ${e.javaClass.simpleName}: ${e.message}")
+                null
+            }
+            if (read == null) {
+                _ui.update { it.copy(scan = null) }
+                _events.send(EntryEvent.Message(R.string.receipt_unreadable))
+            } else {
+                _ui.update { s -> if (s.scan?.uri == uri) s.copy(scan = ScanUi.Done(uri, read)) else s }
+            }
+        }
+    }
+
+    fun dismissScan() {
+        scanJob?.cancel()
+        _ui.update { it.copy(scan = null) }
+    }
+
+    /**
+     * The user's confirmed reading: [amount] (as shown or corrected, rounded to the entry's currency), the receipt's date
+     * and time when [useDate], its shop as the note when [useMerchant] and the note is still empty, and the photo itself.
+     * Nothing is saved until the entry is.
+     */
+    fun applyReceipt(amount: Double?, useDate: Boolean, useMerchant: Boolean) {
+        val done = _ui.value.scan as? ScanUi.Done ?: return
+        val read = done.read
+        edit { s ->
+            val photo = PhotoItem.Picked(done.uri)
+            var n = s.copy(scan = null, photos = if (photo in s.photos) s.photos else (s.photos + photo).take(3))
+            if (amount != null && amount > 0) {
+                val decimals = refCurrencyDecimals(s.currencyId)
+                n = n.copy(amount = BigDecimal.valueOf(amount).setScale(decimals, RoundingMode.HALF_UP).toDouble(), pad = PadInput("", decimals, allowSign = true))
+            }
+            if (useDate && read.date != null) n = n.copy(date = read.date, time = read.time ?: n.time)
+            if (useMerchant && read.merchant != null && s.note.isBlank()) n = n.copy(note = read.merchant)
+            n
+        }
+        advance()
+    }
 
     fun setFeeExpanded(expanded: Boolean) {
         edit { s -> if (expanded) s.copy(feeExpanded = true, feeCurrencyId = s.currencyId) else s.copy(feeExpanded = false, feeAmount = null) }

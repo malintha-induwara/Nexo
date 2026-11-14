@@ -72,4 +72,15 @@
     <string name="save_to_gallery">Save to Pictures</string>
     <string name="toggle_grouping">Group by account group</string>
     <string name="add_account">Add account</string>
+    <string name="receipt_scan">Scan receipt</string>
+    <string name="receipt_reading">Reading the receipt…</string>
+    <string name="receipt_title">From the receipt</string>
+    <string name="receipt_total">Total</string>
+    <string name="receipt_guessed">No total line found. This is the largest amount on the receipt.</string>
+    <string name="receipt_nothing">No amounts found. Tap Total to type it.</string>
+    <string name="receipt_other_amounts">Amounts on the receipt</string>
+    <string name="receipt_use_note">Note: %1$s</string>
+    <string name="receipt_use_date">Date: %1$s</string>
+    <string name="receipt_use">Use this</string>
+    <string name="receipt_unreadable">Couldn\'t read this photo.</string>
 </resources>

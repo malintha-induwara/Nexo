@@ -103,6 +103,7 @@ dependencies {
     ksp(libs.androidx.hilt.compiler)
 
     implementation(libs.coil.compose)
+    implementation(libs.mlkit.text.recognition)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
 

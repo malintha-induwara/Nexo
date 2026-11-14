@@ -1,5 +1,6 @@
 package com.nexo.app.ui.entry
 
+import android.net.Uri
 import androidx.annotation.StringRes
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.InputOrder
@@ -7,6 +8,7 @@ import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.domain.PadInput
 import com.nexo.app.domain.PhotoItem
+import com.nexo.app.receipt.ReceiptRead
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import java.time.LocalDate
@@ -65,8 +67,13 @@ data class EntryUi(
     /** NQ-011/012: the foreign amount and the rate behind an estimated amount; [fxFromApi] adds the attribution link. */
     val fxNote: String? = null,
     val fxFromApi: Boolean = false,
+    val scan: ScanUi? = null,
 ) {
     val isTransfer: Boolean get() = type == EntryType.TRANSFER
+
+    /** Scan receipt sits beside Add photo, wherever an expense or income amount can come from a photo of a bill. */
+    val scanAllowed: Boolean
+        get() = !isTransfer && !isBalance && !isBalanceAdjustment && !repeatMode && repeat == RepeatType.NONE && photos.size < 3
 
     /** Transfers carry a fee (TX-011); so does an SMS expense, as a linked Bank fee row (spec-money-master-sl 02). */
     val feeAllowed: Boolean get() = isTransfer || (mode == EntryMode.SMS && type == EntryType.EXPENSE)
@@ -102,6 +109,14 @@ data class EntryUi(
             Field.FEE -> Panel.FEE
         }
     }
+}
+
+/** A receipt photo being read, then waiting for the user to confirm or correct what was read. */
+sealed interface ScanUi {
+    val uri: Uri
+
+    data class Reading(override val uri: Uri) : ScanUi
+    data class Done(override val uri: Uri, val read: ReceiptRead) : ScanUi
 }
 
 sealed interface EntryEvent {

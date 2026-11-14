@@ -55,6 +55,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.DocumentScanner
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.rounded.Add
@@ -138,6 +139,7 @@ import com.nexo.app.ui.components.CalculatorDialog
 import com.nexo.app.ui.components.CategoryTile
 import com.nexo.app.ui.components.ConfirmDialog
 import com.nexo.app.ui.components.Formats
+import com.nexo.app.ui.components.InlineBottomSheet
 import com.nexo.app.ui.components.NexoDatePickerDialog
 import com.nexo.app.ui.components.NexoTimePickerDialog
 import com.nexo.app.ui.components.NumberPad
@@ -198,6 +200,8 @@ fun EntryScreen(key: EntryKey) {
     var showCopy by rememberSaveable { mutableStateOf(false) }
     var showPhotoMenu by rememberSaveable { mutableStateOf(false) }
     var showPhotoNotice by rememberSaveable { mutableStateOf(false) }
+    var showScanMenu by rememberSaveable { mutableStateOf(false) }
+    var noticeThenScan by rememberSaveable { mutableStateOf(false) }
     var viewerIndex by rememberSaveable { mutableIntStateOf(-1) }
     var rateEdit by rememberSaveable { mutableIntStateOf(0) }
     var showTransferGuide by rememberSaveable { mutableStateOf(false) }
@@ -268,12 +272,21 @@ fun EntryScreen(key: EntryKey) {
             if (vm.photoStore.isSupported(uri)) vm.addPhotos(listOf(uri)) else Toast.makeText(context, R.string.unsupported_file_format, Toast.LENGTH_SHORT).show()
         }
     }
-    fun launchCamera() {
+    // Scan receipt: the same camera and gallery, but the photo is read before it is attached.
+    val scanCamera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        if (ok) cameraUri?.let { vm.scanReceipt(Uri.parse(it)) }
+    }
+    val scanGallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            if (vm.photoStore.isSupported(uri)) vm.scanReceipt(uri) else Toast.makeText(context, R.string.unsupported_file_format, Toast.LENGTH_SHORT).show()
+        }
+    }
+    fun launchCamera(scan: Boolean = false) {
         val dir = File(context.cacheDir, "temp").apply { mkdirs() }
         val file = File(dir, "camera_${System.currentTimeMillis()}.jpg")
         val uri = FileProvider.getUriForFile(context, context.packageName + ".files", file)
         cameraUri = uri.toString()
-        camera.launch(uri)
+        (if (scan) scanCamera else camera).launch(uri)
     }
 
     /** Keypad input with a shake and a reject buzz when the key cannot change the amount. */
@@ -581,6 +594,28 @@ fun EntryScreen(key: EntryKey) {
                             }
                         }
                     }
+                    if (photosAllowed && s.scanAllowed) {
+                        Box {
+                            FieldPill(text = stringResource(R.string.receipt_scan), label = stringResource(R.string.receipt_scan), placeholder = true, icon = Icons.Outlined.DocumentScanner, accent = typeColor) {
+                                vm.enterEdit()
+                                if (device?.photoNoticeShown == false) {
+                                    noticeThenScan = true
+                                    showPhotoNotice = true
+                                } else {
+                                    showScanMenu = true
+                                }
+                            }
+                            DropdownMenu(showScanMenu, onDismissRequest = { showScanMenu = false }) {
+                                if (context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY)) {
+                                    DropdownMenuItem(text = { Text(stringResource(R.string.camera)) }, onClick = { showScanMenu = false; launchCamera(scan = true) })
+                                }
+                                DropdownMenuItem(text = { Text(stringResource(R.string.gallery)) }, onClick = {
+                                    showScanMenu = false
+                                    scanGallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                })
+                            }
+                        }
+                    }
                 }
                 // Photos (TX-015)
                 if (photosAllowed && s.photos.isNotEmpty()) {
@@ -690,6 +725,15 @@ fun EntryScreen(key: EntryKey) {
                 }
             }
         }
+
+        // Scan receipt's confirm sheet. The last reading stays drawn while the sheet slides away.
+        val shownScan = remember { arrayOfNulls<ScanUi>(1) }
+        if (s.scan != null) shownScan[0] = s.scan
+        InlineBottomSheet(visible = s.scan != null, onDismiss = vm::dismissScan, heightFraction = 0.62f) {
+            shownScan[0]?.let { scan ->
+                ReceiptSheetContent(scan, txCurrency, noteEmpty = s.note.isBlank(), onUse = vm::applyReceipt, onCancel = vm::dismissScan)
+            }
+        }
     }
 
     // Dialogs
@@ -749,9 +793,16 @@ fun EntryScreen(key: EntryKey) {
     if (viewerIndex >= 0) PhotoViewer(s.photos, viewerIndex, vm.photoStore, onDismiss = { viewerIndex = -1 })
     if (showPhotoNotice) {
         AlertDialog(
-            onDismissRequest = { showPhotoNotice = false },
+            onDismissRequest = { showPhotoNotice = false; noticeThenScan = false },
             text = { Text(stringResource(R.string.photo_notice)) },
-            confirmButton = { TextButton(onClick = { showPhotoNotice = false; vm.markPhotoNoticeShown(); showPhotoMenu = true }) { Text(stringResource(R.string.action_ok)) } },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPhotoNotice = false
+                    vm.markPhotoNoticeShown()
+                    if (noticeThenScan) showScanMenu = true else showPhotoMenu = true
+                    noticeThenScan = false
+                }) { Text(stringResource(R.string.action_ok)) }
+            },
         )
     }
     if (showTransferGuide) {
