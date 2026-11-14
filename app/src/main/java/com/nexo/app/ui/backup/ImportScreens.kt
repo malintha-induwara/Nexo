@@ -48,6 +48,7 @@ import com.nexo.app.core.model.DateOrder
 import com.nexo.app.core.model.ImportErrorType
 import com.nexo.app.core.model.ImportPreview
 import com.nexo.app.core.model.ImportRow
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.Formats
@@ -65,11 +66,11 @@ import com.nexo.app.ui.navigation.ImportPreviewKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Composable
 fun ImportListScreen(vm: BackupViewModel = hiltViewModel()) {
+    val clock = LocalClock.current
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -148,7 +149,7 @@ fun ImportListScreen(vm: BackupViewModel = hiltViewModel()) {
                                 Formats.dateTime(
                                     Instant.ofEpochMilli(
                                         f.lastModified(),
-                                    ).atZone(ZoneId.systemDefault()).toLocalDateTime(),
+                                    ).atZone(clock.zone).toLocalDateTime(),
                                 ) +
                                     " · ${f.length() / 1000} KB",
                                 style = MaterialTheme.typography.bodySmall,
@@ -172,11 +173,12 @@ fun ImportListScreen(vm: BackupViewModel = hiltViewModel()) {
 
 @Composable
 private fun errorText(row: ImportRow): String? {
+    val clock = LocalClock.current
     val e = row.error ?: return null
     return when (e.type) {
         ImportErrorType.DATE -> stringResource(
             R.string.import_error_date,
-            LocalDate.now().toString(),
+            LocalDate.now(clock).toString(),
         )
 
         ImportErrorType.TYPE -> stringResource(R.string.import_error_type)
@@ -201,6 +203,7 @@ private fun errorText(row: ImportRow): String? {
 /** Import preview with row fixing. */
 @Composable
 fun ImportPreviewScreen(key: ImportPreviewKey, vm: BackupViewModel = hiltViewModel()) {
+    val clock = LocalClock.current
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -353,7 +356,7 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: BackupViewModel = hiltViewMod
                                 fix = null
                                 order = o
                             }) {
-                                val sample = LocalDate.now().format(
+                                val sample = LocalDate.now(clock).format(
                                     DateTimeFormatter.ofPattern(o.pattern),
                                 )
                                 Text("${o.pattern}  ($sample)")

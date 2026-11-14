@@ -16,9 +16,9 @@ import com.nexo.app.data.sms.SmsInboxDataSource
 import com.nexo.app.data.sms.parser.Redactor
 import com.nexo.app.data.sms.parser.SmsParser
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -38,12 +38,14 @@ class DefaultSmsInboxRepository @Inject constructor(
     private val transactions: TransactionsRepository,
     private val inbox: SmsInboxDataSource,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
+    private val clock: Clock,
 ) : SmsInboxRepository {
     private val mutex = Mutex()
 
     override fun hasPermission(): Boolean = SmsPermissions.granted(context)
 
-    override suspend fun refresh(now: Long) = mutex.withLock {
+    override suspend fun refresh() = mutex.withLock {
+        val now = clock.millis()
         val s = prefs.getDeviceSettings()
         if (!s.setupDone) return@withLock
         val active = s.smsCaptureEnabled && hasPermission()
@@ -93,7 +95,7 @@ class DefaultSmsInboxRepository @Inject constructor(
             val parser = SmsParser(s.smsCustomSenders)
             val store = MemorySmsStore()
             val correlator = SmsCorrelator(store)
-            val now = System.currentTimeMillis()
+            val now = clock.millis()
             // Oldest first, so OTP names and cancellations line up as they did on the phone.
             for (incoming in inbox.read(
                 after = from - 1,
@@ -123,7 +125,7 @@ class DefaultSmsInboxRepository @Inject constructor(
                     it
                 }
             }
-            val zone = ZoneId.systemDefault()
+            val zone = clock.zone
             fun day(ms: Long) = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
             val ledger = transactions.getRange(
                 day(from).minusDays(1).toIsoText(),

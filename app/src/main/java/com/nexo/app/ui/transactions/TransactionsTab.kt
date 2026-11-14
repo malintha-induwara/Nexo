@@ -108,6 +108,7 @@ import com.nexo.app.core.model.StartScreen
 import com.nexo.app.core.model.SwipeMode
 import com.nexo.app.domain.BudgetBlockData
 import com.nexo.app.ui.budgets.BudgetBlock
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.FlowAmount
@@ -830,6 +831,7 @@ private fun MonthlyContent(
     bottom: Dp,
     onWeek: (MonthPeriod) -> Unit,
 ) {
+    val clock = LocalClock.current
     val haptics = rememberHaptics()
     var expanded by rememberSaveable(data.year) {
         mutableStateOf(data.months.firstOrNull { selected in it.period.range }?.period?.key ?: -1)
@@ -838,7 +840,7 @@ private fun MonthlyContent(
         EmptyState()
         return
     }
-    val today = LocalDate.now()
+    val today = LocalDate.now(clock)
     LazyColumn(contentPadding = PaddingValues(top = Space.xs, bottom = bottom)) {
         items(data.months, key = { it.period.key }) { m ->
             MonthCard(

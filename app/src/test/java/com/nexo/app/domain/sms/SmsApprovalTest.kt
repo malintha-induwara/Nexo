@@ -3,6 +3,7 @@ package com.nexo.app.domain.sms
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.nexo.app.core.common.SystemZoneClock
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.DenyReason
@@ -59,7 +60,7 @@ class SmsApprovalTest {
                 context,
                 NexoDatabase::class.java,
             ).allowMainThreadQueries().build()
-        BookSeeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
+        BookSeeder(context, db, SystemZoneClock).seedFresh(CurrencyCatalog.find("LKR")!!)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val refs = referenceDataRepository(db, scope)
         transactions = transactionsRepository(context, db, refs)
@@ -69,7 +70,7 @@ class SmsApprovalTest {
                 sms,
                 refs,
                 transactions,
-                GetSmsDraftUseCase(GetSmsLedgerAmountUseCase()),
+                GetSmsDraftUseCase(GetSmsLedgerAmountUseCase(), SystemZoneClock),
             )
         getFeePlan = GetSmsFeePlanUseCase(sms, refs)
     }

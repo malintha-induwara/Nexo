@@ -15,6 +15,7 @@ import com.nexo.app.data.database.entity.CategoryEntity
 import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.data.database.entity.SettingEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.time.Clock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -23,6 +24,7 @@ import javax.inject.Singleton
 class BookSeeder @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: NexoDatabase,
+    private val clock: Clock,
 ) {
     private fun s(id: Int) = context.getString(id)
 
@@ -42,7 +44,7 @@ class BookSeeder @Inject constructor(
 
     suspend fun seedFresh(main: CatalogCurrency = CurrencyCatalog.forLocale()) =
         db.withTransaction {
-            val now = System.currentTimeMillis()
+            val now = clock.millis()
             if (db.currencyDao().getMain() == null) {
                 db.currencyDao().upsert(listOf(mainCurrencyRow(main, now)))
             }

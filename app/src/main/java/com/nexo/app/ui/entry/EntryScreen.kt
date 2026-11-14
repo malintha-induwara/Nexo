@@ -146,6 +146,7 @@ import com.nexo.app.core.model.RepeatReflect
 import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.core.model.TxKind
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.AmountText
@@ -194,6 +195,7 @@ import java.util.Locale
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EntryScreen(key: EntryKey) {
+    val clock = LocalClock.current
     val vm =
         hiltViewModel<EntryViewModel, EntryViewModel.Factory>(creationCallback = { it.create(key) })
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -334,7 +336,7 @@ fun EntryScreen(key: EntryKey) {
     }
     fun launchCamera() {
         val dir = File(context.cacheDir, "temp").apply { mkdirs() }
-        val file = File(dir, "camera_${System.currentTimeMillis()}.jpg")
+        val file = File(dir, "camera_${clock.millis()}.jpg")
         val uri = FileProvider.getUriForFile(context, context.packageName + ".files", file)
         cameraUri = uri.toString()
         context.expectReturn()
@@ -705,7 +707,7 @@ fun EntryScreen(key: EntryKey) {
                     verticalArrangement = Arrangement.spacedBy(Space.s),
                 ) {
                     FieldPill(
-                        text = if (s.date.year == LocalDate.now().year) {
+                        text = if (s.date.year == LocalDate.now(clock).year) {
                             Formats.weekdayMonthDay(s.date)
                         } else {
                             Formats.mediumDate(s.date)

@@ -30,6 +30,7 @@ import com.nexo.app.domain.Totals
 import com.nexo.app.ui.HomeState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
+import java.time.Clock
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -67,6 +68,7 @@ class TransactionsViewModel @Inject constructor(
     private val transactions: TransactionsRepository,
     private val budgets: BudgetsRepository,
     private val home: HomeState,
+    private val clock: Clock,
 ) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
@@ -100,7 +102,11 @@ class TransactionsViewModel @Inject constructor(
     }
         .distinctUntilChanged()
         .flatMapLatest { p -> load(p) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeData())
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            HomeData(year = LocalDate.now(clock).year),
+        )
 
     private val budgetBlock: Flow<BudgetBlockData?> = data
         .map { d -> d.period.takeIf { d.tab == SubTab.TOTAL } }
@@ -134,7 +140,11 @@ class TransactionsViewModel @Inject constructor(
         TransactionsUiState(
             r, t, d, date, filter, filterOpen, selection, focus, lastSaved, savedMemo, budget,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TransactionsUiState())
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        TransactionsUiState(data = data.value, selectedDate = home.selectedDate.value),
+    )
 
     private fun startTab(r: RefData) = if (r.settings.startScreen == StartScreen.CALENDAR) {
         SubTab.CALENDAR
@@ -218,7 +228,7 @@ class TransactionsViewModel @Inject constructor(
     ): HomeData {
         val ref = p.ref
         val c = Classifier(ref)
-        val factory = TransactionRowMapper(ref)
+        val factory = TransactionRowMapper(ref, clock.zone)
         val filtered = l.rows.filter { !p.filter.active || p.filter.matches(it, ref, c) }
         val inPeriod = filtered.filter { LocalDate.parse(it.date) in period.range }
         val memoByDay = memos.filter { !it.pinned || LocalDate.parse(it.date) in period.range }
@@ -242,7 +252,7 @@ class TransactionsViewModel @Inject constructor(
         days.forEach { totals += InOut(it.income, it.expense) }
 
         // Calendar cells
-        val today = LocalDate.now()
+        val today = LocalDate.now(clock)
         val byDay = filtered.filter { factory.listable(it) }.groupBy { LocalDate.parse(it.date) }
         val cells = grid.days().map { d ->
             var inc = BigDecimal.ZERO
@@ -300,7 +310,7 @@ class TransactionsViewModel @Inject constructor(
         rules: List<RepeatRule>,
         period: MonthPeriod,
     ): RepeatPreview? {
-        val today = LocalDate.now()
+        val today = LocalDate.now(clock)
         val from = maxOf(today, period.start)
         if (from.isAfter(period.end)) return null
         val range = DateRange(from, period.end)
@@ -376,7 +386,7 @@ class TransactionsViewModel @Inject constructor(
                     range
             },
         )
-        val today = LocalDate.now()
+        val today = LocalDate.now(clock)
         val todayPeriod = engine.monthPeriodContaining(today)
         val currentYear = todayPeriod.label.year
         val periods = engine.yearPeriods(year).reversed()
@@ -533,7 +543,7 @@ class TransactionsViewModel @Inject constructor(
     fun goToday() {
         viewModelScope.launch {
             _tab.value = startTab(refs.getRefData())
-            home.focusOn(LocalDate.now())
+            home.focusOn(LocalDate.now(clock))
         }
     }
 
@@ -553,7 +563,7 @@ class TransactionsViewModel @Inject constructor(
 
     fun pickMonth(m: YearMonth) {
         val p = ref.value.settings.periods.monthPeriodFor(m)
-        val today = LocalDate.now()
+        val today = LocalDate.now(clock)
         home.select(if (today in p.range) today else p.end)
     }
 

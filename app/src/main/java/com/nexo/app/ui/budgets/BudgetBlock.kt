@@ -47,6 +47,7 @@ import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.RefData
 import com.nexo.app.domain.BudgetBlockData
 import com.nexo.app.domain.BudgetRow
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.nexo
@@ -59,7 +60,7 @@ import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 
 /** Proportional "Today" marker. */
-fun todayFraction(period: MonthPeriod, now: LocalDateTime = LocalDateTime.now()): Float? {
+fun todayFraction(period: MonthPeriod, now: LocalDateTime): Float? {
     val start = period.start.atStartOfDay()
     val end = period.end.plusDays(1).atStartOfDay()
     if (!now.isAfter(start) || !now.isBefore(end)) return null
@@ -72,7 +73,7 @@ fun BudgetBlock(period: MonthPeriod, data: BudgetBlockData?, ref: RefData) {
     val nav = LocalNavigator.current
     var expandedAll by rememberSaveable { mutableStateOf(false) }
     var expanded by rememberSaveable { mutableStateOf(setOf<String>()) }
-    val today = todayFraction(period)
+    val today = todayFraction(period, LocalDateTime.now(LocalClock.current))
     val d = data
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(16.dp)) {

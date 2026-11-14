@@ -31,6 +31,7 @@ import com.nexo.app.data.sms.parser.Redactor
 import com.nexo.app.data.sms.parser.SmsParser
 import com.nexo.app.data.work.FxSyncWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.time.Clock
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -46,8 +47,9 @@ class DefaultSmsRepository @Inject constructor(
     private val refs: ReferenceDataRepository,
     private val suggester: SmsSuggester,
     private val notifier: Notifier,
+    private val clock: Clock,
 ) : SmsRepository {
-    private fun now() = System.currentTimeMillis()
+    private fun now() = clock.millis()
 
     override fun getItemsStream(statuses: List<SmsStatus>): Flow<List<SmsItem>> =
         dao.observeByStatus(statuses).map { rows ->
@@ -101,7 +103,7 @@ class DefaultSmsRepository @Inject constructor(
             val outcome = try {
                 val parsed = parser.parse(incoming.message)
                 val text = Redactor.stored(incoming.message.body, s.smsStoreFullText)
-                correlator.accept(incoming.message, parsed, text, System.currentTimeMillis()) {
+                correlator.accept(incoming.message, parsed, text, clock.millis()) {
                     suggester.prepare(it)
                 }
             } catch (e: Exception) {
@@ -133,8 +135,8 @@ class DefaultSmsRepository @Inject constructor(
         get() = this is SmsCorrelator.Outcome.Created || this is SmsCorrelator.Outcome.Upgraded ||
             this is SmsCorrelator.Outcome.Reversal || this is SmsCorrelator.Outcome.Cancelled
 
-    override suspend fun markQueueSeen(now: Long) {
-        prefs.setSmsSeenAt(now)
+    override suspend fun markQueueSeen() {
+        prefs.setSmsSeenAt(clock.millis())
         notifier.postSmsReview(0)
     }
 

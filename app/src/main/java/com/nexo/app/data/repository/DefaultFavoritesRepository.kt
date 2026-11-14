@@ -7,13 +7,16 @@ import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.FavoriteEntity
 import com.nexo.app.data.database.entity.asExternalModel
+import java.time.Clock
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class DefaultFavoritesRepository @Inject constructor(private val db: NexoDatabase) :
-    FavoritesRepository {
+class DefaultFavoritesRepository @Inject constructor(
+    private val db: NexoDatabase,
+    private val clock: Clock,
+) : FavoritesRepository {
     override fun getFavoritesStream(): Flow<List<Favorite>> =
         db.favoriteDao().observeAll().map { rows ->
             rows.map(FavoriteEntity::asExternalModel)
@@ -37,7 +40,7 @@ class DefaultFavoritesRepository @Inject constructor(private val db: NexoDatabas
                 it.amount == tx.amount && it.currencyId == tx.currencyId && it.note == tx.note &&
                 it.description == tx.description
         }
-        val now = System.currentTimeMillis()
+        val now = clock.millis()
         db.favoriteDao().upsert(
             listOf(
                 existing?.copy(updatedAt = now) ?: FavoriteEntity(

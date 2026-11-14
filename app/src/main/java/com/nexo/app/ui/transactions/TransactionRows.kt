@@ -57,9 +57,8 @@ data class DayGroup(
 )
 
 /** Builds display rows from transactions. Labels stay [UiText] so the screen resolves them. */
-class TransactionRowMapper(private val ref: RefData) {
+class TransactionRowMapper(private val ref: RefData, private val zone: ZoneId) {
     private val classifier = Classifier(ref)
-    private val zone = ZoneId.systemDefault()
     private val timeFormat = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 
     fun accountName(id: String?): UiText =

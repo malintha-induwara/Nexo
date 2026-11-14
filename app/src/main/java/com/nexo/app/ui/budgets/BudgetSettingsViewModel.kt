@@ -10,6 +10,7 @@ import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.domain.BudgetBlockData
 import com.nexo.app.domain.BudgetCalc
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Clock
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +34,7 @@ data class BudgetSettingsUiState(
 class BudgetSettingsViewModel @Inject constructor(
     refs: ReferenceDataRepository,
     private val repo: BudgetsRepository,
+    private val clock: Clock,
 ) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
@@ -43,7 +45,7 @@ class BudgetSettingsViewModel @Inject constructor(
     private val added = MutableStateFlow(false)
 
     private val currentKey: Int get() = ref.value.settings.periods.monthPeriodContaining(
-        LocalDate.now(),
+        LocalDate.now(clock),
     ).key
 
     val uiState: StateFlow<BudgetSettingsUiState> = combine(
@@ -62,7 +64,7 @@ class BudgetSettingsViewModel @Inject constructor(
             b,
             a,
             emptyList(),
-            r.settings.periods.monthPeriodContaining(LocalDate.now()).key,
+            r.settings.periods.monthPeriodContaining(LocalDate.now(clock)).key,
             forSettings = true,
         )
         BudgetSettingsUiState(r, b, a, list, done)

@@ -46,7 +46,7 @@ interface SmsRepository {
     suspend fun sweep(now: Long)
 
     /** The queue was opened: later arrivals count for the notification, which is cleared now. */
-    suspend fun markQueueSeen(now: Long = System.currentTimeMillis())
+    suspend fun markQueueSeen()
 
     /** Records the ledger row an item became, and learns its card account and merchant category. */
     suspend fun markApproved(

@@ -26,8 +26,8 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Clock
 import java.time.LocalDate
-import java.time.ZoneId
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -75,7 +75,7 @@ data class SmsHistoryUiState(
     /** Opened from the re-enable hint: the missed stretch is one of the ranges. */
     val gap: Boolean = false,
     val range: HistoryRange = HistoryRange.MONTH,
-    val custom: Pair<LocalDate, LocalDate> = LocalDate.now().minusDays(30) to LocalDate.now(),
+    val custom: Pair<LocalDate, LocalDate>,
     /** Null while reading the inbox. */
     val rows: List<HistoryRow>? = null,
     val permitted: Boolean = false,
@@ -100,18 +100,20 @@ class SmsHistoryViewModel @AssistedInject constructor(
     private val getFeePlan: GetSmsFeePlanUseCase,
     private val approveSms: ApproveSmsUseCase,
     private val inbox: SmsInboxRepository,
+    private val clock: Clock,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
         fun create(key: SmsHistoryKey): SmsHistoryViewModel
     }
-    private val zone = ZoneId.systemDefault()
+    private val zone = clock.zone
     private val gap: Boolean = key.gapFrom > 0 && key.gapUntil > key.gapFrom
 
     /** Everything but the reference data, which comes from its own stream. */
     private val screenState = MutableStateFlow(
         SmsHistoryUiState(
             gap = gap,
+            custom = LocalDate.now(clock).let { it.minusDays(30) to it },
             range = if (gap) HistoryRange.GAP else HistoryRange.MONTH,
             permitted = inbox.hasPermission(),
         ),
@@ -168,7 +170,7 @@ class SmsHistoryViewModel @AssistedInject constructor(
     }
 
     private fun bounds(): Pair<Long, Long> {
-        val now = System.currentTimeMillis()
+        val now = clock.millis()
         val state = screenState.value
         return when (val r = state.range) {
             HistoryRange.GAP -> key.gapFrom to key.gapUntil

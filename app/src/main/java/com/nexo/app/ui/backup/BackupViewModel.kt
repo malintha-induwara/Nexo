@@ -18,6 +18,7 @@ import com.nexo.app.data.repository.TransactionImportRepository
 import com.nexo.app.ui.HomeState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
+import java.time.Clock
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,6 +74,7 @@ class BackupViewModel @Inject constructor(
     private val repeats: RepeatRulesRepository,
     refs: ReferenceDataRepository,
     private val home: HomeState,
+    private val clock: Clock,
 ) : ViewModel() {
     private val state = MutableStateFlow(BackupUiState())
 
@@ -119,7 +121,7 @@ class BackupViewModel @Inject constructor(
     private suspend fun afterRestore(r: RestoreResult) {
         if (r == RestoreResult.Success) {
             repeats.generateIfNewDay(force = true)
-            home.focusOn(LocalDate.now())
+            home.focusOn(LocalDate.now(clock))
         }
     }
 
@@ -173,7 +175,7 @@ class BackupViewModel @Inject constructor(
 
     fun completeReset(deletePhotos: Boolean) = work {
         book.completeReset(deletePhotos)
-        home.focusOn(LocalDate.now())
+        home.focusOn(LocalDate.now(clock))
         BackupResult.ResetDone
     }
 

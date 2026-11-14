@@ -48,6 +48,7 @@ import com.nexo.app.R
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.model.RestoreResult
 import com.nexo.app.data.repository.BackupRepository
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.Formats
@@ -68,7 +69,6 @@ import java.io.File
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 
 fun shareFile(context: Context, file: File, mime: String, subject: String, body: String) {
     val uri = FileProvider.getUriForFile(context, context.packageName + ".files", file)
@@ -273,6 +273,7 @@ fun BackupScreen(vm: BackupViewModel = hiltViewModel()) {
 /** Backup / restore on device. */
 @Composable
 fun BackupDeviceScreen(vm: BackupViewModel = hiltViewModel()) {
+    val clock = LocalClock.current
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -342,7 +343,7 @@ fun BackupDeviceScreen(vm: BackupViewModel = hiltViewModel()) {
                     Formats.dateTime(
                         Instant.ofEpochMilli(
                             newest.lastModified(),
-                        ).atZone(ZoneId.systemDefault()).toLocalDateTime(),
+                        ).atZone(clock.zone).toLocalDateTime(),
                     ),
                     onClick = {
                         nav.navigate(AutoBackupHistoryKey)
@@ -418,6 +419,7 @@ fun RestoreFileScreen(key: RestoreFileKey, vm: BackupViewModel = hiltViewModel()
 
 @Composable
 fun AutoBackupHistoryScreen(vm: BackupViewModel = hiltViewModel()) {
+    val clock = LocalClock.current
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val files = state.backups
@@ -485,7 +487,7 @@ fun AutoBackupHistoryScreen(vm: BackupViewModel = hiltViewModel()) {
                             Formats.dateTime(
                                 Instant.ofEpochMilli(
                                     f.lastModified(),
-                                ).atZone(ZoneId.systemDefault()).toLocalDateTime(),
+                                ).atZone(clock.zone).toLocalDateTime(),
                             ),
                         )
                         Text(
@@ -532,13 +534,14 @@ fun AutoBackupHistoryScreen(vm: BackupViewModel = hiltViewModel()) {
 /** Excel period dialog. */
 @Composable
 fun ExcelExportScreen(key: ExcelExportKey, vm: BackupViewModel = hiltViewModel()) {
+    val clock = LocalClock.current
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
     val busy = state.busy
     val e = ref.settings.periods
-    val today = LocalDate.now()
+    val today = LocalDate.now(clock)
     val month =
         key.start?.let { DateRange(LocalDate.parse(it), LocalDate.parse(key.end)) }
             ?: e.monthPeriodContaining(today).range

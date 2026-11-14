@@ -16,10 +16,10 @@ import com.nexo.app.data.file.XlsxWriter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.math.BigDecimal
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
@@ -34,6 +34,7 @@ class DefaultExcelExportRepository @Inject constructor(
     private val refs: ReferenceDataRepository,
     private val dirs: AppDirs,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
+    private val clock: Clock,
 ) : ExcelExportRepository {
     /** Device date order as an Excel number format, e.g. "yyyy/mm/dd" or "mm/dd/yyyy". */
     private fun excelDatePattern(): String {
@@ -66,7 +67,7 @@ class DefaultExcelExportRepository @Inject constructor(
                     it
                 },
             ).flatMap { (_, day) -> day.sortedForDay(ref.settings.timeDisplay) }
-            val zone = ZoneId.systemDefault()
+            val zone = clock.zone
             val timeless = !ref.settings.timeDisplay.timeInput
             val rows = ordered.map { t ->
                 val dt = Instant.ofEpochMilli(t.dateTime).atZone(zone).toLocalDateTime().let {
@@ -132,7 +133,7 @@ class DefaultExcelExportRepository @Inject constructor(
             val fmt = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)
             fun d(x: LocalDate) = x.format(fmt).replace(Regex("[^\\p{Nd}]+"), "-").trim('-')
             val name = if (total) {
-                "Nexo_${d(LocalDate.now())}.xlsx"
+                "Nexo_${d(LocalDate.now(clock))}.xlsx"
             } else {
                 "${d(range.start)}_${d(range.end)}.xlsx"
             }

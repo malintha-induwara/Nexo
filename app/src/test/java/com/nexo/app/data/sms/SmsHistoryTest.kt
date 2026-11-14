@@ -3,6 +3,7 @@ package com.nexo.app.data.sms
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.nexo.app.core.common.SystemZoneClock
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.BookSeeder
@@ -62,7 +63,7 @@ class SmsHistoryTest {
                 context,
                 NexoDatabase::class.java,
             ).allowMainThreadQueries().build()
-        BookSeeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
+        BookSeeder(context, db, SystemZoneClock).seedFresh(CurrencyCatalog.find("LKR")!!)
         val refs =
             referenceDataRepository(db, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
         val prefs = DefaultUserPreferencesRepository(DevicePreferencesDataSource(context))
@@ -78,6 +79,7 @@ class SmsHistoryTest {
                 transactionsRepository(context, db, refs),
                 FakeInbox(context, inbox),
                 Dispatchers.IO,
+                SystemZoneClock,
             )
         db.smsDao().upsertSource(SmsSourceEntity("COMBANK", "4321", "1", 0))
     }

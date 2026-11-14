@@ -15,6 +15,8 @@ import com.nexo.app.ui.AppViewModel
 import com.nexo.app.ui.IntentRouter
 import com.nexo.app.ui.NexoApp
 import dagger.hilt.android.AndroidEntryPoint
+import java.time.Clock
+import javax.inject.Inject
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
@@ -22,6 +24,8 @@ import kotlinx.coroutines.launch
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     private val app: AppViewModel by viewModels()
+
+    @Inject lateinit var clock: Clock
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
@@ -35,7 +39,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (savedInstanceState == null) app.setPending(IntentRouter.route(intent))
         setContent {
-            NexoApp(app = app)
+            NexoApp(app = app, clock = clock)
         }
     }
 

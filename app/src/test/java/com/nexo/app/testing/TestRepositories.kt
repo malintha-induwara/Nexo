@@ -2,6 +2,7 @@ package com.nexo.app.testing
 
 import android.content.Context
 import androidx.room.Room
+import com.nexo.app.core.common.SystemZoneClock
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.notifications.Notifier
 import com.nexo.app.data.backup.LegacyImporter
@@ -40,6 +41,7 @@ import com.nexo.app.domain.sms.GetSmsDraftUseCase
 import com.nexo.app.domain.sms.GetSmsFeePlanUseCase
 import com.nexo.app.domain.sms.GetSmsLedgerAmountUseCase
 import java.io.Closeable
+import java.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -60,6 +62,7 @@ fun transactionsRepository(
     context: Context,
     db: NexoDatabase,
     refs: ReferenceDataRepository,
+    clock: Clock = SystemZoneClock,
 ): TransactionsRepository = DefaultTransactionsRepository(
     context,
     db,
@@ -69,6 +72,7 @@ fun transactionsRepository(
         PhotoFileDataSource(context, AppDirs(context), Dispatchers.IO),
         db.photoDao(),
     ),
+    clock,
 )
 
 fun userPreferencesRepository(context: Context): UserPreferencesRepository =
@@ -79,8 +83,9 @@ fun fxRatesRepository(
     db: NexoDatabase,
     refs: ReferenceDataRepository,
     prefs: UserPreferencesRepository = userPreferencesRepository(context),
+    clock: Clock = SystemZoneClock,
 ): FxRatesRepository =
-    DefaultFxRatesRepository(db, refs, prefs, FxRatesNetworkDataSource(Dispatchers.IO))
+    DefaultFxRatesRepository(db, refs, prefs, FxRatesNetworkDataSource(Dispatchers.IO), clock)
 
 fun smsRepository(
     context: Context,
@@ -88,6 +93,7 @@ fun smsRepository(
     refs: ReferenceDataRepository,
     prefs: UserPreferencesRepository = userPreferencesRepository(context),
     fx: FxRatesRepository = fxRatesRepository(context, db, refs, prefs),
+    clock: Clock = SystemZoneClock,
 ): DefaultSmsRepository = DefaultSmsRepository(
     context,
     db.smsDao(),
@@ -95,20 +101,26 @@ fun smsRepository(
     refs,
     SmsSuggester(db.smsDao(), refs, fx),
     FakeNotifier(),
+    clock,
 )
 
 /**
  * A fresh book (seeded in [currency]) in an in-memory database, with the repositories a ViewModel needs wired as Hilt
  * wires them. The seeded LKR book has accounts "1" (bank) and "11" (cash) and category "6" (Food).
  */
-class TestBook(val context: Context, scope: CoroutineScope, currency: String = "LKR") : Closeable {
+class TestBook(
+    val context: Context,
+    scope: CoroutineScope,
+    currency: String = "LKR",
+    val clock: Clock = SystemZoneClock,
+) : Closeable {
     val db: NexoDatabase = Room.inMemoryDatabaseBuilder(
         context,
         NexoDatabase::class.java,
     ).allowMainThreadQueries().build()
 
     init {
-        runBlocking { BookSeeder(context, db).seedFresh(CurrencyCatalog.find(currency)!!) }
+        runBlocking { BookSeeder(context, db, clock).seedFresh(CurrencyCatalog.find(currency)!!) }
     }
 
     val prefs = userPreferencesRepository(context)
@@ -118,9 +130,9 @@ class TestBook(val context: Context, scope: CoroutineScope, currency: String = "
             PhotoFileDataSource(context, AppDirs(context), Dispatchers.IO),
             db.photoDao(),
         )
-    val transactions = transactionsRepository(context, db, refs)
-    val fx = fxRatesRepository(context, db, refs, prefs)
-    val sms = smsRepository(context, db, refs, prefs, fx)
+    val transactions = transactionsRepository(context, db, refs, clock)
+    val fx = fxRatesRepository(context, db, refs, prefs, clock)
+    val sms = smsRepository(context, db, refs, prefs, fx, clock)
     val inbox =
         DefaultSmsInboxRepository(
             context,
@@ -131,13 +143,14 @@ class TestBook(val context: Context, scope: CoroutineScope, currency: String = "
             transactions,
             SmsInboxDataSource(context, Dispatchers.IO),
             Dispatchers.IO,
+            clock,
         )
-    val accounts = DefaultAccountsRepository(db, refs)
+    val accounts = DefaultAccountsRepository(db, refs, clock)
     val memos = DefaultMemosRepository(db.memoDao())
-    val repeats = DefaultRepeatRulesRepository(db, refs, prefs)
-    val budgets = DefaultBudgetsRepository(db)
-    val favorites = DefaultFavoritesRepository(db)
-    val tags = DefaultTagsRepository(db)
+    val repeats = DefaultRepeatRulesRepository(db, refs, prefs, clock)
+    val budgets = DefaultBudgetsRepository(db, clock)
+    val favorites = DefaultFavoritesRepository(db, clock)
+    val tags = DefaultTagsRepository(db, clock)
     val importer =
         DefaultTransactionImportRepository(
             context,
@@ -146,11 +159,13 @@ class TestBook(val context: Context, scope: CoroutineScope, currency: String = "
             AppDirs(context),
             photos,
             Dispatchers.IO,
+            clock,
         )
     val receipts =
         DefaultReceiptRepository(
             ReceiptTextDataSource(context, Dispatchers.IO),
             Dispatchers.Default,
+            clock,
         )
     val backups =
         DefaultBackupRepository(
@@ -158,12 +173,18 @@ class TestBook(val context: Context, scope: CoroutineScope, currency: String = "
             db,
             AppDirs(context),
             prefs,
-            LegacyImporter(db, BookSeeder(context, db), Dispatchers.IO),
+            LegacyImporter(db, BookSeeder(context, db, clock), Dispatchers.IO, clock),
             Dispatchers.IO,
+            clock,
         )
     val getFeePlan = GetSmsFeePlanUseCase(sms, refs)
     val approveSms =
-        ApproveSmsUseCase(sms, refs, transactions, GetSmsDraftUseCase(GetSmsLedgerAmountUseCase()))
+        ApproveSmsUseCase(
+            sms,
+            refs,
+            transactions,
+            GetSmsDraftUseCase(GetSmsLedgerAmountUseCase(), clock),
+        )
 
     override fun close() = db.close()
 }

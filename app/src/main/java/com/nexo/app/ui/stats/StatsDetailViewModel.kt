@@ -28,6 +28,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -44,11 +45,11 @@ data class Breakdown(val key: String, val name: UiText, val amount: Double, val 
 
 data class StatsDetailUiState(
     val ref: RefData = RefData(),
-    val query: StatsQuery = StatsQuery(),
+    val query: StatsQuery,
     val selected: String = "all",
     val selection: Set<String> = emptySet(),
     val title: UiText = UiText.Empty,
-    val range: DateRange = DateRange(LocalDate.now(), LocalDate.now()),
+    val range: DateRange,
     val total: Double = 0.0,
     val breakdown: List<Breakdown> = emptyList(),
     val trendLabels: List<String> = emptyList(),
@@ -64,6 +65,7 @@ class StatsDetailViewModel @AssistedInject constructor(
     refs: ReferenceDataRepository,
     private val transactions: TransactionsRepository,
     private val memos: MemosRepository,
+    private val clock: Clock,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -151,7 +153,11 @@ class StatsDetailViewModel @AssistedInject constructor(
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
-        StatsDetailUiState(color = key.colorIndex),
+        StatsDetailUiState(
+            query = query.value,
+            range = DateRange(LocalDate.parse(key.start), LocalDate.parse(key.end)),
+            color = key.colorIndex,
+        ),
     )
 
     private fun matches(r: RefData, c: Classifier, t: Transaction): Boolean = when (key.kind) {
@@ -247,6 +253,7 @@ class StatsDetailViewModel @AssistedInject constructor(
             key.colorIndex
         }
         return StatsDetailUiState(
+            query = query.value,
             title = title,
             range = range,
             total = listRows.sumOf {
@@ -256,7 +263,7 @@ class StatsDetailViewModel @AssistedInject constructor(
             trendLabels = buckets.map { it.first },
             trend = trend,
             color = color,
-            days = TransactionRowMapper(r).dayGroups(
+            days = TransactionRowMapper(r, clock.zone).dayGroups(
                 listRows,
                 l,
                 memos = memos.filter {

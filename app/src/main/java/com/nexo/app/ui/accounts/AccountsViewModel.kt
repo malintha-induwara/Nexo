@@ -15,6 +15,7 @@ import com.nexo.app.domain.AccountsSummary
 import com.nexo.app.domain.AccountsSummaryCalculator
 import com.nexo.app.domain.Balances
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
@@ -32,9 +33,9 @@ enum class AccountsMode { ALL, WEEKLY, MONTHLY, ANNUALLY, PERIOD }
 
 data class AccountsQuery(
     val mode: AccountsMode = AccountsMode.ALL,
-    val anchor: LocalDate = LocalDate.now(),
-    val from: LocalDate = LocalDate.now(),
-    val to: LocalDate = LocalDate.now(),
+    val anchor: LocalDate,
+    val from: LocalDate = anchor,
+    val to: LocalDate = anchor,
 )
 
 data class AccountsData(
@@ -51,7 +52,7 @@ data class AccountsData(
 data class AccountsUiState(
     val ref: RefData = RefData(),
     val device: DeviceSettings? = null,
-    val query: AccountsQuery = AccountsQuery(),
+    val query: AccountsQuery,
     val data: AccountsData = AccountsData(),
 )
 
@@ -61,6 +62,7 @@ class AccountsViewModel @Inject constructor(
     private val transactions: TransactionsRepository,
     refs: ReferenceDataRepository,
     private val prefs: UserPreferencesRepository,
+    private val clock: Clock,
 ) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
@@ -68,7 +70,7 @@ class AccountsViewModel @Inject constructor(
         SharingStarted.Eagerly,
         RefData(),
     )
-    private val query = MutableStateFlow(AccountsQuery())
+    private val query = MutableStateFlow(AccountsQuery(anchor = LocalDate.now(clock)))
 
     private val data = combine(ref, query, transactions.getChangeStampStream()) { r, q, _ ->
         r to q
@@ -82,7 +84,11 @@ class AccountsViewModel @Inject constructor(
         data,
         ::AccountsUiState,
     )
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountsUiState())
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            AccountsUiState(query = query.value),
+        )
 
     fun range(r: RefData, q: AccountsQuery): DateRange? {
         val e = r.settings.periods
@@ -96,7 +102,7 @@ class AccountsViewModel @Inject constructor(
     }
 
     private suspend fun compute(r: RefData, q: AccountsQuery): AccountsData {
-        val today = LocalDate.now()
+        val today = LocalDate.now(clock)
         val range = range(r, q)
         if (range == null) {
             val net = Balances.netByAccount(transactions.getAggregatesUpTo("9999-12-31"))
@@ -154,8 +160,8 @@ class AccountsViewModel @Inject constructor(
     }
 
     fun setMode(m: AccountsMode) = query.update {
-        val month = ref.value.settings.periods.monthPeriodContaining(LocalDate.now())
-        it.copy(mode = m, anchor = LocalDate.now(), from = month.start, to = month.end)
+        val month = ref.value.settings.periods.monthPeriodContaining(LocalDate.now(clock))
+        it.copy(mode = m, anchor = LocalDate.now(clock), from = month.start, to = month.end)
     }
 
     fun setRange(from: LocalDate, to: LocalDate) = query.update { it.copy(from = from, to = to) }
@@ -181,7 +187,7 @@ class AccountsViewModel @Inject constructor(
         )
     }
 
-    fun goToday() = query.update { it.copy(anchor = LocalDate.now()) }
+    fun goToday() = query.update { it.copy(anchor = LocalDate.now(clock)) }
 
     fun toggleCollapsed(groupId: String) = viewModelScope.launch {
         val cur = prefs.getDeviceSettings().collapsedGroups

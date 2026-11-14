@@ -33,6 +33,7 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
+import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -73,7 +74,7 @@ data class AccountDetailUiState(
     val title: UiText = UiText.Empty,
     val ref: RefData = RefData(),
     val tab: DetailTab = DetailTab.DAILY,
-    val anchor: LocalDate = LocalDate.now(),
+    val anchor: LocalDate,
     val charts: Boolean = false,
     val selection: Set<String> = emptySet(),
     /** The account was restored: the screen goes back, then calls [AccountDetailViewModel.onRestoredHandled]. */
@@ -97,6 +98,7 @@ class AccountDetailViewModel @AssistedInject constructor(
     refs: ReferenceDataRepository,
     private val transactions: TransactionsRepository,
     private val accounts: AccountsRepository,
+    private val clock: Clock,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -114,7 +116,7 @@ class AccountDetailViewModel @AssistedInject constructor(
         MutableStateFlow(
             key.date?.let {
                 runCatching { LocalDate.parse(it) }.getOrNull()
-            } ?: LocalDate.now(),
+            } ?: LocalDate.now(clock),
         )
     private val charts = MutableStateFlow(false)
     private val selection = MutableStateFlow<Set<String>>(emptySet())
@@ -146,7 +148,11 @@ class AccountDetailViewModel @AssistedInject constructor(
         ->
         c.copy(selection = ids, restored = done)
     }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountDetailUiState())
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            AccountDetailUiState(anchor = LocalDate.now(clock)),
+        )
 
     private data class Quad(val r: RefData, val t: DetailTab, val a: LocalDate, val c: Boolean)
 
@@ -165,12 +171,13 @@ class AccountDetailViewModel @AssistedInject constructor(
         charts: Boolean,
     ): AccountDetailUiState {
         val account = key.accountId?.let { r.accountById[it] }
-        val factory = TransactionRowMapper(r)
+        val factory = TransactionRowMapper(r, clock.zone)
         if (account == null) {
             // "None" pseudo-account: all unassigned rows, no balances.
             val rows = transactions.getWithoutAccount()
             val ledger = transactions.getLedgerFor(rows)
             return AccountDetailUiState(
+                anchor = anchor,
                 loaded = true,
                 title = UiText.of(R.string.none),
                 days = factory.dayGroups(rows, ledger),
@@ -205,7 +212,7 @@ class AccountDetailViewModel @AssistedInject constructor(
         fun upTo(d: LocalDate) = all.filter { !LocalDate.parse(it.date).isAfter(d) }
         val isDebit = type == GroupType.DEBIT_CARD
         val card = if (type == GroupType.CREDIT_CARD) {
-            CardStatement.compute(r, account, all, LocalDate.now())
+            CardStatement.compute(r, account, all, LocalDate.now(clock))
         } else {
             null
         }
@@ -265,7 +272,7 @@ class AccountDetailViewModel @AssistedInject constructor(
                 }
                 val endBalance = if (isDebit) net(rows) else net(upTo(range.end))
                 val help =
-                    !isDebit && LocalDate.now() in range &&
+                    !isDebit && LocalDate.now(clock) in range &&
                         all.any {
                             val d = LocalDate.parse(it.date)
                             d.isAfter(range.end) &&
@@ -289,6 +296,7 @@ class AccountDetailViewModel @AssistedInject constructor(
                     null
                 }
                 return AccountDetailUiState(
+                    anchor = anchor,
                     loaded = true, account = account, type = type, range = range,
                     title = UiText.Raw(Formats.monthYear(period.label)),
                     days = days, running = runningMap,
@@ -305,7 +313,7 @@ class AccountDetailViewModel @AssistedInject constructor(
                 val year = engine.yearOf(anchor)
                 val periods = engine.yearPeriods(year)
                 var bal = BigDecimal.valueOf(net(before(periods.first().start)))
-                val today = LocalDate.now()
+                val today = LocalDate.now(clock)
                 val rowsUi = periods.map { p ->
                     val rows = inRange(p.range)
                     bal += BigDecimal.valueOf(net(rows))
@@ -322,6 +330,7 @@ class AccountDetailViewModel @AssistedInject constructor(
                 val yr = DateRange(periods.first().start, periods.last().end)
                 val rows = inRange(yr)
                 return AccountDetailUiState(
+                    anchor = anchor,
                     loaded = true, account = account, type = type, range = yr,
                     title = UiText.Raw(year.toString()),
                     periods = rowsUi,
@@ -347,7 +356,7 @@ class AccountDetailViewModel @AssistedInject constructor(
 
             DetailTab.ANNUALLY -> {
                 val dates = all.map { LocalDate.parse(it.date) }
-                val thisYear = engine.yearOf(LocalDate.now())
+                val thisYear = engine.yearOf(LocalDate.now(clock))
                 val first = dates.minOrNull()?.let { engine.yearOf(it) } ?: thisYear
                 var last = dates.maxOrNull()?.let { engine.yearOf(it) } ?: thisYear
                 if (dates.distinct().size <= 1) last = maxOf(last, thisYear)
@@ -369,6 +378,7 @@ class AccountDetailViewModel @AssistedInject constructor(
                 }.reversed()
                 val chartYear = engine.yearOf(anchor)
                 return AccountDetailUiState(
+                    anchor = anchor,
                     loaded = true, account = account, type = type, range = DateRange.ALL,
                     title = UiText.Raw("$lo ~ $last"),
                     periods = rowsUi,

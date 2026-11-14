@@ -4,6 +4,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.nexo.app.core.common.SystemZoneClock
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.model.MemoColor
@@ -103,7 +104,12 @@ class LegacyImporterTest {
         runBlocking {
             assertEquals(
                 RestoreResult.Success,
-                LegacyImporter(db, BookSeeder(context, db), Dispatchers.IO).import(file),
+                LegacyImporter(
+                    db,
+                    BookSeeder(context, db, SystemZoneClock),
+                    Dispatchers.IO,
+                    SystemZoneClock,
+                ).import(file),
             )
         }
     }

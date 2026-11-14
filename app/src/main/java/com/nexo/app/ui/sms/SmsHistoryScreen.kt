@@ -49,6 +49,7 @@ import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.model.Banks
 import com.nexo.app.core.model.ledgerAmount
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.DateRangeChips
 import com.nexo.app.ui.designsystem.component.EmptyState
@@ -66,6 +67,7 @@ import com.nexo.app.ui.navigation.SmsHistoryKey
 /** "Add past transactions": nothing selected by default, picked rows go straight to the ledger. */
 @Composable
 fun SmsHistoryScreen(key: SmsHistoryKey) {
+    val clock = LocalClock.current
     val vm =
         hiltViewModel<SmsHistoryViewModel, SmsHistoryViewModel.Factory>(creationCallback = {
             it.create(key)
@@ -89,7 +91,7 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
     if (feePrompt != null) shownPrompt[0] = feePrompt
     var mapping by remember { mutableStateOf<CardRef?>(null) }
     var mappingOpen by remember { mutableStateOf(false) }
-    val now = remember { System.currentTimeMillis() }
+    val now = remember { clock.millis() }
 
     LaunchedEffect(Unit) { vm.initialize() }
     state.result?.let { r ->

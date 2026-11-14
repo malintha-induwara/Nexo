@@ -42,6 +42,7 @@ import androidx.fragment.app.FragmentActivity
 import com.nexo.app.R
 import com.nexo.app.core.model.DeviceSettings
 import com.nexo.app.data.repository.PinResult
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.TextFieldDialog
 import javax.crypto.Cipher
@@ -58,6 +59,7 @@ fun LockScreen(
     onBiometricsInvalidated: () -> Unit,
     onEraseAll: () -> Unit,
 ) {
+    val clock = LocalClock.current
     val context = LocalContext.current
     val resources = LocalResources.current
     val activity = context as? FragmentActivity
@@ -66,7 +68,7 @@ fun LockScreen(
     var shake by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf<String?>(null) }
     var waitUntil by remember { mutableLongStateOf(device.pinLockoutUntil) }
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var now by remember { mutableLongStateOf(clock.millis()) }
     var forgot by remember { mutableIntStateOf(0) }
     val wrongPin = stringResource(R.string.lock_wrong_pin)
     val invalidated = stringResource(R.string.biometric_invalidated)
@@ -89,11 +91,11 @@ fun LockScreen(
     }
     LaunchedEffect(Unit) { if (biometricAvailable) promptBiometric() }
     LaunchedEffect(waitUntil) {
-        while (waitUntil > System.currentTimeMillis()) {
-            now = System.currentTimeMillis()
+        while (waitUntil > clock.millis()) {
+            now = clock.millis()
             delay(500)
         }
-        now = System.currentTimeMillis()
+        now = clock.millis()
     }
 
     fun submit(value: String) = scope.launch {

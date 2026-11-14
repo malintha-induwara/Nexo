@@ -15,6 +15,7 @@ import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.file.AppDirs
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import java.time.Clock
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -31,9 +32,11 @@ class DefaultBackupRepository @Inject constructor(
     private val prefs: UserPreferencesRepository,
     private val legacy: LegacyImporter,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
+    private val clock: Clock,
 ) : BackupRepository {
     /** "Nexo(<date>-<HHmmss>).nexobak" with a locale-dependent date part. */
-    override fun backupFileName(now: LocalDateTime, prefix: String): String {
+    override fun backupFileName(prefix: String): String {
+        val now = LocalDateTime.now(clock)
         val date = now.toLocalDate().format(
             DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(Locale.getDefault()),
         )
@@ -82,7 +85,7 @@ class DefaultBackupRepository @Inject constructor(
     override suspend fun autoBackup(): Boolean = withContext(ioDispatcher) {
         val ok = writeBackup(File(dirs.backups, backupFileName()))
         if (ok) {
-            prefs.setLastAutoBackup(System.currentTimeMillis())
+            prefs.setLastAutoBackup(clock.millis())
             autoBackups().drop(KEEP).forEach { it.delete() }
         }
         ok

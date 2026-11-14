@@ -49,6 +49,7 @@ import com.nexo.app.core.model.Account
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.domain.CardStatement
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
@@ -64,6 +65,7 @@ import java.time.LocalDate
 
 @Composable
 fun AccountFormScreen(key: AccountFormKey) {
+    val clock = LocalClock.current
     val vm =
         hiltViewModel<AccountFormViewModel, AccountFormViewModel.Factory>(creationCallback = {
             it.create(key)
@@ -192,7 +194,7 @@ fun AccountFormScreen(key: AccountFormKey) {
                     },
                 )
                 val e = PeriodEngine(s.settlementDay)
-                val current = e.monthPeriodContaining(LocalDate.now())
+                val current = e.monthPeriodContaining(LocalDate.now(clock))
                 val prev = e.previous(current)
                 fun line(p: MonthPeriod): String {
                     val pay = CardStatement.paymentDate(p.end, s.paymentDay)

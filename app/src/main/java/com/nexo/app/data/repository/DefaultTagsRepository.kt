@@ -5,13 +5,17 @@ import com.nexo.app.core.model.Tag
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.TagEntity
 import com.nexo.app.data.database.entity.asExternalModel
+import java.time.Clock
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class DefaultTagsRepository @Inject constructor(private val db: NexoDatabase) : TagsRepository {
+class DefaultTagsRepository @Inject constructor(
+    private val db: NexoDatabase,
+    private val clock: Clock,
+) : TagsRepository {
     override fun getTagsStream(): Flow<List<Tag>> = db.tagDao().observeAll().map { rows ->
         rows.map(TagEntity::asExternalModel)
     }
@@ -24,7 +28,7 @@ class DefaultTagsRepository @Inject constructor(private val db: NexoDatabase) : 
             it.name.lowercase(Locale.ROOT) == name.lowercase(Locale.ROOT)
         }
         val order = (db.tagDao().maxOrder() + 1).coerceAtLeast(0)
-        val now = System.currentTimeMillis()
+        val now = clock.millis()
         when {
             match != null && !match.isDeleted -> TagResult.Exists
 
@@ -61,7 +65,7 @@ class DefaultTagsRepository @Inject constructor(private val db: NexoDatabase) : 
             return@withTransaction TagResult.Exists
         }
         val tag = all.firstOrNull { it.id == id } ?: return@withTransaction TagResult.Empty
-        db.tagDao().upsert(listOf(tag.copy(name = name, updatedAt = System.currentTimeMillis())))
+        db.tagDao().upsert(listOf(tag.copy(name = name, updatedAt = clock.millis())))
         TagResult.Ok(id)
     }
 
@@ -70,7 +74,7 @@ class DefaultTagsRepository @Inject constructor(private val db: NexoDatabase) : 
     override suspend fun delete(id: String) {
         val tag = db.tagDao().getAll().firstOrNull { it.id == id } ?: return
         db.tagDao().upsert(
-            listOf(tag.copy(isDeleted = true, updatedAt = System.currentTimeMillis())),
+            listOf(tag.copy(isDeleted = true, updatedAt = clock.millis())),
         )
     }
 

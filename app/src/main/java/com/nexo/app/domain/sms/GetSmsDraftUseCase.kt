@@ -8,11 +8,13 @@ import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.TxDraft
 import com.nexo.app.core.model.missing
 import com.nexo.app.core.model.noteFor
+import java.time.Clock
 import javax.inject.Inject
 
 /** What approving a queue item as it stands would save, without any fee. Null while it still needs details. */
 class GetSmsDraftUseCase @Inject constructor(
     private val getLedgerAmount: GetSmsLedgerAmountUseCase,
+    private val clock: Clock,
 ) {
     operator fun invoke(item: SmsItem, ref: RefData): TxDraft? {
         if (item.missing().isNotEmpty()) return null
@@ -33,7 +35,7 @@ class GetSmsDraftUseCase @Inject constructor(
             accountId = from,
             toAccountId = if (asTransfer) to else null,
             categoryId = if (asTransfer) null else item.categoryId,
-            dateTime = item.occurredAt.toLocalDateTime(),
+            dateTime = item.occurredAt.toLocalDateTime(clock.zone),
             amount = amount,
             currencyId = currency.id,
             note = noteFor(item),

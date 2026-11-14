@@ -20,9 +20,9 @@ import com.nexo.app.ui.transactions.TxRowUi
 import com.nexo.app.ui.transactions.bulkEditActions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -40,9 +40,9 @@ enum class SearchPeriod { TOTAL, WEEKLY, MONTHLY, ANNUALLY, PERIOD }
 data class SearchCriteria(
     val query: String = "",
     val period: SearchPeriod = SearchPeriod.TOTAL,
-    val anchor: LocalDate = LocalDate.now(),
-    val from: LocalDate = LocalDate.now().withDayOfMonth(1),
-    val to: LocalDate = LocalDate.now(),
+    val anchor: LocalDate,
+    val from: LocalDate = anchor.withDayOfMonth(1),
+    val to: LocalDate = anchor,
     val categories: FilterCriteria = FilterCriteria(),
     val accounts: Set<String> = emptySet(),
     val tags: Set<String> = emptySet(),
@@ -62,7 +62,7 @@ data class SearchResult(
 
 data class SearchUiState(
     val ref: RefData = RefData(),
-    val criteria: SearchCriteria = SearchCriteria(),
+    val criteria: SearchCriteria,
     val result: SearchResult = SearchResult(),
     val selection: Set<String> = emptySet(),
     val suggestions: List<NoteSuggestion> = emptyList(),
@@ -74,6 +74,7 @@ class SearchViewModel @Inject constructor(
     private val memos: MemosRepository,
     private val refs: ReferenceDataRepository,
     private val transactions: TransactionsRepository,
+    private val clock: Clock,
 ) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
@@ -81,8 +82,8 @@ class SearchViewModel @Inject constructor(
         SharingStarted.Eagerly,
         RefData(),
     )
-    private val criteria = MutableStateFlow(SearchCriteria())
-    private val executed = MutableStateFlow(SearchCriteria())
+    private val criteria = MutableStateFlow(SearchCriteria(anchor = LocalDate.now(clock)))
+    private val executed = MutableStateFlow(SearchCriteria(anchor = LocalDate.now(clock)))
     private val selection = MutableStateFlow<Set<String>>(emptySet())
 
     val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, selection)
@@ -112,19 +113,23 @@ class SearchViewModel @Inject constructor(
             notes,
         ->
         SearchUiState(r, c, res, selection, notes)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        SearchUiState(criteria = criteria.value),
+    )
 
     private suspend fun loadSuggestions(): List<NoteSuggestion> {
         val r = refs.getRefData()
         if (!r.settings.autocomplete) return emptyList()
         val cutoff =
             maxOf(
-                System.currentTimeMillis() - 456L * 24 * 3600 * 1000,
+                clock.millis() - 456L * 24 * 3600 * 1000,
                 r.settings.autocompleteResetAt,
             )
         val cutDate = Instant.ofEpochMilli(
             cutoff,
-        ).atZone(ZoneId.systemDefault()).toLocalDate().toIsoText()
+        ).atZone(clock.zone).toLocalDate().toIsoText()
         return transactions.getNoteUsage(cutDate, cutoff).map {
             NoteSuggestion(it.note, it.count, it.lastDate)
         }
@@ -172,7 +177,7 @@ class SearchViewModel @Inject constructor(
                 (lo == null || t.amountMain >= lo) && (hi == null || t.amountMain <= hi)
         }
         val ledger = transactions.getLedgerFor(filtered)
-        val factory = TransactionRowMapper(r)
+        val factory = TransactionRowMapper(r, clock.zone)
         val sorted = filtered.groupBy {
             it.date
         }.toSortedMap(compareByDescending { it }).flatMap { (_, day) ->

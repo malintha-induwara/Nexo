@@ -11,6 +11,7 @@ import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
+import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
@@ -24,7 +25,7 @@ import kotlinx.coroutines.flow.stateIn
 
 data class TotalStatsUiState(
     val ref: RefData = RefData(),
-    val anchor: LocalDate = LocalDate.now(),
+    val anchor: LocalDate,
     val periods: List<MonthPeriod> = emptyList(),
     val balances: List<Double> = emptyList(),
     val income: List<Double> = emptyList(),
@@ -35,6 +36,7 @@ data class TotalStatsUiState(
 class TotalStatsViewModel @Inject constructor(
     refs: ReferenceDataRepository,
     private val transactions: TransactionsRepository,
+    private val clock: Clock,
 ) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
     private val ref = refs.getRefDataStream().stateIn(
@@ -42,7 +44,7 @@ class TotalStatsViewModel @Inject constructor(
         SharingStarted.Eagerly,
         RefData(),
     )
-    private val anchor = MutableStateFlow(LocalDate.now())
+    private val anchor = MutableStateFlow(LocalDate.now(clock))
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<TotalStatsUiState> = combine(
@@ -98,7 +100,11 @@ class TotalStatsViewModel @Inject constructor(
             sums.map { s -> s.filter { it.kind == TxKind.INCOME }.sumOf { it.main } },
             sums.map { s -> s.filter { it.kind == TxKind.EXPENSE }.sumOf { it.main } },
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TotalStatsUiState())
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        TotalStatsUiState(anchor = anchor.value),
+    )
 
     fun pickMonth(month: YearMonth) {
         anchor.value = ref.value.settings.periods.monthPeriodFor(month).end

@@ -7,6 +7,7 @@ import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.core.model.LockTimeout
 import com.nexo.app.data.lock.BiometricKeyDataSource
 import com.nexo.app.data.lock.PinHasher
+import java.time.Clock
 import javax.crypto.Cipher
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,6 +27,7 @@ class DefaultAppLockRepository @Inject constructor(
     @ApplicationScope private val scope: CoroutineScope,
     private val biometricKey: BiometricKeyDataSource,
     @Dispatcher(NexoDispatchers.Default) private val defaultDispatcher: CoroutineDispatcher,
+    private val clock: Clock,
 ) : AppLockRepository {
     private val _locked = MutableStateFlow(runBlocking { prefs.getDeviceSettings().lockEnabled })
     private val locked: StateFlow<Boolean> = _locked.asStateFlow()
@@ -77,7 +79,7 @@ class DefaultAppLockRepository @Inject constructor(
 
     override suspend fun verifyPin(pin: String): PinResult = withContext(defaultDispatcher) {
         val s = prefs.getDeviceSettings()
-        val now = System.currentTimeMillis()
+        val now = clock.millis()
         var lockoutUntil = s.pinLockoutUntil
         // A wait far in the future means the clock moved backwards: restart it from now.
         if (lockoutUntil - now > MAX_WAIT) lockoutUntil = now + waitFor(s.pinFailures)

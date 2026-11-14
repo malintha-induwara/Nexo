@@ -65,6 +65,7 @@ import com.nexo.app.core.model.LockTimeout
 import com.nexo.app.core.model.ThemeMode
 import com.nexo.app.core.notifications.Notifications
 import com.nexo.app.core.notifications.ReminderScheduler
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.Formats
@@ -129,9 +130,10 @@ fun ReminderScreen(vm: SettingsViewModel = hiltViewModel()) {
     val d = device ?: return
     var time by rememberSaveable { mutableStateOf(false) }
     var exactPrompt by rememberSaveable { mutableStateOf(false) }
+    val clock = LocalClock.current
     fun apply(enabled: Boolean, h: Int, m: Int, days: Set<Int>) {
         vm.setReminder(enabled, h, m, days)
-        ReminderScheduler.schedule(context, enabled, h, m)
+        ReminderScheduler.schedule(context, clock, enabled, h, m)
     }
     val permission =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->

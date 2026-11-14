@@ -66,6 +66,20 @@ class ArchitectureTest {
         assertNoViolations(violations)
     }
 
+    @Test
+    fun timeComesFromTheInjectedClock() {
+        val reads = Regex(
+            """\b(LocalDate|LocalDateTime|LocalTime|YearMonth|Instant|ZonedDateTime)\.now\(\)""" +
+                """|System\.currentTimeMillis\(\)|ZoneId\.systemDefault\(\)|Clock\.system""",
+        )
+        val violations = sources.filter { it.name != "SystemZoneClock.kt" }.flatMap { source ->
+            source.lines.mapIndexedNotNull { i, line ->
+                reads.find(line)?.let { "${source.path}:${i + 1} reads ${it.value}" }
+            }
+        }
+        assertNoViolations(violations)
+    }
+
     private fun assertNoViolations(violations: List<String>) =
         assertTrue(violations.joinToString("\n", prefix = "\n"), violations.isEmpty())
 }

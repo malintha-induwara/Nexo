@@ -12,6 +12,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import java.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -21,6 +22,8 @@ interface SmsEntryPoint {
     fun sms(): SmsRepository
 
     fun smsInbox(): SmsInboxRepository
+
+    fun clock(): Clock
 
     @ApplicationScope
     fun appScope(): CoroutineScope
@@ -35,7 +38,7 @@ class SmsReceiver : BroadcastReceiver() {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
         val parts = Telephony.Sms.Intents.getMessagesFromIntent(intent)?.filterNotNull().orEmpty()
         if (parts.isEmpty()) return
-        val receivedAt = System.currentTimeMillis()
+        val receivedAt = context.smsEntry().clock().millis()
         val messages = parts.groupBy { it.originatingAddress.orEmpty() }.map { (sender, list) ->
             IncomingSms(
                 SmsMessage(

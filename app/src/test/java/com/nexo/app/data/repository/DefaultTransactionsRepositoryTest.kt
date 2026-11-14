@@ -3,6 +3,7 @@ package com.nexo.app.data.repository
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.nexo.app.core.common.SystemZoneClock
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.FeeDraft
@@ -41,7 +42,7 @@ class DefaultTransactionsRepositoryTest {
                 context,
                 NexoDatabase::class.java,
             ).allowMainThreadQueries().build()
-        BookSeeder(context, db).seedFresh(CurrencyCatalog.find("USD")!!)
+        BookSeeder(context, db, SystemZoneClock).seedFresh(CurrencyCatalog.find("USD")!!)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val refs = referenceDataRepository(db, scope)
         transactions = transactionsRepository(context, db, refs)

@@ -13,10 +13,10 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +29,7 @@ data class MemoEditorUiState(
     val id: String? = null,
     val title: String = "",
     val content: String = "",
-    val date: LocalDate = LocalDate.now(),
+    val date: LocalDate,
     val color: MemoColor = MemoColor.WHITE,
     val pinned: Boolean = false,
     val pinnedAt: Long = 0,
@@ -42,13 +42,14 @@ class MemoEditorViewModel @AssistedInject constructor(
     @Assisted private val key: MemoEditorKey,
     private val memos: MemosRepository,
     private val home: HomeState,
+    private val clock: Clock,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
         fun create(key: MemoEditorKey): MemoEditorViewModel
     }
 
-    private val _uiState = MutableStateFlow(MemoEditorUiState())
+    private val _uiState = MutableStateFlow(MemoEditorUiState(date = LocalDate.now(clock)))
     val uiState: StateFlow<MemoEditorUiState> = _uiState.asStateFlow()
     private var original: Memo? = null
     private var initialized = false
@@ -77,7 +78,7 @@ class MemoEditorViewModel @AssistedInject constructor(
                     loaded = true,
                     date =
                         key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-                            ?: LocalDate.now(),
+                            ?: LocalDate.now(clock),
                 )
             }
         }
@@ -91,7 +92,7 @@ class MemoEditorViewModel @AssistedInject constructor(
         if (it.pinned) {
             it.copy(pinned = false, pinnedAt = 0)
         } else {
-            it.copy(pinned = true, pinnedAt = System.currentTimeMillis())
+            it.copy(pinned = true, pinnedAt = clock.millis())
         }
     }
 
@@ -106,14 +107,14 @@ class MemoEditorViewModel @AssistedInject constructor(
             empty -> Unit
 
             else -> {
-                val now = System.currentTimeMillis()
+                val now = clock.millis()
                 val time =
                     o?.let {
                         Instant.ofEpochMilli(
                             it.dateTime.toLong(),
-                        ).atZone(ZoneId.systemDefault()).toLocalTime()
+                        ).atZone(clock.zone).toLocalTime()
                     }
-                        ?: LocalTime.now()
+                        ?: LocalTime.now(clock)
                 val row = Memo(
                     id = o?.id ?: UUID.randomUUID().toString(),
                     title = s.title.trim(),
@@ -121,7 +122,7 @@ class MemoEditorViewModel @AssistedInject constructor(
                     date = s.date.toIsoText(),
                     dateTime = s.date.atTime(
                         time,
-                    ).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                    ).atZone(clock.zone).toInstant().toEpochMilli(),
                     pinned = s.pinned,
                     pinnedAt = if (s.pinned) s.pinnedAt else 0,
                     orderSeq = o?.orderSeq ?: memos.nextOrder(),

@@ -15,6 +15,7 @@ import com.nexo.app.data.database.entity.asExternalModel
 import com.nexo.app.data.network.FxRatesNetworkDataSource
 import com.nexo.app.data.sms.RateChooser
 import com.nexo.app.data.sms.parser.BodyDate
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
@@ -24,13 +25,15 @@ class DefaultFxRatesRepository @Inject constructor(
     private val refs: ReferenceDataRepository,
     private val prefs: UserPreferencesRepository,
     private val client: FxRatesNetworkDataSource,
+    private val clock: Clock,
 ) : FxRatesRepository {
     private val dao get() = db.smsDao()
 
     override val online: Boolean get() = client.hasKey
 
     /** Fetch policy: at most every 6 hours. Returns whether a fetch succeeded. */
-    override suspend fun refreshIfStale(now: Long): Boolean {
+    override suspend fun refreshIfStale(): Boolean {
+        val now = clock.millis()
         if (!online || now - prefs.getDeviceSettings().fxFetchedAt < FxRatesRepository.REFRESH_MS) {
             return false
         }
@@ -110,7 +113,7 @@ class DefaultFxRatesRepository @Inject constructor(
             val item = row.asExternalModel()
             val updated = estimate(item, ref, allowNetwork)
             if (updated != item) {
-                dao.update(updated.copy(updatedAt = System.currentTimeMillis()).asEntity())
+                dao.update(updated.copy(updatedAt = clock.millis()).asEntity())
                 changed++
             }
         }

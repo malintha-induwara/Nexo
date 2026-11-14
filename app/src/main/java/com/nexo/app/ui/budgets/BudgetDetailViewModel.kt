@@ -22,6 +22,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -38,7 +39,7 @@ data class BudgetMonth(val period: MonthPeriod, val budget: Double, val used: Do
 data class BudgetDetailUiState(
     val loaded: Boolean = false,
     val ref: RefData = RefData(),
-    val month: YearMonth = YearMonth.now(),
+    val month: YearMonth,
     val budgetId: String = "",
     val name: String = "",
     val categoryId: String? = null,
@@ -57,6 +58,7 @@ class BudgetDetailViewModel @AssistedInject constructor(
     refs: ReferenceDataRepository,
     repo: BudgetsRepository,
     private val transactions: TransactionsRepository,
+    private val clock: Clock,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -96,7 +98,11 @@ class BudgetDetailViewModel @AssistedInject constructor(
                 ->
                 l
             }.map { l -> build(inp, year, l) }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BudgetDetailUiState())
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            BudgetDetailUiState(month = month.value),
+        )
 
     private data class Inputs(
         val r: RefData,
@@ -142,7 +148,7 @@ class BudgetDetailViewModel @AssistedInject constructor(
         }
         val selected = months.indexOfFirst { it.period.label == inp.m }.coerceAtLeast(0)
         val sel = months.getOrNull(selected)
-        val factory = TransactionRowMapper(r)
+        val factory = TransactionRowMapper(r, clock.zone)
         val dayRows = expense.filter {
             sel != null && LocalDate.parse(it.date) in sel.period.range &&
                 matches(it)

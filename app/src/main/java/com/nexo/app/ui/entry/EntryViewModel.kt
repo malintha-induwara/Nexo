@@ -59,11 +59,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.ZoneId
 import java.util.UUID
 import kotlin.math.abs
 import kotlinx.coroutines.CancellationException
@@ -93,13 +93,14 @@ class EntryViewModel @AssistedInject constructor(
     private val getSmsLedgerAmount: GetSmsLedgerAmountUseCase,
     private val getSmsFeePlan: GetSmsFeePlanUseCase,
     private val receipts: ReceiptRepository,
+    private val clock: Clock,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
         fun create(key: EntryKey): EntryViewModel
     }
 
-    private val form = MutableStateFlow(EntryForm())
+    private val form = MutableStateFlow(EntryForm(date = LocalDate.now(clock), time = timeNow()))
 
     /** Kept for event handlers that need the reference data synchronously. */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
@@ -119,7 +120,7 @@ class EntryViewModel @AssistedInject constructor(
         combine(userMessage, navigation, ::Pair),
     ) { (form, r, device), (suggestions, tagList), (message, navigation) ->
         EntryUiState(form, r, device, suggestions, tagList, message, navigation)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EntryUiState())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EntryUiState(form.value))
 
     private var texts = EntryTexts(paymentNote = "")
     private var initialized = false
@@ -139,6 +140,8 @@ class EntryViewModel @AssistedInject constructor(
             val r = refs.getRefData()
             val base =
                 EntryForm(
+                    date = LocalDate.now(clock),
+                    time = timeNow(),
                     inputOrder = r.settings.inputOrder,
                     currencyId = r.mainCurrency.id,
                     feeCurrencyId = r.mainCurrency.id,
@@ -191,6 +194,9 @@ class EntryViewModel @AssistedInject constructor(
         }
     }
 
+    /** Now to the minute, as the form shows and stores it. */
+    private fun timeNow(): LocalTime = LocalTime.now(clock).withSecond(0).withNano(0)
+
     fun onUserMessageShown(id: Long) {
         userMessage.update { if (it?.id == id) null else it }
     }
@@ -233,12 +239,12 @@ class EntryViewModel @AssistedInject constructor(
         if (!r.settings.autocomplete) return
         val cutoff =
             maxOf(
-                System.currentTimeMillis() - 456L * 24 * 3600 * 1000,
+                clock.millis() - 456L * 24 * 3600 * 1000,
                 r.settings.autocompleteResetAt,
             )
         val cutDate = Instant.ofEpochMilli(
             cutoff,
-        ).atZone(ZoneId.systemDefault()).toLocalDate().toIsoText()
+        ).atZone(clock.zone).toLocalDate().toIsoText()
         suggestions.value =
             transactions.getNoteUsage(cutDate, cutoff).map {
                 NoteSuggestion(it.note, it.count, it.lastDate)
@@ -247,7 +253,8 @@ class EntryViewModel @AssistedInject constructor(
 
     private fun newEntry(r: RefData, base: EntryForm): EntryForm {
         val date =
-            key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now()
+            key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                ?: LocalDate.now(clock)
         var s = base.copy(
             mode = key.mode,
             date = date,
@@ -306,7 +313,7 @@ class EntryViewModel @AssistedInject constructor(
                     )
         }
         original = if (copy) null else tx
-        val dateTime = tx.dateTime.toLocalDateTime()
+        val dateTime = tx.dateTime.toLocalDateTime(clock.zone)
         val storedDate = runCatching {
             LocalDate.parse(tx.date)
         }.getOrDefault(dateTime.toLocalDate())
@@ -360,9 +367,9 @@ class EntryViewModel @AssistedInject constructor(
         } else {
             null
         }
-        val copyDate = if (copy && key.copyWithToday) LocalDate.now() else storedDate
+        val copyDate = if (copy && key.copyWithToday) LocalDate.now(clock) else storedDate
         val copyTime = if (copy && key.copyWithToday) {
-            LocalTime.now().withSecond(0).withNano(0)
+            timeNow()
         } else {
             dateTime.toLocalTime()
         }
@@ -433,7 +440,7 @@ class EntryViewModel @AssistedInject constructor(
             installments = 0,
         )
         if (!keepDate) {
-            s = s.copy(date = LocalDate.now(), time = LocalTime.now().withSecond(0).withNano(0))
+            s = s.copy(date = LocalDate.now(clock), time = timeNow())
         }
         if (transfer) s = loadLastFee(s)
         return s
@@ -469,7 +476,7 @@ class EntryViewModel @AssistedInject constructor(
             r,
             card,
             transactions.getAllForAccounts(ids),
-            LocalDate.now(),
+            LocalDate.now(clock),
         )
         val payer = card.linkedAccountId?.takeIf { id ->
             r.accountById[id]?.let { r.isAccountVisible(it) } ==
@@ -504,7 +511,7 @@ class EntryViewModel @AssistedInject constructor(
             item.accountId to
                 item.toAccountId
         }
-        val dt = item.occurredAt.toLocalDateTime()
+        val dt = item.occurredAt.toLocalDateTime(clock.zone)
         // The fee field starts filled when the route's preset knows the fee.
         val presetFee = when (val plan = getSmsFeePlan(item)) {
             is FeePlan.Auto -> plan.amount
@@ -571,7 +578,7 @@ class EntryViewModel @AssistedInject constructor(
                 ?: return newEntry(r, base).copy(mode = EntryMode.IMPORT_FIX)
         val kind = row.kind ?: TxKind.EXPENSE
         val transferIn = kind == TxKind.TRANSFER_IN
-        val dt = row.dateTime ?: LocalDateTime.now()
+        val dt = row.dateTime ?: LocalDateTime.now(clock)
         val cur = r.currency(row.currencyId)
         return base.copy(
             mode = EntryMode.IMPORT_FIX,
@@ -1038,7 +1045,7 @@ class EntryViewModel @AssistedInject constructor(
             return false
         }
         if (s.repeat != RepeatType.NONE &&
-            s.date.isBefore(RepeatSchedule.oldestAllowed(s.repeat, LocalDate.now()))
+            s.date.isBefore(RepeatSchedule.oldestAllowed(s.repeat, LocalDate.now(clock)))
         ) {
             showMessage(R.string.repeat_too_old)
             return false
@@ -1124,7 +1131,7 @@ class EntryViewModel @AssistedInject constructor(
         val r = ref.value
         form.update { it.copy(saving = true) }
         viewModelScope.launch {
-            val now = System.currentTimeMillis()
+            val now = clock.millis()
             val cur = r.currency(s.currencyId)
             val rule = RepeatRule(
                 id = originalRule?.id ?: UUID.randomUUID().toString(),
@@ -1207,6 +1214,8 @@ class EntryViewModel @AssistedInject constructor(
             val fresh = newEntry(
                 r,
                 EntryForm(
+                    date = LocalDate.now(clock),
+                    time = timeNow(),
                     inputOrder = r.settings.inputOrder,
                     currencyId = r.mainCurrency.id,
                     feeCurrencyId = r.mainCurrency.id,

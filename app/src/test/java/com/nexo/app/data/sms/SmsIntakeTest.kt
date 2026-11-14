@@ -3,6 +3,7 @@ package com.nexo.app.data.sms
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.nexo.app.core.common.SystemZoneClock
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.DeviceSettings
@@ -23,6 +24,7 @@ import com.nexo.app.data.repository.DefaultSmsRepository
 import com.nexo.app.data.repository.DefaultUserPreferencesRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.sms.parser.SmsMessage
+import com.nexo.app.testing.fixedClock
 import com.nexo.app.testing.referenceDataRepository
 import com.nexo.app.testing.smsRepository
 import kotlinx.coroutines.CoroutineScope
@@ -58,7 +60,7 @@ class SmsIntakeTest {
                 context,
                 NexoDatabase::class.java,
             ).allowMainThreadQueries().build()
-        BookSeeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
+        BookSeeder(context, db, SystemZoneClock).seedFresh(CurrencyCatalog.find("LKR")!!)
         refs = referenceDataRepository(db, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
         intake = smsRepository(context, db, refs)
     }
@@ -134,7 +136,7 @@ class SmsIntakeTest {
 
     @Test
     fun foreignPurchaseOnAnAccountInThatCurrencyIsExact() = runBlocking {
-        val now = System.currentTimeMillis()
+        val now = fixedClock.millis()
         db.currencyDao().upsert(
             listOf(
                 CurrencyEntity(

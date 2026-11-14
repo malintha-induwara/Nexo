@@ -16,6 +16,7 @@ import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.data.work.AutoBackupWorker
 import com.nexo.app.data.work.FxSyncWorker
 import dagger.hilt.android.HiltAndroidApp
+import java.time.Clock
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -38,6 +39,8 @@ class NexoApplication :
     @Inject lateinit var refs: ReferenceDataRepository
 
     @Inject lateinit var smsInbox: SmsInboxRepository
+
+    @Inject lateinit var clock: Clock
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
@@ -71,7 +74,7 @@ class NexoApplication :
                 lock.onBackground()
                 scope.launch {
                     val s = prefs.getDeviceSettings()
-                    if (s.setupDone && System.currentTimeMillis() - s.lastAutoBackup > DAY_MS) {
+                    if (s.setupDone && clock.millis() - s.lastAutoBackup > DAY_MS) {
                         AutoBackupWorker.enqueue(this@NexoApplication)
                     }
                 }

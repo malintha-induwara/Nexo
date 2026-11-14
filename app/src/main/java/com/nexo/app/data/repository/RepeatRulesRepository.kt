@@ -19,5 +19,5 @@ interface RepeatRulesRepository {
     suspend fun generateIfNewDay(force: Boolean = false)
 
     /** Generates every transaction due by [today]; returns how many were created. */
-    suspend fun generate(today: LocalDate = LocalDate.now()): Int
+    suspend fun generate(): Int
 }

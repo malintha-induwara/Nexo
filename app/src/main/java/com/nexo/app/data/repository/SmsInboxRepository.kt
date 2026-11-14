@@ -13,7 +13,7 @@ interface SmsInboxRepository {
      * Sets or clears the start point, catches up on missed messages, and expires old queue items. Call at app start,
      * on every foreground, and after the switch or the permission changes.
      */
-    suspend fun refresh(now: Long = System.currentTimeMillis())
+    suspend fun refresh()
 
     suspend fun setCaptureEnabled(on: Boolean)
 

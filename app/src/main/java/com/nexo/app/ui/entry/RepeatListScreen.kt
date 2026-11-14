@@ -46,6 +46,7 @@ import com.nexo.app.core.model.RepeatReflect
 import com.nexo.app.core.model.RepeatRule
 import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.TxKind
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.Formats
@@ -103,6 +104,7 @@ fun estimatedCount(rule: RepeatRule, period: MonthPeriod): Int {
 
 @Composable
 fun RepeatListScreen(vm: RepeatListViewModel = hiltViewModel()) {
+    val clock = LocalClock.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val rules = state.rules
     val ref = state.ref
@@ -114,7 +116,7 @@ fun RepeatListScreen(vm: RepeatListViewModel = hiltViewModel()) {
     var pickReflect by remember { mutableStateOf(false) }
     var confirmFirstDay by remember { mutableStateOf(false) }
     var addType by remember { mutableStateOf(false) }
-    val period = ref.settings.periods.monthPeriodContaining(LocalDate.now())
+    val period = ref.settings.periods.monthPeriodContaining(LocalDate.now(clock))
     Scaffold(topBar = {
         NexoTopBar(stringResource(R.string.repeat_setting), onBack = { nav.back() }) {
             if (editing) {

@@ -23,6 +23,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Clock
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -67,6 +68,7 @@ class AccountFormViewModel @AssistedInject constructor(
     private val refs: ReferenceDataRepository,
     private val repo: AccountsRepository,
     private val transactions: TransactionsRepository,
+    private val clock: Clock,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -224,7 +226,7 @@ class AccountFormViewModel @AssistedInject constructor(
             return
         }
         viewModelScope.launch {
-            val now = System.currentTimeMillis()
+            val now = clock.millis()
             val o = original
             val account = Account(
                 id = s.id,

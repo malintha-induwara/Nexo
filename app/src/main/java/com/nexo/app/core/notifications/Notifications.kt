@@ -21,9 +21,9 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.ZoneId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -31,6 +31,8 @@ import kotlinx.coroutines.launch
 @InstallIn(SingletonComponent::class)
 interface NotificationsEntryPoint {
     fun settings(): NotificationSettingsSource
+
+    fun clock(): Clock
 
     @ApplicationScope
     fun appScope(): CoroutineScope
@@ -205,7 +207,7 @@ object Notifications {
 
 /** Daily reminder alarm: one exact alarm at the next occurrence; inexact when exact alarms aren't allowed. */
 object ReminderScheduler {
-    fun schedule(context: Context, enabled: Boolean, hour: Int, minute: Int) {
+    fun schedule(context: Context, clock: Clock, enabled: Boolean, hour: Int, minute: Int) {
         val am = context.getSystemService(AlarmManager::class.java)
         val pi = PendingIntent.getBroadcast(
             context,
@@ -215,10 +217,10 @@ object ReminderScheduler {
         )
         am.cancel(pi)
         if (!enabled) return
-        val now = LocalDateTime.now()
-        var at = LocalDate.now().atTime(hour, minute)
+        val now = LocalDateTime.now(clock)
+        var at = now.toLocalDate().atTime(hour, minute)
         if (!at.isAfter(now)) at = at.plusDays(1)
-        val ms = at.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val ms = at.atZone(clock.zone).toInstant().toEpochMilli()
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()) {
             am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi)
         } else {
@@ -241,13 +243,15 @@ class ReminderReceiver : BroadcastReceiver() {
             try {
                 val s = context.entry().settings().getDeviceSettings()
                 // DayOfWeek 1 = Monday … 7 = Sunday.
-                if (s.reminderEnabled && LocalDate.now().dayOfWeek.value in s.reminderDays &&
+                if (s.reminderEnabled &&
+                    LocalDate.now(context.entry().clock()).dayOfWeek.value in s.reminderDays &&
                     s.setupDone
                 ) {
                     Notifications.postReminder(context)
                 }
                 ReminderScheduler.schedule(
                     context,
+                    context.entry().clock(),
                     s.reminderEnabled,
                     s.reminderHour,
                     s.reminderMinute,
@@ -299,6 +303,7 @@ class BootReceiver : BroadcastReceiver() {
                 }
                 ReminderScheduler.schedule(
                     context,
+                    context.entry().clock(),
                     s.reminderEnabled,
                     s.reminderHour,
                     s.reminderMinute,

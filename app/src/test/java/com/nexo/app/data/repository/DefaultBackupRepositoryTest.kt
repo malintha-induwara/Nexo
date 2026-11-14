@@ -3,7 +3,9 @@ package com.nexo.app.data.repository
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.nexo.app.testing.TestBook
+import java.time.Clock
 import java.time.LocalDateTime
+import java.time.ZoneId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,11 +23,21 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class DefaultBackupRepositoryTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+    private val zone = ZoneId.of("Asia/Colombo")
+    private val backupTime = Clock.fixed(
+        LocalDateTime.of(2026, 11, 14, 9, 5, 7).atZone(zone).toInstant(),
+        zone,
+    )
     private lateinit var book: TestBook
 
     @Before
     fun setUp() {
-        book = TestBook(ApplicationProvider.getApplicationContext<Context>(), scope)
+        book =
+            TestBook(
+                ApplicationProvider.getApplicationContext<Context>(),
+                scope,
+                clock = backupTime,
+            )
     }
 
     @After
@@ -36,7 +48,7 @@ class DefaultBackupRepositoryTest {
 
     @Test
     fun backupFilesUseTheNexoExtension() {
-        val name = book.backups.backupFileName(LocalDateTime.of(2026, 11, 14, 9, 5, 7))
+        val name = book.backups.backupFileName()
         assertTrue(name, name.startsWith("Nexo("))
         assertTrue(name, name.endsWith("-090507).nexobak"))
         assertTrue(book.backups.isBackupName(name))

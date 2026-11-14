@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountParts
 import com.nexo.app.core.model.RefData
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.Formats
@@ -81,6 +82,7 @@ fun DaySheet(
     onDismiss: () -> Unit,
     highlightId: String? = null,
 ) {
+    val clock = LocalClock.current
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val money = LocalMoneyColors.current
@@ -92,7 +94,7 @@ fun DaySheet(
 
     InlineBottomSheet(visible = date != null, onDismiss = onDismiss) {
         val shown = last[0] ?: return@InlineBottomSheet
-        val factory = remember(ref) { TransactionRowMapper(ref) }
+        val factory = remember(ref, clock) { TransactionRowMapper(ref, clock.zone) }
         fun groupOf(d: LocalDate): DayGroup? {
             val rows = data.gridRows.filter { it.date == d.toString() }
             val carry = if (data.period?.start == d && data.carryOver != 0.0) {
@@ -137,7 +139,7 @@ fun DaySheet(
         ) {
             Text(
                 (
-                    if (shown == LocalDate.now()) {
+                    if (shown == LocalDate.now(clock)) {
                         stringResource(R.string.today)
                     } else {
                         shown.year.toString()

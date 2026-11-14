@@ -13,6 +13,7 @@ import com.nexo.app.data.file.AppDirs
 import java.io.File
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Clock
 import java.util.UUID
 import javax.inject.Inject
 
@@ -24,8 +25,9 @@ class DefaultCurrenciesRepository @Inject constructor(
     private val backups: BackupRepository,
     private val dirs: AppDirs,
     private val prefs: UserPreferencesRepository,
+    private val clock: Clock,
 ) : CurrenciesRepository {
-    private fun now() = System.currentTimeMillis()
+    private fun now() = clock.millis()
 
     override suspend fun setMainFormat(position: SymbolPosition, decimals: Int) {
         val main = db.currencyDao().getMain() ?: return

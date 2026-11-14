@@ -3,6 +3,7 @@ package com.nexo.app.ui.memo
 import com.nexo.app.core.model.Memo
 import com.nexo.app.testing.FakeMemosRepository
 import com.nexo.app.testing.MainDispatcherRule
+import com.nexo.app.testing.fixedClock
 import com.nexo.app.ui.HomeState
 import com.nexo.app.ui.navigation.MemoEditorKey
 import java.time.LocalDate
@@ -18,12 +19,12 @@ class MemoEditorViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val home = HomeState()
+    private val home = HomeState(fixedClock)
 
     @Test
     fun newMemoIsSavedAndTheListScrollsToItsDate() = runTest {
         val memos = FakeMemosRepository()
-        val vm = MemoEditorViewModel(MemoEditorKey(date = "2026-11-02"), memos, home)
+        val vm = MemoEditorViewModel(MemoEditorKey(date = "2026-11-02"), memos, home, fixedClock)
         vm.initialize()
         assertTrue(vm.uiState.value.loaded)
         assertEquals(LocalDate.of(2026, 11, 2), vm.uiState.value.date)
@@ -45,7 +46,7 @@ class MemoEditorViewModelTest {
     @Test
     fun emptyingAnExistingMemoDeletesIt() = runTest {
         val memos = FakeMemosRepository(listOf(memo()))
-        val vm = MemoEditorViewModel(MemoEditorKey(memoId = "m1"), memos, home)
+        val vm = MemoEditorViewModel(MemoEditorKey(memoId = "m1"), memos, home, fixedClock)
         vm.initialize()
         assertEquals("Groceries", vm.uiState.value.title)
         assertEquals("milk", vm.uiState.value.content)
@@ -62,7 +63,7 @@ class MemoEditorViewModelTest {
     @Test
     fun editingKeepsTheMemoIdAndOrder() = runTest {
         val memos = FakeMemosRepository(listOf(memo()))
-        val vm = MemoEditorViewModel(MemoEditorKey(memoId = "m1"), memos, home)
+        val vm = MemoEditorViewModel(MemoEditorKey(memoId = "m1"), memos, home, fixedClock)
         vm.initialize()
         vm.setContent("milk, bread")
         vm.togglePin()
@@ -77,7 +78,7 @@ class MemoEditorViewModelTest {
 
     @Test
     fun closingIsHandledOnce() = runTest {
-        val vm = MemoEditorViewModel(MemoEditorKey(), FakeMemosRepository(), home)
+        val vm = MemoEditorViewModel(MemoEditorKey(), FakeMemosRepository(), home, fixedClock)
         vm.initialize()
         vm.saveAndClose().join()
         assertTrue(vm.uiState.value.closed)

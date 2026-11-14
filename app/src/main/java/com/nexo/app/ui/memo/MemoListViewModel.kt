@@ -15,6 +15,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,7 +30,7 @@ import kotlinx.coroutines.launch
 
 data class MemoListUiState(
     val ref: RefData = RefData(),
-    val date: LocalDate = LocalDate.now(),
+    val date: LocalDate,
     val period: MonthPeriod? = null,
     val device: DeviceSettings? = null,
     val memos: List<Memo> = emptyList(),
@@ -43,6 +44,7 @@ class MemoListViewModel @AssistedInject constructor(
     private val refs: ReferenceDataRepository,
     private val bookSettings: BookSettingsRepository,
     private val prefs: UserPreferencesRepository,
+    private val clock: Clock,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -53,7 +55,7 @@ class MemoListViewModel @AssistedInject constructor(
         MutableStateFlow(
             key.date?.let {
                 runCatching { LocalDate.parse(it) }.getOrNull()
-            } ?: LocalDate.now(),
+            } ?: LocalDate.now(clock),
         )
 
     /** Kept for event handlers that need the reference data synchronously. */
@@ -86,7 +88,11 @@ class MemoListViewModel @AssistedInject constructor(
             list,
         ->
         MemoListUiState(r, d, r.settings.periods.monthPeriodContaining(d), device, list)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MemoListUiState())
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        MemoListUiState(date = date.value),
+    )
 
     private fun MonthPeriod.startText() = range.startText
     private fun MonthPeriod.endText() = range.endText

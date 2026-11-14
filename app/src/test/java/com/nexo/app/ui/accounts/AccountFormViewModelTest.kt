@@ -48,7 +48,7 @@ class AccountFormViewModelTest {
     private suspend fun TestScope.openForm(
         key: AccountFormKey = AccountFormKey(),
     ): AccountFormViewModel {
-        val vm = AccountFormViewModel(key, book.refs, book.accounts, book.transactions)
+        val vm = AccountFormViewModel(key, book.refs, book.accounts, book.transactions, book.clock)
         backgroundScope.launch { vm.uiState.collect {} }
         vm.initialize()
         vm.uiState.first { it.loaded && it.ref.groups.isNotEmpty() }

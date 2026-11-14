@@ -68,6 +68,7 @@ import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.core.model.needsAttention
 import com.nexo.app.core.model.needsDetails
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.EmptyState
@@ -98,6 +99,7 @@ private sealed interface QueueSheet {
 
 @Composable
 fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
+    val clock = LocalClock.current
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val colors = LocalNexoColors.current
@@ -126,11 +128,11 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
     var sheet by remember { mutableStateOf<QueueSheet?>(null) }
     var sheetOpen by remember { mutableStateOf(false) }
     var editAmount by remember { mutableStateOf<SmsItem?>(null) }
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var now by remember { mutableLongStateOf(clock.millis()) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(60_000)
-            now = System.currentTimeMillis()
+            now = clock.millis()
         }
     }
     LifecycleResumeEffect(Unit) {

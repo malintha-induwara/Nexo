@@ -19,7 +19,7 @@ class DebugSmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val sender = intent.getStringExtra("sender") ?: return
         val body = intent.getStringExtra("body") ?: return
-        val now = System.currentTimeMillis()
+        val now = context.smsEntry().clock().millis()
         val timestamp = intent.getLongExtra("timestamp", now)
         val pending = goAsync()
         context.smsEntry().appScope().launch {

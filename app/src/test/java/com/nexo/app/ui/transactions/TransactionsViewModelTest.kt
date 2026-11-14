@@ -6,6 +6,8 @@ import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.TxDraft
 import com.nexo.app.testing.MainDispatcherRule
 import com.nexo.app.testing.TestBook
+import com.nexo.app.testing.fixedClock
+import com.nexo.app.testing.fixedToday
 import com.nexo.app.ui.HomeState
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
@@ -33,12 +35,17 @@ class TransactionsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-    private val home = HomeState()
+    private val home = HomeState(fixedClock)
     private lateinit var book: TestBook
 
     @Before
     fun setUp() {
-        book = TestBook(ApplicationProvider.getApplicationContext<Context>(), scope)
+        book =
+            TestBook(
+                ApplicationProvider.getApplicationContext<Context>(),
+                scope,
+                clock = fixedClock,
+            )
     }
 
     @After
@@ -49,7 +56,16 @@ class TransactionsViewModelTest {
 
     private suspend fun TestScope.openTab(): TransactionsViewModel {
         val b = book
-        val vm = TransactionsViewModel(b.refs, b.memos, b.repeats, b.transactions, b.budgets, home)
+        val vm =
+            TransactionsViewModel(
+                b.refs,
+                b.memos,
+                b.repeats,
+                b.transactions,
+                b.budgets,
+                home,
+                b.clock,
+            )
         backgroundScope.launch { vm.uiState.collect {} }
         vm.uiState.first { it.tab != null && it.data.loaded }
         return vm
@@ -60,7 +76,7 @@ class TransactionsViewModelTest {
             type = EntryType.EXPENSE,
             accountId = "1",
             categoryId = "6",
-            dateTime = LocalDate.now().atTime(0, 1),
+            dateTime = fixedToday.atTime(0, 1),
             amount = 2450.0,
             currencyId = "LKR",
             note = "Lunch",
@@ -73,7 +89,7 @@ class TransactionsViewModelTest {
         val id = saveLunch()
 
         val state = vm.uiState.first { s -> s.data.days.any { d -> d.rows.any { it.id == id } } }
-        assertEquals(LocalDate.now(), state.data.days.single().date)
+        assertEquals(fixedToday, state.data.days.single().date)
         assertEquals(2450.0, state.data.totals.expense, 0.0)
     }
 

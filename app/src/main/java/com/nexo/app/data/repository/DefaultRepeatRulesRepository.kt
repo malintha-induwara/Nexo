@@ -16,8 +16,8 @@ import com.nexo.app.data.database.entity.RepeatRuleEntity
 import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.data.database.entity.asEntity
 import com.nexo.app.data.database.entity.asExternalModel
+import java.time.Clock
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
 import java.util.UUID
 import javax.inject.Inject
@@ -33,6 +33,7 @@ class DefaultRepeatRulesRepository @Inject constructor(
     private val db: NexoDatabase,
     private val refs: ReferenceDataRepository,
     private val prefs: UserPreferencesRepository,
+    private val clock: Clock,
 ) : RepeatRulesRepository {
     private val mutex = Mutex()
 
@@ -52,13 +53,14 @@ class DefaultRepeatRulesRepository @Inject constructor(
     override suspend fun delete(ids: List<String>) = db.repeatRuleDao().deleteByIds(ids)
 
     override suspend fun generateIfNewDay(force: Boolean) {
-        val today = LocalDate.now().toIsoText()
+        val today = LocalDate.now(clock).toIsoText()
         if (!force && prefs.getDeviceSettings().repeatDay == today) return
         generate()
         prefs.setRepeatDay(today)
     }
 
-    override suspend fun generate(today: LocalDate): Int = mutex.withLock {
+    override suspend fun generate(): Int = mutex.withLock {
+        val today = LocalDate.now(clock)
         val ref = refs.getRefData()
         val rules = db.repeatRuleDao().getAll()
         val period = ref.settings.periods.monthPeriodContaining(today)
@@ -106,7 +108,7 @@ class DefaultRepeatRulesRepository @Inject constructor(
                         listOf(
                             rule.copy(
                                 nextDate = next.toIsoText(),
-                                updatedAt = System.currentTimeMillis(),
+                                updatedAt = clock.millis(),
                             ),
                         ),
                     )
@@ -128,8 +130,8 @@ class DefaultRepeatRulesRepository @Inject constructor(
         } else {
             Money.round(Money.multiply(rule.amount, Conversion.effectiveRate(cur)), main.decimals)
         }
-        val now = System.currentTimeMillis()
-        val ms = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val now = clock.millis()
+        val ms = date.atStartOfDay(clock.zone).toInstant().toEpochMilli()
         val base = "${rule.id}_${date.toIsoText()}"
         fun row(kind: TxKind, account: String?, counterpart: String?, group: String?) =
             TransactionEntity(

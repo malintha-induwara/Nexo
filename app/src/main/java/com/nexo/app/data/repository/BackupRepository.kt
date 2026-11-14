@@ -7,7 +7,7 @@ import java.time.LocalDateTime
 
 /** Backups of the whole book (the database file), automatic daily copies, and restoring Nexo or legacy backups. */
 interface BackupRepository {
-    fun backupFileName(now: LocalDateTime = LocalDateTime.now(), prefix: String = "Nexo"): String
+    fun backupFileName(prefix: String = "Nexo"): String
 
     suspend fun writeBackup(target: Uri): Boolean
 

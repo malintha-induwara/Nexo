@@ -32,6 +32,7 @@ import com.nexo.app.data.database.entity.TransactionTagEntity
 import com.nexo.app.data.database.entity.asEntity
 import com.nexo.app.data.database.entity.asExternalModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -50,12 +51,13 @@ class DefaultTransactionsRepository @Inject constructor(
     private val refs: ReferenceDataRepository,
     private val bookSettings: BookSettingsRepository,
     private val photos: PhotosRepository,
+    private val clock: Clock,
 ) : TransactionsRepository {
     private val dao get() = db.transactionDao()
-    private val zone: ZoneId get() = ZoneId.systemDefault()
+    private val zone: ZoneId get() = clock.zone
 
     private fun uuid() = UUID.randomUUID().toString()
-    private fun now() = System.currentTimeMillis()
+    private fun now() = clock.millis()
 
     private fun millis(dt: LocalDateTime): Long = dt.toEpochMillis(zone)
     private fun localDateTime(ms: Long): LocalDateTime = ms.toLocalDateTime(zone)
@@ -797,7 +799,7 @@ class DefaultTransactionsRepository @Inject constructor(
                 Money.multiply(amount, Conversion.effectiveRate(cur)),
                 ref.mainCurrency.decimals,
             )
-            val nowDt = LocalDateTime.now()
+            val nowDt = LocalDateTime.now(clock)
             val now = now()
             dao.insertAll(
                 listOf(

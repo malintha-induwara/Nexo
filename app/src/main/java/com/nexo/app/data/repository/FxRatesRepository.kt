@@ -17,7 +17,7 @@ interface FxRatesRepository {
     val online: Boolean
 
     /** Fetch policy: at most every 6 hours. Returns whether a fetch succeeded. */
-    suspend fun refreshIfStale(now: Long = System.currentTimeMillis()): Boolean
+    suspend fun refreshIfStale(): Boolean
 
     /** Keeps new boards only when a bank's rates changed; older boards always fill the history. */
     suspend fun store(rows: List<FxSnapshot>)

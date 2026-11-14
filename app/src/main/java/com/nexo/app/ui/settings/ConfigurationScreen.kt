@@ -39,6 +39,7 @@ import com.nexo.app.core.model.WeekendRule
 import com.nexo.app.core.notifications.Notifications
 import com.nexo.app.ui.accounts.CardTimingDialog
 import com.nexo.app.ui.accounts.cardAccountingLabel
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
@@ -81,6 +82,7 @@ fun timeDisplayLabel(t: TimeDisplay) = stringResource(
 
 @Composable
 fun ConfigurationScreen(vm: SettingsViewModel = hiltViewModel()) {
+    val clock = LocalClock.current
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
@@ -405,7 +407,7 @@ fun ConfigurationScreen(vm: SettingsViewModel = hiltViewModel()) {
             onDismiss = close,
             extraButton = {
                 TextButton(onClick = {
-                    vm.update { it.copy(autocompleteResetAt = System.currentTimeMillis()) }
+                    vm.update { it.copy(autocompleteResetAt = clock.millis()) }
                     Toast.makeText(context, R.string.reset_complete, Toast.LENGTH_SHORT).show()
                     close()
                 }) { Text(stringResource(R.string.action_reset)) }

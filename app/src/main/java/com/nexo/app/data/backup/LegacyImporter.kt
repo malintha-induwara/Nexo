@@ -46,6 +46,7 @@ import com.nexo.app.data.database.entity.TransactionTagEntity
 import com.nexo.app.data.repository.BackupRepository
 import com.nexo.app.data.repository.DefaultBackupRepository
 import java.io.File
+import java.time.Clock
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -82,8 +83,9 @@ class LegacyImporter @Inject constructor(
     private val db: NexoDatabase,
     private val seeder: BookSeeder,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
+    private val clock: Clock,
 ) {
-    private val zone: ZoneId get() = ZoneId.systemDefault()
+    private val zone: ZoneId get() = clock.zone
 
     suspend fun import(file: File): RestoreResult = withContext(ioDispatcher) {
         runCatching {
@@ -171,7 +173,7 @@ class LegacyImporter @Inject constructor(
     )
 
     private fun read(src: SQLiteDatabase): Data {
-        val now = System.currentTimeMillis()
+        val now = clock.millis()
 
         // Currencies: built-in rows become their ISO code, custom rows keep their uid.
         val currencyMap = HashMap<String, String>()

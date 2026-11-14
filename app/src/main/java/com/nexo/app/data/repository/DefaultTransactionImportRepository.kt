@@ -28,10 +28,10 @@ import java.io.File
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormatSymbols
+import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.ZoneId
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
@@ -46,6 +46,7 @@ class DefaultTransactionImportRepository @Inject constructor(
     private val dirs: AppDirs,
     private val photos: PhotosRepository,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
+    private val clock: Clock,
 ) : TransactionImportRepository {
     override fun files(): List<File> = dirs.imports.listFiles()?.filter {
         it.name.endsWith(".tsv", true) ||
@@ -342,12 +343,12 @@ class DefaultTransactionImportRepository @Inject constructor(
             val preview = load(fileName, order)
             val (header, _) = dataLines(f)
             val ref = refs.getRefData()
-            val zone = ZoneId.systemDefault()
+            val zone = clock.zone
             val failed = ArrayList<String>()
             val rows = ArrayList<TransactionEntity>()
             val consumed = HashSet<Int>()
             var saved = 0
-            val now = System.currentTimeMillis()
+            val now = clock.millis()
             for (row in preview.rows) {
                 if (row.index in consumed) continue
                 if (row.skippable) continue

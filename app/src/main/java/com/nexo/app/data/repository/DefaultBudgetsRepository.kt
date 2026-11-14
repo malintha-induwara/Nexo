@@ -9,13 +9,16 @@ import com.nexo.app.data.database.entity.BudgetAmountEntity
 import com.nexo.app.data.database.entity.BudgetEntity
 import com.nexo.app.data.database.entity.asEntity
 import com.nexo.app.data.database.entity.asExternalModel
+import java.time.Clock
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /** Budgets with effective-from monthly amounts. */
-class DefaultBudgetsRepository @Inject constructor(private val db: NexoDatabase) :
-    BudgetsRepository {
+class DefaultBudgetsRepository @Inject constructor(
+    private val db: NexoDatabase,
+    private val clock: Clock,
+) : BudgetsRepository {
     override fun getBudgetsStream(): Flow<List<Budget>> =
         db.budgetDao().observeBudgets().map { rows ->
             rows.map(BudgetEntity::asExternalModel)
@@ -25,7 +28,7 @@ class DefaultBudgetsRepository @Inject constructor(private val db: NexoDatabase)
             rows.map(BudgetAmountEntity::asExternalModel)
         }
 
-    private fun now() = System.currentTimeMillis()
+    private fun now() = clock.millis()
 
     /** [currentKey] is the label key of the current month. */
     override suspend fun add(categoryId: String?, amount: Double, currentKey: Int) =

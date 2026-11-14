@@ -4,12 +4,15 @@ import androidx.room.withTransaction
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.CategoryEntity
+import java.time.Clock
 import java.util.UUID
 import javax.inject.Inject
 
-class DefaultCategoriesRepository @Inject constructor(private val db: NexoDatabase) :
-    CategoriesRepository {
-    private fun now() = System.currentTimeMillis()
+class DefaultCategoriesRepository @Inject constructor(
+    private val db: NexoDatabase,
+    private val clock: Clock,
+) : CategoriesRepository {
+    private fun now() = clock.millis()
 
     override suspend fun add(
         kind: CategoryKind,

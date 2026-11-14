@@ -69,6 +69,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.ui.accounts.AccountsTab
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.BarItem
 import com.nexo.app.ui.designsystem.component.PillBottomBar
 import com.nexo.app.ui.designsystem.component.PillBottomBarHeight
@@ -119,6 +120,7 @@ val LocalShell = staticCompositionLocalOf { ShellController() }
 /** App shell with the four top-level tabs. Re-selecting a tab sends a "go to today" signal. */
 @Composable
 fun MainShell(vm: MainShellViewModel = hiltViewModel()) {
+    val clock = LocalClock.current
     var tab by rememberSaveable { mutableStateOf(MainTab.TRANSACTIONS) }
     var todaySignal by remember { mutableIntStateOf(0) }
     val barHidden = rememberSaveable { mutableStateOf(false) }
@@ -140,7 +142,7 @@ fun MainShell(vm: MainShellViewModel = hiltViewModel()) {
             addMenu = false
             return@BackHandler
         }
-        val now = System.currentTimeMillis()
+        val now = clock.millis()
         if (now - lastBack < 5_000) {
             (context as? Activity)?.finish()
         } else {

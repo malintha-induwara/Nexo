@@ -1,5 +1,6 @@
 package com.nexo.app.ui
 
+import java.time.Clock
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -12,8 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
  * Hand-offs are state, cleared by the screen that acts on them.
  */
 @Singleton
-class HomeState @Inject constructor() {
-    private val _selectedDate = MutableStateFlow(LocalDate.now())
+class HomeState @Inject constructor(private val clock: Clock) {
+    private val _selectedDate = MutableStateFlow(LocalDate.now(clock))
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
 
     private val _focus = MutableStateFlow<LocalDate?>(null)

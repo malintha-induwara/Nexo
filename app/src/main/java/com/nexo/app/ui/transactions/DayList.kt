@@ -60,6 +60,7 @@ import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.MemoColor
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.CategoryTile
@@ -89,7 +90,8 @@ fun weekdayColor(d: DayOfWeek): Color = when (d) {
 /** "Today · Tue, Nov 10", "Yesterday · …" or "Fri, Nov 6". */
 @Composable
 fun dayLabel(date: LocalDate): String {
-    val today = LocalDate.now()
+    val clock = LocalClock.current
+    val today = LocalDate.now(clock)
     val base = Formats.weekdayMonthDay(date)
     return when (date) {
         today -> stringResource(R.string.today) + " · " + base
@@ -106,6 +108,7 @@ fun DayHeader(
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
+    val clock = LocalClock.current
     val money = LocalMoneyColors.current
     val colors = LocalNexoColors.current
     Row(
@@ -118,7 +121,7 @@ fun DayHeader(
         Text(
             dayLabel(group.date).uppercase(Locale.getDefault()),
             style = NexoType.Caps,
-            color = if (group.date == LocalDate.now()) colors.text else colors.textTertiary,
+            color = if (group.date == LocalDate.now(clock)) colors.text else colors.textTertiary,
             modifier = Modifier.weight(1f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

@@ -56,6 +56,7 @@ import com.nexo.app.core.model.bankName
 import com.nexo.app.core.model.missing
 import com.nexo.app.core.model.noteFor
 import com.nexo.app.data.repository.SmsRepository
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.CategoryTile
 import com.nexo.app.ui.designsystem.component.Formats
@@ -179,7 +180,7 @@ private fun metaLine(item: SmsItem, ref: RefData): String {
     val bank = bankName(item)
     val account =
         ref.accountById[item.accountId]?.name ?: item.cardLast4?.let { "$bank ••$it" } ?: bank
-    val dt = item.occurredAt.toLocalDateTime()
+    val dt = item.occurredAt.toLocalDateTime(LocalClock.current.zone)
     val day = Formats.weekdayMonthDay(dt.toLocalDate())
     val time = "$day ${Formats.time(dt.toLocalTime(), DateFormat.is24HourFormat(context))}"
     val where = when {

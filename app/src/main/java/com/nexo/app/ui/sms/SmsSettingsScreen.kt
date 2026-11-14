@@ -48,6 +48,7 @@ import com.nexo.app.core.model.FeePreset
 import com.nexo.app.core.model.SmsHistoryImport
 import com.nexo.app.core.model.SmsSource
 import com.nexo.app.core.model.smsCashAccount
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.Formats
@@ -68,7 +69,6 @@ import com.nexo.app.ui.navigation.SmsHistoryKey
 import com.nexo.app.ui.navigation.SmsQueueKey
 import com.nexo.app.ui.navigation.SmsSendersKey
 import java.time.Instant
-import java.time.ZoneId
 import kotlinx.coroutines.launch
 
 private fun Context.findActivity(): Activity? {
@@ -88,6 +88,7 @@ private fun appInfoIntent(context: Context) = Intent(
 /** Settings → Bank SMS (capture switch, card mapping, privacy). */
 @Composable
 fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
+    val clock = LocalClock.current
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val colors = LocalNexoColors.current
@@ -149,7 +150,7 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                             Formats.dateTime(
                                 Instant.ofEpochMilli(
                                     startedAt,
-                                ).atZone(ZoneId.systemDefault()).toLocalDateTime(),
+                                ).atZone(clock.zone).toLocalDateTime(),
                             ),
                         )
 

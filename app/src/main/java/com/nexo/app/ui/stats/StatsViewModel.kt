@@ -18,6 +18,7 @@ import com.nexo.app.ui.navigation.StatsScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
@@ -41,7 +42,7 @@ data class StatsRow(
 )
 
 data class StatsData(
-    val range: DateRange = DateRange(LocalDate.now(), LocalDate.now()),
+    val range: DateRange,
     val income: List<StatsRow> = emptyList(),
     val expense: List<StatsRow> = emptyList(),
 ) {
@@ -51,16 +52,16 @@ data class StatsData(
 
 data class StatsQuery(
     val scope: StatsScope = StatsScope.MONTHLY,
-    val anchor: LocalDate = LocalDate.now(),
-    val from: LocalDate = LocalDate.now(),
-    val to: LocalDate = LocalDate.now(),
+    val anchor: LocalDate,
+    val from: LocalDate = anchor,
+    val to: LocalDate = anchor,
 )
 
 data class StatsUiState(
     val ref: RefData = RefData(),
-    val query: StatsQuery = StatsQuery(),
+    val query: StatsQuery,
     val income: Boolean = false,
-    val data: StatsData = StatsData(),
+    val data: StatsData,
 )
 
 const val KEY_NONE = "__none__"
@@ -157,6 +158,7 @@ private fun r(ref: RefData, accountId: String?): String? = ref.accountById[accou
 class StatsViewModel @Inject constructor(
     refs: ReferenceDataRepository,
     transactions: TransactionsRepository,
+    private val clock: Clock,
 ) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
@@ -164,7 +166,7 @@ class StatsViewModel @Inject constructor(
         SharingStarted.Eagerly,
         RefData(),
     )
-    private val query = MutableStateFlow(StatsQuery())
+    private val query = MutableStateFlow(StatsQuery(anchor = LocalDate.now(clock)))
     private val income = MutableStateFlow(false)
 
     private val data = combine(ref, query) { r, q -> r to q }.flatMapLatest { (r, q) ->
@@ -175,7 +177,14 @@ class StatsViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<StatsUiState> = combine(ref, query, income, data, ::StatsUiState)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StatsUiState())
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            StatsUiState(
+                query = query.value,
+                data = StatsData(LocalDate.now(clock).let { DateRange(it, it) }),
+            ),
+        )
 
     fun setIncome(v: Boolean) {
         income.value = v
@@ -189,8 +198,8 @@ class StatsViewModel @Inject constructor(
 
             StatsScope.WEEKLY -> q.copy(
                 scope = s,
-                anchor = if (LocalDate.now() in cur) {
-                    LocalDate.now()
+                anchor = if (LocalDate.now(clock) in cur) {
+                    LocalDate.now(clock)
                 } else {
                     q.anchor
                 },
@@ -207,5 +216,5 @@ class StatsViewModel @Inject constructor(
     fun setMonth(m: YearMonth) =
         query.update { it.copy(anchor = ref.value.settings.periods.monthPeriodFor(m).end) }
     fun setRange(f: LocalDate, t: LocalDate) = query.update { it.copy(from = f, to = t) }
-    fun goToday() = query.update { it.copy(anchor = LocalDate.now()) }
+    fun goToday() = query.update { it.copy(anchor = LocalDate.now(clock)) }
 }

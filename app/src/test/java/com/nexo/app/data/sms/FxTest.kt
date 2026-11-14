@@ -3,6 +3,7 @@ package com.nexo.app.data.sms
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.nexo.app.core.common.SystemZoneClock
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.FxSnapshot
@@ -109,7 +110,7 @@ class FxTest {
                 context,
                 NexoDatabase::class.java,
             ).allowMainThreadQueries().build()
-            BookSeeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
+            BookSeeder(context, db, SystemZoneClock).seedFresh(CurrencyCatalog.find("LKR")!!)
             val refs =
                 referenceDataRepository(
                     db,

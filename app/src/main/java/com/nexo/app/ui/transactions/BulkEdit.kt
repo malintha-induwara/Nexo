@@ -49,6 +49,7 @@ import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.RefData
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.IncomeExpensePill
 import com.nexo.app.ui.designsystem.component.MessageDialog
@@ -180,6 +181,7 @@ fun BulkDialogs(
     actions: BulkEditActions,
     onDismiss: () -> Unit,
 ) {
+    val clock = LocalClock.current
     if (!open) return
     fun run(edit: () -> Unit) {
         edit()
@@ -196,7 +198,7 @@ fun BulkDialogs(
             onDismiss = onDismiss,
         )
 
-        BulkAction.DATE -> NexoDatePickerDialog(LocalDate.now(), onPick = { d ->
+        BulkAction.DATE -> NexoDatePickerDialog(LocalDate.now(clock), onPick = { d ->
             run { actions.setDate(d) }
         }, onDismiss = onDismiss)
 

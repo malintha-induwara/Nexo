@@ -47,6 +47,7 @@ import com.nexo.app.core.model.BudgetMath
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.Currency
 import com.nexo.app.domain.BudgetRow
+import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.ChartTitle
 import com.nexo.app.ui.designsystem.component.ColumnChart
@@ -469,6 +470,7 @@ fun BudgetAddScreen(key: BudgetAddKey, vm: BudgetSettingsViewModel = hiltViewMod
 /** Monthly budget editor. */
 @Composable
 fun BudgetEditorScreen(key: BudgetEditorKey, vm: BudgetSettingsViewModel = hiltViewModel()) {
+    val clock = LocalClock.current
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
@@ -476,7 +478,7 @@ fun BudgetEditorScreen(key: BudgetEditorKey, vm: BudgetSettingsViewModel = hiltV
     val amounts = state.amounts
     val budget = budgets.firstOrNull { it.id == key.budgetId }
     val records = amounts.filter { it.budgetId == key.budgetId }
-    val currentLabel = ref.settings.periods.monthPeriodContaining(LocalDate.now()).label
+    val currentLabel = ref.settings.periods.monthPeriodContaining(LocalDate.now(clock)).label
     var year by rememberSaveable { mutableIntStateOf(currentLabel.year) }
     var editing by rememberSaveable { mutableStateOf<Int?>(null) }
     var confirm by rememberSaveable { mutableStateOf(false) }

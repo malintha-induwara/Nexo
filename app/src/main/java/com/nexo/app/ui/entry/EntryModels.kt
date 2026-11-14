@@ -35,8 +35,8 @@ data class EntryForm(
     val type: EntryType = EntryType.EXPENSE,
     val balanceKind: TxKind? = null,
     val isBalanceAdjustment: Boolean = false,
-    val date: LocalDate = LocalDate.now(),
-    val time: LocalTime = LocalTime.now().withSecond(0).withNano(0),
+    val date: LocalDate,
+    val time: LocalTime,
     val accountId: String? = null,
     val toAccountId: String? = null,
     val categoryId: String? = null,
@@ -155,7 +155,7 @@ sealed interface EntryNavigation {
 data class EntryTexts(val paymentNote: String)
 
 data class EntryUiState(
-    val form: EntryForm = EntryForm(),
+    val form: EntryForm,
     val ref: RefData = RefData(),
     val device: DeviceSettings? = null,
     val suggestions: List<NoteSuggestion> = emptyList(),

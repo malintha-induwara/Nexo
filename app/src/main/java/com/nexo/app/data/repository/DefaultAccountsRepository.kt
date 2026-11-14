@@ -9,6 +9,7 @@ import com.nexo.app.core.model.GroupType
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.AccountGroupEntity
 import com.nexo.app.data.database.entity.asEntity
+import java.time.Clock
 import java.util.UUID
 import javax.inject.Inject
 
@@ -16,8 +17,9 @@ import javax.inject.Inject
 class DefaultAccountsRepository @Inject constructor(
     private val db: NexoDatabase,
     private val refs: ReferenceDataRepository,
+    private val clock: Clock,
 ) : AccountsRepository {
-    private fun now() = System.currentTimeMillis()
+    private fun now() = clock.millis()
 
     override suspend fun saveGroup(id: String?, name: String, type: GroupType) {
         val existing = id?.let { db.accountGroupDao().getById(it) }

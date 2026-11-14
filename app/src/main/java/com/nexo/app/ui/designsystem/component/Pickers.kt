@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
+import com.nexo.app.ui.designsystem.LocalClock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -105,6 +106,7 @@ fun NexoTimePickerDialog(initial: LocalTime, onPick: (LocalTime) -> Unit, onDism
 /** Month picker: year ±, 12 months, "This month". */
 @Composable
 fun MonthPickerDialog(selected: YearMonth, onPick: (YearMonth) -> Unit, onDismiss: () -> Unit) {
+    val clock = LocalClock.current
     var year by rememberSaveable { mutableIntStateOf(selected.year) }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -156,7 +158,7 @@ fun MonthPickerDialog(selected: YearMonth, onPick: (YearMonth) -> Unit, onDismis
         },
         confirmButton = {
             TextButton(onClick = {
-                onPick(YearMonth.now())
+                onPick(YearMonth.now(clock))
                 onDismiss()
             }) { Text(stringResource(R.string.this_month)) }
         },
