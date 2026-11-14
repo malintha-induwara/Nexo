@@ -10,11 +10,11 @@ import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsHistoryImport
 import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
+import com.nexo.app.core.model.needsDetails
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.SmsInboxRepository
 import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
-import com.nexo.app.data.sms.needsDetails
 import com.nexo.app.domain.sms.ApproveResult
 import com.nexo.app.domain.sms.ApproveSmsUseCase
 import com.nexo.app.domain.sms.FeePlan

@@ -1,6 +1,6 @@
 package com.nexo.app.domain.sms
 
-import com.nexo.app.data.sms.Missing
+import com.nexo.app.core.model.Missing
 
 sealed interface ApproveResult {
     /** [feeId] is the bank fee row written with it, if any (for Undo of an automatic fee). */

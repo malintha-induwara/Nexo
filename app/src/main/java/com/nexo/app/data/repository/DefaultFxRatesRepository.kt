@@ -1,7 +1,9 @@
 package com.nexo.app.data.repository
 
+import com.nexo.app.core.model.Banks
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.FxSnapshot
+import com.nexo.app.core.model.RateChoice
 import com.nexo.app.core.model.RateSide
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsItem
@@ -11,9 +13,7 @@ import com.nexo.app.data.database.entity.FxSnapshotEntity
 import com.nexo.app.data.database.entity.asEntity
 import com.nexo.app.data.database.entity.asExternalModel
 import com.nexo.app.data.network.FxRatesNetworkDataSource
-import com.nexo.app.data.sms.RateChoice
 import com.nexo.app.data.sms.RateChooser
-import com.nexo.app.data.sms.parser.Banks
 import com.nexo.app.data.sms.parser.BodyDate
 import java.time.Instant
 import java.time.LocalDate

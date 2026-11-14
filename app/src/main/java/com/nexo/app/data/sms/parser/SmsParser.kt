@@ -1,5 +1,7 @@
 package com.nexo.app.data.sms.parser
 
+import com.nexo.app.core.model.Bank
+import com.nexo.app.core.model.Banks
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.SmsKind

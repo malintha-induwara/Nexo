@@ -28,7 +28,7 @@ data class SmsItemEntity(
     val certainty: Certainty,
     val reason: SmsReason? = null,
     val kind: SmsKind,
-    /** [com.nexo.app.data.sms.parser.Bank] name. */
+    /** [com.nexo.app.core.model.Bank] name. */
     val bank: String,
     val sender: String,
     /** Format that recognised the message, e.g. "purchase", or "generic" for the general rules. */

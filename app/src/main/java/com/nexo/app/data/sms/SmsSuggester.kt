@@ -4,6 +4,8 @@ import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
+import com.nexo.app.core.model.categoryKind
+import com.nexo.app.core.model.smsCashAccount
 import com.nexo.app.data.database.dao.SmsDao
 import com.nexo.app.data.repository.FxRatesRepository
 import com.nexo.app.data.repository.ReferenceDataRepository

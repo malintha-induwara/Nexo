@@ -5,10 +5,10 @@ import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeDraft
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.SmsStatus
+import com.nexo.app.core.model.missing
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.repository.TransactionsRepository
-import com.nexo.app.data.sms.missing
 import javax.inject.Inject
 
 /** Approves queue items: the only code that turns them into ledger rows. */

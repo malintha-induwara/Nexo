@@ -1,13 +1,4 @@
-package com.nexo.app.data.sms
-
-import com.nexo.app.core.model.CategoryKind
-import com.nexo.app.core.model.Certainty
-import com.nexo.app.core.model.RefData
-import com.nexo.app.core.model.SmsItem
-import com.nexo.app.core.model.SmsKind
-import com.nexo.app.data.sms.parser.Bank
-import com.nexo.app.data.sms.parser.Banks
-import com.nexo.app.data.sms.parser.MerchantCleaner
+package com.nexo.app.core.model
 
 /** What an item still lacks before it can be approved. Separate from [Certainty]. */
 enum class Missing { ACCOUNT, DESTINATION, CATEGORY, AMOUNT }
@@ -42,10 +33,6 @@ val SmsItem.needsDetails: Boolean get() = missing().isNotEmpty()
 
 /** "Needs attention": not exact, or incomplete. */
 val SmsItem.needsAttention: Boolean get() = certainty != Certainty.EXACT || needsDetails
-
-/** The key learned categories are stored under: the merchant, or the payee of a transfer. */
-val SmsItem.learningKey: String
-    get() = merchantKey.ifEmpty { payee?.let(MerchantCleaner::key).orEmpty() }
 
 /** Where withdrawals go. The chosen account, else the first visible account in the Cash group. */
 fun RefData.smsCashAccount(): String? {

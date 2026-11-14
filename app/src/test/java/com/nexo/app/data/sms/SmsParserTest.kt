@@ -1,11 +1,11 @@
 package com.nexo.app.data.sms
 
+import com.nexo.app.core.model.Bank
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.FeeMode
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.SmsReason
-import com.nexo.app.data.sms.parser.Bank
 import com.nexo.app.data.sms.parser.BodyDate
 import com.nexo.app.data.sms.parser.IgnoreReason
 import com.nexo.app.data.sms.parser.ParsedSms

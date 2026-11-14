@@ -38,8 +38,8 @@ import com.nexo.app.core.common.money.AmountParts
 import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.RefData
-import com.nexo.app.data.sms.bankName
-import com.nexo.app.data.sms.ledgerAmount
+import com.nexo.app.core.model.bankName
+import com.nexo.app.core.model.ledgerAmount
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.rememberHaptics

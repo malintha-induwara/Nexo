@@ -1,4 +1,4 @@
-package com.nexo.app.data.sms
+package com.nexo.app.core.common
 
 import android.Manifest
 import android.content.Context

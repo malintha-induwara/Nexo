@@ -8,6 +8,7 @@ import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.DenyReason
 import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeRoute
+import com.nexo.app.core.model.Missing
 import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.SmsStatus
@@ -21,7 +22,6 @@ import com.nexo.app.data.datastore.DevicePreferencesDataSource
 import com.nexo.app.data.repository.DefaultUserPreferencesRepository
 import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.repository.TransactionsRepository
-import com.nexo.app.data.sms.Missing
 import com.nexo.app.testing.referenceDataRepository
 import com.nexo.app.testing.smsRepository
 import com.nexo.app.testing.transactionsRepository

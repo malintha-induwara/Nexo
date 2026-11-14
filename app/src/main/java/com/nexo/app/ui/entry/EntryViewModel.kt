@@ -28,6 +28,7 @@ import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxDraft
 import com.nexo.app.core.model.TxKind
+import com.nexo.app.core.model.noteFor
 import com.nexo.app.data.repository.FavoritesRepository
 import com.nexo.app.data.repository.PhotosRepository
 import com.nexo.app.data.repository.ReceiptRepository
@@ -39,7 +40,6 @@ import com.nexo.app.data.repository.TagsRepository
 import com.nexo.app.data.repository.TransactionImportRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
-import com.nexo.app.data.sms.noteFor
 import com.nexo.app.domain.CardStatement
 import com.nexo.app.domain.sms.FeePlan
 import com.nexo.app.domain.sms.GetSmsFeePlanUseCase

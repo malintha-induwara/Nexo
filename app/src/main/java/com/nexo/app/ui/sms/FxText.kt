@@ -5,12 +5,12 @@ import android.content.Intent
 import android.net.Uri
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.model.Bank
+import com.nexo.app.core.model.RateChoice
 import com.nexo.app.core.model.RateSide
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsItem
 import com.nexo.app.data.repository.FxRatesRepository
-import com.nexo.app.data.sms.RateChoice
-import com.nexo.app.data.sms.parser.Bank
 import com.nexo.app.ui.designsystem.component.Formats
 
 /** "Commercial Bank sell 336.50 · Nov 14". Null when the item has no rate. */

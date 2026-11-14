@@ -1,18 +1,10 @@
 package com.nexo.app.data.sms
 
 import com.nexo.app.core.model.FxSnapshot
+import com.nexo.app.core.model.RateChoice
 import com.nexo.app.core.model.RateSide
 import java.math.BigDecimal
 import java.math.RoundingMode
-
-/** A chosen rate: LKR per unit, where it came from (an API bank code, [MEDIAN], [OFFICIAL] or [MANUAL]), and when. */
-data class RateChoice(val rate: Double, val source: String, val snapshotAt: Long?) {
-    companion object {
-        const val MEDIAN = "median"
-        const val OFFICIAL = "official"
-        const val MANUAL = "manual"
-    }
-}
 
 /** Which rate converts a foreign-currency movement, and the estimate it gives. */
 object RateChooser {

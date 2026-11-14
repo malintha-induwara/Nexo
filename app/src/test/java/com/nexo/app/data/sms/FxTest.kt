@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.FxSnapshot
+import com.nexo.app.core.model.RateChoice
 import com.nexo.app.core.model.RateSide
 import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind

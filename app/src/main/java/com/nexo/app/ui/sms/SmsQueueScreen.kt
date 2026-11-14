@@ -60,14 +60,14 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
+import com.nexo.app.core.model.Banks
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsHistoryImport
 import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsStatus
-import com.nexo.app.data.sms.needsAttention
-import com.nexo.app.data.sms.needsDetails
-import com.nexo.app.data.sms.parser.Banks
+import com.nexo.app.core.model.needsAttention
+import com.nexo.app.core.model.needsDetails
 import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.EmptyState

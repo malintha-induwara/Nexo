@@ -6,8 +6,8 @@ import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.TxDraft
-import com.nexo.app.data.sms.missing
-import com.nexo.app.data.sms.noteFor
+import com.nexo.app.core.model.missing
+import com.nexo.app.core.model.noteFor
 import javax.inject.Inject
 
 /** What approving a queue item as it stands would save, without any fee. Null while it still needs details. */

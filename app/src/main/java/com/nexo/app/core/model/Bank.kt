@@ -1,4 +1,4 @@
-package com.nexo.app.data.sms.parser
+package com.nexo.app.core.model
 
 import java.util.Locale
 

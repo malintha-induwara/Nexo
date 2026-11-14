@@ -3,8 +3,8 @@ package com.nexo.app.ui.shell
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.model.SmsStatus
+import com.nexo.app.core.model.needsAttention
 import com.nexo.app.data.repository.SmsRepository
-import com.nexo.app.data.sms.needsAttention
 import com.nexo.app.ui.sms.QueueBadge
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject

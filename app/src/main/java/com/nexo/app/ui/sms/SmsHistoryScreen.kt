@@ -47,8 +47,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
-import com.nexo.app.data.sms.ledgerAmount
-import com.nexo.app.data.sms.parser.Banks
+import com.nexo.app.core.model.Banks
+import com.nexo.app.core.model.ledgerAmount
 import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.DateRangeChips
 import com.nexo.app.ui.designsystem.component.EmptyState

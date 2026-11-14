@@ -2,6 +2,7 @@ package com.nexo.app.ui.sms
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nexo.app.core.model.Banks
 import com.nexo.app.core.model.DeviceSettings
 import com.nexo.app.core.model.FeeMode
 import com.nexo.app.core.model.FeePreset
@@ -13,7 +14,6 @@ import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.SmsInboxRepository
 import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
-import com.nexo.app.data.sms.parser.Banks
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow

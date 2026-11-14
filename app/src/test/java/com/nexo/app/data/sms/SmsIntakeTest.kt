@@ -6,8 +6,11 @@ import androidx.test.core.app.ApplicationProvider
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.DeviceSettings
+import com.nexo.app.core.model.Missing
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.SymbolPosition
+import com.nexo.app.core.model.missing
+import com.nexo.app.core.model.needsDetails
 import com.nexo.app.data.database.BookSeeder
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.AccountEntity
