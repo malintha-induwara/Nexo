@@ -54,6 +54,7 @@ import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SwipeMode
 import com.nexo.app.ui.accounts.GroupVisuals
+import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.CategoryTile
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
@@ -104,10 +105,11 @@ private fun percentText(percent: Double, decimals: Int): String = percent.toBigD
 
 @Composable
 fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val data by vm.data.collectAsStateWithLifecycle()
-    val q by vm.query.collectAsStateWithLifecycle()
-    val income by vm.income.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val data = state.data
+    val q = state.query
+    val income = state.income
     val nav = LocalNavigator.current
     val colors = LocalNexoColors.current
     val money = LocalMoneyColors.current
@@ -183,7 +185,7 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
             else item(key = "chart") {
                 Box(Modifier.fillMaxWidth().padding(top = Space.s, bottom = Space.l), contentAlignment = Alignment.Center) {
                     DonutChart(
-                        rows.map { PieSlice(it.name, it.percent, NexoPalette.Stats[it.colorIndex]) },
+                        rows.map { PieSlice(it.name.asString(), it.percent, NexoPalette.Stats[it.colorIndex]) },
                         selected = selectedSlice.takeIf { it in rows.indices },
                         onSlice = { if (it != selectedSlice) haptics.tick(); selectedSlice = it },
                     ) {
@@ -219,7 +221,7 @@ private fun ShareLabel(row: StatsRow, main: Currency) {
         label = "share",
     ) { r ->
         Column(Modifier.widthIn(max = 132.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(r.name, style = NexoType.Meta, color = colors.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+            Text(r.name.asString(), style = NexoType.Meta, color = colors.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
             Text(percentText(r.percent, 1), style = MaterialTheme.typography.displaySmall, color = colors.text, maxLines = 1, modifier = Modifier.shrinkToFit())
             AmountText(r.amount, main, Modifier.shrinkToFit(), style = NexoType.AmountSmall, color = colors.textSecondary)
         }
@@ -252,7 +254,7 @@ private fun CategoryCard(row: StatsRow, ref: RefData, main: Currency, onClick: (
         }
         Spacer(Modifier.width(Space.m))
         Column(Modifier.weight(1f)) {
-            Text(row.name, style = MaterialTheme.typography.bodyMedium, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(row.name.asString(), style = MaterialTheme.typography.bodyMedium, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(percentText(row.percent, 0), style = NexoType.Meta, color = colors.textSecondary, maxLines = 1)
         }
         Spacer(Modifier.width(Space.m))

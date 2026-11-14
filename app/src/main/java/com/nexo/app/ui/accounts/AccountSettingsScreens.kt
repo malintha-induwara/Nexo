@@ -33,6 +33,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -86,7 +87,8 @@ fun cardAccountingLabel(c: CardAccounting) = stringResource(if (c == CardAccount
 @Composable
 fun AccountSettingsMenu(vm: AccountSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
     var timing by rememberSaveable { mutableStateOf(false) }
     Scaffold(topBar = { NexoTopBar(stringResource(R.string.tab_accounts), onBack = { nav.back() }) }) { p ->
         Column(Modifier.padding(p)) {
@@ -113,7 +115,8 @@ fun CardTimingDialog(current: CardAccounting, onSelect: (CardAccounting) -> Unit
 @Composable
 fun AccountGroupsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
     val groups = ref.groups.filter { it.status == GroupStatus.ACTIVE }
     Scaffold(topBar = {
         NexoTopBar(stringResource(R.string.account_group), onBack = { nav.back() }) {
@@ -131,10 +134,10 @@ fun AccountGroupsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
                             else -> Unit
                         }
                     }
-                    IconButton(onClick = { vm.launch { vm.repo.reorderGroups(groups.map { it.id }.toMutableList().apply { add(i - 1, removeAt(i)) }) } }, enabled = i > 0) { Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up)) }
-                    IconButton(onClick = { vm.launch { vm.repo.reorderGroups(groups.map { it.id }.toMutableList().apply { add(i + 1, removeAt(i)) }) } }, enabled = i < groups.size - 1) { Icon(Icons.Filled.ArrowDownward, stringResource(R.string.move_down)) }
+                    IconButton(onClick = { vm.reorderGroups(groups.map { it.id }.toMutableList().apply { add(i - 1, removeAt(i)) }) }, enabled = i > 0) { Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up)) }
+                    IconButton(onClick = { vm.reorderGroups(groups.map { it.id }.toMutableList().apply { add(i + 1, removeAt(i)) }) }, enabled = i < groups.size - 1) { Icon(Icons.Filled.ArrowDownward, stringResource(R.string.move_down)) }
                     if (g.builtinId !in setOf(1, 2, 3, 11)) {
-                        IconButton(onClick = { vm.launch { vm.repo.setGroupStatus(g.id, GroupStatus.DELETED) } }) { Icon(Icons.Filled.RemoveCircle, stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error) }
+                        IconButton(onClick = { vm.setGroupStatus(g.id, GroupStatus.DELETED) }) { Icon(Icons.Filled.RemoveCircle, stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error) }
                     } else androidx.compose.foundation.layout.Spacer(Modifier.padding(24.dp))
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -146,7 +149,14 @@ fun AccountGroupsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
 @Composable
 fun AccountGroupFormScreen(groupId: String?, vm: AccountSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    LaunchedEffect(state.groupSaved) {
+        if (state.groupSaved) {
+            nav.back()
+            vm.onGroupSavedHandled()
+        }
+    }
     val g = groupId?.let { ref.groupById[it] }
     var name by rememberSaveable(g?.id) { mutableStateOf(g?.name ?: "") }
     var type by rememberSaveable(g?.id) { mutableStateOf(g?.type ?: GroupType.NORMAL) }
@@ -167,7 +177,7 @@ fun AccountGroupFormScreen(groupId: String?, vm: AccountSettingsViewModel = hilt
             }
             Button(onClick = {
                 if (name.isBlank()) error = true
-                else vm.launch { vm.repo.saveGroup(groupId, name, type); nav.back() }
+                else vm.saveGroup(groupId, name, type)
             }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) { Text(stringResource(R.string.action_save)) }
         }
     }
@@ -177,8 +187,9 @@ fun AccountGroupFormScreen(groupId: String?, vm: AccountSettingsViewModel = hilt
 @Composable
 fun AccountListScreen(key: AccountListKey, vm: AccountSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val balances by vm.balances.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val balances = state.balances
     var mode by rememberSaveable { mutableStateOf(key.mode) }
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
     var menu by remember { mutableStateOf(false) }
@@ -220,7 +231,7 @@ fun AccountListScreen(key: AccountListKey, vm: AccountSettingsViewModel = hiltVi
                                 when (mode) {
                                     AccountListMode.NORMAL -> nav.navigate(AccountFormKey(a.id))
                                     AccountListMode.REORDER -> selected = a.id
-                                    AccountListMode.VISIBILITY -> vm.launch { vm.repo.setStatus(a.id, if (hidden) AccountStatus.ACTIVE else AccountStatus.HIDDEN) }
+                                    AccountListMode.VISIBILITY -> vm.setStatus(a.id, if (hidden) AccountStatus.ACTIVE else AccountStatus.HIDDEN)
                                     AccountListMode.DELETE -> Unit
                                 }
                             }.padding(start = 24.dp, end = 8.dp),
@@ -232,12 +243,12 @@ fun AccountListScreen(key: AccountListKey, vm: AccountSettingsViewModel = hiltVi
                                 Text(AmountFormatter.format(Balances.balance(ref, a, balances), ref.accountCurrency(a.id)), style = MaterialTheme.typography.bodySmall)
                                 Icon(if (hidden) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, null, Modifier.padding(12.dp))
                             }
-                            AccountListMode.DELETE -> IconButton(onClick = { vm.launch { vm.repo.setStatus(a.id, AccountStatus.DELETED) } }) {
+                            AccountListMode.DELETE -> IconButton(onClick = { vm.setStatus(a.id, AccountStatus.DELETED) }) {
                                 Icon(Icons.Filled.RemoveCircle, stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error)
                             }
                             AccountListMode.REORDER -> if (selected == a.id) {
-                                IconButton(onClick = { vm.launch { vm.repo.reorderAccounts(move(ref, list, index, -1)) } }, enabled = index > 0 || ref.groups.indexOfFirst { it.id == a.groupId } > 0) { Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up)) }
-                                IconButton(onClick = { vm.launch { vm.repo.reorderAccounts(move(ref, list, index, 1)) } }) { Icon(Icons.Filled.ArrowDownward, stringResource(R.string.move_down)) }
+                                IconButton(onClick = { vm.reorderAccounts(move(ref, list, index, -1)) }, enabled = index > 0 || ref.groups.indexOfFirst { it.id == a.groupId } > 0) { Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up)) }
+                                IconButton(onClick = { vm.reorderAccounts(move(ref, list, index, 1)) }) { Icon(Icons.Filled.ArrowDownward, stringResource(R.string.move_down)) }
                             }
                             AccountListMode.NORMAL -> Unit
                         }
@@ -274,7 +285,8 @@ private fun move(ref: RefData, list: List<Account>, index: Int, delta: Int): Lis
 @Composable
 fun DeletedAccountsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
     val list = ref.orderedAccounts().filter { it.status == AccountStatus.DELETED && ref.groupById[it.groupId]?.status == GroupStatus.ACTIVE }
     Scaffold(topBar = { NexoTopBar(stringResource(R.string.deleted_accounts), onBack = { nav.back() }) }) { p ->
         if (list.isEmpty()) {
@@ -288,7 +300,7 @@ fun DeletedAccountsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
                         Text(a.name)
                         Text(ref.groupById[a.groupId]?.name ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                     }
-                    IconButton(onClick = { vm.launch { vm.repo.setStatus(a.id, AccountStatus.PURGED) } }) { Icon(Icons.Filled.RemoveCircle, stringResource(R.string.delete_permanently), tint = MaterialTheme.colorScheme.error) }
+                    IconButton(onClick = { vm.setStatus(a.id, AccountStatus.PURGED) }) { Icon(Icons.Filled.RemoveCircle, stringResource(R.string.delete_permanently), tint = MaterialTheme.colorScheme.error) }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
@@ -299,7 +311,8 @@ fun DeletedAccountsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
 @Composable
 fun DeletedGroupsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
     val list = ref.groups.filter { it.status == GroupStatus.DELETED }
     var restore by remember { mutableStateOf<String?>(null) }
     Scaffold(topBar = { NexoTopBar(stringResource(R.string.deleted_groups), onBack = { nav.back() }) }) { p ->
@@ -315,20 +328,21 @@ fun DeletedGroupsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
                         Text("${g.name} ($count)")
                         Text(stringResource(R.string.action_restore), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.nexo.primaryText)
                     }
-                    IconButton(onClick = { vm.launch { vm.repo.setGroupStatus(g.id, GroupStatus.PURGED) } }) { Icon(Icons.Filled.RemoveCircle, stringResource(R.string.delete_permanently), tint = MaterialTheme.colorScheme.error) }
+                    IconButton(onClick = { vm.setGroupStatus(g.id, GroupStatus.PURGED) }) { Icon(Icons.Filled.RemoveCircle, stringResource(R.string.delete_permanently), tint = MaterialTheme.colorScheme.error) }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
     }
-    restore?.let { id -> ConfirmDialog(stringResource(R.string.restore_question), onConfirm = { vm.launch { vm.repo.setGroupStatus(id, GroupStatus.ACTIVE) } }, onDismiss = { restore = null }) }
+    restore?.let { id -> ConfirmDialog(stringResource(R.string.restore_question), onConfirm = { vm.setGroupStatus(id, GroupStatus.ACTIVE) }, onDismiss = { restore = null }) }
 }
 
 /** The income option is always shown, default on. */
 @Composable
 fun TransferExpenseScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
     val eligible = ref.orderedAccounts().filter { a ->
         val g = ref.groupById[a.groupId] ?: return@filter false
         a.transferExpense || (a.status != AccountStatus.DELETED && a.status != AccountStatus.PURGED && g.status == GroupStatus.ACTIVE &&
@@ -348,7 +362,7 @@ fun TransferExpenseScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
                     item(key = "g_${a.groupId}") { Text(ref.groupById[a.groupId]?.name ?: "", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.nexo.primaryText, modifier = Modifier.padding(start = 16.dp, top = 16.dp)) }
                 }
                 item(key = a.id) {
-                    Row(Modifier.fillMaxWidth().clickable { vm.launch { vm.repo.setTransferExpense(a.id, !a.transferExpense) } }.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().clickable { vm.setTransferExpense(a.id, !a.transferExpense) }.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(a.transferExpense, onCheckedChange = null, modifier = Modifier.padding(8.dp))
                         Text(a.name)
                     }
@@ -361,8 +375,8 @@ fun TransferExpenseScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
 @Composable
 fun TotalStatsScreen(vm: TotalStatsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ui by vm.ui.collectAsStateWithLifecycle()
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val ui by vm.uiState.collectAsStateWithLifecycle()
+    val ref = ui.ref
     var picker by rememberSaveable { mutableStateOf(false) }
     val main = ref.mainCurrency
     val labels = ui.periods.map { Formats.monthShort(it.label.monthValue) }
@@ -382,6 +396,6 @@ fun TotalStatsScreen(vm: TotalStatsViewModel = hiltViewModel()) {
         }
     }
     if (picker) ui.periods.lastOrNull()?.let { last ->
-        MonthPickerDialog(last.label, onPick = { vm.anchor.value = ref.settings.periods.monthPeriodFor(it).end }, onDismiss = { picker = false })
+        MonthPickerDialog(last.label, onPick = vm::pickMonth, onDismiss = { picker = false })
     }
 }

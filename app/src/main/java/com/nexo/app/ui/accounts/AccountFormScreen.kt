@@ -46,6 +46,7 @@ import com.nexo.app.core.model.Account
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.domain.CardStatement
+import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
@@ -61,8 +62,8 @@ import java.time.LocalDate
 @Composable
 fun AccountFormScreen(key: AccountFormKey) {
     val vm = hiltViewModel<AccountFormViewModel, AccountFormViewModel.Factory>(creationCallback = { it.create(key) })
-    val s by vm.ui.collectAsStateWithLifecycle()
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val s by vm.uiState.collectAsStateWithLifecycle()
+    val ref = s.ref
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val payLabel = stringResource(R.string.pay)
@@ -71,13 +72,21 @@ fun AccountFormScreen(key: AccountFormKey) {
     var pickLinked by rememberSaveable { mutableStateOf(false) }
     var showCurrencies by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        vm.events.collect { e ->
-            when (e) {
-                is AccountFormEvent.Message -> Toast.makeText(context, e.text, Toast.LENGTH_SHORT).show()
-                is AccountFormEvent.Close -> if (e.toMain) nav.backTo { it == MainKey } else nav.back()
-            }
+    LaunchedEffect(Unit) { vm.initialize() }
+    s.userMessage?.let { message ->
+        val text = message.text.asString()
+        LaunchedEffect(message.id) {
+            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+            vm.onUserMessageShown(message.id)
         }
+    }
+    LaunchedEffect(s.close) {
+        when (s.close) {
+            AccountFormClose.TO_MAIN -> nav.backTo { it == MainKey }
+            AccountFormClose.BACK -> nav.back()
+            null -> return@LaunchedEffect
+        }
+        vm.onCloseHandled()
     }
     if (!s.loaded) return
     val group = ref.groupById[s.groupId]

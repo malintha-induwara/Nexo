@@ -1,6 +1,5 @@
 package com.nexo.app.ui.budgets
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.period.DateRange
@@ -20,7 +19,6 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,8 +32,10 @@ import kotlinx.coroutines.flow.stateIn
 
 data class BudgetMonth(val period: MonthPeriod, val budget: Double, val used: Double)
 
-data class BudgetDetailUi(
+data class BudgetDetailUiState(
     val loaded: Boolean = false,
+    val ref: RefData = RefData(),
+    val month: YearMonth = YearMonth.now(),
     val budgetId: String = "",
     val name: String = "",
     val categoryId: String? = null,
@@ -51,31 +51,30 @@ data class BudgetDetailUi(
 @HiltViewModel(assistedFactory = BudgetDetailViewModel.Factory::class)
 class BudgetDetailViewModel @AssistedInject constructor(
     @Assisted key: BudgetDetailKey,
-    @ApplicationContext private val context: Context,
     refs: ReferenceDataRepository,
     repo: BudgetsRepository,
-    val transactions: TransactionsRepository,
+    private val transactions: TransactionsRepository,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
         fun create(key: BudgetDetailKey): BudgetDetailViewModel
     }
 
-    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    val budgetId = MutableStateFlow(key.budgetId)
-    val month = MutableStateFlow(YearMonth.parse(key.month))
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val budgetId = MutableStateFlow(key.budgetId)
+    private val month = MutableStateFlow(YearMonth.parse(key.month))
 
-    val ui: StateFlow<BudgetDetailUi> = combine(ref, budgetId, month, repo.getBudgetsStream(), repo.getBudgetAmountsStream()) { r, id, m, b, a -> Inputs(r, id, m, b, a) }
+    val uiState: StateFlow<BudgetDetailUiState> = combine(ref, budgetId, month, repo.getBudgetsStream(), repo.getBudgetAmountsStream()) { r, id, m, b, a -> Inputs(r, id, m, b, a) }
         .flatMapLatest { inp ->
             val e = inp.r.settings.periods
             val year = e.yearPeriods(inp.m.year)
             val range = DateRange(year.first().start, year.last().end)
             combine(transactions.getLedgerStream(range), transactions.getChangeStampStream()) { l, _ -> l }.map { l -> build(inp, year, l) }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BudgetDetailUi())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BudgetDetailUiState())
 
     private data class Inputs(val r: RefData, val id: String, val m: YearMonth, val budgets: List<Budget>, val amounts: List<BudgetAmount>)
 
-    private fun build(inp: Inputs, year: List<MonthPeriod>, l: com.nexo.app.core.model.Ledger): BudgetDetailUi {
+    private fun build(inp: Inputs, year: List<MonthPeriod>, l: com.nexo.app.core.model.Ledger): BudgetDetailUiState {
         val r = inp.r
         val budget = inp.budgets.firstOrNull { it.id == inp.id }
         val categoryId = budget?.categoryId ?: inp.id.removePrefix("virtual_").takeIf { inp.id.startsWith("virtual_") }
@@ -105,15 +104,23 @@ class BudgetDetailViewModel @AssistedInject constructor(
             if (subs.isEmpty()) emptyList()
             else listOf((mainB?.id ?: "virtual_$parentId") to (r.categoryName(parentId) ?: "")) + subs.map { it.id to (r.categoryName(it.categoryId) ?: "") }
         } else emptyList()
-        return BudgetDetailUi(
-            loaded = true, budgetId = inp.id, name = cat?.name ?: "", categoryId = categoryId, isVirtual = budget == null,
+        return BudgetDetailUiState(
+            loaded = true, ref = r, month = inp.m, budgetId = inp.id, name = cat?.name ?: "", categoryId = categoryId, isVirtual = budget == null,
             siblings = siblings, months = months, selected = selected,
             days = factory.dayGroups(dayRows, l),
         )
     }
 
+    fun selectBudget(id: String) {
+        budgetId.value = id
+    }
+
+    fun setMonth(m: YearMonth) {
+        month.value = m
+    }
+
     fun selectIndex(i: Int) {
-        ui.value.months.getOrNull(i)?.let { month.value = it.period.label }
+        uiState.value.months.getOrNull(i)?.let { month.value = it.period.label }
     }
 
     fun step(forward: Boolean) {

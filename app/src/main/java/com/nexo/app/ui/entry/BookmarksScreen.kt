@@ -57,8 +57,9 @@ fun accountLabel(ref: RefData, id: String?): String {
 
 @Composable
 fun BookmarksScreen(key: BookmarksKey, vm: BookmarksViewModel = hiltViewModel()) {
-    val list by vm.favorites.collectAsStateWithLifecycle()
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val list = state.favorites
+    val ref = state.ref
     val nav = LocalNavigator.current
     val money = LocalMoneyColors.current
     var editing by remember { mutableStateOf(false) }
@@ -88,7 +89,7 @@ fun BookmarksScreen(key: BookmarksKey, vm: BookmarksViewModel = hiltViewModel())
                     Modifier.fillMaxWidth().clickable {
                         when {
                             editing -> checked = if (f.id in checked) checked - f.id else checked + f.id
-                            key.pickForForm -> { vm.home.pickFavorite(f.id); nav.back() }
+                            key.pickForForm -> { vm.pickForForm(f.id); nav.back() }
                             else -> nav.replace(EntryKey(mode = EntryMode.FAVORITE, favoriteId = f.id))
                         }
                     }.padding(horizontal = 16.dp, vertical = 12.dp),

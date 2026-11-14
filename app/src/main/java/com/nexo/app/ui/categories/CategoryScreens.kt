@@ -41,6 +41,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -147,7 +148,8 @@ private fun EditableList(
 @Composable
 fun CategoryListScreen(key: CategoryListKey, vm: CategoryViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     val mains = ref.mainCategories(key.kind)
     val subsOn = ref.settings.subcategories
@@ -163,20 +165,21 @@ fun CategoryListScreen(key: CategoryListKey, vm: CategoryViewModel = hiltViewMod
                 label = { c -> val n = ref.subCategories(c.id).size; if (subsOn && n > 0) "${c.name} ($n)" else c.name },
                 subtitle = { c -> if (subsOn) ref.subCategories(c.id).joinToString(", ") { it.name }.ifEmpty { null } else null },
                 onClick = { c -> if (subsOn) nav.navigate(SubcategoryListKey(c.id)) else nav.navigate(CategoryFormKey(key.kind, c.id)) },
-                onReorder = { ids -> vm.launch { vm.repo.reorder(ids) } },
+                onReorder = vm::reorder,
                 onDelete = { deleting = it.id },
                 header = { SwitchRow(stringResource(R.string.subcategory), subsOn, vm::setSubcategories) },
                 empty = stringResource(R.string.no_data),
             )
         }
     }
-    deleting?.let { id -> ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.launch { vm.repo.delete(id) } }, onDismiss = { deleting = null }) }
+    deleting?.let { id -> ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.delete(id) }, onDismiss = { deleting = null }) }
 }
 
 @Composable
 fun SubcategoryListScreen(key: SubcategoryListKey, vm: CategoryViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     val parent = ref.categoryById[key.parentId] ?: return
     Scaffold(topBar = {
@@ -191,13 +194,13 @@ fun SubcategoryListScreen(key: SubcategoryListKey, vm: CategoryViewModel = hiltV
                 visual = { ref.visual(it.id) },
                 label = { it.name }, subtitle = { null },
                 onClick = { c -> nav.navigate(CategoryFormKey(parent.kind, c.id, parent.id, sub = true)) },
-                onReorder = { ids -> vm.launch { vm.repo.reorder(ids) } },
+                onReorder = vm::reorder,
                 onDelete = { deleting = it.id },
                 empty = stringResource(R.string.no_subcategories),
             )
         }
     }
-    deleting?.let { id -> ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.launch { vm.repo.delete(id) } }, onDismiss = { deleting = null }) }
+    deleting?.let { id -> ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.delete(id) }, onDismiss = { deleting = null }) }
 }
 
 /** Hue used least among the main categories of [kind], so new categories spread across the palette. */
@@ -220,8 +223,20 @@ private fun firstGrapheme(text: String): String? {
 @Composable
 fun CategoryFormScreen(key: CategoryFormKey, vm: CategoryViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
     val colors = LocalNexoColors.current
+    LaunchedEffect(state.navigation) {
+        when (val target = state.navigation) {
+            CategoryNavigation.Back -> nav.back()
+            is CategoryNavigation.SubcategoriesOf -> {
+                nav.backTo { it is CategoryListKey }
+                nav.navigate(SubcategoryListKey(target.parentId))
+            }
+            null -> return@LaunchedEffect
+        }
+        vm.onNavigationHandled()
+    }
     val existing = key.categoryId?.let { ref.categoryById[it] }
     val isSub = key.sub || existing?.parentId != null
     var name by rememberSaveable(existing?.id) { mutableStateOf(existing?.name ?: key.presetName ?: "") }
@@ -298,11 +313,7 @@ fun CategoryFormScreen(key: CategoryFormKey, vm: CategoryViewModel = hiltViewMod
                 when {
                     name.isBlank() -> error = R.string.please_enter_contents
                     isSub && parent == null -> error = R.string.select_specific_category
-                    else -> vm.launch {
-                        if (existing == null) vm.repo.add(key.kind, name, if (isSub) parent else null, emoji, color)
-                        else vm.repo.update(existing.id, name, if (isSub) parent else existing.parentId, emoji, color)
-                        nav.back()
-                    }
+                    else -> vm.save(key.kind, existing?.id, name, if (isSub) parent else existing?.parentId, emoji, color)
                 }
             }, modifier = gutter.fillMaxWidth().padding(top = Space.section).height(52.dp)) { Text(stringResource(R.string.action_save), style = MaterialTheme.typography.labelLarge) }
             if (existing != null && isSub) {
@@ -326,12 +337,12 @@ fun CategoryFormScreen(key: CategoryFormKey, vm: CategoryViewModel = hiltViewMod
     confirmTarget?.let { target ->
         ConfirmDialog(
             stringResource(R.string.to_subcategory_confirm, existing?.name ?: "", ref.categoryName(target) ?: ""),
-            onConfirm = { vm.launch { vm.repo.toSub(existing!!.id, target); nav.backTo { it is CategoryListKey }; nav.navigate(SubcategoryListKey(target)) } },
+            onConfirm = { vm.moveUnder(existing!!.id, target) },
             onDismiss = { confirmTarget = null },
         )
     }
     if (confirmMain && existing != null) {
-        ConfirmDialog(stringResource(R.string.to_main_confirm), onConfirm = { vm.launch { vm.repo.toMain(existing.id); nav.back() } }, onDismiss = { confirmMain = false })
+        ConfirmDialog(stringResource(R.string.to_main_confirm), onConfirm = { vm.makeMain(existing.id) }, onDismiss = { confirmMain = false })
     }
 }
 

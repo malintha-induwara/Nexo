@@ -32,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +50,7 @@ import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.GroupType
+import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.FlowAmount
@@ -82,13 +84,19 @@ import java.util.Locale
 @Composable
 fun AccountDetailScreen(key: AccountDetailKey) {
     val vm = hiltViewModel<AccountDetailViewModel, AccountDetailViewModel.Factory>(creationCallback = { it.create(key) })
-    val ui by vm.ui.collectAsStateWithLifecycle()
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val tab by vm.tab.collectAsStateWithLifecycle()
-    val charts by vm.charts.collectAsStateWithLifecycle()
-    val selection by vm.selection.collectAsStateWithLifecycle()
-    val anchor by vm.anchor.collectAsStateWithLifecycle()
+    val ui by vm.uiState.collectAsStateWithLifecycle()
+    val ref = ui.ref
+    val tab = ui.tab
+    val charts = ui.charts
+    val selection = ui.selection
+    val anchor = ui.anchor
     val nav = LocalNavigator.current
+    LaunchedEffect(ui.restored) {
+        if (ui.restored) {
+            nav.back()
+            vm.onRestoredHandled()
+        }
+    }
     val money = LocalMoneyColors.current
     var help by rememberSaveable { mutableStateOf(false) }
     var monthPicker by rememberSaveable { mutableStateOf(false) }
@@ -115,7 +123,7 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                     }
                     if (!isNone) {
                         PeriodNavigator(
-                            ui.title, { vm.step(false) }, { vm.step(true) },
+                            ui.title.asString(), { vm.step(false) }, { vm.step(true) },
                             if (tab == DetailTab.DAILY) ({ monthPicker = true }) else null,
                             modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurface,
                         )
@@ -183,13 +191,13 @@ fun AccountDetailScreen(key: AccountDetailKey) {
         val e = vm.engineFor(ref, account)
         MonthPickerDialog(e.monthPeriodContaining(anchor).label, onPick = { vm.setAnchor(e.monthPeriodFor(it).end) }, onDismiss = { monthPicker = false })
     }
-    if (restore) ConfirmDialog(stringResource(R.string.restore_question), onConfirm = { vm.restore { nav.back() } }, onDismiss = { restore = false })
+    if (restore) ConfirmDialog(stringResource(R.string.restore_question), onConfirm = { vm.restore() }, onDismiss = { restore = false })
     BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.bulkActions, onDismiss = { bulkOpen = false })
 }
 
 /** The statement for the period on screen: the balance on one line, with money in, out and the net beneath. */
 @Composable
-private fun SummaryBlock(ui: AccountDetailUi, cur: Currency, tab: DetailTab, charts: Boolean, onToggleCharts: () -> Unit, onEdit: () -> Unit, onHelp: () -> Unit) {
+private fun SummaryBlock(ui: AccountDetailUiState, cur: Currency, tab: DetailTab, charts: Boolean, onToggleCharts: () -> Unit, onEdit: () -> Unit, onHelp: () -> Unit) {
     val colors = LocalNexoColors.current
     val money = LocalMoneyColors.current
     GroupCard(Modifier.padding(horizontal = Space.l, vertical = Space.xs)) {

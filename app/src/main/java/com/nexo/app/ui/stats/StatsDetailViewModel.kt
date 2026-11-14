@@ -1,6 +1,5 @@
 package com.nexo.app.ui.stats
 
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -16,6 +15,7 @@ import com.nexo.app.data.repository.MemosRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.domain.Classifier
+import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.navigation.StatsDetailKey
 import com.nexo.app.ui.navigation.StatsDetailKind
@@ -28,8 +28,8 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDate
+import java.time.YearMonth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -40,10 +40,14 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 
-data class Breakdown(val key: String, val name: String, val amount: Double, val percent: Int?)
+data class Breakdown(val key: String, val name: UiText, val amount: Double, val percent: Int?)
 
-data class StatsDetailUi(
-    val title: String = "",
+data class StatsDetailUiState(
+    val ref: RefData = RefData(),
+    val query: StatsQuery = StatsQuery(),
+    val selected: String = "all",
+    val selection: Set<String> = emptySet(),
+    val title: UiText = UiText.Empty,
     val range: DateRange = DateRange(LocalDate.now(), LocalDate.now()),
     val total: Double = 0.0,
     val breakdown: List<Breakdown> = emptyList(),
@@ -56,10 +60,9 @@ data class StatsDetailUi(
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel(assistedFactory = StatsDetailViewModel.Factory::class)
 class StatsDetailViewModel @AssistedInject constructor(
-    @Assisted val key: StatsDetailKey,
-    @ApplicationContext private val context: Context,
+    @Assisted private val key: StatsDetailKey,
     refs: ReferenceDataRepository,
-    val transactions: TransactionsRepository,
+    private val transactions: TransactionsRepository,
     private val memos: MemosRepository,
 ) : ViewModel() {
     @AssistedFactory
@@ -67,15 +70,16 @@ class StatsDetailViewModel @AssistedInject constructor(
         fun create(key: StatsDetailKey): StatsDetailViewModel
     }
 
-    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    val query = MutableStateFlow(StatsQuery(key.scope, LocalDate.parse(key.end), LocalDate.parse(key.start), LocalDate.parse(key.end)))
-    val selected = MutableStateFlow("all")
-    val selection = MutableStateFlow<Set<String>>(emptySet())
+    /** Kept for event handlers that need the reference data synchronously. */
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val query = MutableStateFlow(StatsQuery(key.scope, LocalDate.parse(key.end), LocalDate.parse(key.start), LocalDate.parse(key.end)))
+    private val selected = MutableStateFlow("all")
+    private val selection = MutableStateFlow<Set<String>>(emptySet())
     val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, selection)
 
     private val isTransfer = key.kind == StatsDetailKind.TRANSFER_EXPENSE_GROUP || key.kind == StatsDetailKind.TRANSFER_INCOME_GROUP
 
-    val ui: StateFlow<StatsDetailUi> = combine(ref, query, selected) { r, q, s -> Triple(r, q, s) }.flatMapLatest { (r, q, sel) ->
+    private val content = combine(ref, query, selected) { r, q, s -> Triple(r, q, s) }.flatMapLatest { (r, q, sel) ->
         val e = r.settings.periods
         val range = scopeRange(e, q)
         val buckets: List<Pair<String, DateRange>> = when (q.scope) {
@@ -93,7 +97,11 @@ class StatsDetailViewModel @AssistedInject constructor(
         }
         val loadRange = DateRange(minOf(range.start, buckets.first().second.start), maxOf(range.end, buckets.last().second.end))
         combine(transactions.getLedgerStream(loadRange), memos.getMemosStream(range.startText, range.endText)) { l, memos -> build(r, range, buckets, l, sel, memos) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StatsDetailUi(color = key.colorIndex))
+    }
+
+    val uiState: StateFlow<StatsDetailUiState> = combine(content, ref, query, selected, selection) { c, r, q, sel, ids ->
+        c.copy(ref = r, query = q, selected = sel, selection = ids)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StatsDetailUiState(color = key.colorIndex))
 
     private fun matches(r: RefData, c: Classifier, t: Transaction): Boolean = when (key.kind) {
         StatsDetailKind.INCOME, StatsDetailKind.EXPENSE -> {
@@ -117,7 +125,7 @@ class StatsDetailViewModel @AssistedInject constructor(
         else -> r.subCategoryId(t.categoryId) ?: "other"
     }
 
-    private fun build(r: RefData, range: DateRange, buckets: List<Pair<String, DateRange>>, l: com.nexo.app.core.model.Ledger, sel: String, memos: List<com.nexo.app.core.model.Memo>): StatsDetailUi {
+    private fun build(r: RefData, range: DateRange, buckets: List<Pair<String, DateRange>>, l: com.nexo.app.core.model.Ledger, sel: String, memos: List<com.nexo.app.core.model.Memo>): StatsDetailUiState {
         val c = Classifier(r)
         val all = l.rows.filter { matches(r, c, it) }
         val inRange = all.filter { LocalDate.parse(it.date) in range }
@@ -127,23 +135,23 @@ class StatsDetailViewModel @AssistedInject constructor(
         fun pct(a: Double) = if (base == 0.0) null else Math.round(a * 100 / base).toInt()
         val subs = groups.filterKeys { it != "other" }.toList().sortedByDescending { it.second }.map { (k, v) ->
             val name = if (isTransfer) r.accountById[k]?.name ?: "" else r.categoryName(k) ?: ""
-            Breakdown(k, name, v, pct(v))
+            Breakdown(k, UiText.Raw(name), v, pct(v))
         }
-        val other = groups["other"]?.takeIf { it != 0.0 }?.let { Breakdown("other", context.getString(R.string.other), it, pct(it)) }
-        val breakdown = if (showBreakdown) listOf(Breakdown("all", context.getString(R.string.all), groups.values.sum(), null)) + subs + listOfNotNull(other) else emptyList()
+        val other = groups["other"]?.takeIf { it != 0.0 }?.let { Breakdown("other", UiText.of(R.string.other), it, pct(it)) }
+        val breakdown = if (showBreakdown) listOf(Breakdown("all", UiText.of(R.string.all), groups.values.sum(), null)) + subs + listOfNotNull(other) else emptyList()
         val visibleBreakdown = if (!isTransfer && breakdown.size < 2) emptyList() else breakdown
         val filtered = { list: List<Transaction> -> if (sel == "all") list else list.filter { subKey(r, it) == sel } }
         val trend = buckets.map { (_, br) -> Money.round(filtered(all).filter { LocalDate.parse(it.date) in br }.sumOf { it.amountMain }, r.mainCurrency.decimals) }
         val listRows = filtered(inRange)
         val title = when {
-            sel != "all" -> visibleBreakdown.firstOrNull { it.key == sel }?.name ?: ""
-            isTransfer -> r.groupById[key.targetId]?.name ?: ""
-            key.targetId == KEY_NONE -> context.getString(R.string.none)
-            key.targetId == KEY_MODIFIED -> context.getString(R.string.modified_balance)
-            else -> r.categoryName(key.targetId) ?: ""
+            sel != "all" -> visibleBreakdown.firstOrNull { it.key == sel }?.name ?: UiText.Empty
+            isTransfer -> UiText.Raw(r.groupById[key.targetId]?.name ?: "")
+            key.targetId == KEY_NONE -> UiText.of(R.string.none)
+            key.targetId == KEY_MODIFIED -> UiText.of(R.string.modified_balance)
+            else -> UiText.Raw(r.categoryName(key.targetId) ?: "")
         }
         val color = if (sel != "all" && visibleBreakdown.size > 2) (visibleBreakdown.indexOfFirst { it.key == sel } - 1).coerceAtLeast(0) % 11 else key.colorIndex
-        return StatsDetailUi(
+        return StatsDetailUiState(
             title = title, range = range, total = listRows.sumOf { it.amountMain }, breakdown = visibleBreakdown,
             trendLabels = buckets.map { it.first }, trend = trend, color = color,
             days = TransactionRowMapper(r).dayGroups(listRows, l, memos = memos.filter { LocalDate.parse(it.date) in range }.groupBy { LocalDate.parse(it.date) }),
@@ -154,5 +162,13 @@ class StatsDetailViewModel @AssistedInject constructor(
     fun setRange(f: LocalDate, t: LocalDate) = query.update { it.copy(from = f, to = t) }
     fun select(k: String) {
         selected.value = k
+    }
+
+    fun setMonth(month: YearMonth) = query.update { it.copy(anchor = ref.value.settings.periods.monthPeriodFor(month).end) }
+
+    fun toggleSelect(id: String) = selection.update { if (id in it) it - id else it + id }
+
+    fun setSelection(ids: Set<String>) {
+        selection.value = ids
     }
 }

@@ -1,6 +1,5 @@
 package com.nexo.app.ui.accounts
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.money.AmountFormatter
@@ -18,6 +17,7 @@ import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.domain.CardFigures
 import com.nexo.app.domain.CardStatement
+import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.navigation.AccountDetailKey
 import com.nexo.app.ui.transactions.BulkEditActions
 import com.nexo.app.ui.transactions.DayGroup
@@ -27,7 +27,6 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.YearMonth
@@ -35,7 +34,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -48,12 +46,19 @@ data class PeriodRowUi(val label: String, val range: DateRange, val deposit: Dou
 
 data class ChartData(val labels: List<String>, val balances: List<Double>, val inflow: List<Double>, val outflow: List<Double>)
 
-data class AccountDetailUi(
+data class AccountDetailUiState(
     val loaded: Boolean = false,
     val account: Account? = null,
     val type: GroupType = GroupType.NORMAL,
     val range: DateRange = DateRange.ALL,
-    val title: String = "",
+    val title: UiText = UiText.Empty,
+    val ref: RefData = RefData(),
+    val tab: DetailTab = DetailTab.DAILY,
+    val anchor: LocalDate = LocalDate.now(),
+    val charts: Boolean = false,
+    val selection: Set<String> = emptySet(),
+    /** The account was restored: the screen goes back, then calls [AccountDetailViewModel.onRestoredHandled]. */
+    val restored: Boolean = false,
     val days: List<DayGroup> = emptyList(),
     val running: Map<String, Double> = emptyMap(),
     val deposit: Double = 0.0,
@@ -68,11 +73,10 @@ data class AccountDetailUi(
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel(assistedFactory = AccountDetailViewModel.Factory::class)
 class AccountDetailViewModel @AssistedInject constructor(
-    @Assisted val key: AccountDetailKey,
-    @ApplicationContext private val context: Context,
+    @Assisted private val key: AccountDetailKey,
     private val memos: MemosRepository,
     refs: ReferenceDataRepository,
-    val transactions: TransactionsRepository,
+    private val transactions: TransactionsRepository,
     private val accounts: AccountsRepository,
 ) : ViewModel() {
     @AssistedFactory
@@ -80,34 +84,34 @@ class AccountDetailViewModel @AssistedInject constructor(
         fun create(key: AccountDetailKey): AccountDetailViewModel
     }
 
-    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    /** Kept for event handlers that need the reference data synchronously. */
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     private val _tab = MutableStateFlow(DetailTab.DAILY)
-    val tab = _tab.asStateFlow()
     private val _anchor = MutableStateFlow(key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now())
-    val anchor = _anchor.asStateFlow()
     private val _charts = MutableStateFlow(false)
-    val charts = _charts.asStateFlow()
     private val _selection = MutableStateFlow<Set<String>>(emptySet())
-    val selection = _selection.asStateFlow()
+    private val restored = MutableStateFlow(false)
     val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, _selection)
 
-    val ui: StateFlow<AccountDetailUi> = combine(ref, _tab, _anchor, _charts, transactions.getChangeStampStream()) { r, t, a, c, _ -> Quad(r, t, a, c) }
-        .mapLatest { compute(it.r, it.t, it.a, it.c) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountDetailUi())
+    private val content = combine(ref, _tab, _anchor, _charts, transactions.getChangeStampStream()) { r, t, a, c, _ -> Quad(r, t, a, c) }
+        .mapLatest { compute(it.r, it.t, it.a, it.c).copy(ref = it.r, tab = it.t, anchor = it.a, charts = it.c) }
+
+    val uiState: StateFlow<AccountDetailUiState> = combine(content, _selection, restored) { c, ids, done -> c.copy(selection = ids, restored = done) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountDetailUiState())
 
     private data class Quad(val r: RefData, val t: DetailTab, val a: LocalDate, val c: Boolean)
 
     fun engineFor(r: RefData, a: Account?): PeriodEngine =
         if (a != null && r.groupType(a.id) == GroupType.CREDIT_CARD) PeriodEngine(a.settlementDay, weekStart = r.settings.weekStartDay) else r.settings.periods
 
-    private suspend fun compute(r: RefData, tab: DetailTab, anchor: LocalDate, charts: Boolean): AccountDetailUi {
+    private suspend fun compute(r: RefData, tab: DetailTab, anchor: LocalDate, charts: Boolean): AccountDetailUiState {
         val account = key.accountId?.let { r.accountById[it] }
         val factory = TransactionRowMapper(r)
         if (account == null) {
             // "None" pseudo-account: all unassigned rows, no balances.
             val rows = transactions.getWithoutAccount()
             val ledger = transactions.getLedgerFor(rows)
-            return AccountDetailUi(loaded = true, title = context.getString(com.nexo.app.R.string.none), days = factory.dayGroups(rows, ledger))
+            return AccountDetailUiState(loaded = true, title = UiText.of(com.nexo.app.R.string.none), days = factory.dayGroups(rows, ledger))
         }
         val type = r.groupType(account.id) ?: GroupType.NORMAL
         val ids = listOf(account.id) + r.linkedDebitCards(account.id).map { it.id }
@@ -168,9 +172,9 @@ class AccountDetailViewModel @AssistedInject constructor(
                         list.map { outflow(nonBalance(inRange(it.range))) },
                     )
                 } else null
-                return AccountDetailUi(
+                return AccountDetailUiState(
                     loaded = true, account = account, type = type, range = range,
-                    title = com.nexo.app.ui.designsystem.component.Formats.monthYear(period.label),
+                    title = UiText.Raw(com.nexo.app.ui.designsystem.component.Formats.monthYear(period.label)),
                     days = days, running = runningMap, deposit = inflow(rows), withdrawal = outflow(rows),
                     balance = if (isDebit) null else endBalance, showHelp = help, chart = chart, card = card,
                 )
@@ -187,8 +191,8 @@ class AccountDetailViewModel @AssistedInject constructor(
                 }.reversed()
                 val yr = DateRange(periods.first().start, periods.last().end)
                 val rows = inRange(yr)
-                return AccountDetailUi(
-                    loaded = true, account = account, type = type, range = yr, title = year.toString(), periods = rowsUi,
+                return AccountDetailUiState(
+                    loaded = true, account = account, type = type, range = yr, title = UiText.Raw(year.toString()), periods = rowsUi,
                     deposit = inflow(rows), withdrawal = outflow(rows), balance = if (isDebit) null else net(upTo(yr.end)),
                     chart = if (charts) yearChart(engine, year, ::inRange, ::upTo, ::net, ::inflow, ::outflow) else null, card = card,
                 )
@@ -208,8 +212,8 @@ class AccountDetailViewModel @AssistedInject constructor(
                     PeriodRowUi(y.toString(), yr, inflow(rows), outflow(rows), bal.toDouble(), y == thisYear, year = y)
                 }.reversed()
                 val chartYear = engine.yearOf(anchor)
-                return AccountDetailUi(
-                    loaded = true, account = account, type = type, range = DateRange.ALL, title = "$lo ~ $last", periods = rowsUi,
+                return AccountDetailUiState(
+                    loaded = true, account = account, type = type, range = DateRange.ALL, title = UiText.Raw("$lo ~ $last"), periods = rowsUi,
                     deposit = rowsUi.sumOf { it.deposit }, withdrawal = rowsUi.sumOf { it.withdrawal }, balance = null,
                     chart = if (charts) yearChart(engine, chartYear, ::inRange, ::upTo, ::net, ::inflow, ::outflow) else null, card = card,
                 )
@@ -272,8 +276,12 @@ class AccountDetailViewModel @AssistedInject constructor(
         _selection.value = ids
     }
 
-    fun restore(onDone: () -> Unit) = viewModelScope.launch {
+    fun restore() = viewModelScope.launch {
         key.accountId?.let { accounts.setStatus(it, AccountStatus.ACTIVE) }
-        onDone()
+        restored.value = true
+    }
+
+    fun onRestoredHandled() {
+        restored.value = false
     }
 }

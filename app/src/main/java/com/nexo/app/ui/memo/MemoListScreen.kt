@@ -52,10 +52,11 @@ import java.time.LocalDate
 @Composable
 fun MemoListScreen(key: MemoListKey) {
     val vm = hiltViewModel<MemoListViewModel, MemoListViewModel.Factory>(creationCallback = { it.create(key) })
-    val memos by vm.memos.collectAsStateWithLifecycle()
-    val period by vm.period.collectAsStateWithLifecycle()
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val device by vm.device.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val memos = state.memos
+    val period = state.period
+    val device = state.device
+    val ref = state.ref
     val nav = LocalNavigator.current
     val dark = LocalIsDark.current
     var picker by rememberSaveable { mutableStateOf(false) }
@@ -68,7 +69,7 @@ fun MemoListScreen(key: MemoListKey) {
             }
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { nav.navigate(MemoEditorKey(date = vm.date.value.toString())) }, containerColor = MaterialTheme.colorScheme.primary) {
+            FloatingActionButton(onClick = { nav.navigate(MemoEditorKey(date = state.date.toString())) }, containerColor = MaterialTheme.colorScheme.primary) {
                 Icon(Icons.AutoMirrored.Outlined.StickyNote2, stringResource(R.string.new_memo), tint = MaterialTheme.colorScheme.onPrimary)
             }
         },
@@ -98,5 +99,5 @@ fun MemoListScreen(key: MemoListKey) {
             }
         }
     }
-    if (picker) period?.let { p -> MonthPickerDialog(p.label, onPick = { m -> vm.date.value = ref.settings.periods.monthPeriodFor(m).end }, onDismiss = { picker = false }) }
+    if (picker) period?.let { p -> MonthPickerDialog(p.label, onPick = vm::pickMonth, onDismiss = { picker = false }) }
 }

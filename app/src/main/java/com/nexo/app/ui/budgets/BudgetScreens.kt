@@ -77,9 +77,9 @@ import java.time.YearMonth
 @Composable
 fun BudgetDetailScreen(key: BudgetDetailKey) {
     val vm = hiltViewModel<BudgetDetailViewModel, BudgetDetailViewModel.Factory>(creationCallback = { it.create(key) })
-    val ui by vm.ui.collectAsStateWithLifecycle()
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val month by vm.month.collectAsStateWithLifecycle()
+    val ui by vm.uiState.collectAsStateWithLifecycle()
+    val ref = ui.ref
+    val month = ui.month
     val nav = LocalNavigator.current
     val money = LocalMoneyColors.current
     var dropdown by rememberSaveable { mutableStateOf(false) }
@@ -94,7 +94,7 @@ fun BudgetDetailScreen(key: BudgetDetailKey) {
                     if (ui.siblings.isNotEmpty()) Icon(Icons.Filled.ArrowDropDown, null)
                 }
                 NexoMenu(dropdown, { dropdown = false }) {
-                    ui.siblings.forEach { (id, name) -> NexoMenuItem(name, { dropdown = false; vm.budgetId.value = id }) }
+                    ui.siblings.forEach { (id, name) -> NexoMenuItem(name, { dropdown = false; vm.selectBudget(id) }) }
                 }
             }
         }) {
@@ -133,15 +133,16 @@ fun BudgetDetailScreen(key: BudgetDetailKey) {
             )
         }
     }
-    if (picker) MonthPickerDialog(month, onPick = { vm.month.value = it }, onDismiss = { picker = false })
+    if (picker) MonthPickerDialog(month, onPick = vm::setMonth, onDismiss = { picker = false })
 }
 
 /** Budget Settings, plain or expandable. */
 @Composable
 fun BudgetSettingsScreen(vm: BudgetSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val data by vm.list.collectAsStateWithLifecycle()
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val data = state.list
+    val ref = state.ref
     var confirm by rememberSaveable { mutableStateOf<String?>(null) }
     var expanded by rememberSaveable { mutableStateOf(setOf<String>()) }
     val main = ref.mainCurrency
@@ -204,7 +205,14 @@ private fun SettingsBudgetRow(row: BudgetRow, main: com.nexo.app.core.model.Curr
 @Composable
 fun BudgetAddScreen(key: BudgetAddKey, vm: BudgetSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    LaunchedEffect(state.added) {
+        if (state.added) {
+            nav.back()
+            vm.onAddedHandled()
+        }
+    }
     var target by rememberSaveable { mutableStateOf(if (key.presetTotal) "total" else key.categoryId) }
     var amount by rememberSaveable { mutableStateOf<Double?>(null) }
     var picker by rememberSaveable { mutableStateOf(!key.preset) }
@@ -225,7 +233,7 @@ fun BudgetAddScreen(key: BudgetAddKey, vm: BudgetSettingsViewModel = hiltViewMod
             if (error) Text(stringResource(R.string.select_specific_category), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
             Button(onClick = {
                 val t = target
-                if (t == null) error = true else vm.add(if (t == "total") null else t, amount ?: 0.0) { nav.back() }
+                if (t == null) error = true else vm.add(if (t == "total") null else t, amount ?: 0.0)
             }, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text(stringResource(R.string.action_save)) }
         }
     }
@@ -240,9 +248,10 @@ fun BudgetAddScreen(key: BudgetAddKey, vm: BudgetSettingsViewModel = hiltViewMod
 @Composable
 fun BudgetEditorScreen(key: BudgetEditorKey, vm: BudgetSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val budgets by vm.budgets.collectAsStateWithLifecycle()
-    val amounts by vm.amounts.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val budgets = state.budgets
+    val amounts = state.amounts
     val budget = budgets.firstOrNull { it.id == key.budgetId }
     val records = amounts.filter { it.budgetId == key.budgetId }
     val currentLabel = ref.settings.periods.monthPeriodContaining(LocalDate.now()).label

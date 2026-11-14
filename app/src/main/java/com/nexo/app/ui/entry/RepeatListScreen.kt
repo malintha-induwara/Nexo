@@ -84,8 +84,9 @@ fun estimatedCount(rule: RepeatRule, period: MonthPeriod): Int {
 
 @Composable
 fun RepeatListScreen(vm: RepeatListViewModel = hiltViewModel()) {
-    val rules by vm.rules.collectAsStateWithLifecycle()
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val rules = state.rules
+    val ref = state.ref
     val nav = LocalNavigator.current
     val money = LocalMoneyColors.current
     var editing by remember { mutableStateOf(false) }

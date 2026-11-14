@@ -73,10 +73,11 @@ fun accountsModeLabel(m: AccountsMode): String = stringResource(
 
 @Composable
 fun AccountsTab(todaySignal: Int, vm: AccountsViewModel = hiltViewModel()) {
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val data by vm.data.collectAsStateWithLifecycle()
-    val q by vm.query.collectAsStateWithLifecycle()
-    val device by vm.device.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val data = state.data
+    val q = state.query
+    val device = state.device
     val nav = LocalNavigator.current
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()

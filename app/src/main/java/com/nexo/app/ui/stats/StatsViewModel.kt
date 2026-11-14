@@ -1,6 +1,5 @@
 package com.nexo.app.ui.stats
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
@@ -13,10 +12,10 @@ import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.domain.Classifier
+import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.navigation.StatsDetailKind
 import com.nexo.app.ui.navigation.StatsScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
@@ -26,14 +25,13 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 
-data class StatsRow(val key: String?, val name: String, val amount: Double, val percent: Double, val colorIndex: Int, val kind: StatsDetailKind)
+data class StatsRow(val key: String?, val name: UiText, val amount: Double, val percent: Double, val colorIndex: Int, val kind: StatsDetailKind)
 
 data class StatsData(
     val range: DateRange = DateRange(LocalDate.now(), LocalDate.now()),
@@ -49,6 +47,13 @@ data class StatsQuery(
     val anchor: LocalDate = LocalDate.now(),
     val from: LocalDate = LocalDate.now(),
     val to: LocalDate = LocalDate.now(),
+)
+
+data class StatsUiState(
+    val ref: RefData = RefData(),
+    val query: StatsQuery = StatsQuery(),
+    val income: Boolean = false,
+    val data: StatsData = StatsData(),
 )
 
 const val KEY_NONE = "__none__"
@@ -68,7 +73,7 @@ fun stepAnchor(e: PeriodEngine, scope: StatsScope, d: LocalDate, forward: Boolea
     StatsScope.PERIOD -> d
 }
 
-fun statsRows(context: Context, ref: RefData, rows: List<Transaction>, income: Boolean): List<StatsRow> {
+fun statsRows(ref: RefData, rows: List<Transaction>, income: Boolean): List<StatsRow> {
     val kind = if (income) TxKind.INCOME else TxKind.EXPENSE
     val cats = HashMap<String, BigDecimal>()
     rows.filter { it.kind == kind }.forEach { t ->
@@ -90,13 +95,13 @@ fun statsRows(context: Context, ref: RefData, rows: List<Transaction>, income: B
     fun pct(a: BigDecimal) = if (a.signum() > 0 && positiveBase.signum() != 0) a.multiply(BigDecimal(100)).divide(positiveBase, 6, RoundingMode.HALF_UP).toDouble() else 0.0
     val list = cats.map { (k, v) ->
         val name = when (k) {
-            KEY_NONE -> context.getString(R.string.none)
-            KEY_MODIFIED -> context.getString(R.string.modified_balance)
-            else -> ref.categoryName(k) ?: context.getString(R.string.none)
+            KEY_NONE -> UiText.of(R.string.none)
+            KEY_MODIFIED -> UiText.of(R.string.modified_balance)
+            else -> ref.categoryName(k)?.let(UiText::Raw) ?: UiText.of(R.string.none)
         }
         StatsRow(k, name, v.toDouble(), pct(v), 0, if (income) StatsDetailKind.INCOME else StatsDetailKind.EXPENSE)
     } + te.filter { it.value.signum() != 0 }.map { (g, v) ->
-        StatsRow(g, ref.groupById[g]?.name ?: "", v.toDouble(), pct(v), 0, if (income) StatsDetailKind.TRANSFER_INCOME_GROUP else StatsDetailKind.TRANSFER_EXPENSE_GROUP)
+        StatsRow(g, UiText.Raw(ref.groupById[g]?.name ?: ""), v.toDouble(), pct(v), 0, if (income) StatsDetailKind.TRANSFER_INCOME_GROUP else StatsDetailKind.TRANSFER_EXPENSE_GROUP)
     }
     return list.sortedByDescending { it.amount }.mapIndexed { i, row -> row.copy(colorIndex = i % 11) }
 }
@@ -106,20 +111,21 @@ private fun r(ref: RefData, accountId: String?): String? = ref.accountById[accou
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class StatsViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
     refs: ReferenceDataRepository,
     transactions: TransactionsRepository,
 ) : ViewModel() {
-    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    /** Kept for event handlers that need the reference data synchronously. */
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     private val _query = MutableStateFlow(StatsQuery())
-    val query = _query.asStateFlow()
     private val _income = MutableStateFlow(false)
-    val income = _income.asStateFlow()
 
-    val data: StateFlow<StatsData> = combine(ref, _query) { r, q -> r to q }.flatMapLatest { (r, q) ->
+    private val data = combine(ref, _query) { r, q -> r to q }.flatMapLatest { (r, q) ->
         val range = scopeRange(r.settings.periods, q)
-        transactions.getLedgerStream(range).map { l -> StatsData(range, statsRows(context, r, l.rows, true), statsRows(context, r, l.rows, false)) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StatsData())
+        transactions.getLedgerStream(range).map { l -> StatsData(range, statsRows(r, l.rows, true), statsRows(r, l.rows, false)) }
+    }
+
+    val uiState: StateFlow<StatsUiState> = combine(ref, _query, _income, data, ::StatsUiState)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StatsUiState())
 
     fun setIncome(v: Boolean) {
         _income.value = v

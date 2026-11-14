@@ -1,5 +1,6 @@
 package com.nexo.app.ui.memo
 
+import androidx.annotation.MainThread
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -19,11 +20,12 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class MemoUi(
+data class MemoEditorUiState(
     val loaded: Boolean = false,
     val id: String? = null,
     val title: String = "",
@@ -32,6 +34,8 @@ data class MemoUi(
     val color: MemoColor = MemoColor.WHITE,
     val pinned: Boolean = false,
     val pinnedAt: Long = 0,
+    /** The memo was saved or deleted: the screen goes back, then calls [MemoEditorViewModel.onClosed]. */
+    val closed: Boolean = false,
 )
 
 @HiltViewModel(assistedFactory = MemoEditorViewModel.Factory::class)
@@ -45,18 +49,23 @@ class MemoEditorViewModel @AssistedInject constructor(
         fun create(key: MemoEditorKey): MemoEditorViewModel
     }
 
-    private val _ui = MutableStateFlow(MemoUi())
-    val ui = _ui.asStateFlow()
+    private val _ui = MutableStateFlow(MemoEditorUiState())
+    val uiState: StateFlow<MemoEditorUiState> = _ui.asStateFlow()
     private var original: Memo? = null
+    private var initialized = false
 
-    init {
+    /** Loads the memo once; safe to call again. */
+    @MainThread
+    fun initialize() {
+        if (initialized) return
+        initialized = true
         viewModelScope.launch {
             val m = key.memoId?.let { memos.getMemo(it) }
             original = m
             _ui.value = if (m != null) {
-                MemoUi(true, m.id, m.title, m.content.trimEnd('\n'), LocalDate.parse(m.date), m.color, m.pinned, m.pinnedAt)
+                MemoEditorUiState(true, m.id, m.title, m.content.trimEnd('\n'), LocalDate.parse(m.date), m.color, m.pinned, m.pinnedAt)
             } else {
-                MemoUi(loaded = true, date = key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now())
+                MemoEditorUiState(loaded = true, date = key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now())
             }
         }
     }
@@ -68,7 +77,7 @@ class MemoEditorViewModel @AssistedInject constructor(
     fun togglePin() = _ui.update { if (it.pinned) it.copy(pinned = false, pinnedAt = 0) else it.copy(pinned = true, pinnedAt = System.currentTimeMillis()) }
 
     /** Saved on back; an emptied existing memo is deleted. */
-    fun saveAndClose(onDone: () -> Unit) = viewModelScope.launch {
+    fun saveAndClose() = viewModelScope.launch {
         val s = _ui.value
         val empty = s.title.isBlank() && s.content.isBlank()
         val o = original
@@ -95,11 +104,13 @@ class MemoEditorViewModel @AssistedInject constructor(
                 home.focusOn(s.date)
             }
         }
-        onDone()
+        _ui.update { it.copy(closed = true) }
     }
 
-    fun delete(onDone: () -> Unit) = viewModelScope.launch {
+    fun delete() = viewModelScope.launch {
         original?.let { memos.delete(it.id) }
-        onDone()
+        _ui.update { it.copy(closed = true) }
     }
+
+    fun onClosed() = _ui.update { it.copy(closed = false) }
 }

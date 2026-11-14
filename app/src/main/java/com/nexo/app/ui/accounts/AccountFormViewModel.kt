@@ -1,5 +1,7 @@
 package com.nexo.app.ui.accounts
 
+import androidx.annotation.MainThread
+import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -16,23 +18,25 @@ import com.nexo.app.core.model.Transaction
 import com.nexo.app.data.repository.AccountsRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
+import com.nexo.app.ui.designsystem.UiText
+import com.nexo.app.ui.designsystem.UserMessage
 import com.nexo.app.ui.navigation.AccountFormKey
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class AccountFormUi(
+data class AccountFormUiState(
     val loaded: Boolean = false,
+    val ref: RefData = RefData(),
     val isNew: Boolean = true,
     val id: String = UUID.randomUUID().toString(),
     val groupId: String? = null,
@@ -50,17 +54,19 @@ data class AccountFormUi(
     val pickGroup: Boolean = false,
     val difference: Double? = null,
     val confirmCurrency: Boolean = false,
+    /** Shown once, then cleared with [AccountFormViewModel.onUserMessageShown]. */
+    val userMessage: UserMessage? = null,
+    /** The form is done; handled once, then cleared with [AccountFormViewModel.onCloseHandled]. */
+    val close: AccountFormClose? = null,
 )
 
-sealed interface AccountFormEvent {
-    data class Message(val text: Int) : AccountFormEvent
-    data class Close(val toMain: Boolean) : AccountFormEvent
-}
+/** How the form closes: back to where it came from, or all the way to the main screen after a delete. */
+enum class AccountFormClose { BACK, TO_MAIN }
 
 @HiltViewModel(assistedFactory = AccountFormViewModel.Factory::class)
 class AccountFormViewModel @AssistedInject constructor(
     @Assisted private val key: AccountFormKey,
-    refs: ReferenceDataRepository,
+    private val refs: ReferenceDataRepository,
     private val repo: AccountsRepository,
     private val transactions: TransactionsRepository,
 ) : ViewModel() {
@@ -69,26 +75,33 @@ class AccountFormViewModel @AssistedInject constructor(
         fun create(key: AccountFormKey): AccountFormViewModel
     }
 
-    val ref = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    private val _ui = MutableStateFlow(AccountFormUi())
-    val ui = _ui.asStateFlow()
-    private val _events = Channel<AccountFormEvent>(Channel.BUFFERED)
-    val events = _events.receiveAsFlow()
+    /** Kept for event handlers that need the reference data synchronously. */
+    private val ref = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val _ui = MutableStateFlow(AccountFormUiState())
+
+    val uiState: StateFlow<AccountFormUiState> = combine(_ui, ref) { s, r -> s.copy(ref = r) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountFormUiState())
+
     private var rows: List<Transaction> = emptyList()
     private var original: Account? = null
+    private var initialized = false
 
-    init {
+    /** Loads the account once; safe to call again. */
+    @MainThread
+    fun initialize() {
+        if (initialized) return
+        initialized = true
         viewModelScope.launch {
             val r = refs.getRefData()
             val a = key.accountId?.let { r.accountById[it] }
             original = a
             if (a == null) {
                 val g = key.groupId ?: r.groups.firstOrNull { it.status == GroupStatus.ACTIVE }?.id
-                _ui.value = AccountFormUi(loaded = true, groupId = g, name = key.presetName ?: "", currencyId = r.mainCurrency.id, originalCurrencyId = r.mainCurrency.id, pickGroup = key.groupId == null)
+                _ui.value = AccountFormUiState(loaded = true, groupId = g, name = key.presetName ?: "", currencyId = r.mainCurrency.id, originalCurrencyId = r.mainCurrency.id, pickGroup = key.groupId == null)
             } else {
                 rows = transactions.getAllForAccounts(listOf(a.id) + r.linkedDebitCards(a.id).map { it.id })
                 val bal = Money.round(balanceIn(r, a.currencyId, a), r.currency(a.currencyId).decimals)
-                _ui.value = AccountFormUi(
+                _ui.value = AccountFormUiState(
                     loaded = true, isNew = false, id = a.id, groupId = a.groupId, name = a.name, amount = bal, balance = bal,
                     currencyId = a.currencyId, originalCurrencyId = a.currencyId, linkedAccountId = a.linkedAccountId, description = a.description,
                     settlementDay = a.settlementDay, paymentDay = a.paymentDay, includeInTotals = a.includeInTotals, hidden = a.status == AccountStatus.HIDDEN,
@@ -152,14 +165,14 @@ class AccountFormViewModel @AssistedInject constructor(
         val s = _ui.value
         val r = ref.value
         if (s.name.isBlank()) {
-            _events.trySend(AccountFormEvent.Message(R.string.no_title))
+            showMessage(R.string.no_title)
             return
         }
         val type = groupType()
         if (type == GroupType.DEBIT_CARD && s.linkedAccountId != null) {
             val pay = r.accountCurrency(s.linkedAccountId)
             if (pay.id != r.mainCurrency.id && pay.id != s.currencyId) {
-                _events.trySend(AccountFormEvent.Message(R.string.debit_currency_mismatch))
+                showMessage(R.string.debit_currency_mismatch)
                 return
             }
         }
@@ -189,7 +202,7 @@ class AccountFormViewModel @AssistedInject constructor(
             repo.saveAccount(account)
             val diff = if (type == GroupType.DEBIT_CARD) 0.0 else Money.round(s.amount - (if (s.isNew) 0.0 else s.balance), r.currency(s.currencyId).decimals)
             if (diff != 0.0) _ui.update { it.copy(difference = diff, confirmCurrency = false) }
-            else _events.send(AccountFormEvent.Close(false))
+            else _ui.update { it.copy(close = AccountFormClose.BACK) }
         }
     }
 
@@ -198,8 +211,7 @@ class AccountFormViewModel @AssistedInject constructor(
         val diff = s.difference ?: return
         viewModelScope.launch {
             transactions.recordBalanceDifference(s.id, diff, asIncomeExpense, s.description)
-            _ui.update { it.copy(difference = null) }
-            _events.send(AccountFormEvent.Close(false))
+            _ui.update { it.copy(difference = null, close = AccountFormClose.BACK) }
         }
     }
 
@@ -207,6 +219,12 @@ class AccountFormViewModel @AssistedInject constructor(
 
     fun delete() = viewModelScope.launch {
         repo.setStatus(_ui.value.id, AccountStatus.DELETED)
-        _events.send(AccountFormEvent.Close(true))
+        _ui.update { it.copy(close = AccountFormClose.TO_MAIN) }
     }
+
+    private fun showMessage(@StringRes text: Int) = _ui.update { it.copy(userMessage = UserMessage(UiText.of(text))) }
+
+    fun onUserMessageShown(id: Long) = _ui.update { if (it.userMessage?.id == id) it.copy(userMessage = null) else it }
+
+    fun onCloseHandled() = _ui.update { it.copy(close = null) }
 }

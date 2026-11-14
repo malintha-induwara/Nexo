@@ -14,22 +14,25 @@ import com.nexo.app.data.repository.TransactionsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.YearMonth
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 
-data class TotalStatsUi(val periods: List<MonthPeriod> = emptyList(), val balances: List<Double> = emptyList(), val income: List<Double> = emptyList(), val expense: List<Double> = emptyList())
+data class TotalStatsUiState(val ref: RefData = RefData(), val anchor: LocalDate = LocalDate.now(), val periods: List<MonthPeriod> = emptyList(), val balances: List<Double> = emptyList(), val income: List<Double> = emptyList(), val expense: List<Double> = emptyList())
 
 @HiltViewModel
 class TotalStatsViewModel @Inject constructor(refs: ReferenceDataRepository, private val transactions: TransactionsRepository) : ViewModel() {
-    val ref = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    val anchor = MutableStateFlow(LocalDate.now())
+    /** Kept for event handlers that need the reference data synchronously. */
+    private val ref = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val anchor = MutableStateFlow(LocalDate.now())
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val ui = combine(ref, anchor, transactions.getChangeStampStream()) { r, a, _ -> r to a }.mapLatest { (r, a) ->
+    val uiState: StateFlow<TotalStatsUiState> = combine(ref, anchor, transactions.getChangeStampStream()) { r, a, _ -> r to a }.mapLatest { (r, a) ->
         val e = r.settings.periods
         var p = e.monthPeriodContaining(a)
         val periods = ArrayList<MonthPeriod>()
@@ -45,12 +48,16 @@ class TotalStatsViewModel @Inject constructor(refs: ReferenceDataRepository, pri
                 .fold(BigDecimal.ZERO) { acc, x -> acc + BigDecimal.valueOf(if (x.kind.isInflow) x.main else -x.main) }.toDouble()
         }
         val sums = periods.map { per -> transactions.getAggregatesBetween(per.range.startText, per.range.endText) }
-        TotalStatsUi(
-            periods, balances,
+        TotalStatsUiState(
+            r, a, periods, balances,
             sums.map { s -> s.filter { it.kind == TxKind.INCOME }.sumOf { it.main } },
             sums.map { s -> s.filter { it.kind == TxKind.EXPENSE }.sumOf { it.main } },
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TotalStatsUi())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TotalStatsUiState())
+
+    fun pickMonth(month: YearMonth) {
+        anchor.value = ref.value.settings.periods.monthPeriodFor(month).end
+    }
 
     fun step(forward: Boolean) {
         val e = ref.value.settings.periods

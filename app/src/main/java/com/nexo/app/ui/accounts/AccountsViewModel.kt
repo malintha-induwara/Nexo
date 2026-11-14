@@ -4,9 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.toIsoText
+import com.nexo.app.core.model.DeviceSettings
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.model.RefData
-import com.nexo.app.data.repository.AccountsRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
@@ -42,24 +42,29 @@ data class AccountsData(
     val debitMonthLabel: java.time.YearMonth? = null,
 )
 
+data class AccountsUiState(
+    val ref: RefData = RefData(),
+    val device: DeviceSettings? = null,
+    val query: AccountsQuery = AccountsQuery(),
+    val data: AccountsData = AccountsData(),
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AccountsViewModel @Inject constructor(
     private val transactions: TransactionsRepository,
     refs: ReferenceDataRepository,
     private val prefs: UserPreferencesRepository,
-    val repo: AccountsRepository,
 ) : ViewModel() {
-    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    val device = prefs.getDeviceSettingsStream().stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    /** Kept for event handlers that need the reference data synchronously. */
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     private val _query = MutableStateFlow(AccountsQuery())
-    val query = _query.asStateFlowCompat()
 
-    private fun <T> MutableStateFlow<T>.asStateFlowCompat(): StateFlow<T> = this
-
-    val data: StateFlow<AccountsData> = combine(ref, _query, transactions.getChangeStampStream()) { r, q, _ -> r to q }
+    private val data = combine(ref, _query, transactions.getChangeStampStream()) { r, q, _ -> r to q }
         .mapLatest { (r, q) -> compute(r, q) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountsData())
+
+    val uiState: StateFlow<AccountsUiState> = combine(ref, prefs.getDeviceSettingsStream(), _query, data, ::AccountsUiState)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountsUiState())
 
     fun range(r: RefData, q: AccountsQuery): DateRange? {
         val e = r.settings.periods

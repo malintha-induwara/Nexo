@@ -61,13 +61,20 @@ import com.nexo.app.ui.navigation.MemoEditorKey
 @Composable
 fun MemoEditorScreen(key: MemoEditorKey) {
     val vm = hiltViewModel<MemoEditorViewModel, MemoEditorViewModel.Factory>(creationCallback = { it.create(key) })
-    val s by vm.ui.collectAsStateWithLifecycle()
+    val s by vm.uiState.collectAsStateWithLifecycle()
     val nav = LocalNavigator.current
+    androidx.compose.runtime.LaunchedEffect(Unit) { vm.initialize() }
+    androidx.compose.runtime.LaunchedEffect(s.closed) {
+        if (s.closed) {
+            nav.back()
+            vm.onClosed()
+        }
+    }
     val dark = LocalIsDark.current
     var palette by rememberSaveable { mutableStateOf(false) }
     var pickDate by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
-    val close = { vm.saveAndClose { nav.back() } }
+    val close = { vm.saveAndClose() }
     val titleFocus = androidx.compose.runtime.remember { androidx.compose.ui.focus.FocusRequester() }
     androidx.compose.runtime.LaunchedEffect(s.loaded) { if (s.loaded && s.id == null) runCatching { titleFocus.requestFocus() } }
     BackHandler { close() }
@@ -114,5 +121,5 @@ fun MemoEditorScreen(key: MemoEditorKey) {
         }
     }
     if (pickDate) NexoDatePickerDialog(s.date, onPick = vm::setDate, onDismiss = { pickDate = false })
-    if (confirmDelete) ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.delete { nav.back() } }, onDismiss = { confirmDelete = false })
+    if (confirmDelete) ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.delete() }, onDismiss = { confirmDelete = false })
 }
