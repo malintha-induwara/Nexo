@@ -13,11 +13,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 /** Background time is measured with the monotonic clock. */
@@ -29,10 +28,14 @@ class DefaultAppLockRepository @Inject constructor(
     @Dispatcher(NexoDispatchers.Default) private val defaultDispatcher: CoroutineDispatcher,
     private val clock: Clock,
 ) : AppLockRepository {
-    private val _locked = MutableStateFlow(runBlocking { prefs.getDeviceSettings().lockEnabled })
-    private val locked: StateFlow<Boolean> = _locked.asStateFlow()
+    /** Null until the preferences say whether a PIN is set; a cold start with one is locked. */
+    private val lockState = MutableStateFlow<Boolean?>(null)
 
-    override fun getLockedStream(): StateFlow<Boolean> = locked
+    init {
+        scope.launch { lockState.compareAndSet(null, prefs.getDeviceSettings().lockEnabled) }
+    }
+
+    override fun getLockedStream(): Flow<Boolean> = lockState.filterNotNull()
 
     private var backgroundedAt: Long? = null
     private var handoffAt: Long? = null
@@ -64,17 +67,17 @@ class DefaultAppLockRepository @Inject constructor(
                 s.lockTimeout.seconds * 1000L
             }
             if (shouldLock(SystemClock.elapsedRealtime() - since, limit, handoff)) {
-                _locked.value = true
+                lockState.value = true
             }
         }
     }
 
     override fun lockNow() {
-        scope.launch { if (prefs.getDeviceSettings().lockEnabled) _locked.value = true }
+        scope.launch { if (prefs.getDeviceSettings().lockEnabled) lockState.value = true }
     }
 
     override fun unlock() {
-        _locked.value = false
+        lockState.value = false
     }
 
     override suspend fun verifyPin(pin: String): PinResult = withContext(defaultDispatcher) {
@@ -104,7 +107,7 @@ class DefaultAppLockRepository @Inject constructor(
     override suspend fun setPin(pin: String?) {
         if (pin == null) biometricKey.deleteKey()
         prefs.setPin(pin?.let { withContext(defaultDispatcher) { PinHasher.hash(it) } })
-        if (pin == null) _locked.value = false
+        if (pin == null) lockState.value = false
     }
 
     override fun getUnlockCipher(): Cipher? = biometricKey.cipher()

@@ -1,7 +1,7 @@
 package com.nexo.app.data.repository
 
 import javax.crypto.Cipher
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 
 sealed interface PinResult {
     data object Success : PinResult
@@ -14,7 +14,8 @@ sealed interface PinResult {
  * Biometric unlock is an optional shortcut to the PIN.
  */
 interface AppLockRepository {
-    fun getLockedStream(): StateFlow<Boolean>
+    /** Emits once the lock state is known, so nothing is drawn before the lock screen on a cold start. */
+    fun getLockedStream(): Flow<Boolean>
 
     /**
      * Call just before the app sends the user to another app and expects them straight back: the camera for a
