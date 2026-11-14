@@ -83,7 +83,7 @@ class RepeatListViewModel @Inject constructor(
     }
 }
 
-/** TX-021: estimated occurrences of a rule in the current month period. */
+/** Estimated occurrences of a rule in the current month period. */
 fun estimatedCount(rule: RepeatRuleEntity, period: MonthPeriod): Int {
     val next = runCatching { LocalDate.parse(rule.nextDate) }.getOrNull() ?: return 0
     val days = period.range.days()
@@ -108,7 +108,6 @@ fun estimatedCount(rule: RepeatRuleEntity, period: MonthPeriod): Int {
     }
 }
 
-/** Repeat Setting (TX-021). */
 @Composable
 fun RepeatListScreen(vm: RepeatListViewModel = hiltViewModel()) {
     val rules by vm.rules.collectAsStateWithLifecycle()

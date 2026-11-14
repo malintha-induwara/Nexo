@@ -19,7 +19,6 @@ import com.nexo.app.core.settings.ThemeMode
 @Immutable
 data class HeaderColors(val container: Color, val content: Color, val accent: Color, val lightStatusBar: Boolean)
 
-/** Income / expense colours (CFG-014). */
 @Immutable
 data class MoneyColors(val income: Color, val expense: Color, val neutral: Color) {
     fun of(flow: CashFlow): Color = when (flow) {
@@ -54,7 +53,7 @@ object NexoPalette {
     val Sunday = Color(0xFFE5533D)
     val Saturday = Color(0xFF2F7DE1)
 
-    /** 11-colour stats palette (ST-004), red/orange → yellow → green → teal → blue → purple → pink. */
+    /** 11-colour stats palette, red/orange → yellow → green → teal → blue → purple → pink. */
     val Stats = listOf(
         Color(0xFFF2574B), Color(0xFFF7883A), Color(0xFFF5B83C), Color(0xFFE3D44A), Color(0xFF9ACB4F), Color(0xFF4DBB6E),
         Color(0xFF34B2A6), Color(0xFF3E9BE0), Color(0xFF5B6FD8), Color(0xFF9061D1), Color(0xFFE066A8),

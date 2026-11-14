@@ -55,7 +55,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
-/** Proportional "Today" marker (ST-043 with the README §8 fix). */
+/** Proportional "Today" marker. */
 fun todayFraction(period: MonthPeriod, now: LocalDateTime = LocalDateTime.now()): Float? {
     val start = period.start.atStartOfDay()
     val end = period.end.plusDays(1).atStartOfDay()
@@ -114,7 +114,7 @@ fun BudgetBlock(period: MonthPeriod, vm: BudgetBlockViewModel = hiltViewModel(ke
     }
 }
 
-/** One budget row (ST-042): progress bar with rate, today line, used and remaining / excess. */
+/** One budget row: progress bar with rate, today line, used and remaining / excess. */
 @Composable
 fun BudgetRowView(
     row: BudgetRow,

@@ -58,7 +58,7 @@ import java.time.LocalDate
 
 enum class BulkAction { DATE, CATEGORY, ACCOUNT, NOTE }
 
-/** BR-13: Σ selected income − Σ selected expense in main currency. */
+/** Σ selected income − Σ selected expense in main currency. */
 fun selectedNet(rows: List<TxRowUi>, ids: Set<String>): Double = rows.filter { it.id in ids }.fold(0.0) { acc, r ->
     when (r.flow) {
         CashFlow.INCOME -> Money.add(acc, r.amountMain)
@@ -67,7 +67,7 @@ fun selectedNet(rows: List<TxRowUi>, ids: Set<String>): Double = rows.filter { i
     }
 }
 
-/** Edit bar shown during multi-select (UI-009). */
+/** Edit bar shown during multi-select. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectionBar(

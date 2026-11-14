@@ -39,7 +39,7 @@ import java.math.BigDecimal
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 
-/** Full-screen calculator (TX-009). Returns the evaluated value on OK. */
+/** Full-screen calculator. Returns the evaluated value on OK. */
 @Composable
 fun CalculatorDialog(initial: Double?, onResult: (BigDecimal) -> Unit, onDismiss: () -> Unit) {
     val start = initial?.let { BigDecimal.valueOf(it).stripTrailingZeros().toPlainString() }?.takeIf { it != "0" } ?: ""

@@ -14,7 +14,7 @@ data class RateChoice(val rate: Double, val source: String, val snapshotAt: Long
     }
 }
 
-/** NQ-011: which rate converts a foreign-currency movement, and the estimate it gives. */
+/** Which rate converts a foreign-currency movement, and the estimate it gives. */
 object RateChooser {
     /**
      * [board] is one row per bank for the currency. Fallbacks, in order: the issuing bank's own rate; the median across

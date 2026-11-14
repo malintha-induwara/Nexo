@@ -13,13 +13,13 @@ import java.util.UUID
 interface SmsStore {
     suspend fun byDedupeKey(key: String): SmsItemEntity?
 
-    /** Pending approval-code item with the same route and amount since [since] (NQ-004 retry merge). */
+    /** Pending approval-code item with the same route and amount since [since]. */
     suspend fun pendingRetry(bank: String, route: String, amount: Double, currency: String, since: Long): SmsItemEntity?
 
-    /** Pending unverified transfer-out with the same amount since [since] (NQ-004 confirmation upgrade). */
+    /** Pending unverified transfer-out with the same amount since [since]. */
     suspend fun upgradeCandidate(bank: String, amount: Double, currency: String, since: Long): SmsItemEntity?
 
-    /** Card purchases on [cardLast4] in [since, until], newest first (CB-004). */
+    /** Card purchases on [cardLast4] in [since, until], newest first. */
     suspend fun purchasesOnCard(bank: String, cardLast4: String, since: Long, until: Long): List<SmsItemEntity>
 
     suspend fun insert(item: SmsItemEntity)
@@ -32,8 +32,8 @@ interface SmsStore {
 }
 
 /**
- * Applies the stateful rules across messages: dedupe (CB-010), OTP enrichment (CB-003), cancellations (CB-004),
- * approval-code retries and later confirmations (NQ-004).
+ * Applies the stateful rules across messages: dedupe, OTP enrichment, cancellations, approval-code retries and later
+ * confirmations.
  */
 class SmsCorrelator(private val store: SmsStore) {
 

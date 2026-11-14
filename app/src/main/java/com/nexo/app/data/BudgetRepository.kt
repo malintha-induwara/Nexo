@@ -8,7 +8,7 @@ import com.nexo.app.domain.BudgetMath
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Budgets with effective-from monthly amounts (ST-049…ST-051, BR-B1…BR-B3). */
+/** Budgets with effective-from monthly amounts. */
 @Singleton
 class BudgetRepository @Inject constructor(private val db: NexoDatabase) {
     val budgets = db.budgetDao().observeBudgets()
@@ -16,7 +16,7 @@ class BudgetRepository @Inject constructor(private val db: NexoDatabase) {
 
     private fun now() = System.currentTimeMillis()
 
-    /** ST-049 Add Budget. [currentKey] is the label key of the current month. */
+    /** [currentKey] is the label key of the current month. */
     suspend fun add(categoryId: String?, amount: Double, currentKey: Int) = db.withTransaction {
         val id = BudgetEntity.idFor(categoryId)
         val existing = db.budgetDao().getBudget(id)
@@ -49,13 +49,13 @@ class BudgetRepository @Inject constructor(private val db: NexoDatabase) {
         db.budgetDao().upsertAmounts(BudgetMath.defaultEdit(budgetId, records, currentKey, amount, now()))
     }
 
-    /** ST-051 soft delete; the amounts stay stored for a later revival. */
+    /** Soft delete; the amounts stay stored for a later revival. */
     suspend fun delete(budgetId: String) = db.withTransaction {
         val b = db.budgetDao().getBudget(budgetId) ?: return@withTransaction
         db.budgetDao().upsertBudgets(listOf(b.copy(isDeleted = true, updatedAt = now())))
     }
 
-    /** Main-currency change with data retention multiplies every amount by R (CFG-041 step 5). */
+    /** Main-currency change with data retention multiplies every amount by R. */
     suspend fun rescale(factor: Double, decimals: Int) {
         val all = db.budgetDao().getAmounts()
         db.budgetDao().upsertAmounts(all.map { it.copy(amount = com.nexo.app.core.money.Money.round(it.amount * factor, decimals), updatedAt = now()) })

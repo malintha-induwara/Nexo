@@ -56,7 +56,7 @@ import com.nexo.app.ui.theme.nexo
 
 private data class FilterItem(val key: String, val label: String, val amount: Double, val indent: Boolean = false)
 
-/** Main-screen filter panel (UI-018). */
+/** Main-screen filter panel. */
 @Composable
 fun FilterPanel(
     ref: RefData,

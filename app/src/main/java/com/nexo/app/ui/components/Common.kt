@@ -116,7 +116,7 @@ fun nexoSwitchColors() = LocalNexoColors.current.let { c ->
 @Composable
 fun Divider() = HorizontalDivider(color = LocalNexoColors.current.hairline)
 
-/** Income / Expenses / Total strip (UI-006). */
+/** Income / Expenses / Total strip. */
 @Composable
 fun TotalsBar(
     income: Double,

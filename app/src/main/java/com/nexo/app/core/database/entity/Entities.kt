@@ -126,7 +126,7 @@ data class TransactionEntity(
     val createdAt: Long,
     val updatedAt: Long,
     /**
-     * Bank fee charged on a non-transfer row (spec 02 Nexo improvement 1): the fee expense points at its parent.
+     * Bank fee charged on a non-transfer row: the fee expense points at its parent.
      * Transfer fees keep using [feeGroupId].
      */
     val feeParentId: String? = null,

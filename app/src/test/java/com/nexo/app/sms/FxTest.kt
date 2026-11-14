@@ -30,7 +30,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.Instant
 
-/** NQ-010 parsing, NQ-011 rate choice and estimates, with the spec's sample numbers. */
+/** Bank-rate parsing, rate choice and estimates. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class FxTest {

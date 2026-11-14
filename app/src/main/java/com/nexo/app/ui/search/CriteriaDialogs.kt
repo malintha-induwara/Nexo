@@ -34,7 +34,7 @@ import com.nexo.app.ui.theme.nexo
 
 data class CheckItem(val id: String, val label: String, val header: Boolean = false, val indent: Boolean = false)
 
-/** Generic multi-select list with an "All" tri-state header (UI-020). */
+/** Generic multi-select list with an "All" tri-state header. */
 @Composable
 fun MultiSelectDialog(title: String, items: List<CheckItem>, initial: Set<String>, onConfirm: (Set<String>) -> Unit, onDismiss: () -> Unit) {
     var selected by remember { mutableStateOf(initial) }

@@ -23,7 +23,7 @@ interface SmsEntryPoint {
 
 fun Context.smsEntry(): SmsEntryPoint = EntryPointAccessors.fromApplication(applicationContext, SmsEntryPoint::class.java)
 
-/** LKSMS-001 realtime capture. Multipart messages arrive together and are joined per sender. */
+/** Realtime capture. Multipart messages arrive together and are joined per sender. */
 class SmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return

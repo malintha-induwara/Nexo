@@ -5,7 +5,7 @@ import java.math.RoundingMode
 import java.time.LocalDate
 
 object Installments {
-    /** TX-018: floor the per-row amount to the currency decimals; the first row carries the remainder. */
+    /** Floor the per-row amount to the currency decimals; the first row carries the remainder. */
     fun split(total: Double, count: Int, decimals: Int): List<Double> {
         require(count > 0)
         val t = BigDecimal.valueOf(total).setScale(decimals, RoundingMode.HALF_UP)

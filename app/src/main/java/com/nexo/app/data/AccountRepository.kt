@@ -13,7 +13,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Accounts and account groups (AS-010…AS-046). */
+/** Accounts and account groups. */
 @Singleton
 class AccountRepository @Inject constructor(
     private val db: NexoDatabase,
@@ -43,7 +43,7 @@ class AccountRepository @Inject constructor(
 
     suspend fun nextAccountOrder(): Int = db.accountDao().maxOrder() + 1
 
-    /** Saves an account; a currency change re-derives account amounts of its rows and linked debit cards (AS-033). */
+    /** Saves an account; a currency change re-derives account amounts of its rows and linked debit cards. */
     suspend fun saveAccount(account: AccountEntity) {
         val ref = refs.snapshot()
         db.withTransaction {
@@ -71,7 +71,7 @@ class AccountRepository @Inject constructor(
         widgets.refresh()
     }
 
-    /** AS-041: order = position in the whole list, group may change. */
+    /** Order = position in the whole list, group may change. */
     suspend fun reorderAccounts(order: List<Pair<String, String>>) = db.withTransaction {
         val all = db.accountDao().getAll().associateBy { it.id }
         db.accountDao().upsert(order.mapIndexedNotNull { i, (id, group) -> all[id]?.copy(orderSeq = i, groupId = group, updatedAt = now()) })

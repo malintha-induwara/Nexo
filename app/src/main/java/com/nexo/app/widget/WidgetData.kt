@@ -83,7 +83,7 @@ object WidgetData {
         else WidgetColors(0xFFFFFFFF, 0xFF111111, 0xFF5C5C5C, false, s.widgetOpacity)
     }
 
-    /** UI-028 figures for the current month period, with the "vs. MoM" comparison (BR-9). */
+    /** Figures for the current month period, with the "vs. MoM" comparison. */
     suspend fun month(context: Context): MonthFigures {
         val e = entry(context)
         if (!e.prefs().current().setupDone) return MonthFigures(false)
@@ -130,7 +130,7 @@ object WidgetData {
         )
     }
 
-    /** UI-030 credit-card rows. Null when the app isn't set up yet. */
+    /** Credit-card rows. Null when the app isn't set up yet. */
     suspend fun cards(context: Context): List<CardLine>? {
         val e = entry(context)
         if (!e.prefs().current().setupDone) return null

@@ -5,7 +5,7 @@ import com.nexo.app.core.money.Money
 
 data class Amounts(val amount: Double, val main: Double, val account: Double)
 
-/** Three-amount derivation (DM-100, TX-022). */
+/** Three-amount derivation. */
 object Conversion {
     fun effectiveRate(c: CurrencyEntity): Double = if (c.rate == 0.0) 1.0 else c.rate
 
@@ -32,7 +32,7 @@ object Conversion {
         return Amounts(amount, mainAmount, acct)
     }
 
-    /** Account amount for the other side of a transfer (DM-021 leg B). */
+    /** Account amount for the other side of a transfer. */
     fun accountAmount(amount: Double, mainAmount: Double, tx: CurrencyEntity, account: CurrencyEntity, main: CurrencyEntity): Double = when {
         tx.id == account.id -> amount
         account.id == main.id -> mainAmount

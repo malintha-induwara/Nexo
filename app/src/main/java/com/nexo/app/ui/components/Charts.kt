@@ -77,7 +77,7 @@ private fun compact(v: Double): String {
 
 /**
  * Columns (one or two series) with an optional line on top. Tapping selects a category index.
- * Used for account inflow/outflow, Total Stats and the budget chart (ST-046).
+ * Used for account inflow/outflow, Total Stats and the budget chart.
  */
 @Composable
 fun BarLineChart(
@@ -160,7 +160,6 @@ fun BarLineChart(
     }
 }
 
-/** Single-series line chart (ST-022, AS-064). */
 @Composable
 fun LineChart(labels: List<String>, values: List<Double>, color: Color, modifier: Modifier = Modifier, format: (Double) -> String = { compact(it) }) {
     if (values.isEmpty() || values.all { it == 0.0 }) {
@@ -172,7 +171,7 @@ fun LineChart(labels: List<String>, values: List<Double>, color: Color, modifier
 
 data class PieSlice(val label: String, val value: Double, val color: Color)
 
-/** Pie of the stats rows (ST-005). Tapping a slice reports it. */
+/** Pie of the stats rows. Tapping a slice reports it. */
 @Composable
 fun PieChart(slices: List<PieSlice>, modifier: Modifier = Modifier, onSlice: ((Int) -> Unit)? = null, selected: Int? = null) {
     val total = slices.sumOf { max(it.value, 0.0) }

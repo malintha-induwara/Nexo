@@ -10,7 +10,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Spec 01 worked examples (synthetic) plus the pitfalls it lists, through the general rules. */
+/** Synthetic examples and known pitfalls, through the general rules. */
 class GenericRulesTest {
     private val parser = SmsParser()
     private fun parse(sender: String, body: String) = parser.parse(SmsMessage(sender, body, 1_793_700_000_000L))

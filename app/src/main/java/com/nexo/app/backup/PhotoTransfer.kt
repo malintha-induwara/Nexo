@@ -14,7 +14,7 @@ import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Photo export / import through a user-picked folder (CFG-039). */
+/** Photo export / import through a user-picked folder. */
 @Singleton
 class PhotoTransfer @Inject constructor(
     @ApplicationContext private val context: Context,

@@ -6,7 +6,7 @@ import java.math.RoundingMode
 enum class PadKey { D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, DOUBLE_ZERO, TRIPLE_ZERO, DECIMAL, SIGN, BACKSPACE, CLEAR }
 
 /**
- * Number-pad buffer rules (TX-008). The buffer uses '.' as separator internally.
+ * Number-pad buffer rules. The buffer uses '.' as separator internally.
  * [allowSign] is true for amount fields; [maxDecimals] caps typed decimals.
  */
 data class PadInput(
@@ -72,7 +72,7 @@ data class PadInput(
     }
 }
 
-/** Calculator expression evaluation (TX-009). */
+/** Calculator expression evaluation. */
 object Calculator {
     sealed interface Outcome {
         data class Value(val value: BigDecimal) : Outcome
@@ -140,7 +140,7 @@ object Calculator {
         return out
     }
 
-    /** Applies a calculator key to the expression with the editing rules of TX-009. */
+    /** Applies a calculator key to the expression. */
     fun type(expr: String, key: String): String {
         val ops = setOf('+', '−', '×', '÷')
         val last = expr.lastOrNull()

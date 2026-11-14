@@ -79,7 +79,6 @@ data class RefData(
     fun subCategories(parentId: String): List<CategoryEntity> =
         categories.filter { it.parentId == parentId && !it.isDeleted }
 
-    /** Main category id of a stored category id (DM-103). */
     fun mainCategoryId(categoryId: String?): String? {
         val c = categoryId?.let { categoryById[it] } ?: return null
         return c.parentId?.takeIf { categoryById.containsKey(it) } ?: c.id

@@ -23,7 +23,7 @@ data class BudgetRow(
 
 data class BudgetBlockData(val total: BudgetRow?, val rows: List<BudgetRow>)
 
-/** Budget rows for one month period (ST-041…ST-045, BR-B4/B5). */
+/** Budget rows for one month period. */
 object BudgetCalc {
     fun usedByCategory(ref: RefData, rows: List<TransactionEntity>): Pair<Map<String?, Double>, Map<String, Double>> {
         val main = HashMap<String?, BigDecimal>()

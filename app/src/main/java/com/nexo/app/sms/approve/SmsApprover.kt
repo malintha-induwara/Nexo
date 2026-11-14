@@ -40,21 +40,21 @@ sealed interface ApproveResult {
     data object Gone : ApproveResult
 }
 
-/** What approving an item means for its bank fee (NQ-020). */
+/** What approving an item means for its bank fee. */
 sealed interface FeePlan {
     data object None : FeePlan
 
     /** The preset says "always add", or the SMS stated the fee: no question, an Undo afterwards. */
     data class Auto(val route: FeeRoute?, val amount: Double) : FeePlan
 
-    /** Ask, pre-filled with the last fee on this route — or, for [fxDifference], with actual − estimate (NQ-012). */
+    /** Ask, pre-filled with the last fee on this route — or, for [fxDifference], with actual − estimate. */
     data class Ask(val route: FeeRoute, val prefill: Double?, val fxDifference: Boolean = false) : FeePlan
 }
 
 /** The answer to a fee prompt. A null or zero [amount] is "No fee". */
 data class FeeChoice(val amount: Double?, val remember: Boolean = false, val includeInPurchase: Boolean = false)
 
-/** Approve / Deny / Edit (NQ-003), card mapping (NQ-032) and learning (LKSMS-018). The only code that turns items into ledger rows. */
+/** Approve / Deny / Edit, card mapping and learning. The only code that turns items into ledger rows. */
 @Singleton
 class SmsApprover @Inject constructor(
     private val db: NexoDatabase,
@@ -89,7 +89,7 @@ class SmsApprover @Inject constructor(
         )
     }
 
-    /** The ledger currency and amount: foreign estimates are booked in the account's currency (NQ-012). */
+    /** The ledger currency and amount: foreign estimates are booked in the account's currency. */
     fun amountIn(item: SmsItemEntity, ref: RefData): Pair<CurrencyEntity, Double> {
         val account = ref.accountCurrency(if (item.kind == SmsKind.TRANSFER_IN) item.toAccountId else item.accountId)
         if (item.certainty == Certainty.ESTIMATED || item.actualAmount != null) {
@@ -100,7 +100,7 @@ class SmsApprover @Inject constructor(
         return (match ?: account) to item.amount
     }
 
-    /** NQ-020: whether approving [item] should add, ask about, or skip a bank fee. */
+    /** Whether approving [item] should add, ask about, or skip a bank fee. */
     suspend fun feePlan(item: SmsItemEntity): FeePlan {
         // The bank said what it charged: nothing to ask.
         item.statedFee?.takeIf { it > 0 }?.let { return FeePlan.Auto(item.feeRoute, it) }
@@ -109,7 +109,7 @@ class SmsApprover @Inject constructor(
         val preset = dao.feePreset(account, route)
         val mode = preset?.mode ?: route.defaultMode
         if (route == FeeRoute.FX_CARD_PURCHASE) {
-            // NQ-012: only when the real amount came out more than 0.5 % above the estimate.
+            // Only when the real amount came out more than 0.5 % above the estimate.
             val estimate = item.estimatedAmount ?: return FeePlan.None
             val actual = item.actualAmount ?: return FeePlan.None
             if (actual <= estimate * (1 + FX_TOLERANCE)) return FeePlan.None
@@ -130,7 +130,7 @@ class SmsApprover @Inject constructor(
 
     /**
      * Writes the item to the ledger. With a [fee], the fee becomes its own Bank fee expense from the source account,
-     * linked to the transfer or the purchase (BR-Q5). For an FX difference recorded as a fee, the purchase stays at the
+     * linked to the transfer or the purchase. For an FX difference recorded as a fee, the purchase stays at the
      * estimate; "include in purchase" books the actual amount with no fee row.
      */
     suspend fun approve(itemId: String, fee: FeeChoice? = null): ApproveResult {
@@ -158,7 +158,7 @@ class SmsApprover @Inject constructor(
     /** Removes an automatically added fee (its Undo). */
     suspend fun removeFee(feeId: String) = writer.delete(listOf(feeId))
 
-    /** NQ fee preset: the last fee on this route from this account, and "Remember" turning it into always / never. */
+    /** Fee preset: the last fee on this route from this account, and "Remember" turning it into always / never. */
     suspend fun recordFee(item: SmsItemEntity, accountId: String?, choice: FeeChoice) {
         val route = item.feeRoute ?: return
         val account = accountId ?: return
@@ -199,7 +199,7 @@ class SmsApprover @Inject constructor(
         learn(item, bankAccountId, categoryId)
     }
 
-    /** Approves every complete item with [fee]; incomplete ones stay in the queue (NQ-003 bulk approve). */
+    /** Approves every complete item with [fee]; incomplete ones stay in the queue. */
     suspend fun approveAll(ids: Collection<String>, fee: FeeChoice? = null): Int = ids.count { approve(it, fee) is ApproveResult.Done }
 
     /** Returns the items as they were, for Undo. */
@@ -210,7 +210,7 @@ class SmsApprover @Inject constructor(
         return before
     }
 
-    /** Undo of a deny, or "Restore to queue" for an expired item (NQ-033: the window restarts). */
+    /** Undo of a deny, or "Restore to queue" for an expired item (the window restarts). */
     suspend fun restore(ids: Collection<String>) {
         val now = now()
         val items = dao.items(ids.toList()).filter { it.status == SmsStatus.DENIED || it.status == SmsStatus.EXPIRED }
@@ -230,8 +230,8 @@ class SmsApprover @Inject constructor(
     }
 
     /**
-     * Edit the amount (NQ-003). On a foreign-currency estimate it records the real account-currency figure and makes the
-     * item exact (NQ-012). An unverified item stays unverified: only Approve settles that.
+     * Edit the amount. On a foreign-currency estimate it records the real account-currency figure and makes the item
+     * exact. An unverified item stays unverified: only Approve settles that.
      */
     suspend fun setAmount(itemId: String, value: Double) {
         val item = dao.item(itemId) ?: return
@@ -278,7 +278,7 @@ class SmsApprover @Inject constructor(
     }
 
     companion object {
-        /** NQ-012: an actual amount within 0.5 % of the estimate is just rounding. */
+        /** An actual amount within 0.5 % of the estimate is just rounding. */
         const val FX_TOLERANCE = 0.005
 
         fun localDateTime(ms: Long): LocalDateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(ms), ZoneId.systemDefault())

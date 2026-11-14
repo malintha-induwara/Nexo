@@ -68,7 +68,6 @@ fun stepAnchor(e: PeriodEngine, scope: StatsScope, d: LocalDate, forward: Boolea
     StatsScope.PERIOD -> d
 }
 
-/** BR-S1…BR-S3 for one kind. */
 fun statsRows(context: Context, ref: RefData, rows: List<TransactionEntity>, income: Boolean): List<StatsRow> {
     val kind = if (income) TxKind.INCOME else TxKind.EXPENSE
     val cats = HashMap<String, BigDecimal>()

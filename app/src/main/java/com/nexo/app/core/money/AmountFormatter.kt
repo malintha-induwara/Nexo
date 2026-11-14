@@ -8,7 +8,7 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 
-/** Formats amounts per 07 › Amount formatting: half-up rounding, locale grouping, fixed decimals, symbol placement. */
+/** Formats amounts: half-up rounding, locale grouping, fixed decimals, symbol placement. */
 object AmountFormatter {
     private val cache = HashMap<Pair<Locale, Int>, DecimalFormat>()
 
@@ -41,7 +41,7 @@ object AmountFormatter {
     fun format(value: Double, currency: CurrencyEntity?): String =
         if (currency == null) number(value, 2) else format(value, currency.symbol, currency.symbolPosition, currency.decimals)
 
-    /** Exchange-rate display (TX-010): two decimals when ≥ 1, otherwise enough to show two significant digits. */
+    /** Exchange-rate display: two decimals when ≥ 1, otherwise enough to show two significant digits. */
     fun rate(rate: Double): String {
         if (rate == 0.0) return "0"
         val abs = kotlin.math.abs(rate)

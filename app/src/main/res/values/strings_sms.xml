@@ -83,7 +83,7 @@
     <string name="sms_actual_amount_sub">As shown in your bank app or statement</string>
     <string name="sms_privacy_line">Everything runs on this phone. Messages are never uploaded.</string>
 
-    <!-- Fee prompts (NQ-020) -->
+    <!-- Fee prompts -->
     <string name="cat_bank_fee">Bank fee</string>
     <string name="fee_route_interbank">Transfers to other banks</string>
     <string name="fee_route_other_atm">Other banks\' ATMs</string>
@@ -121,7 +121,7 @@
     <string name="fee_mode_auto">Always add %s</string>
     <string name="fee_mode_never">Never ask</string>
 
-    <!-- FX estimates (NQ-010/011) -->
+    <!-- FX estimates -->
     <string name="fx_side_sell">sell</string>
     <string name="fx_side_buy">buy</string>
     <string name="fx_source_median">Bank median</string>
@@ -133,7 +133,7 @@
     <string name="fx_edit_hint">This is an FX estimate. Change the amount to what your bank charged.</string>
     <string name="fx_attribution">Rates: AllRatesToday. Indicative; your card network\'s rate may differ.</string>
 
-    <!-- Add past transactions (NQ-032) -->
+    <!-- Add past transactions -->
     <string name="sms_history_title">Add past transactions</string>
     <string name="sms_history_row_sub">Choose from bank messages received before capture started</string>
     <string name="sms_history_offer_title">Add past transactions from your bank SMS?</string>
@@ -174,7 +174,7 @@
     </plurals>
     <string name="sms_history_needs_permission">Allow SMS access in Bank SMS settings to read past messages.</string>
 
-    <!-- Sender IDs (LKSMS-003) -->
+    <!-- Sender IDs -->
     <string name="sms_senders_title">Bank sender IDs</string>
     <string name="sms_senders_row_sub">Nexo only reads SMS from these senders</string>
     <string name="sms_senders_builtin">Built in</string>

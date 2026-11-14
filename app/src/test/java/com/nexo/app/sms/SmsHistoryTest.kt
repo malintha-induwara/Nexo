@@ -34,7 +34,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.LocalDateTime
 
-/** NQ-032 picker scan over a fake inbox of synthetic messages. */
+/** Picker scan over a fake inbox of synthetic messages. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class SmsHistoryTest {

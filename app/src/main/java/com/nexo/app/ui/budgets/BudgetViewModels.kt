@@ -40,7 +40,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
 
-/** Budget block of the Total page for one month period (ST-041). */
+/** Budget block of the Total page for one month period. */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class BudgetBlockViewModel @Inject constructor(
@@ -77,7 +77,7 @@ data class BudgetDetailUi(
     val days: List<DayGroup> = emptyList(),
 )
 
-/** Budget Detail (ST-046). [BudgetDetailKey.budgetId] may be "virtual_<categoryId>" for a virtual parent. */
+/** [BudgetDetailKey.budgetId] may be "virtual_<categoryId>" for a virtual parent. */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel(assistedFactory = BudgetDetailViewModel.Factory::class)
 class BudgetDetailViewModel @AssistedInject constructor(

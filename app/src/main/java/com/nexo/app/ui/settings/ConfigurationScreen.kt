@@ -76,7 +76,6 @@ fun timeDisplayLabel(t: TimeDisplay) = stringResource(
     },
 )
 
-/** Configuration tree (CFG-005). */
 @Composable
 fun ConfigurationScreen(vm: SettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -190,7 +189,7 @@ private fun currentLanguageLabel(): String {
     return stringResource(LANGUAGES.firstOrNull { it.first == tag }?.second ?: R.string.language_system)
 }
 
-/** In-app language (CFG-024) via per-app locales. Only bundled translations are listed. */
+/** In-app language via per-app locales. Only bundled translations are listed. */
 @Composable
 private fun LanguageDialog(onDismiss: () -> Unit) {
     val current = AppCompatDelegate.getApplicationLocales().toLanguageTags()
@@ -201,7 +200,6 @@ private fun LanguageDialog(onDismiss: () -> Unit) {
     )
 }
 
-/** Monthly Start Date (CFG-011). */
 @Composable
 fun MonthStartScreen(vm: SettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current

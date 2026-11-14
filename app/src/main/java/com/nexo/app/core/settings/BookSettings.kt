@@ -31,9 +31,9 @@ data class BookSettings(
     val transferIncome: Boolean = true,
     val subcategories: Boolean = false,
     val repeatReflect: RepeatReflect = RepeatReflect.ON_DATE,
-    /** Account that SMS cash withdrawals go to (CB-005); "" = the first account in the Cash group. */
+    /** Account that SMS cash withdrawals go to; "" = the first account in the Cash group. */
     val smsCashAccountId: String = "",
-    /** System "Bank Fee" category, created on first use (spec 02 improvement 1); "" = not created yet. */
+    /** System "Bank Fee" category, created on first use; "" = not created yet. */
     val bankFeeCategoryId: String = "",
 ) {
     val periods: PeriodEngine by lazy { PeriodEngine(monthStartDay, weekendRule, weekStartDay) }

@@ -20,10 +20,10 @@ import java.io.File
 import java.util.Locale
 
 /**
- * Replays a bank-SMS fixture (spec 03 format) through the parser and correlator and compares every message with its
- * `expected` block. Real messages never live in this repo: point `NEXO_SMS_FIXTURE` at a file outside it, e.g.
+ * Replays a bank-SMS fixture through the parser and correlator and compares every message with its `expected` block.
+ * Real messages never live in this repo: point `NEXO_SMS_FIXTURE` at a file outside it, e.g.
  *
- *     NEXO_SMS_FIXTURE=../Nexo-docs/spec-money-master-sl/fixtures/combank-real-sms.json \
+ *     NEXO_SMS_FIXTURE=/path/to/real-sms.json \
  *       ./gradlew :app:testDebugUnitTest --tests '*SmsFixtureReplayTest' --rerun
  *
  * Skipped when the variable is unset.
@@ -44,7 +44,7 @@ class SmsFixtureReplayTest {
             val o = e.jsonObject
             Row(o["id"]!!.jsonPrimitive.int, o["sender"]!!.jsonPrimitive.content, o["body"]!!.jsonPrimitive.content, o["expected"]!!.jsonObject)
         }
-        // Stored newest first; replay oldest first (spec 03 "Using the fixture").
+        // Stored newest first; replay oldest first.
         val replay = rows.sortedByDescending { it.id }
         val times = timestamps(replay)
 

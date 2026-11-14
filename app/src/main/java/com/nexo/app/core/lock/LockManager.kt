@@ -22,7 +22,7 @@ sealed interface PinResult {
 }
 
 /**
- * Single-user lock (adapted from 08 LU-015/LU-017): when a PIN is set the app locks on every cold start and
+ * Single-user lock: when a PIN is set the app locks on every cold start and
  * after the background timeout. Background time is measured with the monotonic clock.
  */
 @Singleton
@@ -87,7 +87,7 @@ class LockManager @Inject constructor(
         const val FREE_TRIES = 5
         const val MAX_WAIT = 15 * 60_000L
 
-        /** BR-6: from the 5th consecutive failure, 30 s doubling up to 15 min. */
+        /** From the 5th consecutive failure, 30 s doubling up to 15 min. */
         fun waitFor(failures: Int): Long = if (failures < FREE_TRIES) 0 else minOf(30_000L shl (failures - FREE_TRIES).coerceAtMost(10), MAX_WAIT)
     }
 }

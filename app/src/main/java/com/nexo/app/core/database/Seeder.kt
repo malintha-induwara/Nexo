@@ -17,7 +17,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Seeds a fresh book (DM-085, AS-001). */
+/** Seeds a fresh book. */
 @Singleton
 class Seeder @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -45,7 +45,7 @@ class Seeder @Inject constructor(
     }
 
     fun groups(now: Long): List<AccountGroupEntity> {
-        // id, name, type, order (AS-001 display order).
+        // id, name, type, in display order.
         val rows = listOf(
             Triple(11, R.string.group_cash, GroupType.NORMAL),
             Triple(1, R.string.group_accounts, GroupType.NORMAL),

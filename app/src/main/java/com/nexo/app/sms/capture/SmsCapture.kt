@@ -22,7 +22,7 @@ object SmsPermissions {
 }
 
 /**
- * The capture switch's state machine (NQ-030/031) and queue housekeeping (NQ-033).
+ * The capture switch's state machine and queue housekeeping.
  * Call [refresh] at app start, on every foreground, and after the switch or the permission changes.
  */
 @Singleton
@@ -55,7 +55,7 @@ class SmsCapture @Inject constructor(
         refresh()
     }
 
-    /** NQ-031: messages missed while the process wasn't running. Never reaches back past the start point. */
+    /** Messages missed while the process wasn't running. Never reaches back past the start point. */
     private suspend fun catchUp() {
         val s = prefs.current()
         var after = maxOf(s.smsLastProcessedAt, s.smsCaptureStartedAt - 1)
@@ -74,7 +74,7 @@ class SmsCapture @Inject constructor(
         }
     }
 
-    /** NQ-033 window and the retention of decided items. */
+    /** Queue window and the retention of decided items. */
     suspend fun sweep(now: Long) {
         val dao = db.smsDao()
         dao.expire(before = now - QUEUE_WINDOW_MS, now = now)
@@ -94,7 +94,7 @@ class SmsCapture @Inject constructor(
         const val DENIED_KEEP_MS = 30 * DAY_MS
         const val EXPIRED_KEEP_MS = 7 * DAY_MS
 
-        /** Long enough for late cancellations (CB-004) and editing an FX estimate later (NQ-012). */
+        /** Long enough for late cancellations and editing an FX estimate later. */
         const val APPROVED_KEEP_MS = 90 * DAY_MS
         const val HINT_KEEP_MS = 15 * 60 * 1000L
     }

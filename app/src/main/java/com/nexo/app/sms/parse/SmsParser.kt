@@ -10,17 +10,16 @@ import java.math.BigDecimal
  * Turns one SMS into a [ParsedSms]. Stateless: merging, enrichment and cancellation happen in the correlator.
  *
  * One rule set for every bank. Nothing below depends on which bank sent the message, only on how the message reads;
- * the bank is a label on the result. Order (spec 03):
+ * the bank is a label on the result. Order:
  *
- * 1. **Sender.** A known bank or a user-added sender; anything else is dropped (LKSMS-003).
+ * 1. **Sender.** A known bank or a user-added sender; anything else is dropped.
  * 2. **Fixed formats.** Whole-sentence shapes where every field sits in a known place: card purchase, ATM withdrawal,
  *    fund-transfer request, cancellation, merchant OTP, declined attempt, approval-code transfer. They run before the
  *    ignore rules because an OTP or approval-code message can still name a movement.
- * 3. **Ignore rules** (CB-007).
- * 4. **General rules** (spec 01 LKSMS-006 – 011) with the fixes spec 01 lists under "Nexo implementation notes":
- *    integer and European amounts, anchor-based amount choice that never picks a balance, validated merchant captures,
- *    debit/credit by first keyword, `X` masks, and fees read out of the body. Everything they produce is
- *    [Certainty.UNVERIFIED].
+ * 3. **Ignore rules.**
+ * 4. **General rules.** Integer and European amounts, anchor-based amount choice that never picks a balance, validated
+ *    merchant captures, debit/credit by first keyword, `X` masks, and fees read out of the body. Everything they
+ *    produce is [Certainty.UNVERIFIED].
  */
 class SmsParser(customSenders: Collection<String> = emptyList()) {
     private val custom = customSenders.map(Banks::normalizeSender).filter { it.isNotEmpty() }.toSet()
@@ -111,8 +110,8 @@ class SmsParser(customSenders: Collection<String> = emptyList()) {
     }
 
     /**
-     * NQ-020 `other_bank_atm`: the ATM's name names a different bank than the sender. A receipt footer that says the
-     * withdrawal was "performed at <sender's bank> ATMs" settles it the other way.
+     * The ATM's name names a different bank than the sender. A receipt footer that says the withdrawal was
+     * "performed at <sender's bank> ATMs" settles it the other way.
      */
     private fun otherBankAtm(bank: Bank, atm: Merchant, body: String): Boolean {
         if (ownAtmFooter.find(body)?.let { Banks.findIn(it.g("atmBank")) } == bank) return false
@@ -150,7 +149,7 @@ class SmsParser(customSenders: Collection<String> = emptyList()) {
             feeRoute = if (kind == SmsKind.CARD_PAYMENT) FeeRoute.CC_PAYMENT else null,
             certainty = Certainty.UNVERIFIED, reason = reason,
             occurredAt = msg.timestamp,
-            // No fixed fields: the body itself, with the SMS time so a repeated alert on another day stays apart (CB-010).
+            // No fixed fields: the body itself, with the SMS time so a repeated alert on another day stays apart.
             dedupeKey = DedupeKeys.of(bank, GENERIC, Banks.normalizeSender(msg.sender), body, msg.timestamp),
             statedFee = statedFee,
         )
@@ -158,7 +157,7 @@ class SmsParser(customSenders: Collection<String> = emptyList()) {
 
     private data class Picked(val amount: BigDecimal, val currency: String, val anchored: Boolean)
 
-    /** LKSMS-008 with the Nexo fixes: nearest after an anchor word wins; anything right after a balance word is skipped. */
+    /** The amount nearest after an anchor word wins; anything right after a balance word is skipped. */
     private fun pickAmount(text: String): Picked? {
         data class Hit(val start: Int, val amount: BigDecimal, val currency: String)
         val hits = buildList {
@@ -174,7 +173,7 @@ class SmsParser(customSenders: Collection<String> = emptyList()) {
         return Picked(chosen.amount, chosen.currency, anchored = best != null)
     }
 
-    /** LKSMS-007 order; plain debit vs credit is decided by whichever keyword comes first (Nexo fix 5). */
+    /** Plain debit vs credit is decided by whichever keyword comes first. */
     private fun classify(text: String): Pair<SmsKind, Boolean> {
         if (creditCardPayment.containsMatchIn(text)) return SmsKind.CARD_PAYMENT to false
         if (loanPayment.containsMatchIn(text)) return SmsKind.LOAN_PAYMENT to false
@@ -240,12 +239,12 @@ private val ownAtmFooter = rx("""performed at (?<atmBank>.+?) ATMs\b""")
 
 // ---- General-rule patterns ----
 
-/** Stage 4 keyword gate (catalogue `payment`, plus "transaction of", which real alerts use: BR-Q2). */
+/** A message must name a payment; "transaction of" counts because real alerts use it. */
 private val payment = rx(
     """(transaction\s+of|purchase|debited|debit ed|(?:\bdebit(?!\s+(?:cards?|accounts?)\b))|withdrawal|transaction for|transaction at|transaction approved|transaction\s+made|txn\s+for|pos(?:[/\-]atm)?\s+transaction|\bpos\b|amount\(approx\)|amt\s|vc\s*:|location:|credited|credit\s+rs|online transfer credit|online\s+transfer|transfer\s+of|mobile payment successful|mobile payment|bill payment successful|bill payment|reversal|auth pmt|pmt\b|fund\s+transfer|transferred|wire\s+transfer|cash\s+deposit|atm\s+deposit|deposited|\bdeposit\b|credit\s+card\s+payment|distributed|profit\s+amount|made\s+to\s+card|\btrxn\b|lankaQR|was\s+performed)""",
 )
 
-/** Rate and tariff notices: ignored unless a clear money-movement word is also there (BR-Q2). */
+/** Rate and tariff notices: ignored unless a clear money-movement word is also there. */
 private val notice = rx("""(billing|wish\s+to\s+inform|will\s+be\s+revised|\btariff\b|for\s+(?:more\s+)?details|w\.e\.f\.|effective\s+from)""")
 private val movementWord = rx("""\b(debited|credited|withdrawn|purchase|deposited|transferred)\b""")
 
@@ -267,10 +266,10 @@ private val europeanDecimal = Regex("""\b\d{1,3}(?:\.\d{3})+,\d{2}\b""")
 private val anchor = rx("""\b(debited|credited|charged|amount|amt|withdrawn|paid|purchase|deposited|transferred|of|for)\b""")
 private val balanceBefore = rx("""(bal|balance|avl|available|av\.\s*bal|limit)\W{0,6}(?:is\s+)?$""")
 
-/** Spec 02 improvement 3: a stated charge is read first and kept out of the amount search. */
+/** A stated charge is read first and kept out of the amount search. */
 private val fee = rx("""(?:charges?|fee|commission|ceft\s+charge|service\s+charge)\s*(?:of|:)?\s*(?<cur>LKR|Rs\.?)\s?(?<amt>$NUM)(?![\d,])""")
 
-/** The 14 merchant alternatives of the catalogue, tried separately so a bad capture can fall through (LKSMS-009). */
+/** Merchant alternatives, tried separately so a bad capture can fall through. */
 private val merchants = listOf(
     """:\s*\*\*\d+\s*:(.*?)\s*\((?:Apprx|Approx)\)""",
     """Location:\s*([^,]+)""",
@@ -289,7 +288,7 @@ private val merchants = listOf(
 ).map(::rx)
 private val badMerchant = rx("""(a/?c\b|card\s+ending|\*+\d|X{2,}\d|\b(?:bal|balance|avl|available)\b|^\W*\d[\d\s,.]*$)""")
 
-/** CB-001 generic card digits, and masked digits with `*` or `X`. */
+/** Card digits, and masked digits with `*` or `X`. */
 private val cardDigits = rx("""(?:card|a/?c|account)\s+(?:no\.?\s*)?(?:ending(?:\s+with)?|ending\s+in)?\s*[#:]?\s*[X\*]*(\d{4})\b""")
 private val masked = rx("""(?:\*+|X{2,})(\d{4,6})\b""")
 private val destination = rx("""(?:to\s+a/?c\b(?:\s+(?:no\.?|number))?\s*([A-Z0-9\*\-]{2,}))|(?:beneficiary[: ]+([A-Z0-9\s\.&]+?)(?:\s+(?:on|ref)|$))""")

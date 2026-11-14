@@ -187,7 +187,7 @@ STN|Db|STN|P|2
 
     fun find(code: String?): CatalogCurrency? = code?.let { byCode[it.uppercase(Locale.ROOT)] }
 
-    /** Currency of the device region, falling back to USD (DM-085). */
+    /** Currency of the device region, falling back to USD. */
     fun forLocale(locale: Locale = Locale.getDefault()): CatalogCurrency {
         val code = runCatching { Currency.getInstance(locale).currencyCode }.getOrNull()
         return find(code) ?: byCode.getValue("USD")

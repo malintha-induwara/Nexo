@@ -151,7 +151,7 @@ class AccountFormViewModel @AssistedInject constructor(
         }
     }
 
-    /** Balance of the account if its rows were expressed in [currencyId] (AS-033 live recompute). */
+    /** Balance of the account if its rows were expressed in [currencyId]. */
     private fun balanceIn(r: RefData, currencyId: String, a: AccountEntity): Double {
         val target = r.currency(currencyId)
         return Money.sum(
@@ -193,7 +193,7 @@ class AccountFormViewModel @AssistedInject constructor(
         val r = ref.value
         _ui.update { s ->
             var n = s.copy(linkedAccountId = id)
-            // AS-023: a debit card takes its payment account's currency when that is not the main currency.
+            // A debit card takes its payment account's currency when that is not the main currency.
             if (groupType() == GroupType.DEBIT_CARD && id != null) {
                 val c = r.accountCurrency(id)
                 if (c.id != r.mainCurrency.id) n = n.copy(currencyId = c.id)

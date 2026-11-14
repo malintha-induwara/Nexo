@@ -1,8 +1,8 @@
 package com.nexo.app.sms.parse
 
 /**
- * Messages that are clearly not money movements (CB-007, LKSMS-005). The fixed formats run first, so an approval-code
- * transfer that says "do not share" is still captured. Only unambiguous phrases belong here (BR-Q2).
+ * Messages that are clearly not money movements. The fixed formats run first, so an approval-code transfer that
+ * says "do not share" is still captured. Only unambiguous phrases belong here.
  */
 object IgnoreRules {
     private val rule = Regex(

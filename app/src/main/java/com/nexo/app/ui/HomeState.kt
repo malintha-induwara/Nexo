@@ -16,15 +16,15 @@ class HomeState @Inject constructor() {
     private val _selected = MutableStateFlow(LocalDate.now())
     val selectedDate: StateFlow<LocalDate> = _selected.asStateFlow()
 
-    /** Date to jump to after a save (TX-022 "returns its date to the calling list"). */
+    /** Date to jump to after a save. */
     private val _focus = MutableSharedFlow<LocalDate>(extraBufferCapacity = 4)
     val focus: SharedFlow<LocalDate> = _focus.asSharedFlow()
 
-    /** Bookmark chosen from the star on the entry form (TX-031). */
+    /** Bookmark chosen from the star on the entry form. */
     private val _pickedFavorite = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val pickedFavorite: SharedFlow<String> = _pickedFavorite.asSharedFlow()
 
-    /** Memo saved by the editor, for the highlight flash (UI-015). */
+    /** Memo saved by the editor, for the highlight flash. */
     private val _savedMemo = MutableStateFlow<String?>(null)
     val savedMemo: StateFlow<String?> = _savedMemo.asStateFlow()
 

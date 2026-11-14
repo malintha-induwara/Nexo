@@ -36,7 +36,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** NQ-001 filter chips. The first two show the queue (pending items); the rest show decided items still kept. */
+/** Filter chips. The first two show the queue (pending items); the rest show decided items still kept. */
 enum class QueueFilter(val label: Int, val status: SmsStatus) {
     ATTENTION(R.string.sms_filter_attention, SmsStatus.PENDING),
     ALL(R.string.sms_filter_all, SmsStatus.PENDING),
@@ -45,10 +45,10 @@ enum class QueueFilter(val label: Int, val status: SmsStatus) {
     CANCELLED(R.string.sms_filter_cancelled, SmsStatus.CANCELLED),
 }
 
-/** One fee question, for a single item or a bulk-approved batch on the same route (NQ-003). */
+/** One fee question, for a single item or a bulk-approved batch on the same route. */
 data class FeePrompt(val items: List<SmsItemEntity>, val plan: FeePlan.Ask)
 
-/** A bank card that pending items mention but no account is set for (NQ-032 "Which account is the card ending 1111?"). */
+/** A bank card that pending items mention but no account is set for. */
 data class CardRef(val bank: String, val last4: String)
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -107,7 +107,7 @@ class SmsQueueViewModel @Inject constructor(
         _selection.value = emptySet()
     }
 
-    /** NQ-003 Approve. An item on a fee route asks first (NQ-020), unless its preset says always or never. */
+    /** An item on a fee route asks first, unless its preset says always or never. */
     fun approve(id: String) = viewModelScope.launch {
         val item = pending.value.firstOrNull { it.id == id } ?: return@launch
         if (item.needsDetails) {
@@ -162,7 +162,7 @@ class SmsQueueViewModel @Inject constructor(
     }
 
     /**
-     * NQ-003 bulk approve: "always" and "never" presets apply silently; routes still on "ask" get one question each for
+     * Bulk approve: "always" and "never" presets apply silently; routes still on "ask" get one question each for
      * the whole batch. Items that need details stay in the queue.
      */
     fun approveSelected() = viewModelScope.launch {
@@ -195,10 +195,10 @@ class SmsQueueViewModel @Inject constructor(
         _selection.value = emptySet()
     }
 
-    /** NQ-030 re-enable hint dismissed. */
+    /** Re-enable hint dismissed. */
     fun clearGap() = viewModelScope.launch { prefs.clearSmsGap() }
 
-    /** NQ-032 "Not now". The picker stays in Settings. */
+    /** "Not now". The picker stays in Settings. */
     fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.core.settings.SmsHistoryImport.SKIPPED) }
 
     fun dismissUndo() {

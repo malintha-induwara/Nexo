@@ -24,7 +24,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Materialises repeat rules into transactions (TX-020). Only one run at a time. */
+/** Materialises repeat rules into transactions. Only one run at a time. */
 @Singleton
 class RepeatEngine @Inject constructor(
     private val db: NexoDatabase,

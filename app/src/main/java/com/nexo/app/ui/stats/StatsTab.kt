@@ -75,7 +75,6 @@ fun scopeLabel(s: StatsScope): String = stringResource(
     },
 )
 
-/** Stats tab (ST-001…ST-007). */
 @Composable
 fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
     val ref by vm.ref.collectAsStateWithLifecycle()

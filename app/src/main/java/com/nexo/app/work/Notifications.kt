@@ -80,7 +80,7 @@ object Notifications {
         return PendingIntent.getActivity(context, request, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
-    /** Persistent quick-add notification (CFG-052). Every action routes through the lock first. */
+    /** Persistent quick-add notification. Every action routes through the lock first. */
     fun updateQuickAdd(context: Context, enabled: Boolean) {
         val nm = NotificationManagerCompat.from(context)
         if (!enabled) {
@@ -111,7 +111,7 @@ object Notifications {
         }
     }
 
-    /** LKSMS-015: only a count, never message text or amounts. [count] 0 removes it. */
+    /** Only a count, never message text or amounts. [count] 0 removes it. */
     fun postSmsReview(context: Context, count: Int) {
         val nm = NotificationManagerCompat.from(context)
         if (count <= 0) {
@@ -156,7 +156,7 @@ object Notifications {
     }
 }
 
-/** Daily reminder alarm (CFG-050): one exact alarm at the next occurrence; inexact when exact alarms aren't allowed. */
+/** Daily reminder alarm: one exact alarm at the next occurrence; inexact when exact alarms aren't allowed. */
 object ReminderScheduler {
     fun schedule(context: Context, enabled: Boolean, hour: Int, minute: Int) {
         val am = context.getSystemService(AlarmManager::class.java)
@@ -210,7 +210,7 @@ class QuickAddRepostReceiver : BroadcastReceiver() {
     }
 }
 
-/** After a reboot: re-post quick add, refresh widgets and re-schedule the reminder (CFG-050). */
+/** After a reboot: re-post quick add, refresh widgets and re-schedule the reminder. */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_MY_PACKAGE_REPLACED &&

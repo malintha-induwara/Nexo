@@ -18,7 +18,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Currencies with manually entered rates (CFG-040…CFG-044). */
+/** Currencies with manually entered rates. */
 @Singleton
 class CurrencyRepository @Inject constructor(
     private val db: NexoDatabase,
@@ -66,7 +66,7 @@ class CurrencyRepository @Inject constructor(
     suspend fun changeMainWithReset(target: CatalogCurrency) = reset.completeReset(deletePhotos = false, main = target)
 
     /**
-     * "Data retention" (CFG-041): every main amount and budget converts with [r] (1 old main = r new main),
+     * "Data retention": every main amount and budget converts with [r] (1 old main = r new main),
      * and every rate becomes old rate × r. A safety backup is taken first and restored on failure.
      */
     suspend fun changeMainWithRate(target: CatalogCurrency, r: Double): Boolean {

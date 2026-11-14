@@ -3,9 +3,9 @@ package com.nexo.app.sms.parse
 import java.util.Locale
 
 /**
- * Sri Lankan banks and fintechs (spec 01 LKSMS-003/004).
+ * Sri Lankan banks and fintechs.
  * [senders] are normalised sender IDs; [aliases] are the word-bounded names used to spot the bank in a body;
- * [rateCode] is the bank's id in the AllRatesToday bank-rates API (NQ-011).
+ * [rateCode] is the bank's id in the AllRatesToday bank-rates API.
  */
 enum class Bank(
     val displayName: String,
@@ -29,7 +29,7 @@ enum class Bank(
     AMANA("Amana Bank", aliases = listOf("AMANA", "AMANA BANK")),
     SDB("SANASA Development Bank", aliases = listOf("SANASA", "SDB")),
 
-    // "CARGILLS" alone is a supermarket chain; only the full bank name counts (spec 01 pitfall).
+    // "CARGILLS" alone is a supermarket chain; only the full bank name counts.
     CARGILLS("Cargills Bank", aliases = listOf("CARGILLS BANK")),
     HDFC("HDFC Bank", aliases = listOf("HDFC")),
     NSB("National Savings Bank", aliases = listOf("NSB", "NATIONAL SAVINGS")),
@@ -60,12 +60,12 @@ object Banks {
         RegexOption.IGNORE_CASE,
     )
 
-    /** LKSMS-003: upper-case, then drop everything except A-Z, 0-9 and '+'. */
+    /** Upper-case, then drop everything except A-Z, 0-9 and '+'. */
     fun normalizeSender(sender: String): String = sender.uppercase(Locale.ROOT).replace(senderJunk, "")
 
     fun fromSender(sender: String): Bank? = bySender[normalizeSender(sender)]
 
-    /** First bank named in [text], word-bounded (CB-011). */
+    /** First bank named in [text], word-bounded. */
     fun findIn(text: String): Bank? = vocabulary.find(text)?.let { byAlias[it.value.uppercase(Locale.ROOT)] }
 
     fun byName(name: String?): Bank? = name?.let { n -> Bank.entries.firstOrNull { it.name == n } }

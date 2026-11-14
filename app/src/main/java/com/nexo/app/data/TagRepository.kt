@@ -14,7 +14,6 @@ sealed interface TagResult {
     data object Empty : TagResult
 }
 
-/** Tag management (ST-080…ST-084, TX-014). */
 @Singleton
 class TagRepository @Inject constructor(private val db: NexoDatabase) {
     val tags = db.tagDao().observeAll()

@@ -1,6 +1,6 @@
 package com.nexo.app.sms.parse
 
-/** What Nexo keeps of a message body (NQ-002, LKSMS-013). */
+/** What Nexo keeps of a message body. */
 object Redactor {
     private val ci = setOf(RegexOption.IGNORE_CASE)
     const val MASK = "[REDACTED]"

@@ -159,7 +159,7 @@ private fun EditableList(
     }
 }
 
-/** Main category list (ST-061). */
+/** Main category list. */
 @Composable
 fun CategoryListScreen(key: CategoryListKey, vm: CategoryViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -189,7 +189,6 @@ fun CategoryListScreen(key: CategoryListKey, vm: CategoryViewModel = hiltViewMod
     deleting?.let { id -> ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.launch { vm.repo.delete(id) } }, onDismiss = { deleting = null }) }
 }
 
-/** Subcategory list (ST-064). */
 @Composable
 fun SubcategoryListScreen(key: SubcategoryListKey, vm: CategoryViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -232,7 +231,7 @@ private fun firstGrapheme(text: String): String? {
     return if (end == BreakIterator.DONE) t else t.substring(0, end)
 }
 
-/** Add / edit main or sub category, with the main ↔ sub conversions (ST-062, ST-065…ST-067). */
+/** Add / edit main or sub category, with the main ↔ sub conversions. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CategoryFormScreen(key: CategoryFormKey, vm: CategoryViewModel = hiltViewModel()) {

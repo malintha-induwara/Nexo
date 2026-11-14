@@ -5,9 +5,9 @@ import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.TxKind
 
 /**
- * Income / expense classification (04 B7). Transfers are judged on their outgoing leg:
+ * Income / expense classification. Transfers are judged on their outgoing leg:
  * [accountId] is the source and [counterpartId] the destination.
- * Fix from README §8: an account with no group (or "None") is treated as non-card in lump-sum mode.
+ * An account with no group (or "None") is treated as non-card in lump-sum mode.
  */
 class Classifier(private val ref: RefData) {
     private val lumpSum = ref.settings.cardAccounting == CardAccounting.LUMP_SUM
@@ -44,7 +44,7 @@ class Classifier(private val ref: RefData) {
         }
     }
 
-    /** True when a transfer counts on the stats screen as a transfer-expense row (05 BR-S2). */
+    /** True when a transfer counts on the stats screen as a transfer-expense row. */
     fun transferStatsFlow(src: String?, dst: String?): CashFlow {
         val srcFlag = ref.isFlagged(src)
         val dstFlag = ref.isFlagged(dst)

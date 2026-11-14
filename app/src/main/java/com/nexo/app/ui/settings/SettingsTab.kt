@@ -68,7 +68,7 @@ import com.nexo.app.ui.theme.nexo
 
 data class HubItem(val label: Int, val icon: ImageVector, val key: NavKey)
 
-/** Sends the feedback e-mail (CFG-055). The address is a placeholder for the publisher's own. */
+/** Sends the feedback e-mail. The address is a placeholder for the publisher's own. */
 fun feedbackIntent(context: android.content.Context, subjectRes: Int = R.string.feedback_subject): Intent {
     val body = "\n\n---\n${Build.MANUFACTURER} ${Build.MODEL}\nAndroid ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n" +
         "Nexo ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\nLocale ${java.util.Locale.getDefault()}"
@@ -79,7 +79,6 @@ fun feedbackIntent(context: android.content.Context, subjectRes: Int = R.string.
     }
 }
 
-/** Settings hub (CFG-001, CFG-002). */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SettingsTab(vm: SettingsViewModel = hiltViewModel()) {

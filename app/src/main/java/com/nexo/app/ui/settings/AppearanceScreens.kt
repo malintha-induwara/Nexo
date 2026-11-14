@@ -91,7 +91,7 @@ private fun themeModeLabel(m: ThemeMode) = stringResource(
     },
 )
 
-/** Style (CFG-021): light, dark or follow the system. The colour theme was retired with the neutral redesign. */
+/** Light, dark or follow the system. The colour theme was retired with the neutral redesign. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun StyleScreen(vm: SettingsViewModel = hiltViewModel()) {
@@ -110,7 +110,6 @@ fun StyleScreen(vm: SettingsViewModel = hiltViewModel()) {
     }
 }
 
-/** Widget Settings (CFG-023). */
 @Composable
 fun WidgetSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -147,7 +146,6 @@ fun WidgetSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     }
 }
 
-/** Daily reminder (CFG-050). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReminderScreen(vm: SettingsViewModel = hiltViewModel()) {
@@ -191,7 +189,7 @@ fun ReminderScreen(vm: SettingsViewModel = hiltViewModel()) {
     }
 }
 
-/** App lock: PIN, biometrics and lock timeout (single-user adaptation of LU-017/018/023). */
+/** App lock: PIN, biometrics and lock timeout. */
 @Composable
 fun LockSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current

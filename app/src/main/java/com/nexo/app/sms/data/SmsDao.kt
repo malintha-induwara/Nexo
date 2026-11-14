@@ -67,7 +67,7 @@ interface SmsDao {
     )
     suspend fun purchasesOnCard(bank: String, cardLast4: String, since: Long, until: Long): List<SmsItemEntity>
 
-    /** Pending items on cards that aren't mapped to an account yet (NQ-032 card mapping). */
+    /** Pending items on cards that aren't mapped to an account yet. */
     @Query(
         "SELECT * FROM sms_items WHERE status = 'PENDING' AND cardLast4 IS NOT NULL AND accountId IS NULL " +
             "ORDER BY smsAt DESC",
@@ -83,7 +83,7 @@ interface SmsDao {
     @Update
     suspend fun updateAll(items: List<SmsItemEntity>)
 
-    /** NQ-033: pending items captured before [before] leave the queue without touching the ledger. */
+    /** Pending items captured before [before] leave the queue without touching the ledger. */
     @Query("UPDATE sms_items SET status = 'EXPIRED', decidedAt = :now, updatedAt = :now WHERE status = 'PENDING' AND capturedAt < :before")
     suspend fun expire(before: Long, now: Long): Int
 
@@ -168,7 +168,7 @@ interface SmsDao {
     @Query("SELECT * FROM fx_snapshots WHERE bank = :bank AND ccy = :ccy ORDER BY capturedAt DESC LIMIT 1")
     suspend fun latestRate(bank: String, ccy: String): FxSnapshotEntity?
 
-    /** Each bank's latest board for [ccy] captured at or before [at] (NQ-011 step 3). */
+    /** Each bank's latest board for [ccy] captured at or before [at]. */
     @Query(
         "SELECT f.* FROM fx_snapshots f JOIN (SELECT bank, MAX(capturedAt) AS m FROM fx_snapshots WHERE ccy = :ccy AND capturedAt <= :at GROUP BY bank) l " +
             "ON f.bank = l.bank AND f.capturedAt = l.m WHERE f.ccy = :ccy",

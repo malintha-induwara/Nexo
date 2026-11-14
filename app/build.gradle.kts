@@ -9,7 +9,7 @@ plugins {
     alias(libs.plugins.room)
 }
 
-// AllRatesToday API key for FX estimates (spec-money-master-sl 04 NQ-010). Lives in local.properties, which is
+// AllRatesToday API key for FX estimates. Lives in local.properties, which is
 // never committed: allratestoday.apiKey=… Without it the app falls back to the rates set in Nexo's currency settings.
 val allRatesTodayKey: String = Properties().apply {
     rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }

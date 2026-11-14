@@ -33,7 +33,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.util.UUID
 
-/** NQ-003 Approve / Deny / Edit against a seeded LKR book (accounts "1" bank, "11" cash; category "6" Food). */
+/** Approve / Deny / Edit against a seeded LKR book (accounts "1" bank, "11" cash; category "6" Food). */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class SmsApproverTest {

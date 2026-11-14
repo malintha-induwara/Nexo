@@ -13,7 +13,7 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 
-/** Biometric unlock backed by a keystore key that the platform invalidates when enrolments change (LU-018). */
+/** Biometric unlock backed by a keystore key that the platform invalidates when enrolments change. */
 object BiometricHelper {
     private const val KEY_ALIAS = "nexo_biometric_unlock"
     private const val TRANSFORMATION = "AES/CBC/PKCS7Padding"

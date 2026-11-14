@@ -33,7 +33,7 @@ fun LocalDate.toIsoText(): String = format(DateTimeFormatter.ISO_LOCAL_DATE)
 fun String.toLocalDate(): LocalDate = LocalDate.parse(this)
 
 /**
- * Accounting periods (07 › Business rules › Periods, 03 BR-1…BR-3, 05 BR-P1…BR-P4).
+ * Accounting periods.
  * [startDay] is the month start day S (1–31), [weekendRule] the weekend adjustment W.
  */
 class PeriodEngine(
@@ -106,7 +106,7 @@ class PeriodEngine(
     fun next(period: MonthPeriod): MonthPeriod = monthPeriodContaining(period.end.plusDays(10))
     fun previous(period: MonthPeriod): MonthPeriod = monthPeriodContaining(period.start.minusDays(10))
 
-    /** The period labelled [month] (BR-1 step 8). */
+    /** The period labelled [month]. */
     fun monthPeriodFor(month: YearMonth): MonthPeriod {
         val base = if (s != 1 && s >= 20) month.minusMonths(1) else month
         val probe = base.atDay(1).plusDays((s + 10 - 1).toLong())

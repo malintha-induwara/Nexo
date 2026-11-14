@@ -154,7 +154,7 @@ class SearchViewModel @Inject constructor(
         _executed.value = _criteria.value
     }
 
-    /** Criteria changes search immediately (UI-019). */
+    /** Criteria changes search immediately. */
     fun update(transform: (SearchCriteria) -> SearchCriteria) {
         _criteria.update(transform)
         execute()

@@ -30,7 +30,7 @@ data class MonthRow(val period: MonthPeriod, val income: Double, val expense: Do
 
 data class RepeatPreview(val dates: List<LocalDate>, val names: List<String>, val amount: Double)
 
-/** Accounts card of the Total page (ST-053, BR-T1). */
+/** Accounts card of the Total page. */
 data class TotalSummary(
     val comparedPercent: Int,
     val cashLabel: String,
@@ -62,7 +62,7 @@ data class HomeData(
     val ledger: com.nexo.app.data.Ledger = com.nexo.app.data.Ledger(),
 )
 
-/** Main-screen filter (UI-018, BR-10). */
+/** Main-screen filter. */
 data class FilterCriteria(
     val incomeAll: Boolean = false,
     val expenseAll: Boolean = false,

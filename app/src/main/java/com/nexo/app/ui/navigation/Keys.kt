@@ -189,7 +189,7 @@ data class ExcelExportKey(val start: String? = null, val end: String? = null) : 
 @Serializable
 data class RestoreFileKey(val uri: String) : NavKey
 
-/** Bank SMS Review Queue (spec-money-master-sl 04 NQ-001). */
+/** Bank SMS Review Queue. */
 @Serializable
 data object SmsQueueKey : NavKey
 
@@ -205,6 +205,6 @@ data object SmsFeesKey : NavKey
 @Serializable
 data object SmsSendersKey : NavKey
 
-/** NQ-032 picker. A non-zero gap opens on the messages that arrived while capture was off. */
+/** A non-zero gap opens on the messages that arrived while capture was off. */
 @Serializable
 data class SmsHistoryKey(val gapFrom: Long = 0, val gapUntil: Long = 0) : NavKey

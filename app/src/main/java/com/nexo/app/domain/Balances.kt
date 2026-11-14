@@ -28,7 +28,7 @@ object Balances {
         return main.keys.associateWith { Net(main.getValue(it).toDouble(), acct.getValue(it).toDouble()) }
     }
 
-    /** B1: balance of [account] in its own currency, including debit cards linked to it. */
+    /** Balance of [account] in its own currency, including debit cards linked to it. */
     fun balance(ref: RefData, account: AccountEntity, net: Map<String?, Net>): Double {
         val useMain = account.currencyId == ref.mainCurrency.id
         val ids = listOf(account.id) + ref.linkedDebitCards(account.id).map { it.id }
@@ -38,7 +38,7 @@ object Balances {
     /** Net of the "None" pseudo-account in main currency. */
     fun unassigned(net: Map<String?, Net>): Double = net[null]?.main ?: 0.0
 
-    /** B4: value converted to the main currency at the current rate. */
+    /** Value converted to the main currency at the current rate. */
     fun toMain(ref: RefData, value: Double, accountId: String): Double {
         val c = ref.accountCurrency(accountId)
         val rounded = Money.round(value, c.decimals)
@@ -78,7 +78,6 @@ data class AccountsSummary(
 }
 
 object AccountsSummaryCalculator {
-    /** B5/B6 over the given figures. */
     fun summarize(ref: RefData, figures: List<AccountFigure>, unassigned: Double?): AccountsSummary {
         var assets = BigDecimal.ZERO
         var liabilities = BigDecimal.ZERO
@@ -117,7 +116,7 @@ object AccountsSummaryCalculator {
         return AccountsSummary(assets.toDouble(), liabilities.toDouble(), groups)
     }
 
-    /** Figures for "All" mode (AS-050): balances without date limit, card statements as of [today], debit cards by current month. */
+    /** Figures for "All" mode: balances without date limit, card statements as of [today], debit cards by current month. */
     fun allModeFigures(
         ref: RefData,
         net: Map<String?, Net>,
@@ -137,14 +136,14 @@ object AccountsSummaryCalculator {
         }
     }
 
-    /** Figures for period modes (AS-056): cumulative balances as of the period end, no statement split. */
+    /** Figures for period modes: cumulative balances as of the period end, no statement split. */
     fun periodFigures(ref: RefData, net: Map<String?, Net>): List<AccountFigure> = ref.orderedAccounts().mapNotNull { a ->
         val type = ref.groupType(a.id) ?: return@mapNotNull null
         AccountFigure(a, type, Balances.balance(ref, a, net), excluded = type == GroupType.DEBIT_CARD || !a.includeInTotals)
     }
 }
 
-/** Credit-card statement figures (AS-065), negative = owed. */
+/** Credit-card statement figures, negative = owed. */
 data class CardFigures(
     val payable: Double,
     val outstanding: Double,
@@ -152,7 +151,7 @@ data class CardFigures(
     val current: DateRange,
     val previous: DateRange,
 ) {
-    /** Fixed AS-066: pre-fill overdue + payable. */
+    /** Pre-fill overdue + payable. */
     val payAmount: Double
         get() {
             val owed = Money.add(payable, other)
@@ -161,7 +160,7 @@ data class CardFigures(
 }
 
 object CardStatement {
-    /** B3 allocation. [rows] = all rows of the card and its linked debit cards. Prepayment tags are not used in Nexo. */
+    /** [rows] = all rows of the card and its linked debit cards. Prepayment tags are not used in Nexo. */
     fun compute(ref: RefData, card: AccountEntity, rows: List<TransactionEntity>, today: LocalDate): CardFigures {
         val engine = PeriodEngine(card.settlementDay.coerceIn(1, 31))
         val c = engine.monthPeriodContaining(today).range
@@ -208,7 +207,7 @@ object CardStatement {
         return CardFigures(Money.round(payable, d), Money.round(outstanding, d), Money.round(other, d), c, p)
     }
 
-    /** Payment date for a statement ending on [end] (B13): first payment-day date strictly after it. */
+    /** Payment date for a statement ending on [end]: first payment-day date strictly after it. */
     fun paymentDate(end: LocalDate, paymentDay: Int): LocalDate {
         var month = java.time.YearMonth.from(end)
         repeat(3) {

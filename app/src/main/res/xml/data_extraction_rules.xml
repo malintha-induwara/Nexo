@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- No OS cloud backup and no device transfer: data leaves only through explicit exports (V1). -->
+<!-- No OS cloud backup and no device transfer: data leaves only through explicit exports. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="root" />

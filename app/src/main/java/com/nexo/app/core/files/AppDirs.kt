@@ -7,7 +7,6 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Private folders (08 file layout, reduced to one user). */
 @Singleton
 class AppDirs @Inject constructor(@ApplicationContext private val context: Context) {
     private fun dir(name: String) = File(context.filesDir, name).apply { mkdirs() }

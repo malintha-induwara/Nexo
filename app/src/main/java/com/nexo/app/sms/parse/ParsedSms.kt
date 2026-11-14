@@ -11,21 +11,21 @@ import java.security.MessageDigest
 /** One incoming SMS. [timestamp] is the sender-side time (inbox `date_sent`), so realtime and inbox reads agree. */
 data class SmsMessage(val sender: String, val body: String, val timestamp: Long)
 
-/** Why a message produced no queue item (BR-2 blocked / rejected). */
+/** Why a message produced no queue item. */
 enum class IgnoreReason {
-    /** Not a known bank sender or a user-added one (LKSMS-003). */
+    /** Not a known bank sender or a user-added one. */
     SENDER,
 
     /** Declined card attempt: nothing moved. */
     DECLINED,
 
-    /** OTP, security or marketing message (CB-007). */
+    /** OTP, security or marketing message. */
     RULE,
 
     /** A known bank, but no fixed format or general rule recognised it. */
     NO_MATCH,
 
-    /** A cancellation with no earlier purchase to cancel (CB-004). */
+    /** A cancellation with no earlier purchase to cancel. */
     ORPHAN_CANCEL,
 }
 
@@ -55,23 +55,23 @@ sealed interface ParsedSms {
         val statedFee: BigDecimal? = null,
     ) : ParsedSms
 
-    /** CB-004: a purchase was cancelled. The message carries no amount. */
+    /** A purchase was cancelled. The message carries no amount. */
     data class Cancel(override val bank: Bank, val merchant: Merchant, val cardLast4: String) : ParsedSms
 
-    /** CB-003: an OTP that names the merchant cleanly; kept briefly to improve the next purchase. */
+    /** An OTP that names the merchant cleanly; kept briefly to improve the next purchase. */
     data class OtpHint(override val bank: Bank, val merchant: String, val amount: BigDecimal, val currency: String) : ParsedSms
 
     data class Ignored(override val bank: Bank?, val reason: IgnoreReason, val detail: String = "") : ParsedSms
 }
 
 internal object Amounts {
-    /** "Rs"/"Rs." mean LKR (LKSMS-008). */
+    /** "Rs"/"Rs." mean LKR. */
     fun currency(raw: String): String = raw.trimEnd('.').uppercase().let { if (it == "RS") "LKR" else it }
 
     fun parse(raw: String): BigDecimal? = raw.replace(",", "").toBigDecimalOrNull()?.setScale(2, RoundingMode.HALF_UP)?.takeIf { it.signum() > 0 }
 }
 
-/** CB-010: fixed-format messages dedupe on their parsed fields, so two byte-identical alerts seconds apart stay one item. */
+/** Fixed-format messages dedupe on their parsed fields, so two byte-identical alerts seconds apart stay one item. */
 object DedupeKeys {
     fun of(vararg parts: Any?): String {
         val joined = parts.joinToString("\u001F") { it?.toString().orEmpty() }
@@ -79,6 +79,6 @@ object DedupeKeys {
         return digest.joinToString("") { "%02x".format(it) }
     }
 
-    /** The money-back item for an approved purchase that was later cancelled (CB-004). */
+    /** The money-back item for an approved purchase that was later cancelled. */
     fun reversal(itemId: String): String = of("reversal", itemId)
 }

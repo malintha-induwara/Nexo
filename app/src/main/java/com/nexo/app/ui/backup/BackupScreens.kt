@@ -105,7 +105,6 @@ private fun restoreMessage(r: RestoreResult) = stringResource(
     },
 )
 
-/** Backup hub (CFG-025). */
 @Composable
 fun BackupScreen(vm: BackupViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -169,7 +168,7 @@ fun BackupScreen(vm: BackupViewModel = hiltViewModel()) {
     }
 }
 
-/** Backup / restore on device (CFG-026). */
+/** Backup / restore on device. */
 @Composable
 fun BackupDeviceScreen(vm: BackupViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -211,7 +210,7 @@ fun displayName(context: Context, uri: Uri): String? = runCatching {
     context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
 }.getOrNull() ?: uri.lastPathSegment
 
-/** Restore requested by opening a backup file with Nexo (LU-016 / CFG-026). */
+/** Restore requested by opening a backup file with Nexo. */
 @Composable
 fun RestoreFileScreen(key: RestoreFileKey, vm: BackupViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -224,7 +223,6 @@ fun RestoreFileScreen(key: RestoreFileKey, vm: BackupViewModel = hiltViewModel()
     result?.let { r -> MessageDialog(restoreMessage(r), onDismiss = { result = null; nav.resetTo(MainKey) }) }
 }
 
-/** Automatic Backup History (CFG-031). */
 @Composable
 fun AutoBackupHistoryScreen(vm: BackupViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -265,7 +263,7 @@ fun AutoBackupHistoryScreen(vm: BackupViewModel = hiltViewModel()) {
     result?.let { r -> MessageDialog(restoreMessage(r), onDismiss = { result = null; if (r == RestoreResult.Success) nav.resetTo(MainKey) }) }
 }
 
-/** Excel period dialog (CFG-034). */
+/** Excel period dialog. */
 @Composable
 fun ExcelExportScreen(key: ExcelExportKey, vm: BackupViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current

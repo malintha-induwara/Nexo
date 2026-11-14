@@ -14,7 +14,7 @@ import javax.inject.Singleton
 class FavoriteRepository @Inject constructor(private val db: NexoDatabase) {
     val favorites = db.favoriteDao().observeAll()
 
-    /** TX-030: creates a bookmark, reviving an identical one instead of duplicating it. */
+    /** Creates a bookmark, reviving an identical one instead of duplicating it. */
     suspend fun addFromTransaction(tx: TransactionEntity) {
         val kind = if (tx.kind == TxKind.TRANSFER_IN) TxKind.TRANSFER_OUT else tx.kind
         val account = if (tx.kind == TxKind.TRANSFER_IN) tx.counterpartAccountId else tx.accountId

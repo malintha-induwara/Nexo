@@ -43,7 +43,7 @@ import java.time.ZoneOffset
 private fun LocalDate.utcMillis(): Long = atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
 private fun Long.utcDate(): LocalDate = Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
 
-/** Date picker limited to 1985–2050 (TX-004). */
+/** Date picker limited to 1985–2050. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NexoDatePickerDialog(
@@ -95,7 +95,7 @@ fun NexoTimePickerDialog(initial: LocalTime, onPick: (LocalTime) -> Unit, onDism
     )
 }
 
-/** Month picker (UI-005): year ±, 12 months, "This month". */
+/** Month picker: year ±, 12 months, "This month". */
 @Composable
 fun MonthPickerDialog(selected: YearMonth, onPick: (YearMonth) -> Unit, onDismiss: () -> Unit) {
     var year by rememberSaveable { mutableIntStateOf(selected.year) }

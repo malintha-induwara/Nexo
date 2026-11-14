@@ -4,7 +4,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlin.math.abs
 
-/** CB-008: the transaction time written in the body, read as Sri Lankan time (UTC+05:30). */
+/** The transaction time written in the body, read as Sri Lankan time (UTC+05:30). */
 object BodyDate {
     val ZONE: ZoneId = ZoneId.of("Asia/Colombo")
     private const val WINDOW_MS = 3L * 24 * 60 * 60 * 1000

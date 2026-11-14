@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 
 /**
- * Loop palette (Nexo-docs/branding/palettes/nexo-loop-palette.json), built from the launcher icon.
+ * Loop palette, built from the launcher icon.
  * Structure is strictly neutral: pure white in light mode, graphite in dark. Blue marks actions and
  * emphasis only (buttons, the add button, switches, the active tab, selected states); every other
  * colour carries meaning (money direction and category identity).

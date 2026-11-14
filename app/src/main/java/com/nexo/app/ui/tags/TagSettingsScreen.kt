@@ -51,7 +51,6 @@ class TagSettingsViewModel @Inject constructor(val repo: TagRepository) : ViewMo
     fun launch(block: suspend () -> Unit) = viewModelScope.launch { block() }
 }
 
-/** Tag Settings (ST-080…ST-084). */
 @Composable
 fun TagSettingsScreen(vm: TagSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current

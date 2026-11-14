@@ -65,7 +65,7 @@ enum class MainTab(val label: Int, val icon: ImageVector, val selectedIcon: Imag
 }
 
 /**
- * Lets tab content talk to the shell: hide the bottom bar (filter panel, multi-select — UI-001),
+ * Lets tab content talk to the shell: hide the bottom bar (filter panel, multi-select),
  * take over the add button (the Notes view adds a memo), and read how much space the floating bar
  * covers so lists can scroll underneath it.
  */
@@ -83,7 +83,7 @@ val LocalShell = staticCompositionLocalOf { ShellController() }
 /** Tabs already redesigned to draw edge to edge under the floating bar. The rest stop above it. */
 private val EDGE_TO_EDGE = setOf(MainTab.TRANSACTIONS)
 
-/** App shell with the four top-level tabs (UI-001). Re-selecting a tab sends a "go to today" signal. */
+/** App shell with the four top-level tabs. Re-selecting a tab sends a "go to today" signal. */
 @Composable
 fun MainShell() {
     var tab by rememberSaveable { mutableStateOf(MainTab.TRANSACTIONS) }

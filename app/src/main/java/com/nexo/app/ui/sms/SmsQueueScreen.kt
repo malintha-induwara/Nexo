@@ -90,7 +90,6 @@ private sealed interface QueueSheet {
     data class Deny(val ids: Set<String>) : QueueSheet
 }
 
-/** The Review Queue (spec-money-master-sl 04 NQ-001/003). */
 @Composable
 fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -373,7 +372,7 @@ private fun SelectionHeader(count: Int, onClose: () -> Unit, onAssign: () -> Uni
     }
 }
 
-/** NQ-030: the capture switch mirrored on the queue header. Opens the SMS settings. */
+/** The capture switch mirrored on the queue header. Opens the SMS settings. */
 @Composable
 private fun CapturePill(label: String, on: Boolean, onClick: () -> Unit) {
     val colors = LocalNexoColors.current
@@ -415,7 +414,7 @@ private fun FilterChips(selected: QueueFilter, pendingCount: Int, attentionCount
     }
 }
 
-/** NQ-032 card mapping, asked once per card at the top of a list. */
+/** Card mapping, asked once per card at the top of a list. */
 @Composable
 fun CardQuestion(card: CardRef, modifier: Modifier, onChoose: () -> Unit) {
     val bank = com.nexo.app.sms.parse.Banks.byName(card.bank)?.displayName.orEmpty()

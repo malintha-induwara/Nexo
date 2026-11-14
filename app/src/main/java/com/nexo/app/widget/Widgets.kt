@@ -182,7 +182,7 @@ private fun TransactionsContent(context: Context, f: MonthFigures, mode: Int, co
     }
 }
 
-/** Transactions widget 4×1 (UI-028). */
+/** Transactions widget 4×1. */
 class TransactionsWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
@@ -198,7 +198,7 @@ class TransactionsWidget : GlanceAppWidget() {
     }
 }
 
-/** Transactions widget 4×2 (UI-029). */
+/** Transactions widget 4×2. */
 class TransactionsWideWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
@@ -214,7 +214,7 @@ class TransactionsWideWidget : GlanceAppWidget() {
     }
 }
 
-/** Card widget 4×2 (UI-030). */
+/** Card widget 4×2. */
 class CardWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val initial = Triple(WidgetData.colors(context), WidgetData.cards(context), WidgetData.month(context))
@@ -264,7 +264,7 @@ private fun QuickButton(context: Context, label: String, colors: WidgetColors, i
 
 private fun addIntent(context: Context, type: EntryType) = launch(context, IntentRouter.ACTION_ADD) { putExtra(IntentRouter.EXTRA_TYPE, type.name) }
 
-/** Quick Add widget 4×1 (UI-031). */
+/** Quick Add widget 4×1. */
 class QuickAddWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val initial = colorsAndMonth(context)
@@ -283,7 +283,7 @@ class QuickAddWidget : GlanceAppWidget() {
     }
 }
 
-/** Quick Transaction Add 2×1 / 2×2 (UI-032): two buttons, plus Bookmarks when tall enough. */
+/** Quick Transaction Add 2×1 / 2×2: two buttons, plus Bookmarks when tall enough. */
 class QuickTxWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(setOf(DpSize(110.dp, 50.dp), DpSize(110.dp, 110.dp)))
 
@@ -335,7 +335,7 @@ class QuickTxWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = QuickTxWidget()
 }
 
-/** Removing a widget deletes its display mode (UI-027). */
+/** Removing a widget deletes its display mode. */
 private fun clearModes(context: Context, ids: IntArray) {
     kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
         runCatching { ids.forEach { WidgetData.entry(context).prefs().clearWidgetMode(it) } }

@@ -178,7 +178,7 @@ class TransactionsViewModel @Inject constructor(
         )
     }
 
-    /** BR-6: upcoming scheduled repeats from today to the period end. */
+    /** Upcoming scheduled repeats from today to the period end. */
     private fun repeatPreview(ref: RefData, rules: List<RepeatRuleEntity>, period: MonthPeriod): RepeatPreview? {
         val today = LocalDate.now()
         val from = maxOf(today, period.start)
@@ -264,7 +264,7 @@ class TransactionsViewModel @Inject constructor(
         )
     }
 
-    /** BR-T1 Total-page summary. */
+    /** Total-page summary. */
     private fun summary(ref: RefData, rows: List<TransactionEntity>, previous: List<TransactionEntity>): TotalSummary {
         val c = Classifier(ref)
         fun inOut(list: List<TransactionEntity>, predicate: (TransactionEntity) -> Boolean = { true }): InOut {
@@ -413,7 +413,6 @@ class TransactionsViewModel @Inject constructor(
     }
 
     companion object {
-        /** BR-7 calendar grid range. */
         fun gridRange(period: MonthPeriod, weekStart: java.time.DayOfWeek): DateRange {
             val start = period.start.with(TemporalAdjusters.previousOrSame(weekStart))
             var end = period.end.with(TemporalAdjusters.nextOrSame(weekStart.minus(1)))

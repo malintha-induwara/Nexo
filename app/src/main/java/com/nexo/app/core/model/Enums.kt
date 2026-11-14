@@ -84,7 +84,7 @@ enum class SwipeMode { CHANGE_TAB, CHANGE_DATE, NONE }
 
 enum class ColorSet { A, B }
 
-/** Time input / list order setting (CFG-015). */
+/** Time input / list order setting. */
 enum class TimeDisplay(val code: Int, val timeInput: Boolean, val showOnList: Boolean, val descending: Boolean, val byTime: Boolean) {
     NONE_DESC(5, false, false, true, false),
     NONE_ASC(0, false, false, false, false),

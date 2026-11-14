@@ -13,7 +13,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Fills a new queue item's account, destination and category (LKSMS-011/012):
+ * Fills a new queue item's account, destination and category:
  * card digits first, then the bank's default account; categories only from what the user taught Nexo.
  */
 @Singleton
@@ -38,11 +38,11 @@ class SmsSuggester @Inject constructor(
             else liveCategory(dao.merchantRule(item.learningKey)?.categoryId)
 
         var out = item.copy(accountId = account, toAccountId = destination, categoryId = category)
-        // A purchase in the account's own currency is not an estimate (NQ-020 `fx_card_purchase`: card currency ≠ wallet currency).
+        // A purchase in the account's own currency is not an estimate.
         if (out.certainty == Certainty.ESTIMATED && account != null && r.accountCurrency(account).isoCode.equals(out.currency, ignoreCase = true)) {
             out = out.copy(certainty = Certainty.EXACT, reason = null, feeRoute = null)
         }
-        // NQ-011 from local snapshots only; the sync worker fetches and fills "Rate pending" items later.
+        // Local snapshots only; the sync worker fetches and fills "Rate pending" items later.
         return fx.estimate(out, r)
     }
 }

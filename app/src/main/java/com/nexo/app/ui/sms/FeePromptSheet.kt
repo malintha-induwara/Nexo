@@ -72,7 +72,7 @@ private fun feeRouteQuestion(route: FeeRoute): Int? = when (route) {
 }
 
 /**
- * NQ-020 "Did <bank> charge a fee?": the fee pre-filled from the last one on this route (or the FX difference),
+ * "Did <bank> charge a fee?": the fee pre-filled from the last one on this route (or the FX difference),
  * "Remember", and Add fee / No fee. The FX variant offers Record as bank fee / Include in purchase.
  * Cancel is the sheet's own dismissal (scrim, back, drag) or the text button.
  */

@@ -50,7 +50,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Column-name based cursor access that tolerates missing columns (DM-005 / DM-090). */
+/** Column-name based cursor access that tolerates missing columns. */
 private class Row(private val c: Cursor) {
     private fun idx(name: String) = c.getColumnIndex(name)
     fun str(name: String): String? = idx(name).takeIf { it >= 0 && !c.isNull(it) }?.let { c.getString(it) }
@@ -61,7 +61,7 @@ private class Row(private val c: Cursor) {
 }
 
 /**
- * Imports a Money Manager Android backup (uid-based schema, versions 16–19) into Nexo (V11, DM-X01).
+ * Imports a Money Manager Android backup (uid-based schema, versions 16–19) into Nexo.
  * Tombstones (delete flag 1) are skipped, sync bookkeeping and the plain-text passcode rows are never read.
  */
 @Singleton
@@ -434,7 +434,7 @@ class LegacyImporter @Inject constructor(
         )
     }
 
-    /** Book settings from the ZETC codes (DM-075). Passcode rows (-8457, -9999) are never read. */
+    /** Book settings from the ZETC codes. Passcode rows (-8457, -9999) are never read. */
     private fun readSettings(src: SQLiteDatabase): BookSettings {
         val values = HashMap<Int, Pair<String?, String?>>()
         src.each("ZETC") { r ->

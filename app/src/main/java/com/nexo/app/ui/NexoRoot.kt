@@ -63,7 +63,7 @@ fun NexoRoot(app: AppViewModel, onEraseAll: suspend () -> Unit, onBiometricsInva
                     )
                 }
             }
-            // "What's new" once per release; a first install only stores the marker (UI-022 step 3).
+            // "What's new" once per release; a first install only stores the marker.
             if (!locked && d.whatsNewVersion < com.nexo.app.BuildConfig.VERSION_CODE) {
                 if (d.whatsNewVersion == 0) LaunchedEffect(Unit) { app.markWhatsNewSeen() }
                 else androidx.compose.material3.AlertDialog(

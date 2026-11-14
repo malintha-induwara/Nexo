@@ -6,7 +6,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 
-/** Next-date rules (TX-020). Month steps are anchored to [anchorDay] so the 29th–31st no longer drift (README §8). */
+/** Next-date rules. Month steps are anchored to [anchorDay] so the 29th–31st no longer drift. */
 object RepeatSchedule {
     fun next(previous: LocalDate, type: RepeatType, anchorDay: Int): LocalDate? = when (type) {
         RepeatType.NONE -> null
@@ -35,7 +35,7 @@ object RepeatSchedule {
         }
     }
 
-    /** Date snapping when a repeat type is chosen on the form (TX-019). */
+    /** Date snapping when a repeat type is chosen on the form. */
     fun snap(date: LocalDate, type: RepeatType): LocalDate = when (type) {
         RepeatType.END_OF_MONTH -> date.with(TemporalAdjusters.lastDayOfMonth())
         RepeatType.WEEKDAYS -> when (date.dayOfWeek) {
@@ -48,7 +48,7 @@ object RepeatSchedule {
         else -> date
     }
 
-    /** Oldest allowed start date for a new repeat (TX-019 age check). */
+    /** Oldest allowed start date for a new repeat. */
     fun oldestAllowed(type: RepeatType, today: LocalDate): LocalDate = when (type) {
         RepeatType.DAILY, RepeatType.WEEKDAYS -> today.minusMonths(1)
         RepeatType.SEMIANNUAL, RepeatType.ANNUAL -> today.minusMonths(18)
@@ -70,7 +70,7 @@ object RepeatSchedule {
     }
 }
 
-/** Horizon of the materialisation engine (TX-020 step 1–2). */
+/** Horizon of the materialisation engine. */
 data class RepeatWindow(val lowerExclusive: LocalDate, val horizonExclusive: LocalDate) {
     companion object {
         fun of(today: LocalDate, firstOfPeriod: Boolean, currentPeriodEnd: LocalDate): RepeatWindow {

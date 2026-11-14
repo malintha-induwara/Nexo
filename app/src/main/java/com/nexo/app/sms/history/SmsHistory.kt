@@ -25,7 +25,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
 
-/** A past message the picker can offer (NQ-032). */
+/** A past message the picker can offer. */
 data class HistoryRow(
     val item: SmsItemEntity,
     /** Cancelled later in the same period: shown struck through, never selectable. */
@@ -35,8 +35,8 @@ data class HistoryRow(
 )
 
 /**
- * "Add past transactions" (NQ-032): reads the inbox from before the start point (or a re-enable gap), parses it the same
- * way as live capture, and drops anything Nexo already has. Nothing is written until the user picks rows.
+ * "Add past transactions": reads the inbox from before the start point (or a re-enable gap), parses it the same way as
+ * live capture, and drops anything Nexo already has. Nothing is written until the user picks rows.
  */
 @Singleton
 class SmsHistory @Inject constructor(
@@ -47,7 +47,7 @@ class SmsHistory @Inject constructor(
     private val suggester: SmsSuggester,
     private val fx: FxRepository,
 ) {
-    /** Live capture covers everything from the start point on, so the picker stops there (BR-Q6). */
+    /** Live capture covers everything from the start point on, so the picker stops there. */
     suspend fun upperBound(until: Long): Long {
         val started = prefs.current().smsCaptureStartedAt
         return if (started > 0) minOf(until, started) else until
@@ -62,7 +62,7 @@ class SmsHistory @Inject constructor(
         val store = MemorySmsStore()
         val correlator = SmsCorrelator(store)
         val now = System.currentTimeMillis()
-        // Oldest first, so OTP names and cancellations line up as they did on the phone (spec 03).
+        // Oldest first, so OTP names and cancellations line up as they did on the phone.
         for (incoming in inbox.read(after = from - 1, from = from, until = bound, limit = MAX_MESSAGES).sortedBy { it.message.timestamp }) {
             val parsed = parser.parse(incoming.message)
             correlator.accept(incoming.message, parsed, Redactor.stored(incoming.message.body, s.smsStoreFullText), now) { suggester.prepare(it, ref) }
@@ -70,7 +70,7 @@ class SmsHistory @Inject constructor(
         val candidates = store.items.values.toList()
         val known = candidates.map { it.dedupeKey }.chunked(500).flatMap { db.smsDao().existingKeys(it) }.toSet()
         val fresh = candidates.filter { it.dedupeKey !in known }.map {
-            // Past days may need that day's board from the API (NQ-011 step 3).
+            // Past days may need that day's board from the API.
             if (it.certainty == Certainty.ESTIMATED && it.estimatedAmount == null) fx.estimate(it, ref, allowNetwork = true) else it
         }
         val zone = ZoneId.systemDefault()

@@ -45,7 +45,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
-/** Pending count, and whether any of them needs attention (NQ-001 home badge and dot). */
+/** Pending count, and whether any of them needs attention (home badge and dot). */
 data class QueueBadge(val count: Int = 0, val attention: Boolean = false)
 
 @HiltViewModel

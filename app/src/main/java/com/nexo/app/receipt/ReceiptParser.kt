@@ -7,7 +7,7 @@ import java.time.LocalTime
 
 /**
  * Reads the total, the date and the shop name from the rows of an English receipt. Stateless; the rules follow what
- * open-source receipt parsers agree on (see the plan for the sources).
+ * open-source receipt parsers agree on.
  *
  * 1. **Clean each row.** Currency marks go ("Rs.4,250.00" would otherwise hide the number behind the dot), spaces
  *    around a decimal point close up, and letters read in place of digits inside a number are put back ("4,25O.00").

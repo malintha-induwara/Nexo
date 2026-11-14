@@ -12,7 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDateTime
 
-/** Synthetic messages in the fixed formats (spec 03 shapes). Names and amounts are invented. */
+/** Synthetic messages in the fixed formats. Names and amounts are invented. */
 class SmsParserTest {
     private val parser = SmsParser()
     private val nov3 = LocalDateTime.of(2026, 11, 3, 19, 45).atZone(BodyDate.ZONE).toInstant().toEpochMilli()

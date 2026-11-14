@@ -21,7 +21,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
-/** One rendered transaction row (UI-007). */
 data class TxRowUi(
     val id: String,
     val tx: TransactionEntity?,
@@ -53,7 +52,7 @@ data class DayGroup(
     val memos: List<MemoEntity> = emptyList(),
 )
 
-/** Builds display rows from transactions (UI-007, UI-019). */
+/** Builds display rows from transactions. */
 class RowFactory(private val context: Context, private val ref: RefData) {
     private val classifier = Classifier(ref)
     private val zone = ZoneId.systemDefault()
@@ -131,7 +130,7 @@ class RowFactory(private val context: Context, private val ref: RefData) {
     fun listable(tx: TransactionEntity, includeBalance: Boolean = false): Boolean =
         tx.kind != TxKind.TRANSFER_IN && (includeBalance || !tx.kind.isBalance)
 
-    /** Groups rows by day, newest day first, ordering within a day per the Time Input setting (DM-104). */
+    /** Groups rows by day, newest day first, ordering within a day per the Time Input setting. */
     fun dayGroups(
         rows: List<TransactionEntity>,
         ledger: Ledger,

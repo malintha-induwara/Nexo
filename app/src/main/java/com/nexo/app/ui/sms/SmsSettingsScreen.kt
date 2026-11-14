@@ -134,7 +134,7 @@ private fun Context.findActivity(): Activity? {
 private fun appInfoIntent(context: Context) =
     Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
 
-/** Settings → Bank SMS (NQ-030 switch, card mapping, privacy). */
+/** Settings → Bank SMS (capture switch, card mapping, privacy). */
 @Composable
 fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -156,7 +156,7 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         if (result.values.all { it }) {
             vm.setEnabled(true)
-            // NQ-032: offered once, right after permission is granted.
+            // Offered once, right after permission is granted.
             if (device?.smsHistoryImport == com.nexo.app.core.settings.SmsHistoryImport.NOT_OFFERED) dialog = "offer"
         } else {
             // No rationale after a denial means Android won't ask again (or the setting is restricted): send them to App info.
@@ -337,7 +337,7 @@ fun SmsCardsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     }
 }
 
-/** Settings → Bank SMS → Bank fees: the remembered answers per account and route, each resettable to "ask" (NQ-020). */
+/** Settings → Bank SMS → Bank fees: the remembered answers per account and route, each resettable to "ask". */
 @Composable
 fun SmsFeesScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -395,7 +395,7 @@ fun SmsFeesScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     }
 }
 
-/** Settings → Bank SMS → Bank sender IDs (LKSMS-003): the built-in list, and senders the user adds. */
+/** Settings → Bank SMS → Bank sender IDs: the built-in list, and senders the user adds. */
 @Composable
 fun SmsSendersScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current

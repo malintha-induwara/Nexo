@@ -2,14 +2,14 @@ package com.nexo.app.sms.parse
 
 import java.util.Locale
 
-/** A merchant as sent, as shown, and as used for category learning (CB-002). */
+/** A merchant as sent, as shown, and as used for category learning. */
 data class Merchant(val raw: String, val name: String, val key: String) {
     companion object {
         val NONE = Merchant("", "", "")
     }
 }
 
-/** CB-002 merchant cleanup. The card-network descriptor carries city, country, phone and reference junk. */
+/** Merchant cleanup. The card-network descriptor carries city, country, phone and reference junk. */
 object MerchantCleaner {
     private val ci = setOf(RegexOption.IGNORE_CASE)
 
@@ -42,7 +42,7 @@ object MerchantCleaner {
         return s.replace(spaces, " ").trim(' ', '-', '.', ',', ':', ';')
     }
 
-    /** Lower-case alphanumerics: all "Dialog Axiata PLC Colombo 02 LK" variants share one key (CB-012). */
+    /** Lower-case alphanumerics: all "Dialog Axiata PLC Colombo 02 LK" variants share one key. */
     fun key(name: String): String = name.lowercase(Locale.ROOT).replace(keyJunk, " ").trim()
 
     private fun of(raw: String, name: String) = Merchant(raw.trim(), name, key(name))

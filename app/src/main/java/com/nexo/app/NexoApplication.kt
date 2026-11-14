@@ -37,11 +37,11 @@ class NexoApplication : Application(), Configuration.Provider {
                 scope.launch {
                     if (prefs.current().setupDone) {
                         repeats.runIfNewDay()
-                        // The quick-add notification is refreshed on every resume (UI-002).
+                        // The quick-add notification is refreshed on every resume.
                         com.nexo.app.work.Notifications.updateQuickAdd(this@NexoApplication, refs.snapshot().settings.quickAddNotification)
                     }
                 }
-                // NQ-031 catch-up and NQ-033 expiry run at app start and on every foreground; rates refresh at most every 6 hours.
+                // SMS catch-up and expiry run at app start and on every foreground; rates refresh at most every 6 hours.
                 scope.launch {
                     smsCapture.refresh()
                     val s = prefs.current()

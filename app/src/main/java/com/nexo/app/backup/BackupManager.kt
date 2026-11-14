@@ -30,7 +30,7 @@ sealed interface RestoreResult {
     data class Failed(val message: String?) : RestoreResult
 }
 
-/** Backup / restore of the finance database (CFG-026…CFG-031). Backups are plain copies of the database file. */
+/** Backup / restore of the finance database. Backups are plain copies of the database file. */
 @Singleton
 class BackupManager @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -40,7 +40,7 @@ class BackupManager @Inject constructor(
     private val legacy: LegacyImporter,
     private val widgets: WidgetRefresher,
 ) {
-    /** "Nexo(<date>-<HHmmss>).nexobak" with the locale-dependent date part of CFG-030. */
+    /** "Nexo(<date>-<HHmmss>).nexobak" with a locale-dependent date part. */
     fun backupFileName(now: LocalDateTime = LocalDateTime.now(), prefix: String = "Nexo"): String {
         val date = now.toLocalDate().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(Locale.getDefault()))
             .replace(" ", "")
@@ -72,13 +72,13 @@ class BackupManager @Inject constructor(
         }.getOrDefault(false)
     }
 
-    /** Copy in the temp folder for the share sheet (CFG-030). */
+    /** Copy in the temp folder for the share sheet. */
     suspend fun shareCopy(): File? = withContext(Dispatchers.IO) {
         val f = File(dirs.temp, "nexo_backup.$EXTENSION")
         if (writeBackup(f)) f else null
     }
 
-    /** Automatic daily backup (CFG-031): keeps the 14 newest files. */
+    /** Automatic daily backup: keeps the 14 newest files. */
     suspend fun autoBackup(): Boolean = withContext(Dispatchers.IO) {
         val ok = writeBackup(File(dirs.backups, backupFileName()))
         if (ok) {

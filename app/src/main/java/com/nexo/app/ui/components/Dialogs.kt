@@ -59,7 +59,7 @@ fun MessageDialog(message: String, onDismiss: () -> Unit, title: String? = null)
     )
 }
 
-/** Single-choice list dialog (CFG-005 pattern). Choosing the selected option does nothing. */
+/** Single-choice list dialog. Choosing the selected option does nothing. */
 @Composable
 fun <T> ChoiceDialog(
     title: String,

@@ -22,7 +22,7 @@ import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Excel export (CFG-034): 12 columns, income / expense / transfer-out rows, list order. */
+/** Excel export: 12 columns, income / expense / transfer-out rows, list order. */
 @Singleton
 class ExcelExporter @Inject constructor(
     @ApplicationContext private val context: Context,

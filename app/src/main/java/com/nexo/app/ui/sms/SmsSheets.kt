@@ -71,7 +71,7 @@ fun ColumnScope.AccountPickList(ref: RefData, selectedId: String?, onPick: (Stri
     }
 }
 
-/** NQ-003 optional reason chips on Deny. */
+/** Optional reason chips on Deny. */
 @Composable
 fun DenyReasonList(onPick: (DenyReason?) -> Unit) {
     val colors = LocalNexoColors.current

@@ -30,7 +30,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Writes transactions while keeping the integrity rules of DM-108 (both transfer legs, fees, installments, tags, photos). */
+/** Writes transactions while keeping their integrity rules (both transfer legs, fees, installments, tags, photos). */
 @Singleton
 class TransactionWriter @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -80,7 +80,7 @@ class TransactionWriter @Inject constructor(
     ): String {
         val now = now()
         if (original != null && original.kind.isTransfer) {
-            // Transfer → income/expense: drop the partner leg and the fee row (README §8 fix).
+            // Transfer → income/expense: drop the partner leg and the fee row.
             val partners = original.transferGroupId?.let { g -> dao.getByTransferGroup(g).filter { it.id != original.id } }.orEmpty()
             val fee = original.feeGroupId?.let { dao.getFeeRow(it) }
             removeRows((partners + listOfNotNull(fee)).map { it.id }, cleanup)
@@ -149,7 +149,7 @@ class TransactionWriter @Inject constructor(
         return row.id
     }
 
-    /** TX-027: copy shared fields to all rows of the group; renumber when rows were deleted. */
+    /** Copy shared fields to all rows of the group; renumber when rows were deleted. */
     private suspend fun syncInstallmentGroup(ref: RefData, edited: TransactionEntity) {
         val group = dao.getByInstallmentGroup(edited.installmentGroupId!!).take(600)
         val renumber = edited.installmentCount != group.size
@@ -200,7 +200,6 @@ class TransactionWriter @Inject constructor(
         val inAccount = if (inCross != null) Money.round(Money.multiply(outAmounts.amount, inCross), toCur.decimals)
         else Conversion.accountAmount(outAmounts.amount, outAmounts.main, txCur, toCur, ref.mainCurrency)
 
-        // Fee (TX-011).
         val existingFee = original?.feeGroupId?.let { dao.getFeeRow(it) }
         var feeGroupId: String? = null
         val fee = d.fee?.takeIf { it.amount != 0.0 }
@@ -257,7 +256,7 @@ class TransactionWriter @Inject constructor(
         return outRow.id
     }
 
-    /** Original account/transaction ratio, kept when neither currency changed (TX-022 exception). */
+    /** Original account/transaction ratio, kept when neither currency changed. */
     private fun crossRate(ref: RefData, original: TransactionEntity?, currencyId: String, accountId: String?): Double? {
         if (original == null || original.amount == 0.0) return null
         if (original.currencyId != currencyId) return null
@@ -265,7 +264,7 @@ class TransactionWriter @Inject constructor(
         return Money.divide(original.amountAccount, original.amount)
     }
 
-    /** Fee category: the system Bank fee category once it exists, else "Fees", else "Other", else the last expense category (TX-011). */
+    /** Fee category: the system Bank fee category once it exists, else "Fees", else "Other", else the last expense category. */
     fun feeCategory(ref: RefData): CategoryEntity? {
         val expense = ref.categories.filter { it.kind == CategoryKind.EXPENSE && !it.isDeleted }
         ref.settings.bankFeeCategoryId.takeIf { it.isNotEmpty() }?.let { id -> expense.firstOrNull { it.id == id } }?.let { return it }
@@ -277,7 +276,7 @@ class TransactionWriter @Inject constructor(
     }
 
     /**
-     * The system "Bank fee" category (spec-money-master-sl 02 improvement 1), created on first use and remembered by id,
+     * The system "Bank fee" category, created on first use and remembered by id,
      * so renaming it never breaks the link.
      */
     suspend fun bankFeeCategory(): String {
@@ -300,7 +299,7 @@ class TransactionWriter @Inject constructor(
     }
 
     /**
-     * BR-Q5: a bank fee on a non-transfer row is its own expense from the same account, linked through `feeParentId`,
+     * A bank fee on a non-transfer row is its own expense from the same account, linked through `feeParentId`,
      * a millisecond after its parent. Returns the fee row's id.
      */
     suspend fun addFee(parentId: String, amount: Double, note: String = context.getString(R.string.cat_bank_fee)): String? {
@@ -370,7 +369,6 @@ class TransactionWriter @Inject constructor(
         return ids
     }
 
-    /** TX-028 / UI-009 delete. */
     suspend fun delete(ids: Collection<String>, wholeInstallmentGroup: Boolean = false) {
         val cleanup = HashSet<String>()
         db.withTransaction {
@@ -503,7 +501,6 @@ class TransactionWriter @Inject constructor(
         widgets.refresh()
     }
 
-    /** AS-030: records a balance difference on [accountId]. */
     suspend fun recordBalanceDifference(accountId: String, difference: Double, asIncomeExpense: Boolean, description: String) {
         if (difference == 0.0) return
         val ref = refs.snapshot()

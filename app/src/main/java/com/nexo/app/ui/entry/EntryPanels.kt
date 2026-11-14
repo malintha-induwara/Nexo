@@ -137,7 +137,7 @@ private fun ListCell(text: String, selected: Boolean, accent: Color, chevron: Bo
     }
 }
 
-/** Account selection panel (TX-005): flat grid or grouped two-pane. */
+/** Account selection panel: flat grid or grouped two-pane. */
 @Composable
 fun AccountPanel(
     title: String,
@@ -232,7 +232,7 @@ private fun CategoryCell(category: CategoryEntity, ref: RefData, selected: Boole
 }
 
 /**
- * Category selection panel (TX-006). A grid of main categories; with subcategories on, a main
+ * Category selection panel. A grid of main categories; with subcategories on, a main
  * category that has subcategories opens its own grid, where the first cell picks the main
  * category itself (same rule as the old two-pane picker: first tap opens, second tap selects).
  */

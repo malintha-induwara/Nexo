@@ -195,7 +195,6 @@ class StatsDetailViewModel @AssistedInject constructor(
     }
 }
 
-/** Stats Detail (ST-020…ST-024). */
 @Composable
 fun StatsDetailScreen(key: StatsDetailKey) {
     val vm = hiltViewModel<StatsDetailViewModel, StatsDetailViewModel.Factory>(creationCallback = { it.create(key) })

@@ -10,7 +10,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** CB-003, CB-004, CB-010 and NQ-004 across message sequences. */
 class SmsCorrelatorTest {
     private val parser = SmsParser()
     private val store = MemorySmsStore()

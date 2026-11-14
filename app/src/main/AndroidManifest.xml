@@ -8,11 +8,11 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <!-- Bank SMS capture (spec-money-master-sl 01/04). Restricted on Google Play: needs the SMS declaration. -->
+    <!-- Bank SMS capture. Restricted on Google Play: needs the SMS declaration. -->
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
-    <!-- Only for the AllRatesToday bank-rate fetch (NQ-010). The request carries no user data. -->
+    <!-- Only for the AllRatesToday bank-rate fetch. The request carries no user data. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />

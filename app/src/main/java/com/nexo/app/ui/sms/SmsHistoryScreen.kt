@@ -59,7 +59,7 @@ import com.nexo.app.ui.theme.NexoShapes
 import com.nexo.app.ui.theme.NexoType
 import com.nexo.app.ui.theme.Space
 
-/** NQ-032 "Add past transactions": nothing selected by default, picked rows go straight to the ledger. */
+/** "Add past transactions": nothing selected by default, picked rows go straight to the ledger. */
 @Composable
 fun SmsHistoryScreen(key: SmsHistoryKey) {
     val vm = hiltViewModel<SmsHistoryViewModel, SmsHistoryViewModel.Factory>(creationCallback = { it.create(key) })
@@ -140,7 +140,6 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                     val unmapped = list.filter { it.item.accountId == null && it.item.cardLast4 != null && !it.cancelled }
                         .map { CardRef(it.item.bank, it.item.cardLast4!!) }.distinct()
                     LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = Space.xl)) {
-                        // NQ-032 "card mapping first".
                         unmapped.firstOrNull()?.let { c ->
                             item(key = "card_${c.bank}_${c.last4}") {
                                 CardQuestion(c, Modifier.animateItem()) {

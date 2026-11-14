@@ -25,7 +25,7 @@ import javax.inject.Singleton
 
 data class StoredPhoto(val fileName: String, val size: Long, val checksum: String)
 
-/** Photo files in the private photo folder (TX-015, CFG-039). */
+/** Photo files in the private photo folder. */
 @Singleton
 class PhotoStore @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -111,7 +111,7 @@ class PhotoStore @Inject constructor(
         }
     }
 
-    /** Saves a copy into the shared Pictures/Nexo folder (TX-016). */
+    /** Saves a copy into the shared Pictures/Nexo folder. */
     suspend fun exportToGallery(fileName: String): Boolean = withContext(Dispatchers.IO) {
         val src = file(fileName)
         if (!src.exists()) return@withContext false

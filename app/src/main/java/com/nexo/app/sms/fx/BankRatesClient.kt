@@ -19,7 +19,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * AllRatesToday Sri Lankan bank boards (NQ-010). The request carries nothing about the user: no amounts, no merchants.
+ * AllRatesToday Sri Lankan bank boards. The request carries nothing about the user: no amounts, no merchants.
  * Rates are LKR per one unit of the foreign currency.
  */
 @Singleton
@@ -59,7 +59,7 @@ class BankRatesClient @Inject constructor() {
         val CURRENCIES = setOf("USD", "EUR", "GBP", "SGD", "AUD", "INR")
 
         /**
-         * Field quirks (NQ-010): `captured_at` (ISO-8601) is the snapshot time, `bank_updated_at` is ignored, non-ISO codes
+         * Field quirks: `captured_at` (ISO-8601) is the snapshot time, `bank_updated_at` is ignored, non-ISO codes
          * such as "UAE" are dropped, and any rate may be missing.
          */
         fun parse(text: String): List<FxSnapshotEntity> {

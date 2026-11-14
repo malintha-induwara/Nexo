@@ -16,7 +16,7 @@ import java.time.LocalTime
 
 enum class Panel { NONE, ACCOUNT, TO_ACCOUNT, CATEGORY, AMOUNT, FEE }
 
-/** Visual slots of the account / category / amount block (TX-002). */
+/** Visual slots of the account / category / amount block. */
 enum class Field { ACCOUNT, CATEGORY, FROM, TO, AMOUNT, FEE }
 
 data class InstallmentInfo(val index: Int, val count: Int, val balance: Double, val total: Double)
@@ -64,7 +64,7 @@ data class EntryUi(
     val inputOrder: InputOrder = InputOrder.ACCOUNT_FIRST,
     val presetAccountId: String? = null,
     val presetCategoryId: String? = null,
-    /** NQ-011/012: the foreign amount and the rate behind an estimated amount; [fxFromApi] adds the attribution link. */
+    /** The foreign amount and rate behind an estimated amount; [fxFromApi] adds the attribution link. */
     val fxNote: String? = null,
     val fxFromApi: Boolean = false,
     val scan: ScanUi? = null,
@@ -75,7 +75,7 @@ data class EntryUi(
     val scanAllowed: Boolean
         get() = !isTransfer && !isBalance && !isBalanceAdjustment && !repeatMode && repeat == RepeatType.NONE && photos.size < 3
 
-    /** Transfers carry a fee (TX-011); so does an SMS expense, as a linked Bank fee row (spec-money-master-sl 02). */
+    /** Transfers carry a fee; so does an SMS expense, as a linked bank-fee row. */
     val feeAllowed: Boolean get() = isTransfer || (mode == EntryMode.SMS && type == EntryType.EXPENSE)
     val isBalance: Boolean get() = balanceKind != null
     val isEdit: Boolean get() = originalId != null && mode == EntryMode.EDIT

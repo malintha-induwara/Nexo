@@ -17,7 +17,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Exchange-rate snapshots (NQ-010) and the LKR estimates of foreign-currency queue items (NQ-011).
+ * Exchange-rate snapshots and the LKR estimates of foreign-currency queue items.
  * Without an API key, or before the first fetch, Nexo's own currency rate is used where one is set.
  */
 @Singleton
@@ -31,7 +31,7 @@ class FxRepository @Inject constructor(
 
     val online: Boolean get() = client.hasKey
 
-    /** NQ-010 fetch policy: at most every 6 hours. Returns whether a fetch succeeded. */
+    /** Fetch policy: at most every 6 hours. Returns whether a fetch succeeded. */
     suspend fun refreshIfStale(now: Long = System.currentTimeMillis()): Boolean {
         if (!online || now - prefs.current().fxFetchedAt < REFRESH_MS) return false
         val rows = client.fetch() ?: return false
@@ -95,7 +95,7 @@ class FxRepository @Inject constructor(
         return changed
     }
 
-    /** NQ-011 last fallback before asking: the rate the user keeps in Nexo's currency settings, when LKR is the main currency. */
+    /** Last fallback before asking: the rate the user keeps in Nexo's currency settings, when LKR is the main currency. */
     private fun manual(currency: String, ref: RefData): RateChoice? {
         if (!ref.mainCurrency.isoCode.equals(LKR, ignoreCase = true)) return null
         val c = ref.currencies.firstOrNull { it.isoCode.equals(currency, ignoreCase = true) } ?: return null

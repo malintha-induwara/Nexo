@@ -67,7 +67,6 @@ import com.nexo.app.ui.transactions.DayGroupList
 import java.time.LocalDate
 import java.time.YearMonth
 
-/** Budget Detail (ST-046). */
 @Composable
 fun BudgetDetailScreen(key: BudgetDetailKey) {
     val vm = hiltViewModel<BudgetDetailViewModel, BudgetDetailViewModel.Factory>(creationCallback = { it.create(key) })
@@ -135,7 +134,7 @@ private fun Figure(label: String, value: String, modifier: Modifier, color: andr
     }
 }
 
-/** Budget Settings, plain or expandable (ST-047 / ST-048). */
+/** Budget Settings, plain or expandable. */
 @Composable
 fun BudgetSettingsScreen(vm: BudgetSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -200,7 +199,6 @@ private fun SettingsBudgetRow(row: BudgetRow, main: com.nexo.app.core.database.e
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
-/** Add Budget (ST-049). */
 @Composable
 fun BudgetAddScreen(key: BudgetAddKey, vm: BudgetSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -236,7 +234,7 @@ fun BudgetAddScreen(key: BudgetAddKey, vm: BudgetSettingsViewModel = hiltViewMod
     if (pad) AmountSheet(stringResource(R.string.amount), amount, ref.mainCurrency.decimals, allowSign = false, onConfirm = { amount = it?.let { v -> kotlin.math.abs(v) } }, onDismiss = { pad = false })
 }
 
-/** Monthly budget editor (ST-050). */
+/** Monthly budget editor. */
 @Composable
 fun BudgetEditorScreen(key: BudgetEditorKey, vm: BudgetSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current

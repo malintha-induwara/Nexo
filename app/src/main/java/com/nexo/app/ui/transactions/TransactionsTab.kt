@@ -446,7 +446,7 @@ private fun DailyContent(
 }
 
 /**
- * Month grid (UI-011). No ruled lines: days sit on the page, and a day with transactions or memos
+ * Month grid. No ruled lines: days sit on the page, and a day with transactions or memos
  * becomes a soft tile, so activity is what stands out. Today's number is an inverted pill.
  * Each cell still shows income, expenses and the day's net.
  */

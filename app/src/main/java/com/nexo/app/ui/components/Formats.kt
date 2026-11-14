@@ -20,7 +20,7 @@ object Formats {
     fun weekdayShort(d: DayOfWeek): String = d.getDisplayName(TextStyle.SHORT, locale)
     fun weekdayFull(d: DayOfWeek): String = d.getDisplayName(TextStyle.FULL, locale)
 
-    /** "5/17/24 (Fri)" (TX-004). */
+    /** "5/17/24 (Fri)". */
     fun dateWithWeekday(d: LocalDate): String = "${shortDate(d)} (${weekdayShort(d)})"
 
     fun time(t: LocalTime, is24h: Boolean): String =
@@ -30,7 +30,7 @@ object Formats {
     fun monthShort(month: Int): String = java.time.Month.of(month).getDisplayName(TextStyle.SHORT, locale)
     fun monthFull(month: Int): String = java.time.Month.of(month).getDisplayName(TextStyle.FULL_STANDALONE, locale)
 
-    /** "M.D" style (UI-011, UI-013). */
+    /** "M.D" style. */
     fun monthDay(d: LocalDate): String = d.format(DateTimeFormatter.ofPattern(bestPattern("Md"), locale))
     fun yearMonthDots(d: LocalDate): String = d.format(DateTimeFormatter.ofPattern(if (monthFirst()) "MM.yyyy" else "yyyy.MM", locale))
     fun range(start: LocalDate, end: LocalDate): String = "${monthDay(start)} ~ ${monthDay(end)}"

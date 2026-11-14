@@ -78,7 +78,6 @@ fun accountLabel(ref: RefData, id: String?): String {
     return if (a.status == AccountStatus.DELETED || a.status == AccountStatus.PURGED) "##${a.name}##" else a.name
 }
 
-/** Bookmarks (TX-031). */
 @Composable
 fun BookmarksScreen(key: BookmarksKey, vm: BookmarksViewModel = hiltViewModel()) {
     val list by vm.favorites.collectAsStateWithLifecycle()

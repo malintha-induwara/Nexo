@@ -8,7 +8,6 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Category management (ST-061…ST-069). */
 @Singleton
 class CategoryRepository @Inject constructor(private val db: NexoDatabase) {
     private fun now() = System.currentTimeMillis()
@@ -42,13 +41,12 @@ class CategoryRepository @Inject constructor(private val db: NexoDatabase) {
         db.categoryDao().upsert(ids.mapIndexedNotNull { i, id -> byId[id]?.copy(orderSeq = i, updatedAt = now()) })
     }
 
-    /** ST-066. */
     suspend fun toMain(id: String) {
         val c = db.categoryDao().getById(id) ?: return
         db.categoryDao().upsert(listOf(c.copy(parentId = null, orderSeq = db.categoryDao().maxOrder() + 1, updatedAt = now())))
     }
 
-    /** ST-067: the source and all its subcategories move under [targetId]. */
+    /** The source and all its subcategories move under [targetId]. */
     suspend fun toSub(sourceId: String, targetId: String) = db.withTransaction {
         if (sourceId == targetId) return@withTransaction
         val all = db.categoryDao().getAll()

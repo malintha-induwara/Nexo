@@ -6,7 +6,7 @@ import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
-/** PBKDF2-HMAC-SHA256 secret records: "pbkdf2-sha256$iterations$salt$key" (LU BR-4). */
+/** PBKDF2-HMAC-SHA256 secret records: "pbkdf2-sha256$iterations$salt$key". */
 object PinHasher {
     private const val ALGORITHM = "pbkdf2-sha256"
     const val ITERATIONS = 100_000

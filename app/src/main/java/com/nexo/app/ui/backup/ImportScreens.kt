@@ -65,7 +65,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/** Import list (CFG-036). */
 @Composable
 fun ImportListScreen(vm: BackupViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -126,7 +125,7 @@ private fun errorText(row: ImportRow): String? {
     }
 }
 
-/** Import preview with row fixing (CFG-037). */
+/** Import preview with row fixing. */
 @Composable
 fun ImportPreviewScreen(key: ImportPreviewKey, vm: BackupViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current

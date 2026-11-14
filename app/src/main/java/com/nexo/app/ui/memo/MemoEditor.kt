@@ -119,7 +119,7 @@ class MemoEditorViewModel @AssistedInject constructor(
     fun setColor(c: MemoColor) = _ui.update { it.copy(color = c) }
     fun togglePin() = _ui.update { if (it.pinned) it.copy(pinned = false, pinnedAt = 0) else it.copy(pinned = true, pinnedAt = System.currentTimeMillis()) }
 
-    /** UI-016: saved on back; an emptied existing memo is deleted. */
+    /** Saved on back; an emptied existing memo is deleted. */
     fun saveAndClose(onDone: () -> Unit) = viewModelScope.launch {
         val s = _ui.value
         val empty = s.title.isBlank() && s.content.isBlank()

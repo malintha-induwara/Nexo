@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Loop palette (Nexo-docs/branding/palettes/nexo-loop-palette.json). Compose colours live in ui/theme/Color.kt. -->
+<!-- Loop palette. Compose colours live in ui/theme/Color.kt. -->
 <resources>
     <color name="brand">#2666ED</color>
     <color name="window_background">#FFFFFF</color>

@@ -23,7 +23,7 @@ import javax.inject.Singleton
 data class IncomingSms(val message: SmsMessage, val receivedAt: Long)
 
 /**
- * The single path from an SMS to the Review Queue (spec 01 BR-1): gate → parse → correlate → suggest → store → notify.
+ * The single path from an SMS to the Review Queue: gate → parse → correlate → suggest → store → notify.
  * Realtime and catch-up both come through here, one message at a time.
  */
 @Singleton
@@ -40,7 +40,7 @@ class SmsIntake @Inject constructor(
     suspend fun receive(batch: List<IncomingSms>, notify: Boolean = true): Int = receive(batch, prefs.current(), notify)
 
     internal suspend fun receive(batch: List<IncomingSms>, s: DeviceSettings, notify: Boolean): Int = mutex.withLock {
-        // LKSMS-002 / NQ-031: only while capture is active, and never before the start point (BR-Q6).
+        // Only while capture is active, and never before the start point.
         if (!s.setupDone || !s.smsCaptureEnabled || s.smsCaptureStartedAt == 0L) return@withLock 0
         val parser = SmsParser(s.smsCustomSenders)
         var changed = 0
@@ -61,7 +61,7 @@ class SmsIntake @Inject constructor(
         }
         if (notify) {
             if (changed > 0) notifyPending()
-            // NQ-010: a new foreign-currency item asks for fresh rates once the phone is online.
+            // A new foreign-currency item asks for fresh rates once the phone is online.
             if (foreign) FxSyncWorker.enqueue(context)
         }
         changed

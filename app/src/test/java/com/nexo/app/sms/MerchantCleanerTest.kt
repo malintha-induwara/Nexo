@@ -7,7 +7,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** CB-002 cleanup steps and LKSMS-013 redaction, on invented descriptors. */
+/** Merchant cleanup and redaction, on invented descriptors. */
 class MerchantCleanerTest {
     private fun purchase(raw: String) = MerchantCleaner.clean(raw, atm = false)
 

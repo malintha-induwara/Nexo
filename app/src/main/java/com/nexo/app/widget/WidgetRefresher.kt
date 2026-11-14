@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Debounced refresh of every home-screen widget after a data change (UI-027 refresh triggers). */
+/** Debounced refresh of every home-screen widget after a data change. */
 @Singleton
 class WidgetRefresher @Inject constructor(
     @ApplicationContext private val context: Context,

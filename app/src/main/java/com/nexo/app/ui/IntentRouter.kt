@@ -8,7 +8,7 @@ import com.nexo.app.ui.navigation.BookmarksKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.SearchKey
 
-/** Maps launch intents (widgets, shortcuts, notifications, deep link) to screens (LU-016). */
+/** Maps launch intents (widgets, shortcuts, notifications, deep link) to screens. */
 object IntentRouter {
     const val ACTION_ADD = "com.nexo.app.action.ADD"
     const val ACTION_SEARCH = "com.nexo.app.action.SEARCH"
@@ -25,7 +25,7 @@ object IntentRouter {
         if (intent.action == Intent.ACTION_VIEW && intent.data?.scheme == SCHEME && intent.data?.host == "inoutadd") {
             return listOf(EntryKey(external = true))
         }
-        // Opening a backup file with Nexo asks to restore it (CFG-026 "open with").
+        // Opening a backup file with Nexo asks to restore it.
         if (intent.action == Intent.ACTION_VIEW && (intent.data?.scheme == "content" || intent.data?.scheme == "file")) {
             return listOf(com.nexo.app.ui.navigation.RestoreFileKey(intent.data.toString()))
         }

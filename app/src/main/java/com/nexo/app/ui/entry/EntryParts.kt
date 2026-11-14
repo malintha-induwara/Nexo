@@ -83,7 +83,7 @@ fun repeatLabel(t: RepeatType): String = stringResource(
     },
 )
 
-/** Select Tag sheet (TX-014): check tags in order, add, and edit (rename, reorder, delete). */
+/** Select Tag sheet: check tags in order, add, and edit (rename, reorder, delete). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TagSelectSheet(
@@ -193,7 +193,7 @@ fun TagSelectSheet(
     }
 }
 
-/** Up to three thumbnails with remove icons (TX-015). */
+/** Up to three thumbnails with remove icons. */
 @Composable
 fun PhotoThumbs(
     photos: List<PhotoItem>,
@@ -227,7 +227,7 @@ fun PhotoThumbs(
     }
 }
 
-/** Full-screen photo pager with export for saved photos (TX-016). */
+/** Full-screen photo pager with export for saved photos. */
 @Composable
 fun PhotoViewer(photos: List<PhotoItem>, start: Int, store: PhotoStore, onDismiss: () -> Unit) {
     val pager = rememberPagerState(initialPage = start) { photos.size }

@@ -38,7 +38,6 @@ private val PAGE_TITLES = HELP_TOPICS.associate { it.page to it.title } + mapOf(
     "whats_new" to R.string.whats_new,
 )
 
-/** Help index (CFG-056). */
 @Composable
 fun HelpScreen() {
     val nav = LocalNavigator.current
@@ -50,7 +49,6 @@ fun HelpScreen() {
     }
 }
 
-/** Feedback (CFG-055). */
 @Composable
 fun FeedbackScreen() {
     val nav = LocalNavigator.current

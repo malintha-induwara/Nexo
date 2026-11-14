@@ -400,7 +400,6 @@ fun EntryScreen(key: EntryKey) {
                     shake = shake,
                     onClick = { haptics.tick(); vm.openPanel(Panel.AMOUNT) },
                 )
-                // Exchange lines (TX-010)
                 val amount = s.amount
                 if (txCurrency.id != ref.mainCurrency.id && amount != null && amount != 0.0 && s.repeat == RepeatType.NONE) {
                     val rate = s.rate ?: Conversion.effectiveRate(txCurrency)
@@ -531,7 +530,7 @@ fun EntryScreen(key: EntryKey) {
                             onClear = if (s.repeatEnd != null) ({ vm.setRepeatEnd(null) }) else null,
                         ) { showRepeatEnd = true }
                     }
-                    // Transfer fee (TX-011), or a bank fee on an SMS expense.
+                    // Transfer fee, or a bank fee on an SMS expense.
                     if (s.feeAllowed && s.feeExpanded) {
                         val feeCur = ref.currency(s.feeCurrencyId)
                         val text = if (s.panel == Panel.FEE && s.pad.buffer.isNotEmpty()) bufferParts(s.pad.buffer, feeCur).text
@@ -581,7 +580,6 @@ fun EntryScreen(key: EntryKey) {
                         }
                     }
                 }
-                // Photos (TX-015)
                 if (photosAllowed && s.photos.isNotEmpty()) {
                     Box(Modifier.padding(horizontal = Space.gutter, vertical = Space.m)) {
                         PhotoThumbs(s.photos, vm.photoStore, removable = !s.viewing, onOpen = { viewerIndex = it }, onRemove = vm::removePhoto, onLongPress = vm::enterEdit)

@@ -70,7 +70,7 @@ private const val DAY_MS = 24 * 60 * 60 * 1000L
 
 /**
  * One Review Queue item: tile, title, account and time, a status line (certainty badge, what's missing, ageing),
- * and the amount. The foreign amount sits under an estimate. Tapping the amount edits it (NQ-003: amount first).
+ * and the amount. The foreign amount sits under an estimate. Tapping the amount edits it.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

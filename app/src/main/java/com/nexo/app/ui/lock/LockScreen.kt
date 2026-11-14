@@ -48,7 +48,7 @@ import com.nexo.app.ui.components.TextFieldDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Lock screen shown over everything (LU-010 lock mode, single user). Back sends the app to the background. */
+/** Lock screen shown over everything. Back sends the app to the background. */
 @Composable
 fun LockScreen(
     lock: LockManager,

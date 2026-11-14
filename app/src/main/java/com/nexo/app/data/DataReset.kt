@@ -14,7 +14,6 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Reset operations (CFG-038, DM-086). */
 @Singleton
 class DataReset @Inject constructor(
     private val db: NexoDatabase,

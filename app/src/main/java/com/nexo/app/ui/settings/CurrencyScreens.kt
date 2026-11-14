@@ -98,7 +98,6 @@ private fun FormatRows(position: SymbolPosition, decimals: Int, symbol: String, 
     if (pick) ChoiceDialog(stringResource(R.string.decimal_point), DECIMALS, decimals, { decimalsLabel(it) }, onSelect = onDecimals, onDismiss = { pick = false })
 }
 
-/** Main currency (CFG-040). */
 @Composable
 fun MainCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -119,7 +118,6 @@ fun MainCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
     }
 }
 
-/** Change main currency (CFG-041). */
 @Composable
 fun MainCurrencyPickerScreen(vm: CurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -196,7 +194,6 @@ fun MainCurrencyPickerScreen(vm: CurrencyViewModel = hiltViewModel()) {
     }, confirmButton = {})
 }
 
-/** Sub-currency list (CFG-042). */
 @Composable
 fun SubCurrenciesScreen(vm: CurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -231,7 +228,7 @@ fun SubCurrenciesScreen(vm: CurrencyViewModel = hiltViewModel()) {
     hide?.let { c -> ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.launch { vm.repo.hide(c.id) } }, onDismiss = { hide = null }) }
 }
 
-/** Add a built-in sub-currency (CFG-043a). */
+/** Add a built-in sub-currency. */
 @Composable
 fun AddSubCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -262,7 +259,7 @@ fun AddSubCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
     }
 }
 
-/** Edit / add a sub-currency, built-in or custom (CFG-043, CFG-043b). */
+/** Edit / add a sub-currency, built-in or custom. */
 @Composable
 fun SubCurrencyEditScreen(key: SubCurrencyEditKey, vm: CurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current

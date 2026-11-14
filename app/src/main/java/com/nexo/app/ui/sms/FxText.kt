@@ -14,7 +14,7 @@ import com.nexo.app.sms.fx.RateChoice
 import com.nexo.app.sms.parse.Bank
 import com.nexo.app.ui.components.Formats
 
-/** NQ-011 display: "Commercial Bank sell 336.50 · Nov 14". Null when the item has no rate. */
+/** "Commercial Bank sell 336.50 · Nov 14". Null when the item has no rate. */
 fun fxRateLine(context: Context, item: SmsItemEntity): String? {
     val rate = item.fxRate ?: return null
     val value = AmountFormatter.number(rate, 2)

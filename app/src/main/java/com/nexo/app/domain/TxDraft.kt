@@ -12,7 +12,7 @@ sealed interface PhotoItem {
 
 data class FeeDraft(val amount: Double, val currencyId: String, val rate: Double? = null, val categoryId: String? = null)
 
-/** Everything the entry form saves (TX-022). */
+/** Everything the entry form saves. */
 data class TxDraft(
     /** Row being edited. For transfers this is the outgoing leg. */
     val editingId: String? = null,

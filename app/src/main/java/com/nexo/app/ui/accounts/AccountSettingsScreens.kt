@@ -115,7 +115,6 @@ class AccountSettingsViewModel @Inject constructor(
 @Composable
 fun cardAccountingLabel(c: CardAccounting) = stringResource(if (c == CardAccounting.AT_USE) R.string.card_at_time else R.string.card_lump_sum)
 
-/** Accounts settings menu (AS-010). */
 @Composable
 fun AccountSettingsMenu(vm: AccountSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -142,7 +141,7 @@ fun CardTimingDialog(current: CardAccounting, onSelect: (CardAccounting) -> Unit
     )
 }
 
-/** Account Group list (AS-010a) with reorder and delete. */
+/** Account Group list with reorder and delete. */
 @Composable
 fun AccountGroupsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -176,7 +175,6 @@ fun AccountGroupsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
     }
 }
 
-/** Add / edit group (AS-011). */
 @Composable
 fun AccountGroupFormScreen(groupId: String?, vm: AccountSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -185,7 +183,7 @@ fun AccountGroupFormScreen(groupId: String?, vm: AccountSettingsViewModel = hilt
     var name by rememberSaveable(g?.id) { mutableStateOf(g?.name ?: "") }
     var type by rememberSaveable(g?.id) { mutableStateOf(g?.type ?: GroupType.NORMAL) }
     var error by remember { mutableStateOf(false) }
-    // A built-in group whose type still equals its id has no type selector (group rules, section 04).
+    // A built-in group whose type still equals its id has no type selector.
     val selectable = g == null || g.builtinId == null
     Scaffold(topBar = { NexoTopBar(stringResource(R.string.account_group), onBack = { nav.back() }) }) { p ->
         Column(Modifier.padding(p).padding(16.dp)) {
@@ -207,7 +205,7 @@ fun AccountGroupFormScreen(groupId: String?, vm: AccountSettingsViewModel = hilt
     }
 }
 
-/** Accounts Setting list with reorder / show-hide / delete modes (AS-040…AS-043). */
+/** Accounts Setting list with reorder / show-hide / delete modes. */
 @Composable
 fun AccountListScreen(key: AccountListKey, vm: AccountSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -283,7 +281,7 @@ fun AccountListScreen(key: AccountListKey, vm: AccountSettingsViewModel = hiltVi
     }
 }
 
-/** AS-041: moving past a group boundary moves the account into the neighbouring group. */
+/** Moving past a group boundary moves the account into the neighbouring group. */
 private fun move(ref: RefData, list: List<AccountEntity>, index: Int, delta: Int): List<Pair<String, String>> {
     val items = list.map { it.id to it.groupId }.toMutableList()
     val (id, group) = items[index]
@@ -304,7 +302,7 @@ private fun move(ref: RefData, list: List<AccountEntity>, index: Int, delta: Int
     return items
 }
 
-/** Deleted accounts (AS-044) and deleted groups (AS-013). */
+/** Deleted accounts and deleted groups. */
 @Composable
 fun DeletedAccountsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -358,7 +356,7 @@ fun DeletedGroupsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
     restore?.let { id -> ConfirmDialog(stringResource(R.string.restore_question), onConfirm = { vm.launch { vm.repo.setGroupStatus(id, GroupStatus.ACTIVE) } }, onDismiss = { restore = null }) }
 }
 
-/** Transfer-Expense setting (AS-086). The income option is always shown, default on. */
+/** The income option is always shown, default on. */
 @Composable
 fun TransferExpenseScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -430,7 +428,6 @@ class TotalStatsViewModel @Inject constructor(refs: RefRepository, private val d
     }
 }
 
-/** Total Stats (AS-075). */
 @Composable
 fun TotalStatsScreen(vm: TotalStatsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current

@@ -54,13 +54,13 @@ data class ParsedRow(
 )
 
 data class ImportRow(val index: Int, val raw: String, val cells: List<String>, val error: ImportError?, val parsed: ParsedRow?) {
-    /** Rows with fewer than 6 cells are listed but skipped on save (CFG-037). */
+    /** Rows with fewer than 6 cells are listed but skipped on save. */
     val skippable: Boolean get() = cells.size < 6
 }
 
 data class ImportPreview(val rows: List<ImportRow>, val wide: Boolean)
 
-/** Tab-separated spreadsheet import (CFG-036, CFG-037). Accepts the 11-column layout and Nexo's own 12-column export. */
+/** Tab-separated spreadsheet import. Accepts the 11-column layout and Nexo's own 12-column export. */
 @Singleton
 class TsvImporter @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -212,7 +212,6 @@ class TsvImporter @Inject constructor(
             ?: ref.mainCurrency.id
     }
 
-    /** Import number parsing (07 › Import number parsing). */
     fun parseNumber(raw: String): Double {
         var s = raw.trim()
         if (Regex(",\\d{1,2}$").containsMatchIn(s)) s = s.replace(".", "").replace(',', '.')
@@ -228,7 +227,6 @@ class TsvImporter @Inject constructor(
         return value.setScale(2, RoundingMode.HALF_UP).toDouble()
     }
 
-    /** Import date parsing (07 › Import date parsing). */
     fun parseDate(raw: String, order: DateOrder): LocalDateTime? = runCatching {
         var text = raw.trim()
         var time = LocalTime.MIDNIGHT
@@ -255,7 +253,7 @@ class TsvImporter @Inject constructor(
         LocalDate.of(year, m.toInt(), d.toInt()).atTime(time)
     }.getOrNull()
 
-    /** Saves every valid row; failing rows stay in the file (CFG-037 Save). Returns (saved, failed). */
+    /** Saves every valid row; failing rows stay in the file. Returns (saved, failed). */
     suspend fun saveAll(fileName: String, order: DateOrder?): Pair<Int, Int> = withContext(Dispatchers.IO) {
         val f = file(fileName)
         val preview = load(fileName, order)

@@ -267,10 +267,10 @@ class EntryViewModel @AssistedInject constructor(
         )
     }
 
-    /** The Review Queue item being reviewed in [EntryMode.SMS] (spec-money-master-sl 04 NQ-003 Edit). */
+    /** The Review Queue item being reviewed in [EntryMode.SMS]. */
     private var smsItem: com.nexo.app.sms.data.SmsItemEntity? = null
 
-    /** NQ-003: the form opens with everything the SMS gave; saving approves the item. */
+    /** The form opens with everything the SMS gave; saving approves the item. */
     private suspend fun loadSmsItem(r: RefData, base: EntryUi): EntryUi {
         val item = key.smsItemId?.let { db.smsDao().item(it) } ?: return newEntry(r, base)
         smsItem = item
@@ -280,7 +280,7 @@ class EntryViewModel @AssistedInject constructor(
         val transfer = kind.isTransfer && (kind != com.nexo.app.sms.SmsKind.TRANSFER_OUT || item.toAccountId != null)
         val (from, to) = if (kind == com.nexo.app.sms.SmsKind.TRANSFER_IN) item.toAccountId to item.accountId else item.accountId to item.toAccountId
         val dt = com.nexo.app.sms.approve.SmsApprover.localDateTime(item.occurredAt)
-        // NQ-020 in the form: the fee field starts filled when the route's preset knows the fee.
+        // The fee field starts filled when the route's preset knows the fee.
         val presetFee = when (val plan = sms.feePlan(item)) {
             is com.nexo.app.sms.approve.FeePlan.Auto -> plan.amount
             is com.nexo.app.sms.approve.FeePlan.Ask -> plan.prefill.takeIf { !plan.fxDifference }
@@ -313,14 +313,14 @@ class EntryViewModel @AssistedInject constructor(
         )
     }
 
-    /** An SMS transfer's fee goes to the system Bank fee category (spec-money-master-sl 02 improvement 1). */
+    /** An SMS transfer's fee goes to the system Bank fee category. */
     private suspend fun withBankFeeCategory(d: com.nexo.app.domain.TxDraft): com.nexo.app.domain.TxDraft {
         val fee = d.fee ?: return d
         if (key.mode != EntryMode.SMS) return d
         return d.copy(fee = fee.copy(categoryId = writer.bankFeeCategory()))
     }
 
-    /** An approved SMS transaction still booked at an FX estimate (NQ-012): editing its amount records the actual one. */
+    /** An approved SMS transaction still booked at an FX estimate: editing its amount records the actual one. */
     private var linkedEstimate: com.nexo.app.sms.data.SmsItemEntity? = null
 
     private suspend fun withFxNote(s: EntryUi, txId: String, r: RefData): EntryUi {
@@ -330,13 +330,13 @@ class EntryViewModel @AssistedInject constructor(
         return s.copy(fxNote = note + "\n" + context.getString(R.string.fx_edit_hint), fxFromApi = item.rateFromApi)
     }
 
-    /** NQ-003 Deny from the form. Nothing is written to the ledger. */
+    /** Deny from the form. Nothing is written to the ledger. */
     fun denySms() = viewModelScope.launch {
         key.smsItemId?.let { sms.deny(listOf(it)) }
         _events.send(EntryEvent.Close(null))
     }
 
-    /** TX-036: pre-fill from a spreadsheet import row. */
+    /** Pre-fill from a spreadsheet import row. */
     private suspend fun loadImportRow(r: RefData, base: EntryUi): EntryUi {
         val file = key.importFile ?: return newEntry(r, base)
         val order = key.importOrder?.let { runCatching { com.nexo.app.backup.DateOrder.valueOf(it) }.getOrNull() }
@@ -446,7 +446,7 @@ class EntryViewModel @AssistedInject constructor(
         viewModelScope.launch { if (_ui.value.repeat == RepeatType.NONE) _ui.value = loadLastFee(_ui.value) }
     }
 
-    /** TX-011: pre-fill the fee of the most recent transfer between the same accounts. */
+    /** Pre-fill the fee of the most recent transfer between the same accounts. */
     private suspend fun loadLastFee(s: EntryUi): EntryUi {
         val from = s.accountId ?: return s
         val to = s.toAccountId ?: return s
@@ -495,7 +495,7 @@ class EntryViewModel @AssistedInject constructor(
         }
     }
 
-    /** Exchange-rate sheet (TX-010): either the main amount or the rate is edited. */
+    /** Exchange-rate sheet: either the main amount or the rate is edited. */
     fun setMainAmount(main: Double) {
         val s = _ui.value
         val amount = s.amount ?: return
@@ -604,7 +604,7 @@ class EntryViewModel @AssistedInject constructor(
     fun dismissRepeatConfirm() = _ui.update { it.copy(confirmRepeat = false) }
     fun setAskDelete(v: Boolean) = _ui.update { it.copy(askDelete = v) }
 
-    /** Opens the first empty field in visual order (TX-024). */
+    /** Opens the first empty field in visual order. */
     private fun advance(fromPad: Boolean = false) {
         val s = _ui.value
         if (s.viewing) return
@@ -668,7 +668,7 @@ class EntryViewModel @AssistedInject constructor(
                     home.saved(id)
                     if (key.mode == EntryMode.SMS && key.smsItemId != null) {
                         val s = _ui.value
-                        // NQ-012: changing an estimate's amount records what the bank actually charged.
+                        // Changing an estimate's amount records what the bank actually charged.
                         smsItem?.let { item ->
                             val estimate = item.estimatedAmount
                             if (item.certainty == com.nexo.app.sms.Certainty.ESTIMATED && s.amount != null && estimate != null && s.amount != estimate) sms.setAmount(item.id, s.amount)
@@ -758,7 +758,7 @@ class EntryViewModel @AssistedInject constructor(
     private suspend fun afterSave(continueAfter: Boolean) {
         val s = _ui.value
         if (key.reviewUnassigned) {
-            // Bulk-assign other unassigned entries with the same note (TX-025).
+            // Bulk-assign other unassigned entries with the same note.
             val orig = original
             if (orig != null && orig.categoryId == null && s.categoryId != null && s.note.isNotBlank()) {
                 val same = db.transactionDao().unassigned("9999-12-31").filter { it.id != orig.id && it.note == s.note && it.categoryId == null && !it.kind.isTransfer }

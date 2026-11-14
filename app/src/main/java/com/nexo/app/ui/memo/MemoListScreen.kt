@@ -103,7 +103,7 @@ class MemoListViewModel @AssistedInject constructor(
     fun setHelpHidden(v: Boolean) = viewModelScope.launch { prefs.setMemoHelpHidden(v) }
 }
 
-/** Standalone memo list (UI-017). */
+/** Standalone memo list. */
 @Composable
 fun MemoListScreen(key: MemoListKey) {
     val vm = hiltViewModel<MemoListViewModel, MemoListViewModel.Factory>(creationCallback = { it.create(key) })

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Default account groups (AS-001) -->
+    <!-- Default account groups -->
     <string name="group_cash">Cash</string>
     <string name="group_accounts">Accounts</string>
     <string name="group_card">Card</string>
@@ -13,7 +13,7 @@
     <string name="group_insurance">Insurance</string>
     <string name="group_others">Others</string>
 
-    <!-- Default categories (DM-085) -->
+    <!-- Default categories -->
     <string name="cat_allowance">Allowance</string>
     <string name="cat_salary">Salary</string>
     <string name="cat_petty_cash">Petty cash</string>
