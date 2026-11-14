@@ -107,7 +107,7 @@ private class SheetMotion(returning: Boolean) {
     var height = 1f
 
     suspend fun show() = coroutineScope {
-        launch { hidden.animateTo(0f, NexoMotion.gentle()) }
+        launch { hidden.animateTo(0f, NexoMotion.gentle(SETTLED)) }
         launch { alpha.animateTo(1f, NexoMotion.enter(NexoMotion.SHORT)) }
     }
 
@@ -117,6 +117,16 @@ private class SheetMotion(returning: Boolean) {
 
     suspend fun fadeOut() {
         alpha.animateTo(0f, NexoMotion.exit(NexoMotion.SHORT))
+    }
+
+    companion object {
+        /**
+         * How close a spring on [hidden] must get before it may stop, as a fraction of the drawer's
+         * height: under half a pixel on a phone. A spring left on the default (0.01) ends about
+         * 20px short and jumps the rest in one frame, so the drawer crawls, stalls, then snaps.
+         * Fixed rather than derived from [height], which is not yet measured when [show] starts.
+         */
+        const val SETTLED = 0.0002f
     }
 }
 
@@ -161,7 +171,7 @@ private fun SheetHost(motion: SheetMotion, onDismiss: () -> Unit, content: @Comp
                         orientation = Orientation.Vertical,
                         onDragStopped = { velocity ->
                             if (motion.hidden.value > 0.22f || velocity > 1400f) onDismiss()
-                            else motion.hidden.animateTo(0f, NexoMotion.snappy())
+                            else motion.hidden.animateTo(0f, NexoMotion.snappy(SheetMotion.SETTLED))
                         },
                     ),
                 contentAlignment = Alignment.Center,
