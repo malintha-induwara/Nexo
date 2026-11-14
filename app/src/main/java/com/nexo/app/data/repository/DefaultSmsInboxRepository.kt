@@ -1,19 +1,20 @@
 package com.nexo.app.data.repository
 
+import android.content.Context
+import android.util.Log
 import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.core.common.period.toIsoText
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.SmsStatus
-import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.database.entity.SmsItemEntity
-import com.nexo.app.data.sms.InboxReader
 import com.nexo.app.data.sms.MemorySmsStore
 import com.nexo.app.data.sms.SmsCorrelator
-import com.nexo.app.data.sms.SmsSuggester
+import com.nexo.app.data.sms.SmsInboxDataSource
+import com.nexo.app.data.sms.SmsPermissions
+import com.nexo.app.data.sms.ledgerAmount
 import com.nexo.app.data.sms.parser.Redactor
 import com.nexo.app.data.sms.parser.SmsParser
-import com.nexo.app.domain.sms.SmsApprover
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -22,38 +23,67 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-/** A past message the picker can offer. */
-data class HistoryRow(
-    val item: SmsItemEntity,
-    /** Cancelled later in the same period: shown struck through, never selectable. */
-    val cancelled: Boolean,
-    /** A transaction already in Nexo matches it (same account and amount, date ±1 day). */
-    val possiblyAdded: Boolean,
-)
-
-/**
- * "Add past transactions": reads the inbox from before the start point (or a re-enable gap), parses it the same way as
- * live capture, and drops anything Nexo already has. Nothing is written until the user picks rows.
- */
 @Singleton
-class SmsHistory @Inject constructor(
-    private val db: NexoDatabase,
+class DefaultSmsInboxRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val prefs: UserPreferencesRepository,
     private val refs: ReferenceDataRepository,
-    private val inbox: InboxReader,
-    private val suggester: SmsSuggester,
-    private val fx: FxRepository,
+    private val sms: SmsRepository,
+    private val fx: FxRatesRepository,
+    private val transactions: TransactionsRepository,
+    private val inbox: SmsInboxDataSource,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
-) {
-    /** Live capture covers everything from the start point on, so the picker stops there. */
-    suspend fun upperBound(until: Long): Long {
+) : SmsInboxRepository {
+    private val mutex = Mutex()
+
+    override fun hasPermission(): Boolean = SmsPermissions.granted(context)
+
+    override suspend fun refresh(now: Long) = mutex.withLock {
+        val s = prefs.getDeviceSettings()
+        if (!s.setupDone) return@withLock
+        val active = s.smsCaptureEnabled && hasPermission()
+        when {
+            active && s.smsCaptureStartedAt == 0L -> prefs.markSmsCaptureStarted(now)
+            !active && s.smsCaptureStartedAt != 0L -> prefs.markSmsCaptureStopped(now)
+        }
+        if (active) catchUp()
+        sms.sweep(now)
+    }
+
+    override suspend fun setCaptureEnabled(on: Boolean) {
+        prefs.setSmsCaptureEnabled(on)
+        refresh()
+    }
+
+    /** Messages missed while the process wasn't running. Never reaches back past the start point. */
+    private suspend fun catchUp() {
+        val s = prefs.getDeviceSettings()
+        var after = maxOf(s.smsLastProcessedAt, s.smsCaptureStartedAt - 1)
+        while (true) {
+            val rows = try {
+                inbox.read(after = after, from = s.smsCaptureStartedAt)
+            } catch (e: Exception) {
+                Log.w(TAG, "Inbox read failed: ${e.javaClass.simpleName}")
+                return
+            }
+            if (rows.isEmpty()) return
+            sms.receive(rows)
+            after = rows.maxOf { it.receivedAt }
+            prefs.setSmsLastProcessed(after)
+            if (rows.size < PAGE) return
+        }
+    }
+
+    override suspend fun upperBound(until: Long): Long {
         val started = prefs.getDeviceSettings().smsCaptureStartedAt
         return if (started > 0) minOf(until, started) else until
     }
 
-    suspend fun scan(from: Long, until: Long): List<HistoryRow> = withContext(ioDispatcher) {
+    override suspend fun scanHistory(from: Long, until: Long): List<HistoryRow> = withContext(ioDispatcher) {
         val s = prefs.getDeviceSettings()
         val bound = upperBound(until)
         if (from >= bound) return@withContext emptyList()
@@ -65,20 +95,20 @@ class SmsHistory @Inject constructor(
         // Oldest first, so OTP names and cancellations line up as they did on the phone.
         for (incoming in inbox.read(after = from - 1, from = from, until = bound, limit = MAX_MESSAGES).sortedBy { it.message.timestamp }) {
             val parsed = parser.parse(incoming.message)
-            correlator.accept(incoming.message, parsed, Redactor.stored(incoming.message.body, s.smsStoreFullText), now) { suggester.prepare(it, ref) }
+            correlator.accept(incoming.message, parsed, Redactor.stored(incoming.message.body, s.smsStoreFullText), now) { sms.prepare(it, ref) }
         }
         val candidates = store.items.values.toList()
-        val known = candidates.map { it.dedupeKey }.chunked(500).flatMap { db.smsDao().existingKeys(it) }.toSet()
+        val known = sms.getKnownDedupeKeys(candidates.map { it.dedupeKey })
         val fresh = candidates.filter { it.dedupeKey !in known }.map {
             // Past days may need that day's board from the API.
             if (it.certainty == Certainty.ESTIMATED && it.estimatedAmount == null) fx.estimate(it, ref, allowNetwork = true) else it
         }
         val zone = ZoneId.systemDefault()
         fun day(ms: Long) = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
-        val ledger = db.transactionDao().getRange(day(from).minusDays(1).toIsoText(), day(bound).plusDays(1).toIsoText())
+        val ledger = transactions.getRange(day(from).minusDays(1).toIsoText(), day(bound).plusDays(1).toIsoText())
         fresh.sortedByDescending { it.occurredAt }.map { item ->
             val date = day(item.occurredAt)
-            val amount = SmsApprover.ledgerAmount(item)
+            val amount = ledgerAmount(item)
             val match = item.accountId != null && ledger.any { t ->
                 t.accountId == item.accountId && abs(t.amountAccount - amount) < 0.005 &&
                     abs(ChronoUnit.DAYS.between(LocalDate.parse(t.date), date)) <= 1
@@ -87,16 +117,10 @@ class SmsHistory @Inject constructor(
         }
     }
 
-    /** Stores the chosen rows as queue items so they can be approved like any other. Returns the stored ids. */
-    suspend fun keep(items: List<SmsItemEntity>): List<String> {
-        val now = System.currentTimeMillis()
-        return items.filter { it.status == SmsStatus.PENDING }.mapNotNull { item ->
-            val stored = item.copy(capturedAt = now, updatedAt = now)
-            if (db.smsDao().insert(stored) != -1L) stored.id else null
-        }
-    }
+    private companion object {
+        const val TAG = "SmsInboxRepository"
+        const val PAGE = 500
 
-    companion object {
         /** Very large inboxes are read up to this many messages per scan. */
         const val MAX_MESSAGES = 5_000
     }

@@ -7,7 +7,7 @@ import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.FxSnapshotEntity
 import com.nexo.app.data.database.entity.SmsItemEntity
-import com.nexo.app.data.network.BankRatesClient
+import com.nexo.app.data.network.FxRatesNetworkDataSource
 import com.nexo.app.data.sms.RateChoice
 import com.nexo.app.data.sms.RateChooser
 import com.nexo.app.data.sms.parser.Banks
@@ -15,26 +15,20 @@ import com.nexo.app.data.sms.parser.BodyDate
 import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
-import javax.inject.Singleton
 
-/**
- * Exchange-rate snapshots and the LKR estimates of foreign-currency queue items.
- * Without an API key, or before the first fetch, Nexo's own currency rate is used where one is set.
- */
-@Singleton
-class FxRepository @Inject constructor(
+class DefaultFxRatesRepository @Inject constructor(
     private val db: NexoDatabase,
     private val refs: ReferenceDataRepository,
     private val prefs: UserPreferencesRepository,
-    private val client: BankRatesClient,
-) {
+    private val client: FxRatesNetworkDataSource,
+) : FxRatesRepository {
     private val dao get() = db.smsDao()
 
-    val online: Boolean get() = client.hasKey
+    override val online: Boolean get() = client.hasKey
 
     /** Fetch policy: at most every 6 hours. Returns whether a fetch succeeded. */
-    suspend fun refreshIfStale(now: Long = System.currentTimeMillis()): Boolean {
-        if (!online || now - prefs.getDeviceSettings().fxFetchedAt < REFRESH_MS) return false
+    override suspend fun refreshIfStale(now: Long): Boolean {
+        if (!online || now - prefs.getDeviceSettings().fxFetchedAt < FxRatesRepository.REFRESH_MS) return false
         val rows = client.fetch() ?: return false
         store(rows)
         prefs.setFxFetchedAt(now)
@@ -45,7 +39,7 @@ class FxRepository @Inject constructor(
      * New boards are kept only when a bank's rates changed since its last stored board, so the history stays small.
      * Older boards (a past day fetched with `date=`) always fill the history.
      */
-    suspend fun store(rows: List<FxSnapshotEntity>) {
+    override suspend fun store(rows: List<FxSnapshotEntity>) {
         val fresh = rows.filter { r ->
             val last = dao.latestRate(r.bank, r.ccy)
             last == null || r.capturedAt < last.capturedAt ||
@@ -59,7 +53,7 @@ class FxRepository @Inject constructor(
      * (Sri Lankan time). Older than Nexo's history: with [allowNetwork], the API's stored board for that day is fetched;
      * otherwise the earliest snapshot is used and its date shows.
      */
-    suspend fun estimate(item: SmsItemEntity, ref: RefData? = null, allowNetwork: Boolean = false): SmsItemEntity {
+    override suspend fun estimate(item: SmsItemEntity, ref: RefData?, allowNetwork: Boolean): SmsItemEntity {
         if (item.certainty != Certainty.ESTIMATED || item.actualAmount != null) return item
         val r = ref ?: refs.getRefData()
         val side = if (item.kind.isInflow) RateSide.BUY else RateSide.SELL
@@ -83,7 +77,7 @@ class FxRepository @Inject constructor(
     }
 
     /** Re-estimates pending foreign items that have no confirmed amount, e.g. after a fetch. Returns how many changed. */
-    suspend fun fillPending(allowNetwork: Boolean = false): Int {
+    override suspend fun fillPending(allowNetwork: Boolean): Int {
         val ref = refs.getRefData()
         var changed = 0
         for (item in dao.pending().filter { it.certainty == Certainty.ESTIMATED && it.actualAmount == null && it.status == SmsStatus.PENDING }) {
@@ -109,11 +103,8 @@ class FxRepository @Inject constructor(
         return fresh.ifEmpty { board }
     }
 
-    companion object {
-        const val REFRESH_MS = 6 * 60 * 60 * 1000L
-        private const val STALE_MS = 10 * 24 * 60 * 60 * 1000L
-        private const val LKR = "LKR"
-
-        fun dayOf(ms: Long): LocalDate = Instant.ofEpochMilli(ms).atZone(BodyDate.ZONE).toLocalDate()
+    private companion object {
+        const val STALE_MS = 10 * 24 * 60 * 60 * 1000L
+        const val LKR = "LKR"
     }
 }

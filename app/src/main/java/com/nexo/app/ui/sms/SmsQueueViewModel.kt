@@ -6,19 +6,18 @@ import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.model.DenyReason
+import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsStatus
-import com.nexo.app.core.notifications.Notifications
-import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.repository.ReferenceDataRepository
-import com.nexo.app.data.repository.SmsCapture
+import com.nexo.app.data.repository.SmsInboxRepository
+import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.data.sms.needsAttention
 import com.nexo.app.data.sms.needsDetails
 import com.nexo.app.domain.sms.ApproveResult
-import com.nexo.app.domain.sms.FeeChoice
 import com.nexo.app.domain.sms.FeePlan
 import com.nexo.app.domain.sms.SmsApprover
 import com.nexo.app.ui.designsystem.component.UndoMessage
@@ -55,13 +54,12 @@ data class CardRef(val bank: String, val last4: String)
 @HiltViewModel
 class SmsQueueViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    db: NexoDatabase,
+    private val sms: SmsRepository,
     refs: ReferenceDataRepository,
     private val prefs: UserPreferencesRepository,
     private val approver: SmsApprover,
-    private val capture: SmsCapture,
+    private val inbox: SmsInboxRepository,
 ) : ViewModel() {
-    private val dao = db.smsDao()
 
     val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     val device = prefs.getDeviceSettingsStream().stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -70,11 +68,11 @@ class SmsQueueViewModel @Inject constructor(
     val filter: StateFlow<QueueFilter> = _filter.asStateFlow()
 
     val pending: StateFlow<List<SmsItemEntity>> =
-        dao.observeByStatus(listOf(SmsStatus.PENDING)).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        sms.getItemsStream(listOf(SmsStatus.PENDING)).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Null while loading. */
     val items: StateFlow<List<SmsItemEntity>?> = _filter.flatMapLatest { f ->
-        dao.observeByStatus(listOf(f.status)).map { list -> if (f == QueueFilter.ATTENTION) list.filter { it.needsAttention } else list }
+        sms.getItemsStream(listOf(f.status)).map { list -> if (f == QueueFilter.ATTENTION) list.filter { it.needsAttention } else list }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val unmappedCards: StateFlow<List<CardRef>> = pending.map { list ->
@@ -92,14 +90,13 @@ class SmsQueueViewModel @Inject constructor(
     /** The fee question on screen; the rest wait their turn. */
     val feePrompt: StateFlow<FeePrompt?> = _feePrompts.map { it.firstOrNull() }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    private val _permitted = MutableStateFlow(capture.hasPermission())
+    private val _permitted = MutableStateFlow(inbox.hasPermission())
     val permitted: StateFlow<Boolean> = _permitted.asStateFlow()
 
     /** The queue is open: nothing is "new" any more, so the notification goes. */
     fun markSeen() = viewModelScope.launch {
-        prefs.setSmsSeenAt(System.currentTimeMillis())
-        Notifications.postSmsReview(context, 0)
-        _permitted.value = capture.hasPermission()
+        sms.markQueueSeen()
+        _permitted.value = inbox.hasPermission()
     }
 
     fun setFilter(f: QueueFilter) {
@@ -139,7 +136,7 @@ class SmsQueueViewModel @Inject constructor(
     }
 
     fun deny(ids: Collection<String>, reason: DenyReason? = null) = viewModelScope.launch {
-        val denied = approver.deny(ids, reason)
+        val denied = sms.deny(ids, reason)
         _selection.value = emptySet()
         if (denied.isEmpty()) return@launch
         val restoreIds = denied.map { it.id }
@@ -149,11 +146,11 @@ class SmsQueueViewModel @Inject constructor(
         ) { restore(restoreIds) }
     }
 
-    fun restore(ids: Collection<String>) = viewModelScope.launch { approver.restore(ids) }
+    fun restore(ids: Collection<String>) = viewModelScope.launch { sms.restore(ids) }
 
-    fun setAmount(id: String, value: Double) = viewModelScope.launch { approver.setAmount(id, value) }
+    fun setAmount(id: String, value: Double) = viewModelScope.launch { sms.setAmount(id, value) }
 
-    fun mapCard(card: CardRef, accountId: String) = viewModelScope.launch { approver.mapCard(card.bank, card.last4, accountId) }
+    fun mapCard(card: CardRef, accountId: String) = viewModelScope.launch { sms.mapCard(card.bank, card.last4, accountId) }
 
     fun toggleSelect(id: String) = _selection.update { if (id in it) it - id else it + id }
 
@@ -191,7 +188,7 @@ class SmsQueueViewModel @Inject constructor(
     }
 
     fun assignAccount(accountId: String) = viewModelScope.launch {
-        approver.setAccounts(_selection.value, accountId)
+        sms.setAccounts(_selection.value, accountId)
         _selection.value = emptySet()
     }
 

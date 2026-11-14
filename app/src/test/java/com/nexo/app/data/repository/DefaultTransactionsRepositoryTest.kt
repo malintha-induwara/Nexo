@@ -7,8 +7,8 @@ import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.FeeDraft
 import com.nexo.app.core.model.TxDraft
 import com.nexo.app.core.model.TxKind
+import com.nexo.app.data.database.BookSeeder
 import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.database.Seeder
 import com.nexo.app.testing.referenceDataRepository
 import com.nexo.app.testing.transactionsRepository
 import java.time.LocalDateTime
@@ -36,7 +36,7 @@ class DefaultTransactionsRepositoryTest {
     fun setUp() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
-        Seeder(context, db).seedFresh(com.nexo.app.core.common.money.CurrencyCatalog.find("USD")!!)
+        BookSeeder(context, db).seedFresh(com.nexo.app.core.common.money.CurrencyCatalog.find("USD")!!)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val refs = referenceDataRepository(db, scope)
         transactions = transactionsRepository(context, db, refs)

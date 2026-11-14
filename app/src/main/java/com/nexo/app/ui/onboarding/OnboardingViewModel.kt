@@ -5,8 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.money.CatalogCurrency
 import com.nexo.app.core.common.money.CurrencyCatalog
-import com.nexo.app.data.database.Seeder
-import com.nexo.app.data.repository.BackupManager
+import com.nexo.app.data.repository.BackupRepository
+import com.nexo.app.data.repository.BookRepository
 import com.nexo.app.data.repository.RepeatRulesRepository
 import com.nexo.app.data.repository.RestoreResult
 import com.nexo.app.data.repository.UserPreferencesRepository
@@ -27,8 +27,8 @@ data class OnboardingState(
 
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
-    private val seeder: Seeder,
-    private val backups: BackupManager,
+    private val book: BookRepository,
+    private val backups: BackupRepository,
     private val prefs: UserPreferencesRepository,
     private val repeats: RepeatRulesRepository,
 ) : ViewModel() {
@@ -42,7 +42,7 @@ class OnboardingViewModel @Inject constructor(
 
     fun startFresh() = viewModelScope.launch {
         _state.update { it.copy(busy = true) }
-        seeder.seedFresh(_state.value.currency)
+        book.seedFresh(_state.value.currency)
         finish()
     }
 
@@ -51,7 +51,7 @@ class OnboardingViewModel @Inject constructor(
         when (val r = backups.restore(uri)) {
             RestoreResult.Success -> {
                 // Fill anything the backup lacks (e.g. no currency row).
-                seeder.seedFresh(_state.value.currency)
+                book.seedFresh(_state.value.currency)
                 finish()
             }
             else -> _state.update { it.copy(busy = false, error = r) }

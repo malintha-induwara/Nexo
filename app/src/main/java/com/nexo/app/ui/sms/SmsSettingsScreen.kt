@@ -39,7 +39,7 @@ import com.nexo.app.R
 import com.nexo.app.core.model.FeeMode
 import com.nexo.app.data.database.entity.FeePresetEntity
 import com.nexo.app.data.database.entity.SmsSourceEntity
-import com.nexo.app.data.repository.SmsPermissions
+import com.nexo.app.data.sms.SmsPermissions
 import com.nexo.app.data.sms.parser.Banks
 import com.nexo.app.data.sms.smsCashAccount
 import com.nexo.app.ui.designsystem.component.ConfirmDialog

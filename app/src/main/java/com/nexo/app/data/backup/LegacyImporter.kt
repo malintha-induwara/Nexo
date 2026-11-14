@@ -24,8 +24,8 @@ import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.core.model.TimeDisplay
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.core.model.WeekendRule
+import com.nexo.app.data.database.BookSeeder
 import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.database.Seeder
 import com.nexo.app.data.database.entity.AccountEntity
 import com.nexo.app.data.database.entity.AccountGroupEntity
 import com.nexo.app.data.database.entity.BudgetAmountEntity
@@ -40,7 +40,8 @@ import com.nexo.app.data.database.entity.SettingEntity
 import com.nexo.app.data.database.entity.TagEntity
 import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.data.database.entity.TransactionTagEntity
-import com.nexo.app.data.repository.BackupManager
+import com.nexo.app.data.repository.BackupRepository
+import com.nexo.app.data.repository.DefaultBackupRepository
 import com.nexo.app.data.repository.RestoreResult
 import java.io.File
 import java.time.DayOfWeek
@@ -71,7 +72,7 @@ private class Row(private val c: Cursor) {
 @Singleton
 class LegacyImporter @Inject constructor(
     private val db: NexoDatabase,
-    private val seeder: Seeder,
+    private val seeder: BookSeeder,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     private val zone: ZoneId get() = ZoneId.systemDefault()
@@ -83,7 +84,7 @@ class LegacyImporter @Inject constructor(
                 val data = read(src)
                 db.withTransaction {
                     val w = db.openHelper.writableDatabase
-                    BackupManager.TABLES.forEach { w.execSQL("DELETE FROM `$it`") }
+                    DefaultBackupRepository.TABLES.forEach { w.execSQL("DELETE FROM `$it`") }
                     db.currencyDao().upsert(data.currencies)
                     db.accountGroupDao().upsert(data.groups)
                     db.accountDao().upsert(data.accounts)

@@ -19,7 +19,7 @@ import javax.inject.Singleton
 
 /** Seeds a fresh book. */
 @Singleton
-class Seeder @Inject constructor(
+class BookSeeder @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: NexoDatabase,
 ) {

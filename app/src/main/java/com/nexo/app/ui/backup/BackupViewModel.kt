@@ -5,16 +5,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.model.RefData
-import com.nexo.app.data.repository.BackupManager
-import com.nexo.app.data.repository.DataReset
+import com.nexo.app.data.repository.BackupRepository
+import com.nexo.app.data.repository.BookRepository
 import com.nexo.app.data.repository.DateOrder
-import com.nexo.app.data.repository.ExcelExporter
+import com.nexo.app.data.repository.ExcelExportRepository
 import com.nexo.app.data.repository.ImportPreview
-import com.nexo.app.data.repository.PhotoTransfer
+import com.nexo.app.data.repository.PhotoBackupRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.RepeatRulesRepository
 import com.nexo.app.data.repository.RestoreResult
-import com.nexo.app.data.repository.TsvImporter
+import com.nexo.app.data.repository.TransactionImportRepository
 import com.nexo.app.ui.HomeState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
@@ -30,11 +30,11 @@ data class Progress(val done: Int, val total: Int)
 
 @HiltViewModel
 class BackupViewModel @Inject constructor(
-    val backups: BackupManager,
-    val excel: ExcelExporter,
-    val importer: TsvImporter,
-    val photos: PhotoTransfer,
-    val reset: DataReset,
+    val backups: BackupRepository,
+    val excel: ExcelExportRepository,
+    val importer: TransactionImportRepository,
+    val photos: PhotoBackupRepository,
+    val reset: BookRepository,
     private val repeats: RepeatRulesRepository,
     refs: ReferenceDataRepository,
     private val home: HomeState,

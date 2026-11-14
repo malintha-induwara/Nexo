@@ -18,8 +18,8 @@ import javax.inject.Inject
 class DefaultCurrenciesRepository @Inject constructor(
     private val db: NexoDatabase,
     private val refs: ReferenceDataRepository,
-    private val reset: DataReset,
-    private val backups: BackupManager,
+    private val reset: BookRepository,
+    private val backups: BackupRepository,
     private val dirs: AppDirs,
     private val prefs: UserPreferencesRepository,
 ) : CurrenciesRepository {

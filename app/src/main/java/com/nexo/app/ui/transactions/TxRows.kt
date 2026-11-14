@@ -5,11 +5,14 @@ import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.model.CashFlow
+import com.nexo.app.core.model.CategoryLabel
 import com.nexo.app.core.model.CategoryVisual
 import com.nexo.app.core.model.Ledger
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.TimeDisplay
 import com.nexo.app.core.model.TxKind
+import com.nexo.app.core.model.categoryLabel
+import com.nexo.app.core.model.sortedForDay
 import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.data.database.entity.MemoEntity
 import com.nexo.app.data.database.entity.TransactionEntity
@@ -63,15 +66,10 @@ class RowFactory(private val context: Context, private val ref: RefData) {
 
     fun accountName(id: String?): String = id?.let { ref.accountById[it]?.name } ?: noneLabel
 
-    fun categoryLabels(tx: TransactionEntity): Pair<String, String?> = when {
-        tx.kind.isTransfer -> transferLabel to null
-        tx.isBalanceAdjustment || tx.kind.isBalance -> modifiedLabel to null
-        else -> {
-            val main = ref.mainCategoryId(tx.categoryId)
-            val sub = ref.subCategoryId(tx.categoryId)
-            val mainName = main?.let { ref.categoryName(it) } ?: noneLabel
-            mainName to (if (ref.settings.subcategories) sub?.let { ref.categoryName(it) } else null)
-        }
+    fun categoryLabels(tx: TransactionEntity): Pair<String, String?> = when (val label = ref.categoryLabel(tx)) {
+        CategoryLabel.Transfer -> transferLabel to null
+        CategoryLabel.ModifiedBalance -> modifiedLabel to null
+        is CategoryLabel.Category -> (label.main ?: noneLabel) to label.sub
     }
 
     fun flow(tx: TransactionEntity): CashFlow = classifier.classify(tx.kind, tx.accountId, tx.counterpartAccountId)
@@ -159,15 +157,6 @@ class RowFactory(private val context: Context, private val ref: RefData) {
     }
 
     companion object {
-        fun sortDay(rows: List<TransactionEntity>, order: TimeDisplay): List<TransactionEntity> {
-            val minute = { t: TransactionEntity -> t.dateTime / 60_000 }
-            val cmp: Comparator<TransactionEntity> = when {
-                order.byTime && order.descending -> compareByDescending(minute).thenByDescending { it.updatedAt }.thenByDescending { it.createdAt }
-                order.byTime -> compareBy(minute).thenBy { it.updatedAt }.thenBy { it.createdAt }
-                order.descending -> compareByDescending<TransactionEntity> { it.updatedAt }.thenByDescending { it.dateTime }.thenByDescending { it.createdAt }
-                else -> compareBy<TransactionEntity> { it.updatedAt }.thenBy { it.dateTime }.thenBy { it.createdAt }
-            }
-            return rows.sortedWith(cmp)
-        }
+        fun sortDay(rows: List<TransactionEntity>, order: TimeDisplay): List<TransactionEntity> = rows.sortedForDay(order)
     }
 }

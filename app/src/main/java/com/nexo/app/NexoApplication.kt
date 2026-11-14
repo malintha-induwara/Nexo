@@ -25,7 +25,7 @@ class NexoApplication : Application(), Configuration.Provider {
     @Inject lateinit var repeats: RepeatRulesRepository
     @Inject @ApplicationScope lateinit var scope: CoroutineScope
     @Inject lateinit var refs: com.nexo.app.data.repository.ReferenceDataRepository
-    @Inject lateinit var smsCapture: com.nexo.app.data.repository.SmsCapture
+    @Inject lateinit var smsInbox: com.nexo.app.data.repository.SmsInboxRepository
     @Inject lateinit var widgets: WidgetRefresher
 
     override val workManagerConfiguration: Configuration
@@ -46,7 +46,7 @@ class NexoApplication : Application(), Configuration.Provider {
                 }
                 // SMS catch-up and expiry run at app start and on every foreground; rates refresh at most every 6 hours.
                 scope.launch {
-                    smsCapture.refresh()
+                    smsInbox.refresh()
                     val s = prefs.getDeviceSettings()
                     if (s.setupDone && s.smsCaptureEnabled) com.nexo.app.data.work.FxSyncWorker.enqueue(this@NexoApplication)
                 }

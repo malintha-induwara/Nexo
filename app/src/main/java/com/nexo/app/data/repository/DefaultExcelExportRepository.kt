@@ -5,12 +5,13 @@ import com.nexo.app.R
 import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.core.common.period.DateRange
+import com.nexo.app.core.model.CategoryLabel
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.data.database.NexoDatabase
+import com.nexo.app.core.model.categoryLabel
+import com.nexo.app.core.model.sortedForDay
 import com.nexo.app.data.file.AppDirs
 import com.nexo.app.data.file.XCell
 import com.nexo.app.data.file.XlsxWriter
-import com.nexo.app.ui.transactions.RowFactory
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.time.Instant
@@ -21,19 +22,17 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
 /** Excel export: 12 columns, income / expense / transfer-out rows, list order. */
-@Singleton
-class ExcelExporter @Inject constructor(
+class DefaultExcelExportRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val db: NexoDatabase,
+    private val transactions: TransactionsRepository,
     private val refs: ReferenceDataRepository,
     private val dirs: AppDirs,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
-) {
+) : ExcelExportRepository {
     /** Device date order as an Excel number format, e.g. "yyyy/mm/dd" or "mm/dd/yyyy". */
     private fun excelDatePattern(): String {
         val p = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "yyyyMMdd")
@@ -41,20 +40,25 @@ class ExcelExporter @Inject constructor(
         return order.joinToString("/") { when (it) { 'y' -> "yyyy"; 'M' -> "mm"; else -> "dd" } }
     }
 
-    suspend fun export(range: DateRange, total: Boolean): File = withContext(ioDispatcher) {
+    override suspend fun export(range: DateRange, total: Boolean): File = withContext(ioDispatcher) {
         val ref = refs.getRefData()
-        val factory = RowFactory(context, ref)
-        val all = db.transactionDao().getRange(range.startText, range.endText)
+        val none = context.getString(R.string.none)
+        fun accountName(id: String?) = id?.let { ref.accountById[it]?.name } ?: none
+        val all = transactions.getRange(range.startText, range.endText)
             .filter { it.kind == TxKind.INCOME || it.kind == TxKind.EXPENSE || it.kind == TxKind.TRANSFER_OUT }
-        val links = all.map { it.id }.chunked(500).flatMap { db.tagDao().linksFor(it) }.groupBy { it.transactionId }
-        val ordered = all.groupBy { it.date }.toSortedMap(compareByDescending { it }).flatMap { (_, day) -> RowFactory.sortDay(day, ref.settings.timeDisplay) }
+        val tagsByTx = transactions.getLedgerFor(all).tagsByTx
+        val ordered = all.groupBy { it.date }.toSortedMap(compareByDescending { it }).flatMap { (_, day) -> day.sortedForDay(ref.settings.timeDisplay) }
         val zone = ZoneId.systemDefault()
         val timeless = !ref.settings.timeDisplay.timeInput
         val rows = ordered.map { t ->
             val dt = Instant.ofEpochMilli(t.dateTime).atZone(zone).toLocalDateTime().let { LocalDate.parse(t.date).atTime(it.toLocalTime()) }
-            val (cat, _) = factory.categoryLabels(t)
+            val cat = when (val label = ref.categoryLabel(t)) {
+                CategoryLabel.Transfer -> context.getString(R.string.transfer)
+                CategoryLabel.ModifiedBalance -> context.getString(R.string.modified_balance)
+                is CategoryLabel.Category -> label.main ?: none
+            }
             val sub = if (ref.settings.subcategories) ref.subCategoryId(t.categoryId)?.let { ref.categoryName(it) } ?: "" else ""
-            val category = if (t.kind == TxKind.TRANSFER_OUT) factory.accountName(t.counterpartAccountId) else cat
+            val category = if (t.kind == TxKind.TRANSFER_OUT) accountName(t.counterpartAccountId) else cat
             val note = if (t.installmentGroupId != null && t.installmentCount > 0) "${t.note} (${t.installmentIndex}/${t.installmentCount})".trim() else t.note
             val type = context.getString(
                 when (t.kind) {
@@ -63,11 +67,11 @@ class ExcelExporter @Inject constructor(
                     else -> R.string.transfer_out
                 },
             )
-            val tags = links[t.id].orEmpty().sortedBy { it.position }.mapNotNull { ref.tagById[it.tagId]?.name }.joinToString(", ")
+            val tags = tagsByTx[t.id].orEmpty().mapNotNull { ref.tagById[it]?.name }.joinToString(", ")
             val cur = ref.currency(t.currencyId)
             listOf(
                 XCell.Date(dt, !timeless && dt.toLocalTime() != LocalTime.MIDNIGHT),
-                XCell.Text(factory.accountName(t.accountId)),
+                XCell.Text(accountName(t.accountId)),
                 XCell.Text(category),
                 XCell.Text(sub),
                 XCell.Text(note),

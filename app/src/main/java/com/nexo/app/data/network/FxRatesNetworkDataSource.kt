@@ -27,7 +27,7 @@ import kotlinx.serialization.json.jsonObject
  * Rates are LKR per one unit of the foreign currency.
  */
 @Singleton
-class BankRatesClient @Inject constructor(
+class FxRatesNetworkDataSource @Inject constructor(
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     private val key: String = BuildConfig.ALLRATESTODAY_API_KEY

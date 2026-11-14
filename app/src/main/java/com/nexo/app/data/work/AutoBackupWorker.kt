@@ -7,7 +7,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.nexo.app.data.repository.BackupManager
+import com.nexo.app.data.repository.BackupRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
@@ -16,7 +16,7 @@ import dagger.assisted.AssistedInject
 class AutoBackupWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
-    private val backups: BackupManager,
+    private val backups: BackupRepository,
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = if (backups.autoBackup()) Result.success() else Result.retry()
 

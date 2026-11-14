@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.common.money.AmountParts
+import com.nexo.app.core.common.period.toLocalDateTime
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.DenyReason
 import com.nexo.app.core.model.RefData
@@ -49,10 +50,11 @@ import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.SmsReason
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.data.database.entity.SmsItemEntity
-import com.nexo.app.data.repository.SmsCapture
+import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.sms.Missing
+import com.nexo.app.data.sms.bankName
 import com.nexo.app.data.sms.missing
-import com.nexo.app.domain.sms.SmsApprover
+import com.nexo.app.data.sms.noteFor
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.CategoryTile
 import com.nexo.app.ui.designsystem.component.Formats
@@ -114,7 +116,7 @@ fun SmsQueueRow(
         }
         Spacer(Modifier.width(Space.m))
         Column(Modifier.weight(1f)) {
-            Text(SmsApprover.noteFor(item), style = NexoType.RowTitle, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(noteFor(item), style = NexoType.RowTitle, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(metaLine(item, ref), style = NexoType.Meta, color = colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             StatusLine(item, now, note)
         }
@@ -143,9 +145,9 @@ private fun ItemTile(item: SmsItemEntity, ref: RefData) {
 @Composable
 private fun metaLine(item: SmsItemEntity, ref: RefData): String {
     val context = LocalContext.current
-    val bank = SmsApprover.bankName(item)
+    val bank = bankName(item)
     val account = ref.accountById[item.accountId]?.name ?: item.cardLast4?.let { "$bank ••$it" } ?: bank
-    val dt = SmsApprover.localDateTime(item.occurredAt)
+    val dt = item.occurredAt.toLocalDateTime()
     val time = "${Formats.weekdayMonthDay(dt.toLocalDate())} ${Formats.time(dt.toLocalTime(), android.text.format.DateFormat.is24HourFormat(context))}"
     val where = when {
         item.kind.isTransfer || item.kind == SmsKind.TRANSFER_OUT -> {
@@ -190,7 +192,7 @@ private fun statusText(item: SmsItemEntity, now: Long): String? {
         SmsStatus.PENDING -> Unit
     }
     val ageDays = ((now - item.capturedAt) / DAY_MS).toInt()
-    val left = SmsCapture.QUEUE_WINDOW_DAYS - ageDays
+    val left = SmsRepository.QUEUE_WINDOW_DAYS - ageDays
     val missing = item.missing().firstOrNull()
     return when {
         missing != null -> stringResource(missingLabel(missing))

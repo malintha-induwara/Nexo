@@ -15,7 +15,6 @@ import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.IOException
-import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -26,28 +25,23 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
-/**
- * Reads a receipt photo on the device with ML Kit text recognition (Latin script, model bundled in the app) and hands
- * the lines to [ReceiptParser]. Nothing leaves the phone.
- */
+/** Reads the text of a receipt photo on the device with ML Kit text recognition (Latin script, model bundled). */
 @Singleton
-class ReceiptScanner @Inject constructor(
+class ReceiptTextDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
-    @Dispatcher(NexoDispatchers.Default) private val defaultDispatcher: CoroutineDispatcher,
 ) {
     private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
 
-    /** Throws [IOException] when the photo cannot be opened or decoded. */
-    suspend fun scan(uri: Uri, today: LocalDate = LocalDate.now()): ReceiptRead {
+    /** The recognised lines with their positions. Throws [IOException] when the photo cannot be opened or decoded. */
+    suspend fun recognize(uri: Uri): List<OcrLine> {
         val bitmap = withContext(ioDispatcher) { decodeUpright(uri) } ?: throw IOException("Cannot decode the photo")
         val text = try {
             recognizer.process(InputImage.fromBitmap(bitmap, 0)).await()
         } finally {
             bitmap.recycle()
         }
-        val lines = text.textBlocks.flatMap { it.lines }.map(::toOcrLine)
-        return withContext(defaultDispatcher) { ReceiptParser.read(lines, today) }
+        return text.textBlocks.flatMap { it.lines }.map(::toOcrLine)
     }
 
     /**

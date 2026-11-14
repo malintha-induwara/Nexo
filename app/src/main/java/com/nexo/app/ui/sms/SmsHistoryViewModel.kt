@@ -4,21 +4,19 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
+import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsHistoryImport
 import com.nexo.app.core.model.SmsKind
-import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.repository.HistoryRow
 import com.nexo.app.data.repository.ReferenceDataRepository
-import com.nexo.app.data.repository.SmsCapture
-import com.nexo.app.data.repository.SmsHistory
+import com.nexo.app.data.repository.SmsInboxRepository
+import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
-import com.nexo.app.data.sms.SmsSuggester
 import com.nexo.app.data.sms.needsDetails
 import com.nexo.app.domain.sms.ApproveResult
-import com.nexo.app.domain.sms.FeeChoice
 import com.nexo.app.domain.sms.FeePlan
 import com.nexo.app.domain.sms.SmsApprover
 import com.nexo.app.ui.navigation.SmsHistoryKey
@@ -71,20 +69,16 @@ data class HistoryResult(val added: Int, val toQueue: Int)
 class SmsHistoryViewModel @AssistedInject constructor(
     @Assisted private val key: SmsHistoryKey,
     @ApplicationContext private val context: Context,
-    db: NexoDatabase,
+    private val sms: SmsRepository,
     refs: ReferenceDataRepository,
     private val prefs: UserPreferencesRepository,
-    private val history: SmsHistory,
     private val approver: SmsApprover,
-    private val suggester: SmsSuggester,
-    private val capture: SmsCapture,
+    private val inbox: SmsInboxRepository,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
         fun create(key: SmsHistoryKey): SmsHistoryViewModel
     }
-
-    private val dao = db.smsDao()
     private val zone = ZoneId.systemDefault()
     val gap: Boolean = key.gapFrom > 0 && key.gapUntil > key.gapFrom
 
@@ -118,7 +112,7 @@ class SmsHistoryViewModel @AssistedInject constructor(
     private val _done = Channel<HistoryResult>(Channel.BUFFERED)
     val done = _done.receiveAsFlow()
 
-    val permitted: Boolean get() = capture.hasPermission()
+    val permitted: Boolean get() = inbox.hasPermission()
 
     private var added = 0
     private var toQueue = 0
@@ -160,12 +154,12 @@ class SmsHistoryViewModel @AssistedInject constructor(
 
     fun load() = viewModelScope.launch {
         _rows.value = null
-        if (!capture.hasPermission()) {
+        if (!inbox.hasPermission()) {
             _rows.value = emptyList()
             return@launch
         }
         val (from, until) = bounds()
-        val rows = history.scan(from, until)
+        val rows = inbox.scanHistory(from, until)
         _rows.value = rows
         // Nothing is selected by default; keep only choices that are still on screen.
         _selection.update { sel -> sel.filter { id -> rows.any { it.item.id == id } }.toSet() }
@@ -187,12 +181,12 @@ class SmsHistoryViewModel @AssistedInject constructor(
 
     /** "Which account is the card ending 1111?": remembered for live capture too, and applied to these rows. */
     fun mapCard(card: CardRef, accountId: String) = viewModelScope.launch {
-        approver.mapCard(card.bank, card.last4, accountId)
+        sms.mapCard(card.bank, card.last4, accountId)
         val ref = ref.value
         _rows.update { rows ->
             rows?.map { row ->
                 if (row.item.bank == card.bank && row.item.cardLast4 == card.last4 && row.item.accountId == null) {
-                    row.copy(item = suggester.prepare(row.item.copy(accountId = accountId), ref))
+                    row.copy(item = sms.prepare(row.item.copy(accountId = accountId), ref))
                 } else row
             }
         }
@@ -206,7 +200,7 @@ class SmsHistoryViewModel @AssistedInject constructor(
         val chosen = _rows.value.orEmpty().filter { it.item.id in _selection.value && !it.cancelled }.map { it.item }
         if (chosen.isEmpty()) return@launch
         _adding.value = true
-        val stored = dao.items(history.keep(chosen))
+        val stored = sms.getItems(sms.keep(chosen))
         prefs.setSmsHistoryImport(SmsHistoryImport.DONE)
         if (gap) prefs.clearSmsGap()
         added = 0

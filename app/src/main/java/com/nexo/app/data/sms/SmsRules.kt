@@ -5,6 +5,8 @@ import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.data.database.entity.SmsItemEntity
+import com.nexo.app.data.sms.parser.Bank
+import com.nexo.app.data.sms.parser.Banks
 
 /** What an item still lacks before it can be approved. Separate from [Certainty]. */
 enum class Missing { ACCOUNT, DESTINATION, CATEGORY, AMOUNT }
@@ -40,3 +42,14 @@ fun RefData.smsCashAccount(): String? {
 }
 
 private const val CASH_GROUP = 11
+
+/** The amount as it would reach the ledger, in the account's currency for foreign items. */
+fun ledgerAmount(item: SmsItemEntity): Double = item.actualAmount ?: item.estimatedAmount ?: item.amount
+
+fun bankName(item: SmsItemEntity): String = Banks.byName(item.bank)?.displayName ?: Bank.OTHER.displayName
+
+/** The row title and transaction note: merchant, else payee, else "<bank> transfer <route>", else the bank. */
+fun noteFor(item: SmsItemEntity): String =
+    item.merchant.ifEmpty { item.payee.orEmpty() }
+        .ifEmpty { item.route?.let { "${bankName(item)} transfer $it" }.orEmpty() }
+        .ifEmpty { bankName(item) }

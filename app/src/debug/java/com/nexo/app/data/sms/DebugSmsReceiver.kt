@@ -24,7 +24,7 @@ class DebugSmsReceiver : BroadcastReceiver() {
         val pending = goAsync()
         context.smsEntry().appScope().launch {
             try {
-                val changed = context.smsEntry().intake().receive(listOf(IncomingSms(SmsMessage(sender, body, timestamp), now)))
+                val changed = context.smsEntry().sms().receive(listOf(IncomingSms(SmsMessage(sender, body, timestamp), now)))
                 // Plain (non-ordered) broadcasts can't carry a result back; read it with `adb logcat -s DebugSmsReceiver`.
                 Log.i("DebugSmsReceiver", "queue items changed: $changed")
             } finally {

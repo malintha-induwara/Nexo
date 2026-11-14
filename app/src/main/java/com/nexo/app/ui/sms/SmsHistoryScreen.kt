@@ -45,7 +45,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
-import com.nexo.app.domain.sms.SmsApprover
+import com.nexo.app.data.sms.ledgerAmount
 import com.nexo.app.ui.designsystem.component.DateRangeChips
 import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.InlineBottomSheet
@@ -180,7 +180,7 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
 
             if (selection.isNotEmpty()) {
                 val chosen = list.orEmpty().filter { it.item.id in selection }
-                val total = chosen.sumOf { SmsApprover.ledgerAmount(it.item) }
+                val total = chosen.sumOf { ledgerAmount(it.item) }
                 Button(
                     onClick = { haptics.confirm(); vm.add() },
                     enabled = !adding,

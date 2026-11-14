@@ -8,17 +8,19 @@ import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.DeviceSettings
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.SymbolPosition
+import com.nexo.app.data.database.BookSeeder
 import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.database.Seeder
 import com.nexo.app.data.database.entity.AccountEntity
 import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.data.database.entity.SmsMerchantRuleEntity
 import com.nexo.app.data.database.entity.SmsSourceEntity
 import com.nexo.app.data.datastore.DevicePreferencesDataSource
+import com.nexo.app.data.repository.DefaultSmsRepository
 import com.nexo.app.data.repository.DefaultUserPreferencesRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.sms.parser.SmsMessage
 import com.nexo.app.testing.referenceDataRepository
+import com.nexo.app.testing.smsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -40,7 +42,7 @@ import org.robolectric.annotation.Config
 class SmsIntakeTest {
     private lateinit var db: NexoDatabase
     private lateinit var refs: ReferenceDataRepository
-    private lateinit var intake: SmsIntake
+    private lateinit var intake: DefaultSmsRepository
     private val start = 1_793_700_000_000L
     private val active = DeviceSettings(setupDone = true, smsCaptureStartedAt = start)
 
@@ -48,9 +50,9 @@ class SmsIntakeTest {
     fun setUp() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
-        Seeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
+        BookSeeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
         refs = referenceDataRepository(db, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
-        intake = SmsIntake(context, db, DefaultUserPreferencesRepository(DevicePreferencesDataSource(context)), SmsSuggester(db, refs, com.nexo.app.data.repository.FxRepository(db, refs, DefaultUserPreferencesRepository(DevicePreferencesDataSource(context)), com.nexo.app.data.network.BankRatesClient(Dispatchers.IO))))
+        intake = smsRepository(context, db, refs)
     }
 
     @After

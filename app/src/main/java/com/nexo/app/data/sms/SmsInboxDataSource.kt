@@ -13,7 +13,7 @@ import kotlinx.coroutines.withContext
 
 /** Reads the SMS inbox (READ_SMS). Oldest first. */
 @Singleton
-open class InboxReader @Inject constructor(
+open class SmsInboxDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {

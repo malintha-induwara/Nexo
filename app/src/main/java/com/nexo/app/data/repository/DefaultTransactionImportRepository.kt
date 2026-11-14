@@ -27,7 +27,6 @@ import java.time.ZoneId
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
@@ -60,22 +59,21 @@ data class ImportRow(val index: Int, val raw: String, val cells: List<String>, v
 data class ImportPreview(val rows: List<ImportRow>, val wide: Boolean)
 
 /** Tab-separated spreadsheet import. Accepts the 11-column layout and Nexo's own 12-column export. */
-@Singleton
-class TsvImporter @Inject constructor(
+class DefaultTransactionImportRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: NexoDatabase,
     private val refs: ReferenceDataRepository,
     private val dirs: AppDirs,
     private val photos: PhotosRepository,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
-) {
-    fun files(): List<File> = dirs.imports.listFiles()?.filter { it.name.endsWith(".tsv", true) || it.name.endsWith(".txt", true) }
+) : TransactionImportRepository {
+    override fun files(): List<File> = dirs.imports.listFiles()?.filter { it.name.endsWith(".tsv", true) || it.name.endsWith(".txt", true) }
         ?.sortedByDescending { it.lastModified() }.orEmpty()
 
-    fun file(name: String) = File(dirs.imports, name)
+    override fun file(name: String) = File(dirs.imports, name)
 
     /** Copies a picked file into the import folder, renaming on clashes. Returns null when it isn't .tsv / .txt. */
-    suspend fun add(uri: Uri): File? = withContext(ioDispatcher) {
+    override suspend fun add(uri: Uri): File? = withContext(ioDispatcher) {
         val name = photos.displayName(uri) ?: return@withContext null
         if (!name.endsWith(".tsv", true) && !name.endsWith(".txt", true)) return@withContext null
         val base = name.substringBeforeLast('.')
@@ -116,14 +114,14 @@ class TsvImporter @Inject constructor(
         else file.writeText(text, Charsets.UTF_8)
     }
 
-    suspend fun removeLine(fileName: String, index: Int) = withContext(ioDispatcher) {
+    override suspend fun removeLine(fileName: String, index: Int) = withContext(ioDispatcher) {
         val f = file(fileName)
         if (!f.exists()) return@withContext
         val (header, lines) = dataLines(f)
         if (index in lines.indices) write(f, header, lines.filterIndexed { i, _ -> i != index })
     }
 
-    fun deviceDateOrder(): DateOrder {
+    override fun deviceDateOrder(): DateOrder {
         val p = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "yyyyMMdd").filter { it in "yMd" }.toList().distinct().joinToString("")
         return when (p) {
             "yMd" -> DateOrder.YMD
@@ -134,7 +132,7 @@ class TsvImporter @Inject constructor(
         }
     }
 
-    suspend fun load(fileName: String, order: DateOrder?): ImportPreview = withContext(ioDispatcher) {
+    override suspend fun load(fileName: String, order: DateOrder?): ImportPreview = withContext(ioDispatcher) {
         val f = file(fileName)
         if (!f.exists()) return@withContext ImportPreview(emptyList(), false)
         val (header, lines) = dataLines(f)
@@ -253,7 +251,7 @@ class TsvImporter @Inject constructor(
     }.getOrNull()
 
     /** Saves every valid row; failing rows stay in the file. Returns (saved, failed). */
-    suspend fun saveAll(fileName: String, order: DateOrder?): Pair<Int, Int> = withContext(ioDispatcher) {
+    override suspend fun saveAll(fileName: String, order: DateOrder?): Pair<Int, Int> = withContext(ioDispatcher) {
         val f = file(fileName)
         val preview = load(fileName, order)
         val (header, _) = dataLines(f)
@@ -311,5 +309,5 @@ class TsvImporter @Inject constructor(
         saved to failed.size
     }
 
-    suspend fun delete(names: Collection<String>) = withContext(ioDispatcher) { names.forEach { file(it).delete() } }
+    override suspend fun delete(names: Collection<String>) = withContext(ioDispatcher) { names.forEach { file(it).delete() } }
 }

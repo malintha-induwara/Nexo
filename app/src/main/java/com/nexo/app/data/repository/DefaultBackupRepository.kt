@@ -18,7 +18,6 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
@@ -32,23 +31,22 @@ sealed interface RestoreResult {
 }
 
 /** Backup / restore of the finance database. Backups are plain copies of the database file. */
-@Singleton
-class BackupManager @Inject constructor(
+class DefaultBackupRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: NexoDatabase,
     private val dirs: AppDirs,
     private val prefs: UserPreferencesRepository,
     private val legacy: LegacyImporter,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
-) {
+) : BackupRepository {
     /** "Nexo(<date>-<HHmmss>).nexobak" with a locale-dependent date part. */
-    fun backupFileName(now: LocalDateTime = LocalDateTime.now(), prefix: String = "Nexo"): String {
+    override fun backupFileName(now: LocalDateTime, prefix: String): String {
         val date = now.toLocalDate().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(Locale.getDefault()))
             .replace(" ", "")
             .replace(Regex("[^\\p{Nd}]"), "-")
             .replace(Regex("-+"), "-")
             .trim('-')
-        return "$prefix($date-${now.format(DateTimeFormatter.ofPattern("HHmmss"))}).$EXTENSION"
+        return "$prefix($date-${now.format(DateTimeFormatter.ofPattern("HHmmss"))}).$BackupRepository.EXTENSION"
     }
 
     /** Flushes the WAL so the main file is a consistent copy. */
@@ -56,7 +54,7 @@ class BackupManager @Inject constructor(
         db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(TRUNCATE)").use { it.moveToFirst() }
     }
 
-    suspend fun writeBackup(target: Uri): Boolean = withContext(ioDispatcher) {
+    override suspend fun writeBackup(target: Uri): Boolean = withContext(ioDispatcher) {
         runCatching {
             checkpoint()
             context.contentResolver.openOutputStream(target, "wt")?.use { out -> dirs.database.inputStream().use { it.copyTo(out) } } ?: error("no stream")
@@ -64,7 +62,7 @@ class BackupManager @Inject constructor(
         }.getOrDefault(false)
     }
 
-    suspend fun writeBackup(target: File): Boolean = withContext(ioDispatcher) {
+    override suspend fun writeBackup(target: File): Boolean = withContext(ioDispatcher) {
         runCatching {
             checkpoint()
             target.parentFile?.mkdirs()
@@ -74,13 +72,13 @@ class BackupManager @Inject constructor(
     }
 
     /** Copy in the temp folder for the share sheet. */
-    suspend fun shareCopy(): File? = withContext(ioDispatcher) {
-        val f = File(dirs.temp, "nexo_backup.$EXTENSION")
+    override suspend fun shareCopy(): File? = withContext(ioDispatcher) {
+        val f = File(dirs.temp, "nexo_backup.$BackupRepository.EXTENSION")
         if (writeBackup(f)) f else null
     }
 
     /** Automatic daily backup: keeps the 14 newest files. */
-    suspend fun autoBackup(): Boolean = withContext(ioDispatcher) {
+    override suspend fun autoBackup(): Boolean = withContext(ioDispatcher) {
         val ok = writeBackup(File(dirs.backups, backupFileName()))
         if (ok) {
             prefs.setLastAutoBackup(System.currentTimeMillis())
@@ -89,16 +87,16 @@ class BackupManager @Inject constructor(
         ok
     }
 
-    fun autoBackups(): List<File> = dirs.backups.listFiles()?.filter { isBackupName(it.name) && !it.name.endsWith("journal") }
+    override fun autoBackups(): List<File> = dirs.backups.listFiles()?.filter { isBackupName(it.name) && !it.name.endsWith("journal") }
         ?.sortedByDescending { it.lastModified() }.orEmpty()
 
-    fun isBackupName(name: String): Boolean {
+    override fun isBackupName(name: String): Boolean {
         if (name.contains("weple.sqlite")) return false
-        val accepted = listOf(".$EXTENSION", ".mmbak", ".sqlite", ".MoneyManager", ".moneymanager", ".MoneyManager2", ".moneymanager2")
+        val accepted = listOf(".$BackupRepository.EXTENSION", ".mmbak", ".sqlite", ".MoneyManager", ".moneymanager", ".MoneyManager2", ".moneymanager2")
         return accepted.any { name.endsWith(it) } || name.endsWith("sql")
     }
 
-    suspend fun restore(uri: Uri): RestoreResult = withContext(ioDispatcher) {
+    override suspend fun restore(uri: Uri): RestoreResult = withContext(ioDispatcher) {
         val temp = File(dirs.temp, "restore_candidate.db")
         runCatching {
             context.contentResolver.openInputStream(uri)?.use { input -> temp.outputStream().use { input.copyTo(it) } } ?: return@withContext RestoreResult.Failed(null)
@@ -106,7 +104,7 @@ class BackupManager @Inject constructor(
         restoreFile(temp).also { temp.delete() }
     }
 
-    suspend fun restoreFile(file: File): RestoreResult = withContext(ioDispatcher) {
+    override suspend fun restoreFile(file: File): RestoreResult = withContext(ioDispatcher) {
         when (detect(file)) {
             BackupFormat.NEXO -> runCatching { copyNexo(file); RestoreResult.Success }.getOrElse { RestoreResult.Failed(it.message) }
             BackupFormat.LEGACY_ANDROID -> legacy.import(file)
@@ -168,8 +166,6 @@ class BackupManager @Inject constructor(
     }
 
     companion object {
-        const val EXTENSION = "nexobak"
-        const val MIME = "application/vnd.nexo.backup"
         const val KEEP = 14
         const val DB_VERSION = NexoDatabase.VERSION
         val TABLES = listOf(

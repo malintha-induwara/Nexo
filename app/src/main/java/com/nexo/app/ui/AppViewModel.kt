@@ -6,7 +6,7 @@ import androidx.navigation3.runtime.NavKey
 import com.nexo.app.core.model.BookSettings
 import com.nexo.app.core.model.DeviceSettings
 import com.nexo.app.data.repository.AppLockRepository
-import com.nexo.app.data.repository.DataReset
+import com.nexo.app.data.repository.BookRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,7 +25,7 @@ class AppViewModel @Inject constructor(
     private val prefs: UserPreferencesRepository,
     refs: ReferenceDataRepository,
     val lock: AppLockRepository,
-    private val reset: DataReset,
+    private val reset: BookRepository,
 ) : ViewModel() {
     val device: StateFlow<DeviceSettings?> = prefs.getDeviceSettingsStream().stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val book: StateFlow<BookSettings> = refs.getRefDataStream().map { it.settings }.stateIn(viewModelScope, SharingStarted.Eagerly, BookSettings())

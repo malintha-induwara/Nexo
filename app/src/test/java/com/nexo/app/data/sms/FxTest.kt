@@ -9,16 +9,17 @@ import com.nexo.app.core.model.RateSide
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.SmsReason
 import com.nexo.app.core.model.SymbolPosition
+import com.nexo.app.data.database.BookSeeder
 import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.database.Seeder
 import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.data.database.entity.FxSnapshotEntity
 import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.datastore.DevicePreferencesDataSource
-import com.nexo.app.data.network.BankRatesClient
+import com.nexo.app.data.network.FxRatesNetworkDataSource
 import com.nexo.app.data.repository.DefaultUserPreferencesRepository
-import com.nexo.app.data.repository.FxRepository
+import com.nexo.app.data.repository.FxRatesRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.testing.fxRatesRepository
 import com.nexo.app.testing.referenceDataRepository
 import java.time.Instant
 import kotlinx.coroutines.CoroutineScope
@@ -57,20 +58,20 @@ class FxTest {
 
     @Test
     fun parseKeepsKnownIsoCurrenciesAndCapturedAt() {
-        val rows = BankRatesClient.parse(sample)
+        val rows = FxRatesNetworkDataSource.parse(sample)
         assertEquals(4, rows.size)
         val combank = rows.single { it.bank == "combank" }
         assertEquals("USD", combank.ccy)
         assertEquals(336.5, combank.sell!!, 0.0)
         assertEquals(captured, combank.capturedAt)
         assertNull(rows.single { it.bank == "hnb" }.official)
-        assertTrue(BankRatesClient.parse("not json").isEmpty())
-        assertTrue(BankRatesClient.parse("""{"error":"Commercial bank rates need an API key."}""").isEmpty())
+        assertTrue(FxRatesNetworkDataSource.parse("not json").isEmpty())
+        assertTrue(FxRatesNetworkDataSource.parse("""{"error":"Commercial bank rates need an API key."}""").isEmpty())
     }
 
     @Test
     fun issuerRateFirstThenMedianThenOfficial() {
-        val usd = BankRatesClient.parse(sample).filter { it.ccy == "USD" }
+        val usd = FxRatesNetworkDataSource.parse(sample).filter { it.ccy == "USD" }
         assertEquals(RateChoice(336.5, "combank", captured), RateChooser.choose(usd, "combank", RateSide.SELL))
         assertEquals(328.5, RateChooser.choose(usd, "combank", RateSide.BUY)!!.rate, 0.0)
         // NTB isn't on this board: the median of 336.0, 336.5 and 337.0.
@@ -93,12 +94,12 @@ class FxTest {
         assertEquals(4.21, RateChooser.estimate(0.0125, 336.5), 0.0)
     }
 
-    private fun repo(): Triple<NexoDatabase, FxRepository, ReferenceDataRepository> = runBlocking {
+    private fun repo(): Triple<NexoDatabase, FxRatesRepository, ReferenceDataRepository> = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
-        Seeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
+        BookSeeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
         val refs = referenceDataRepository(db, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
-        Triple(db, FxRepository(db, refs, DefaultUserPreferencesRepository(DevicePreferencesDataSource(context)), BankRatesClient(Dispatchers.IO)), refs)
+        Triple(db, fxRatesRepository(context, db, refs), refs)
     }
 
     private fun usdItem(occurredAt: Long, amount: Double = 20.0) = SmsItemEntity(
@@ -112,9 +113,9 @@ class FxTest {
         val (db, fx) = repo().let { it.first to it.second }
         val day = 24 * 3600 * 1000L
         fx.store(listOf(FxSnapshotEntity(captured - 3 * day, "combank", "USD", 327.0, 335.0)))
-        fx.store(BankRatesClient.parse(sample))
+        fx.store(FxRatesNetworkDataSource.parse(sample))
         // Same rates a day later add nothing to the history.
-        fx.store(BankRatesClient.parse(sample).map { it.copy(capturedAt = it.capturedAt + day) })
+        fx.store(FxRatesNetworkDataSource.parse(sample).map { it.copy(capturedAt = it.capturedAt + day) })
         val rows = db.query("SELECT COUNT(*) FROM fx_snapshots", null).use { it.moveToFirst(); it.getInt(0) }
         assertEquals(5, rows)
 
@@ -149,7 +150,7 @@ class FxTest {
     @Test
     fun confirmedAmountsAreNotReEstimated() = runBlocking {
         val (db, fx) = repo().let { it.first to it.second }
-        fx.store(BankRatesClient.parse(sample))
+        fx.store(FxRatesNetworkDataSource.parse(sample))
         val confirmed = usdItem(captured).copy(certainty = Certainty.EXACT, actualAmount = 6900.0)
         assertEquals(confirmed, fx.estimate(confirmed))
         db.close()

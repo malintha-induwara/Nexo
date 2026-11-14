@@ -5,7 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
 import com.nexo.app.core.common.ApplicationScope
-import com.nexo.app.data.repository.SmsCapture
+import com.nexo.app.data.repository.SmsInboxRepository
+import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.sms.parser.SmsMessage
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -17,8 +18,9 @@ import kotlinx.coroutines.launch
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 interface SmsEntryPoint {
-    fun intake(): SmsIntake
-    fun capture(): SmsCapture
+    fun sms(): SmsRepository
+
+    fun smsInbox(): SmsInboxRepository
 
     @ApplicationScope
     fun appScope(): CoroutineScope
@@ -39,7 +41,7 @@ class SmsReceiver : BroadcastReceiver() {
         val pending = goAsync()
         context.smsEntry().appScope().launch {
             try {
-                context.smsEntry().intake().receive(messages)
+                context.smsEntry().sms().receive(messages)
             } finally {
                 pending.finish()
             }

@@ -6,19 +6,21 @@ import androidx.test.core.app.ApplicationProvider
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.DenyReason
+import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.core.model.TxKind
+import com.nexo.app.data.database.BookSeeder
 import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.database.Seeder
 import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.datastore.DevicePreferencesDataSource
 import com.nexo.app.data.repository.DefaultUserPreferencesRepository
+import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.data.sms.Missing
-import com.nexo.app.data.sms.SmsSuggester
 import com.nexo.app.testing.referenceDataRepository
+import com.nexo.app.testing.smsRepository
 import com.nexo.app.testing.transactionsRepository
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -42,17 +44,19 @@ class SmsApproverTest {
     private lateinit var db: NexoDatabase
     private lateinit var approver: SmsApprover
     private lateinit var transactions: TransactionsRepository
+    private lateinit var sms: SmsRepository
     private val at = 1_793_700_000_000L
 
     @Before
     fun setUp() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
-        Seeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
+        BookSeeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val refs = referenceDataRepository(db, scope)
         transactions = transactionsRepository(context, db, refs)
-        approver = SmsApprover(db, refs, transactions, SmsSuggester(db, refs, com.nexo.app.data.repository.FxRepository(db, refs, DefaultUserPreferencesRepository(DevicePreferencesDataSource(context)), com.nexo.app.data.network.BankRatesClient(Dispatchers.IO))))
+        sms = smsRepository(context, db, refs)
+        approver = SmsApprover(sms, refs, transactions)
     }
 
     @After
@@ -147,11 +151,11 @@ class SmsApproverTest {
     @Test
     fun denyAndRestore() = runBlocking {
         val i = item()
-        val denied = approver.deny(listOf(i.id), DenyReason.DIDNT_HAPPEN)
+        val denied = sms.deny(listOf(i.id), DenyReason.DIDNT_HAPPEN)
         assertEquals(1, denied.size)
         assertEquals(SmsStatus.DENIED, db.smsDao().item(i.id)!!.status)
         assertEquals(DenyReason.DIDNT_HAPPEN, db.smsDao().item(i.id)!!.denyReason)
-        approver.restore(listOf(i.id))
+        sms.restore(listOf(i.id))
         val back = db.smsDao().item(i.id)!!
         assertEquals(SmsStatus.PENDING, back.status)
         assertNull(back.denyReason)
@@ -162,7 +166,7 @@ class SmsApproverTest {
     fun restoringAnExpiredItemRestartsItsWindow() = runBlocking {
         val i = item()
         db.smsDao().expire(before = at + 1, now = at + 2)
-        approver.restore(listOf(i.id))
+        sms.restore(listOf(i.id))
         val back = db.smsDao().item(i.id)!!
         assertEquals(SmsStatus.PENDING, back.status)
         assertTrue(back.capturedAt > at)
@@ -172,7 +176,7 @@ class SmsApproverTest {
     fun actualAmountSettlesAForeignEstimate() = runBlocking {
         val i = item(amount = 20.0, currency = "USD", certainty = Certainty.ESTIMATED)
         db.smsDao().update(i.copy(estimatedAmount = 6730.0))
-        approver.setAmount(i.id, 6912.4)
+        sms.setAmount(i.id, 6912.4)
         val edited = db.smsDao().item(i.id)!!
         assertEquals(Certainty.EXACT, edited.certainty)
         assertEquals(6912.4, edited.actualAmount!!, 0.0)
@@ -187,7 +191,7 @@ class SmsApproverTest {
     @Test
     fun unverifiedStaysUnverifiedWhenEdited() = runBlocking {
         val i = item(kind = SmsKind.TRANSFER_OUT, certainty = Certainty.UNVERIFIED, categoryId = null, card = null, merchant = "")
-        approver.setAmount(i.id, 3500.0)
+        sms.setAmount(i.id, 3500.0)
         val edited = db.smsDao().item(i.id)!!
         assertEquals(Certainty.UNVERIFIED, edited.certainty)
         assertEquals(3500.0, edited.amount, 0.0)
@@ -198,7 +202,7 @@ class SmsApproverTest {
         val a = item(accountId = null, card = "1111")
         val b = item(accountId = null, card = "1111", merchant = "Other")
         val c = item(accountId = null, card = "2222")
-        approver.mapCard("COMBANK", "1111", "1")
+        sms.mapCard("COMBANK", "1111", "1")
         assertEquals("1", db.smsDao().item(a.id)!!.accountId)
         assertEquals("1", db.smsDao().item(b.id)!!.accountId)
         assertNull(db.smsDao().item(c.id)!!.accountId)
@@ -265,9 +269,9 @@ class SmsApproverTest {
     fun fxDifferenceIsAskedOnlyAboveTheTolerance() = runBlocking {
         val close = item(amount = 20.0, currency = "USD", certainty = Certainty.ESTIMATED, feeRoute = FeeRoute.FX_CARD_PURCHASE, estimated = 6730.0)
         assertEquals(FeePlan.None, approver.feePlan(close))
-        approver.setAmount(close.id, 6760.0)
+        sms.setAmount(close.id, 6760.0)
         assertEquals(FeePlan.None, approver.feePlan(db.smsDao().item(close.id)!!))
-        approver.setAmount(close.id, 6912.4)
+        sms.setAmount(close.id, 6912.4)
         val plan = approver.feePlan(db.smsDao().item(close.id)!!) as FeePlan.Ask
         assertTrue(plan.fxDifference)
         assertEquals(182.4, plan.prefill!!, 0.001)
@@ -276,7 +280,7 @@ class SmsApproverTest {
     @Test
     fun fxDifferenceRecordedAsAFeeKeepsThePurchaseAtTheEstimate() = runBlocking {
         val i = item(amount = 20.0, currency = "USD", certainty = Certainty.ESTIMATED, feeRoute = FeeRoute.FX_CARD_PURCHASE, estimated = 6730.0)
-        approver.setAmount(i.id, 6912.4)
+        sms.setAmount(i.id, 6912.4)
         val r = approver.approve(i.id, FeeChoice(182.4)) as ApproveResult.Done
         assertEquals(6730.0, db.transactionDao().getById(r.transactionId)!!.amount, 0.0)
         assertEquals(182.4, db.transactionDao().getById(r.feeId!!)!!.amount, 0.001)
@@ -287,7 +291,7 @@ class SmsApproverTest {
     @Test
     fun fxDifferenceIncludedInThePurchaseHasNoFeeRow() = runBlocking {
         val i = item(amount = 20.0, currency = "USD", certainty = Certainty.ESTIMATED, feeRoute = FeeRoute.FX_CARD_PURCHASE, estimated = 6730.0)
-        approver.setAmount(i.id, 6912.4)
+        sms.setAmount(i.id, 6912.4)
         val r = approver.approve(i.id, FeeChoice(182.4, includeInPurchase = true)) as ApproveResult.Done
         assertNull(r.feeId)
         assertEquals(6912.4, db.transactionDao().getById(r.transactionId)!!.amount, 0.0)

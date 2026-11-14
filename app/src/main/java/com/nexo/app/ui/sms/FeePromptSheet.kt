@@ -34,10 +34,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.RefData
-import com.nexo.app.domain.sms.FeeChoice
-import com.nexo.app.domain.sms.SmsApprover
+import com.nexo.app.data.sms.bankName
+import com.nexo.app.data.sms.ledgerAmount
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.rememberHaptics
@@ -87,13 +88,13 @@ fun ColumnScope.FeePromptContent(prompt: FeePrompt, ref: RefData, onAnswer: (Fee
     var remember by remember(prompt) { mutableStateOf(false) }
     var confirmLarge by remember(prompt) { mutableStateOf(false) }
     var editing by remember(prompt) { mutableStateOf(false) }
-    val smallest = prompt.items.minOf { SmsApprover.ledgerAmount(it) }
+    val smallest = prompt.items.minOf { ledgerAmount(it) }
     val tooLarge = (amount ?: 0.0) > smallest
 
     Column(Modifier.fillMaxWidth().weight(1f).padding(horizontal = Space.gutter)) {
         Text(
             if (plan.fxDifference) stringResource(R.string.fee_ask_fx_title, AmountFormatter.format(plan.prefill ?: 0.0, currency))
-            else stringResource(R.string.fee_ask_title, SmsApprover.bankName(item)),
+            else stringResource(R.string.fee_ask_title, bankName(item)),
             style = MaterialTheme.typography.titleMedium, color = colors.text,
         )
         val sub = if (plan.fxDifference) stringResource(R.string.fee_ask_fx_sub) else feeRouteQuestion(plan.route)?.let { stringResource(it) }

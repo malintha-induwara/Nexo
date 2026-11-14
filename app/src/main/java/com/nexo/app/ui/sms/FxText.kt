@@ -8,8 +8,7 @@ import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.model.RateSide
 import com.nexo.app.core.model.RefData
 import com.nexo.app.data.database.entity.SmsItemEntity
-import com.nexo.app.data.network.BankRatesClient
-import com.nexo.app.data.repository.FxRepository
+import com.nexo.app.data.repository.FxRatesRepository
 import com.nexo.app.data.sms.RateChoice
 import com.nexo.app.data.sms.parser.Bank
 import com.nexo.app.ui.designsystem.component.Formats
@@ -25,7 +24,7 @@ fun fxRateLine(context: Context, item: SmsItemEntity): String? {
         else -> Bank.entries.firstOrNull { it.rateCode == s }?.displayName ?: s.orEmpty()
     }
     val side = context.getString(if (item.fxSide == RateSide.BUY) R.string.fx_side_buy else R.string.fx_side_sell)
-    val day = item.fxSnapshotAt?.let { Formats.dayMonth(FxRepository.dayOf(it)) }.orEmpty()
+    val day = item.fxSnapshotAt?.let { Formats.dayMonth(FxRatesRepository.dayOf(it)) }.orEmpty()
     return context.getString(R.string.fx_rate_line, source, side, value, day).trimEnd(' ', '·')
 }
 
@@ -42,6 +41,6 @@ val SmsItemEntity.rateFromApi: Boolean get() = fxSource != null && fxSource != R
 
 fun openRatesAttribution(context: Context) {
     runCatching {
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(BankRatesClient.ATTRIBUTION_URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(FxRatesRepository.ATTRIBUTION_URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 }

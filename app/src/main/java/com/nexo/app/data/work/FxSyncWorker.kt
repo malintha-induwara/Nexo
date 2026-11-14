@@ -10,7 +10,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.nexo.app.data.repository.FxRepository
+import com.nexo.app.data.repository.FxRatesRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit
 class FxSyncWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
-    private val fx: FxRepository,
+    private val fx: FxRatesRepository,
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         if (!fx.online) {

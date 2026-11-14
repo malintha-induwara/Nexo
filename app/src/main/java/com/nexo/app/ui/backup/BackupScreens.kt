@@ -45,7 +45,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.period.DateRange
-import com.nexo.app.data.repository.BackupManager
+import com.nexo.app.data.repository.BackupRepository
 import com.nexo.app.data.repository.RestoreResult
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.EmptyState
@@ -128,7 +128,7 @@ fun BackupScreen(vm: BackupViewModel = hiltViewModel()) {
         Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
             SettingRow(stringResource(R.string.backup_on_device), onClick = { nav.navigate(BackupDeviceKey) })
             SettingRow(stringResource(R.string.share_backup), onClick = {
-                vm.shareBackup { f -> f?.let { shareFile(context, it, BackupManager.MIME, subject, body) } }
+                vm.shareBackup { f -> f?.let { shareFile(context, it, BackupRepository.MIME, subject, body) } }
             })
             SettingRow(stringResource(R.string.export_to_excel), onClick = { nav.navigate(ExcelExportKey()) })
             SettingRow(stringResource(R.string.import_excel), onClick = { nav.navigate(ImportListKey) })
