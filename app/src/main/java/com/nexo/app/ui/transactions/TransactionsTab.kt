@@ -41,13 +41,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.StickyNote2
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Search
@@ -61,15 +57,9 @@ import androidx.compose.material.icons.rounded.SouthWest
 import androidx.compose.material.icons.rounded.StarOutline
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.PrimaryScrollableTabRow
-import androidx.compose.material3.SmallFloatingActionButton
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -93,6 +83,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -120,12 +111,11 @@ import com.nexo.app.ui.designsystem.component.PeriodNavigator
 import com.nexo.app.ui.designsystem.component.RollingAmount
 import com.nexo.app.ui.designsystem.component.RoundIconButton
 import com.nexo.app.ui.designsystem.component.SegmentedPill
-import com.nexo.app.ui.designsystem.component.TotalsBar
 import com.nexo.app.ui.designsystem.component.collapsingHeader
 import com.nexo.app.ui.designsystem.component.rememberCollapsingHeaderState
 import com.nexo.app.ui.designsystem.component.rememberHaptics
 import com.nexo.app.ui.designsystem.component.shrinkToFit
-import com.nexo.app.ui.designsystem.theme.LocalHeaderColors
+import com.nexo.app.ui.designsystem.preview.NexoPreview
 import com.nexo.app.ui.designsystem.theme.LocalIsDark
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
@@ -136,13 +126,19 @@ import com.nexo.app.ui.designsystem.theme.NexoShapes
 import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
 import com.nexo.app.ui.navigation.BookmarksKey
+import com.nexo.app.ui.navigation.BudgetAddKey
+import com.nexo.app.ui.navigation.BudgetDetailKey
+import com.nexo.app.ui.navigation.BudgetEditorKey
+import com.nexo.app.ui.navigation.BudgetSettingsKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.ExcelExportKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MemoEditorKey
+import com.nexo.app.ui.navigation.Navigator
 import com.nexo.app.ui.navigation.RepeatListKey
 import com.nexo.app.ui.navigation.SearchKey
+import com.nexo.app.ui.navigation.SmsQueueKey
 import com.nexo.app.ui.shell.LocalShell
 import com.nexo.app.ui.sms.QueueBadge
 import com.nexo.app.ui.sms.SmsInboxAction
@@ -154,12 +150,69 @@ import kotlin.math.sign
 import kotlinx.coroutines.delay
 
 @Composable
-fun TransactionsTab(
+fun TransactionsTabRoute(
     todaySignal: Int,
     smsBadge: QueueBadge,
     vm: TransactionsViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val nav = LocalNavigator.current
+    // No effects until the starting sub-tab is known, so a pending "today" signal waits for it.
+    if (state.tab == null) return
+    LaunchedEffect(todaySignal) { if (todaySignal > 0) vm.goToday() }
+    // The highlight plays once; clear it so scrolling the row away and back does not replay it.
+    val lastSaved = state.lastSaved
+    LaunchedEffect(lastSaved) {
+        if (lastSaved != null) {
+            delay(2_500)
+            vm.clearLastSaved()
+        }
+    }
+    val actions = remember(vm, nav) { transactionsActions(vm, nav) }
+    TransactionsTab(
+        state = state,
+        smsBadge = smsBadge,
+        actions = actions,
+        bulkActions = vm.bulkActions,
+    )
+}
+
+private fun transactionsActions(vm: TransactionsViewModel, nav: Navigator) = TransactionsActions(
+    step = vm::step,
+    pickMonth = vm::pickMonth,
+    openMonth = vm::openMonth,
+    setTab = vm::setTab,
+    select = vm::select,
+    setFilterOpen = vm::setFilterOpen,
+    setFilter = vm::setFilter,
+    toggleSelect = vm::toggleSelect,
+    setSelection = vm::setSelection,
+    clearSelection = vm::clearSelection,
+    onFocusHandled = vm::onFocusHandled,
+    onSavedMemoShown = vm::consumeSavedMemo,
+    openSmsQueue = { nav.navigate(SmsQueueKey) },
+    openBookmarks = { nav.navigate(BookmarksKey()) },
+    openSearch = { nav.navigate(SearchKey()) },
+    openEntry = { nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = it)) },
+    addEntry = { nav.navigate(EntryKey(date = it.toString(), fromAdd = true)) },
+    openRepeats = { nav.navigate(RepeatListKey) },
+    openMemo = { nav.navigate(MemoEditorKey(memoId = it)) },
+    newMemo = { nav.navigate(MemoEditorKey(date = it.toString())) },
+    exportToExcel = { from, to -> nav.navigate(ExcelExportKey(from.toString(), to.toString())) },
+    openBudgetSettings = { nav.navigate(BudgetSettingsKey) },
+    editBudget = { nav.navigate(BudgetEditorKey(it)) },
+    addTotalBudget = { nav.navigate(BudgetAddKey(presetTotal = true, preset = true)) },
+    openBudgetDetail = { id, month -> nav.navigate(BudgetDetailKey(id, month.toString())) },
+)
+
+/** The Transactions tab: a period header, the sub-tab pages, the filter panel and the day sheet. */
+@Composable
+internal fun TransactionsTab(
+    state: TransactionsUiState,
+    smsBadge: QueueBadge,
+    actions: TransactionsActions,
+    bulkActions: BulkEditActions,
+) {
     val ref = state.ref
     val data = state.data
     val tab = state.tab
@@ -168,7 +221,6 @@ fun TransactionsTab(
     val selection = state.selection
     val selectedDate = state.selectedDate
     val lastSaved = state.lastSaved
-    val nav = LocalNavigator.current
     val shell = LocalShell.current
     val money = LocalMoneyColors.current
     val colors = LocalNexoColors.current
@@ -184,24 +236,17 @@ fun TransactionsTab(
     var filterCollapsed by rememberSaveable { mutableStateOf(false) }
     val header = rememberCollapsingHeaderState()
 
-    LaunchedEffect(todaySignal) { if (todaySignal > 0) vm.goToday() }
     LaunchedEffect(currentTab, data.period?.key) { header.expand() }
-    // The highlight plays once; clear it so scrolling the row away and back does not replay it.
-    LaunchedEffect(lastSaved) {
-        if (lastSaved != null) {
-            delay(2_500)
-            vm.clearLastSaved()
-        }
-    }
     val selecting = selection.isNotEmpty()
     // Not reset on dispose: the value is saved with the screen so the bar does not flash in on return.
     val hideBar = filterOpen || selecting || daySheet != null
     LaunchedEffect(hideBar) { shell.bottomBarHidden = hideBar }
     // On the Notes view the bar's add button writes a memo instead of a transaction.
     val memoDate by rememberUpdatedState(selectedDate)
+    val newMemo by rememberUpdatedState(actions.newMemo)
     DisposableEffect(currentTab) {
         if (currentTab == SubTab.NOTE) {
-            shell.addOverride = { nav.navigate(MemoEditorKey(date = memoDate.toString())) }
+            shell.addOverride = { newMemo(memoDate) }
             shell.addLabelOverride = R.string.new_memo
         }
         onDispose {
@@ -212,8 +257,8 @@ fun TransactionsTab(
     BackHandler(enabled = monthPicker || selecting || filterOpen) {
         when {
             monthPicker -> monthPicker = false
-            selecting -> vm.clearSelection()
-            filterOpen -> vm.setFilterOpen(false)
+            selecting -> actions.clearSelection()
+            filterOpen -> actions.setFilterOpen(false)
         }
     }
 
@@ -257,9 +302,10 @@ fun TransactionsTab(
                             main = main,
                             onToggleAll = {
                                 val all = dailyRows.filter { !it.isCarryOver }.map { it.id }.toSet()
-                                vm.setSelection(if (selection.size >= all.size) emptySet() else all)
+                                val next = if (selection.size >= all.size) emptySet() else all
+                                actions.setSelection(next)
                             },
-                            onClose = vm::clearSelection,
+                            onClose = actions.clearSelection,
                             onAction = {
                                 bulkAction = it
                                 bulkOpen = true
@@ -275,8 +321,8 @@ fun TransactionsTab(
                     ) {
                         PeriodNavigator(
                             title = title,
-                            onPrevious = { vm.step(false) },
-                            onNext = { vm.step(true) },
+                            onPrevious = { actions.step(false) },
+                            onNext = { actions.step(true) },
                             onTitleClick = if (currentTab == SubTab.MONTHLY) {
                                 null
                             } else {
@@ -297,19 +343,17 @@ fun TransactionsTab(
                                 ) + shrinkHorizontally(NexoMotion.snappy()),
                         ) {
                             Row {
-                                SmsInboxAction(smsBadge)
+                                SmsInboxAction(smsBadge, actions.openSmsQueue)
                                 HeaderAction(
                                     Icons.Rounded.StarOutline,
                                     stringResource(R.string.bookmarks),
-                                ) {
-                                    nav.navigate(BookmarksKey())
-                                }
+                                    onClick = actions.openBookmarks,
+                                )
                                 HeaderAction(
                                     Icons.Rounded.Search,
                                     stringResource(R.string.search),
-                                ) {
-                                    nav.navigate(SearchKey())
-                                }
+                                    onClick = actions.openSearch,
+                                )
                             }
                         }
                         HeaderAction(
@@ -318,7 +362,7 @@ fun TransactionsTab(
                             active = filterOpen,
                         ) {
                             haptics.tick()
-                            vm.setFilterOpen(!filterOpen)
+                            actions.setFilterOpen(!filterOpen)
                             filterCollapsed = false
                         }
                     }
@@ -340,7 +384,7 @@ fun TransactionsTab(
                 SegmentedPill(
                     options = visibleTabs,
                     selected = currentTab,
-                    onSelect = vm::setTab,
+                    onSelect = actions.setTab,
                     label = { stringResource(subTabLabel(it)) },
                     modifier = Modifier.fillMaxWidth().padding(
                         horizontal = Space.l,
@@ -367,11 +411,11 @@ fun TransactionsTab(
                                 if (abs(total) > threshold) {
                                     val forward = total < 0
                                     if (swipe == SwipeMode.CHANGE_DATE) {
-                                        vm.step(forward)
+                                        actions.step(forward)
                                     } else {
                                         val i =
                                             visibleTabs.indexOf(currentTab) + if (forward) 1 else -1
-                                        visibleTabs.getOrNull(i)?.let(vm::setTab)
+                                        visibleTabs.getOrNull(i)?.let(actions.setTab)
                                     }
                                 }
                             },
@@ -411,15 +455,18 @@ fun TransactionsTab(
                             d,
                             main,
                             selection,
-                            vm::toggleSelect,
+                            actions.toggleSelect,
                             state.focusDate,
-                            vm::onFocusHandled,
+                            actions.onFocusHandled,
                             lastSaved,
                             bottom,
                             onMemoStrip = { day ->
                                 daySheet = day.toString()
                                 daySheetMemos = true
                             },
+                            onOpenEntry = actions.openEntry,
+                            onAddEntry = actions.addEntry,
+                            onOpenRepeats = actions.openRepeats,
                         )
 
                         SubTab.CALENDAR -> CalendarContent(
@@ -433,16 +480,24 @@ fun TransactionsTab(
                         }
 
                         SubTab.MONTHLY -> MonthlyContent(d, main, selectedDate, bottom) {
-                            vm.openMonth(it)
+                            actions.openMonth(it)
                         }
 
-                        SubTab.TOTAL -> TotalContent(d, main, state.budgetBlock, ref, bottom)
+                        SubTab.TOTAL -> TotalContent(
+                            d,
+                            main,
+                            state.budgetBlock,
+                            ref,
+                            bottom,
+                            actions,
+                        )
 
                         SubTab.NOTE -> NoteContent(
                             d.memos,
                             state.savedMemo,
-                            vm::consumeSavedMemo,
+                            actions.onSavedMemoShown,
                             bottom,
+                            onOpenMemo = actions.openMemo,
                         )
                     }
                 }
@@ -461,7 +516,7 @@ fun TransactionsTab(
                     RoundIconButton(
                         Icons.AutoMirrored.Outlined.StickyNote2,
                         stringResource(R.string.new_memo),
-                        onClick = { nav.navigate(MemoEditorKey(date = selectedDate.toString())) },
+                        onClick = { actions.newMemo(selectedDate) },
                         size = 48.dp,
                         container = if (colors.isDark) colors.raised else colors.surface,
                     )
@@ -473,7 +528,7 @@ fun TransactionsTab(
                         criteria = filter,
                         collapsed = filterCollapsed,
                         onCollapsedChange = { filterCollapsed = it },
-                        onChange = vm::setFilter,
+                        onChange = actions.setFilter,
                     )
                 }
             }
@@ -487,24 +542,28 @@ fun TransactionsTab(
             onShowMemos = { daySheetMemos = it },
             onDate = {
                 daySheet = it.toString()
-                vm.select(it)
+                actions.select(it)
             },
             onDismiss = {
-                daySheet?.let { vm.select(LocalDate.parse(it)) }
+                daySheet?.let { actions.select(LocalDate.parse(it)) }
                 daySheet = null
             },
+            onOpenEntry = actions.openEntry,
+            onAddEntry = actions.addEntry,
+            onOpenMemo = actions.openMemo,
+            onNewMemo = actions.newMemo,
             highlightId = lastSaved,
         )
     }
 
     if (monthPicker) {
         data.period?.let { p ->
-            MonthPickerDialog(p.label, onPick = vm::pickMonth, onDismiss = {
+            MonthPickerDialog(p.label, onPick = actions.pickMonth, onDismiss = {
                 monthPicker = false
             })
         }
     }
-    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.bulkActions, onDismiss = {
+    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, bulkActions, onDismiss = {
         bulkOpen = false
     })
 }
@@ -610,8 +669,10 @@ private fun DailyContent(
     highlightId: String?,
     bottom: Dp,
     onMemoStrip: (LocalDate) -> Unit,
+    onOpenEntry: (txId: String) -> Unit,
+    onAddEntry: (LocalDate) -> Unit,
+    onOpenRepeats: () -> Unit,
 ) {
-    val nav = LocalNavigator.current
     val haptics = rememberHaptics()
     val state = rememberLazyListState()
     // Scroll once this snapshot holds the day (it may arrive a frame after the period changes).
@@ -636,7 +697,7 @@ private fun DailyContent(
                 haptics.tick()
                 onToggleSelect(row.id)
             } else {
-                nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
+                onOpenEntry(row.id)
             }
         },
         onRowLongClick = { row ->
@@ -644,15 +705,13 @@ private fun DailyContent(
             onToggleSelect(row.id)
         },
         onDayClick = { d ->
-            if (selection.isEmpty()) nav.navigate(EntryKey(date = d.toString(), fromAdd = true))
+            if (selection.isEmpty()) onAddEntry(d)
         },
         onMemoClick = onMemoStrip,
         header = data.repeatPreview?.let { p ->
             {
                 item(key = "repeat_preview") {
-                    RepeatPreviewRow(p, main, {
-                        nav.navigate(RepeatListKey)
-                    }, Modifier.animateItem())
+                    RepeatPreviewRow(p, main, onOpenRepeats, Modifier.animateItem())
                 }
             }
         },
@@ -976,8 +1035,13 @@ private fun WeekLine(week: WeekRow, main: Currency, onClick: () -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun NoteContent(memos: List<Memo>, saved: String?, onSavedShown: () -> Unit, bottom: Dp) {
-    val nav = LocalNavigator.current
+private fun NoteContent(
+    memos: List<Memo>,
+    saved: String?,
+    onSavedShown: () -> Unit,
+    bottom: Dp,
+    onOpenMemo: (memoId: String) -> Unit,
+) {
     val dark = LocalIsDark.current
     if (memos.isEmpty()) {
         EmptyState(stringResource(R.string.no_memos))
@@ -1011,7 +1075,7 @@ private fun NoteContent(memos: List<Memo>, saved: String?, onSavedShown: () -> U
                     }
                 }
                 Card(
-                    onClick = { nav.navigate(MemoEditorKey(memoId = m.id)) },
+                    onClick = { onOpenMemo(m.id) },
                     colors = CardDefaults.cardColors(
                         containerColor = NexoPalette.memo(m.color, dark),
                     ),
@@ -1065,13 +1129,25 @@ private fun TotalContent(
     budgetBlock: BudgetBlockData?,
     ref: RefData,
     bottom: Dp,
+    actions: TransactionsActions,
 ) {
-    val nav = LocalNavigator.current
     LazyColumn(
         contentPadding = PaddingValues(12.dp, 12.dp, 12.dp, bottom),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { data.period?.let { BudgetBlock(it, budgetBlock, ref) } }
+        item {
+            data.period?.let {
+                BudgetBlock(
+                    it,
+                    budgetBlock,
+                    ref,
+                    onOpenSettings = actions.openBudgetSettings,
+                    onEditBudget = actions.editBudget,
+                    onAddTotal = actions.addTotalBudget,
+                    onOpenDetail = actions.openBudgetDetail,
+                )
+            }
+        }
         item {
             val s = data.summary ?: return@item
             Card(
@@ -1123,9 +1199,7 @@ private fun TotalContent(
                     )
                     Spacer(Modifier.height(8.dp))
                     OutlinedButton(onClick = {
-                        data.period?.let {
-                            nav.navigate(ExcelExportKey(it.start.toString(), it.end.toString()))
-                        }
+                        data.period?.let { actions.exportToExcel(it.start, it.end) }
                     }, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.export_to_excel))
                     }
@@ -1146,4 +1220,37 @@ private fun SummaryLine(label: String, value: String) {
         )
         Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
     }
+}
+
+@Preview
+@Composable
+private fun TransactionsTabPreview() = NexoPreview {
+    TransactionsTab(
+        state = previewTransactionsState,
+        smsBadge = QueueBadge(count = 2),
+        actions = TransactionsActions(),
+        bulkActions = previewBulkActions,
+    )
+}
+
+@Preview
+@Composable
+private fun TransactionsTabNotesPreview() = NexoPreview {
+    TransactionsTab(
+        state = previewTransactionsStateOn(SubTab.NOTE),
+        smsBadge = QueueBadge(),
+        actions = TransactionsActions(),
+        bulkActions = previewBulkActions,
+    )
+}
+
+@Preview
+@Composable
+private fun TransactionsTabTotalPreview() = NexoPreview {
+    TransactionsTab(
+        state = previewTransactionsStateOn(SubTab.TOTAL),
+        smsBadge = QueueBadge(),
+        actions = TransactionsActions(),
+        bulkActions = previewBulkActions,
+    )
 }

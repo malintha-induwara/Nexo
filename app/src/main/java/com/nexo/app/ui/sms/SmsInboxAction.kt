@@ -18,30 +18,26 @@ import androidx.compose.material.icons.rounded.Inbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.ui.designsystem.component.RoundIconButton
+import com.nexo.app.ui.designsystem.preview.NexoPreview
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
-import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.navigation.SmsQueueKey
 
 /** Pending count, and whether any of them needs attention (home badge and dot). */
 data class QueueBadge(val count: Int = 0, val attention: Boolean = false)
 
 /** The Review Queue's way in from the Transactions header. Shown only while something waits. */
 @Composable
-fun SmsInboxAction(badge: QueueBadge) {
-    val nav = LocalNavigator.current
+fun SmsInboxAction(badge: QueueBadge, onClick: () -> Unit) {
     val colors = LocalNexoColors.current
     AnimatedVisibility(
         badge.count > 0,
@@ -54,7 +50,7 @@ fun SmsInboxAction(badge: QueueBadge) {
             RoundIconButton(
                 Icons.Rounded.Inbox,
                 pluralStringResource(R.plurals.sms_to_review, badge.count, badge.count),
-                { nav.navigate(SmsQueueKey) },
+                onClick,
                 tint = colors.textSecondary,
                 container = Color.Transparent,
             )
@@ -83,4 +79,10 @@ fun SmsInboxAction(badge: QueueBadge) {
             }
         }
     }
+}
+
+@Preview
+@Composable
+private fun SmsInboxActionPreview() = NexoPreview {
+    SmsInboxAction(QueueBadge(count = 3, attention = true), onClick = {})
 }

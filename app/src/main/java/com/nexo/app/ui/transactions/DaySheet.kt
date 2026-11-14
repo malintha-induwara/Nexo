@@ -34,13 +34,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountParts
@@ -54,16 +54,14 @@ import com.nexo.app.ui.designsystem.component.NavMotion
 import com.nexo.app.ui.designsystem.component.PeriodNavigator
 import com.nexo.app.ui.designsystem.component.RoundIconButton
 import com.nexo.app.ui.designsystem.component.pressScale
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalIsDark
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoPalette
 import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
-import com.nexo.app.ui.navigation.EntryKey
-import com.nexo.app.ui.navigation.EntryMode
-import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.navigation.MemoEditorKey
 import java.time.LocalDate
 import java.util.Locale
 
@@ -80,11 +78,13 @@ fun DaySheet(
     onShowMemos: (Boolean) -> Unit,
     onDate: (LocalDate) -> Unit,
     onDismiss: () -> Unit,
+    onOpenEntry: (txId: String) -> Unit,
+    onAddEntry: (LocalDate) -> Unit,
+    onOpenMemo: (memoId: String) -> Unit,
+    onNewMemo: (LocalDate) -> Unit,
     highlightId: String? = null,
 ) {
     val clock = LocalClock.current
-    val nav = LocalNavigator.current
-    val context = LocalContext.current
     val money = LocalMoneyColors.current
     val colors = LocalNexoColors.current
     val dark = LocalIsDark.current
@@ -193,7 +193,7 @@ fun DaySheet(
                         ) {
                             items(memos, key = { it.id }) { m ->
                                 Card(
-                                    onClick = { nav.navigate(MemoEditorKey(memoId = m.id)) },
+                                    onClick = { onOpenMemo(m.id) },
                                     colors = CardDefaults.cardColors(
                                         containerColor = NexoPalette.memo(m.color, dark),
                                     ),
@@ -232,9 +232,7 @@ fun DaySheet(
                                 row,
                                 selected = false,
                                 onClick = {
-                                    if (!row.isCarryOver) {
-                                        nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
-                                    }
+                                    if (!row.isCarryOver) onOpenEntry(row.id)
                                 },
                                 onLongClick = null,
                                 modifier = Modifier.animateItem(),
@@ -253,7 +251,7 @@ fun DaySheet(
                     stringResource(R.string.new_memo),
                     onClick = {
                         onShowMemos(true)
-                        nav.navigate(MemoEditorKey(date = shown.toString()))
+                        onNewMemo(shown)
                     },
                     size = 44.dp,
                     container = colors.raisedHigh,
@@ -273,7 +271,7 @@ fun DaySheet(
                             role = Role.Button,
                         ) {
                             onShowMemos(false)
-                            nav.navigate(EntryKey(date = shown.toString(), fromAdd = true))
+                            onAddEntry(shown)
                         }
                         .semantics { contentDescription = addLabel },
                     contentAlignment = Alignment.Center,
@@ -288,4 +286,22 @@ fun DaySheet(
             }
         }
     }
+}
+
+@Preview
+@Composable
+private fun DaySheetPreview() = NexoPreview {
+    DaySheet(
+        date = PreviewData.today,
+        data = previewTransactionsState.data,
+        ref = PreviewData.ref,
+        showMemos = false,
+        onShowMemos = {},
+        onDate = {},
+        onDismiss = {},
+        onOpenEntry = {},
+        onAddEntry = {},
+        onOpenMemo = {},
+        onNewMemo = {},
+    )
 }

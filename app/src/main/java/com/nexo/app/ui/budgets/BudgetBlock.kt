@@ -25,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -37,26 +36,24 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.MonthPeriod
 import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.RefData
 import com.nexo.app.domain.BudgetBlockData
 import com.nexo.app.domain.BudgetRow
 import com.nexo.app.ui.designsystem.LocalClock
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.nexo
-import com.nexo.app.ui.navigation.BudgetAddKey
-import com.nexo.app.ui.navigation.BudgetDetailKey
-import com.nexo.app.ui.navigation.BudgetEditorKey
-import com.nexo.app.ui.navigation.BudgetSettingsKey
-import com.nexo.app.ui.navigation.LocalNavigator
 import java.time.LocalDateTime
+import java.time.YearMonth
 import java.time.temporal.ChronoUnit
 
 /** Proportional "Today" marker. */
@@ -68,9 +65,17 @@ fun todayFraction(period: MonthPeriod, now: LocalDateTime): Float? {
     return (ChronoUnit.MINUTES.between(start, now) / total).coerceIn(0f, 1f)
 }
 
+/** The Total page's budget panel. A total without a budget yet opens [onAddTotal]. */
 @Composable
-fun BudgetBlock(period: MonthPeriod, data: BudgetBlockData?, ref: RefData) {
-    val nav = LocalNavigator.current
+fun BudgetBlock(
+    period: MonthPeriod,
+    data: BudgetBlockData?,
+    ref: RefData,
+    onOpenSettings: () -> Unit,
+    onEditBudget: (budgetId: String) -> Unit,
+    onAddTotal: () -> Unit,
+    onOpenDetail: (budgetId: String, month: YearMonth) -> Unit,
+) {
     var expandedAll by rememberSaveable { mutableStateOf(false) }
     var expanded by rememberSaveable { mutableStateOf(setOf<String>()) }
     val today = todayFraction(period, LocalDateTime.now(LocalClock.current))
@@ -86,7 +91,7 @@ fun BudgetBlock(period: MonthPeriod, data: BudgetBlockData?, ref: RefData) {
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = { nav.navigate(BudgetSettingsKey) }) {
+                TextButton(onClick = onOpenSettings) {
                     Text(stringResource(R.string.budget_setting))
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
                 }
@@ -109,9 +114,9 @@ fun BudgetBlock(period: MonthPeriod, data: BudgetBlockData?, ref: RefData) {
             val anyChildren = d.rows.any { it.children.isNotEmpty() }
             BudgetRowView(d.total, ref.mainCurrency, today, onClick = {
                 if (d.total.budgetId != null) {
-                    nav.navigate(BudgetEditorKey(d.total.budgetId))
+                    onEditBudget(d.total.budgetId)
                 } else {
-                    nav.navigate(BudgetAddKey(presetTotal = true, preset = true))
+                    onAddTotal()
                 }
             }, expandable = anyChildren, expanded = expandedAll, onExpand = {
                 expandedAll = !expandedAll
@@ -121,12 +126,7 @@ fun BudgetBlock(period: MonthPeriod, data: BudgetBlockData?, ref: RefData) {
             d.rows.forEach { row ->
                 val open = row.categoryId in expanded
                 BudgetRowView(row, ref.mainCurrency, today, onClick = {
-                    nav.navigate(
-                        BudgetDetailKey(
-                            row.budgetId ?: "virtual_${row.categoryId}",
-                            period.label.toString(),
-                        ),
-                    )
+                    onOpenDetail(row.budgetId ?: "virtual_${row.categoryId}", period.label)
                 }, expandable = row.children.isNotEmpty(), expanded = open, onExpand = {
                     expanded =
                         if (open) expanded - row.categoryId!! else expanded + row.categoryId!!
@@ -134,9 +134,7 @@ fun BudgetBlock(period: MonthPeriod, data: BudgetBlockData?, ref: RefData) {
                 if (open) {
                     row.children.forEach { child ->
                         BudgetRowView(child, ref.mainCurrency, today, small = true, onClick = {
-                            child.budgetId?.let {
-                                nav.navigate(BudgetDetailKey(it, period.label.toString()))
-                            }
+                            child.budgetId?.let { onOpenDetail(it, period.label) }
                         })
                     }
                 }
@@ -253,4 +251,25 @@ fun BudgetRowView(
             )
         }
     }
+}
+
+@Preview
+@Composable
+private fun BudgetBlockPreview() = NexoPreview {
+    val month = YearMonth.from(PreviewData.today)
+    BudgetBlock(
+        period = MonthPeriod(DateRange(month.atDay(1), month.atEndOfMonth()), month),
+        data = BudgetBlockData(
+            total = BudgetRow(null, null, "", 60_000.0, 41_300.0, isTotal = true),
+            rows = listOf(
+                BudgetRow("b1", "food", "Food", 40_000.0, 35_200.0),
+                BudgetRow("b2", "transport", "Transport", 20_000.0, 6_100.0),
+            ),
+        ),
+        ref = PreviewData.ref,
+        onOpenSettings = {},
+        onEditBudget = {},
+        onAddTotal = {},
+        onOpenDetail = { _, _ -> },
+    )
 }
