@@ -52,12 +52,15 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.RefData
+import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.DateRangeChips
@@ -66,6 +69,8 @@ import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.component.PeriodNavigator
 import com.nexo.app.ui.designsystem.component.TotalsBar
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalIsDark
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.NexoPalette
@@ -77,20 +82,52 @@ import com.nexo.app.ui.navigation.MemoEditorKey
 import com.nexo.app.ui.navigation.SearchKey
 import com.nexo.app.ui.transactions.BulkAction
 import com.nexo.app.ui.transactions.BulkDialogs
+import com.nexo.app.ui.transactions.BulkEditActions
 import com.nexo.app.ui.transactions.FilterCriteria
 import com.nexo.app.ui.transactions.SelectionBar
 import com.nexo.app.ui.transactions.TxRow
+import com.nexo.app.ui.transactions.TxRowUi
 import com.nexo.app.ui.transactions.selectedNet
 
 @Composable
-fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
+fun SearchRoute(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val nav = LocalNavigator.current
+    LaunchedEffect(Unit) { vm.execute() }
+    SearchScreen(
+        state = state,
+        bulkActions = vm.bulkActions,
+        onBack = nav::back,
+        onStep = vm::step,
+        onSetQuery = vm::setQuery,
+        onExecute = vm::execute,
+        onUpdateCriteria = vm::update,
+        onToggleSelect = vm::toggleSelect,
+        onSetSelection = vm::setSelection,
+        onOpenMemo = { nav.navigate(MemoEditorKey(memoId = it)) },
+        onOpenTransaction = { nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = it)) },
+    )
+}
+
+@Composable
+internal fun SearchScreen(
+    state: SearchUiState,
+    bulkActions: BulkEditActions,
+    onBack: () -> Unit,
+    onStep: (forward: Boolean) -> Unit,
+    onSetQuery: (String) -> Unit,
+    onExecute: () -> Unit,
+    onUpdateCriteria: ((SearchCriteria) -> SearchCriteria) -> Unit,
+    onToggleSelect: (txId: String) -> Unit,
+    onSetSelection: (Set<String>) -> Unit,
+    onOpenMemo: (memoId: String) -> Unit,
+    onOpenTransaction: (txId: String) -> Unit,
+) {
     val c = state.criteria
     val r = state.result
     val ref = state.ref
     val selection = state.selection
     val suggestions = state.suggestions
-    val nav = LocalNavigator.current
     val money = LocalMoneyColors.current
     val focus = LocalFocusManager.current
     val requester = remember { FocusRequester() }
@@ -100,11 +137,8 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
     var focused by remember { mutableStateOf(false) }
     var bulkOpen by remember { mutableStateOf(false) }
     var bulkAction by remember { mutableStateOf<BulkAction?>(null) }
-    LaunchedEffect(Unit) {
-        vm.execute()
-        requester.requestFocus()
-    }
-    BackHandler(enabled = selection.isNotEmpty()) { vm.setSelection(emptySet()) }
+    LaunchedEffect(Unit) { requester.requestFocus() }
+    BackHandler(enabled = selection.isNotEmpty()) { onSetSelection(emptySet()) }
 
     Scaffold(topBar = {
         if (selection.isNotEmpty()) {
@@ -119,7 +153,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
                 ),
                 main = ref.mainCurrency,
                 onToggleAll = {
-                    vm.setSelection(
+                    onSetSelection(
                         if (selection.size >= r.rows.size) {
                             emptySet()
                         } else {
@@ -127,7 +161,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
                         },
                     )
                 },
-                onClose = { vm.setSelection(emptySet()) },
+                onClose = { onSetSelection(emptySet()) },
                 onAction = {
                     bulkAction = it
                     bulkOpen = true
@@ -136,9 +170,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
         } else {
             NexoTopBar(
                 stringResource(R.string.search),
-                onBack = {
-                    nav.back()
-                },
+                onBack = onBack,
                 titleContent = if (c.period ==
                     SearchPeriod.TOTAL ||
                     c.period == SearchPeriod.PERIOD
@@ -156,7 +188,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
 
                                 else -> ref.settings.periods.yearOf(c.anchor).toString()
                             }
-                            PeriodNavigator(label, { vm.step(false) }, { vm.step(true) })
+                            PeriodNavigator(label, { onStep(false) }, { onStep(true) })
                         }
                         )
                 },
@@ -175,19 +207,19 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (c.period == SearchPeriod.PERIOD) {
                 DateRangeChips(c.from, c.to, onChange = { f, t ->
-                    vm.update { it.copy(from = f, to = t) }
+                    onUpdateCriteria { it.copy(from = f, to = t) }
                 })
             }
             OutlinedTextField(
                 value = c.query,
-                onValueChange = vm::setQuery,
+                onValueChange = onSetQuery,
                 singleLine = true,
                 leadingIcon = { Icon(Icons.Outlined.Search, null) },
                 trailingIcon = if (c.query.isNotEmpty()) {
                     (
                         {
                             IconButton(onClick = {
-                                vm.setQuery("")
+                                onSetQuery("")
                             }) { Icon(Icons.Filled.Close, stringResource(R.string.action_clear)) }
                         }
                         )
@@ -197,7 +229,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
                 placeholder = { Text(stringResource(R.string.search)) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = {
-                    vm.execute()
+                    onExecute()
                     focus.clearFocus()
                 }),
                 modifier = Modifier.fillMaxWidth().padding(
@@ -235,8 +267,8 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
                                 append(s.note.substring(i + q.length))
                             },
                             Modifier.fillMaxWidth().clickable {
-                                vm.setQuery(s.note)
-                                vm.execute()
+                                onSetQuery(s.note)
+                                onExecute()
                                 focus.clearFocus()
                             }.padding(horizontal = 24.dp, vertical = 10.dp),
                         )
@@ -257,12 +289,12 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
                     }.joinToString(", ").ifEmpty {
                         null
                     },
-                    { vm.update { it.copy(accounts = emptySet()) } },
+                    { onUpdateCriteria { it.copy(accounts = emptySet()) } },
                 ) {
                     dialog = "account"
                 }
                 CriteriaRow(stringResource(R.string.category), categorySummary(ref, c), {
-                    vm.update { it.copy(categories = FilterCriteria()) }
+                    onUpdateCriteria { it.copy(categories = FilterCriteria()) }
                 }) {
                     dialog = "category"
                 }
@@ -277,7 +309,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
                             AmountFormatter.number(it, ref.mainCurrency.decimals)
                         } ?: stringResource(R.string.max)}"
                     },
-                    { vm.update { it.copy(min = null, max = null) } },
+                    { onUpdateCriteria { it.copy(min = null, max = null) } },
                 ) { dialog = "min" }
                 CriteriaRow(
                     stringResource(R.string.tags),
@@ -286,7 +318,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
                     }.joinToString(", ").ifEmpty {
                         null
                     },
-                    { vm.update { it.copy(tags = emptySet()) } },
+                    { onUpdateCriteria { it.copy(tags = emptySet()) } },
                 ) {
                     dialog = "tag"
                 }
@@ -326,7 +358,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
                     items(r.memos, key = { it.id }) { m ->
                         Card(
                             onClick = {
-                                nav.navigate(MemoEditorKey(memoId = m.id))
+                                onOpenMemo(m.id)
                             },
                             colors = CardDefaults.cardColors(
                                 containerColor = NexoPalette.memo(m.color, dark),
@@ -360,12 +392,12 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
                                 row.id in selection,
                                 onClick = {
                                     if (selection.isNotEmpty()) {
-                                        vm.toggleSelect(row.id)
+                                        onToggleSelect(row.id)
                                     } else {
-                                        nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
+                                        onOpenTransaction(row.id)
                                     }
                                 },
-                                onLongClick = { vm.toggleSelect(row.id) },
+                                onLongClick = { onToggleSelect(row.id) },
                             )
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         }
@@ -374,7 +406,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
             }
         }
     }
-    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.bulkActions, onDismiss = {
+    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, bulkActions, onDismiss = {
         bulkOpen = false
     })
     when (dialog) {
@@ -385,7 +417,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
             label = {
                 stringResource(periodLabel(it))
             },
-            onSelect = { p -> vm.update { it.copy(period = p) } },
+            onSelect = { p -> onUpdateCriteria { it.copy(period = p) } },
             onDismiss = { dialog = null },
         )
 
@@ -394,7 +426,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
             accountItems(ref),
             c.accounts,
             onConfirm = { s ->
-                vm.update { it.copy(accounts = s) }
+                onUpdateCriteria { it.copy(accounts = s) }
             },
             onDismiss = {
                 dialog = null
@@ -409,14 +441,14 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
                 CheckItem(it.id, it.name)
             },
             c.tags,
-            onConfirm = { s -> vm.update { it.copy(tags = s) } },
+            onConfirm = { s -> onUpdateCriteria { it.copy(tags = s) } },
             onDismiss = {
                 dialog = null
             },
         )
 
         "category" -> CategoryCriteriaDialog(ref, c.categories, onConfirm = { f ->
-            vm.update { it.copy(categories = f) }
+            onUpdateCriteria { it.copy(categories = f) }
         }, onDismiss = {
             dialog = null
         })
@@ -427,7 +459,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
             ref.mainCurrency.decimals,
             allowSign = false,
             onConfirm = { v ->
-                vm.update { it.copy(min = v) }
+                onUpdateCriteria { it.copy(min = v) }
                 dialog = "max"
             },
             onDismiss = { if (dialog == "min") dialog = null },
@@ -439,7 +471,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
             ref.mainCurrency.decimals,
             allowSign = false,
             onConfirm = { v ->
-                vm.update { it.copy(max = v) }
+                onUpdateCriteria { it.copy(max = v) }
             },
             onDismiss = {
                 dialog = null
@@ -489,4 +521,52 @@ private fun CriteriaRow(
             }
         }
     }
+}
+
+private fun previewRow(id: String, category: String, note: String, amount: Double) = TxRowUi(
+    id = id,
+    tx = null,
+    category = UiText.Raw(category),
+    subCategory = null,
+    title = UiText.Raw(note),
+    titleIsNote = true,
+    accountText = UiText.Raw("Wallet"),
+    time = null,
+    tags = null,
+    descriptionLine = null,
+    hasPhoto = false,
+    flow = CashFlow.EXPENSE,
+    amount = amount,
+    amountText = AmountFormatter.format(amount, PreviewData.ref.mainCurrency),
+    amountMain = amount,
+    visual = PreviewData.ref.visual(category.lowercase()),
+)
+
+@Preview
+@Composable
+private fun SearchScreenPreview() = NexoPreview {
+    SearchScreen(
+        state = SearchUiState(
+            ref = PreviewData.ref,
+            criteria = SearchCriteria(query = "lunch", anchor = PreviewData.today),
+            result = SearchResult(
+                loaded = true,
+                rows = listOf(
+                    PreviewData.today to previewRow("t1", "Food", "Lunch with team", 1_850.0),
+                    PreviewData.today.minusDays(3) to previewRow("t2", "Food", "Lunch", 950.0),
+                ),
+                expense = 2_800.0,
+            ),
+        ),
+        bulkActions = BulkEditActions({}, {}, {}, {}, {}, { _, _ -> }),
+        onBack = {},
+        onStep = {},
+        onSetQuery = {},
+        onExecute = {},
+        onUpdateCriteria = {},
+        onToggleSelect = {},
+        onSetSelection = {},
+        onOpenMemo = {},
+        onOpenTransaction = {},
+    )
 }

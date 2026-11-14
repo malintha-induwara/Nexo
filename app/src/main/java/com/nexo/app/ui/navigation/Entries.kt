@@ -32,7 +32,7 @@ import com.nexo.app.ui.entry.EntryRoute
 import com.nexo.app.ui.entry.RepeatListScreen
 import com.nexo.app.ui.memo.MemoEditorRoute
 import com.nexo.app.ui.memo.MemoListRoute
-import com.nexo.app.ui.search.SearchScreen
+import com.nexo.app.ui.search.SearchRoute
 import com.nexo.app.ui.settings.AddSubCurrencyScreen
 import com.nexo.app.ui.settings.ConfigurationScreen
 import com.nexo.app.ui.settings.FeedbackScreen
@@ -70,7 +70,7 @@ fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     }) { EntryRoute(it) }
     entry<BookmarksKey> { BookmarksScreen(it) }
     entry<RepeatListKey> { RepeatListScreen() }
-    entry<SearchKey> { SearchScreen(it) }
+    entry<SearchKey> { SearchRoute(it) }
     entry<MemoEditorKey> { MemoEditorRoute(it) }
     entry<MemoListKey> { MemoListRoute(it) }
     entry<AccountDetailKey> { AccountDetailScreen(it) }
