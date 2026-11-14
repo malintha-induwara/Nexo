@@ -8,4 +8,110 @@
         <item quantity="one">%d new transaction from your bank SMS</item>
         <item quantity="other">%d new transactions from your bank SMS</item>
     </plurals>
+
+    <!-- Review queue -->
+    <string name="sms_queue_title">Review</string>
+    <plurals name="sms_to_review">
+        <item quantity="one">%d transaction to review</item>
+        <item quantity="other">%d transactions to review</item>
+    </plurals>
+    <string name="sms_filter_attention">Needs attention</string>
+    <string name="sms_filter_all">All</string>
+    <string name="sms_filter_denied">Denied</string>
+    <string name="sms_filter_expired">Expired</string>
+    <string name="sms_filter_cancelled">Cancelled</string>
+    <string name="sms_capture_on">Capture on</string>
+    <string name="sms_capture_off">Capture off</string>
+    <string name="sms_capture_needs_permission">Needs permission</string>
+    <string name="sms_estimated">Estimated</string>
+    <string name="sms_unverified">Unverified</string>
+    <string name="sms_reason_fx">Foreign currency. The amount in your account\'s currency is an estimate.</string>
+    <string name="sms_reason_approval">Approval code only. Your bank sends no SMS when an app transfer goes through.</string>
+    <string name="sms_reason_generic">Read with general rules. Please check it.</string>
+    <string name="sms_reason_amount">The amount had no clear label. Please check it.</string>
+    <string name="sms_reason_kind">Not clear whether money came in or went out. Please check it.</string>
+    <string name="sms_missing_account">Choose an account</string>
+    <string name="sms_missing_destination">Choose where it went</string>
+    <string name="sms_missing_category">Choose a category</string>
+    <string name="sms_missing_amount">Rate pending. Enter the amount</string>
+    <string name="sms_still_pending">Still pending. Did this happen?</string>
+    <plurals name="sms_expires_in">
+        <item quantity="one">Expires in %d day</item>
+        <item quantity="other">Expires in %d days</item>
+    </plurals>
+    <plurals name="sms_approval_codes">
+        <item quantity="one">%d approval code received</item>
+        <item quantity="other">%d approval codes received</item>
+    </plurals>
+    <string name="sms_refund">Money back for a cancelled purchase</string>
+    <string name="sms_cancelled_label">Cancelled by the bank</string>
+    <string name="sms_denied_label">Denied</string>
+    <string name="sms_expired_label">Expired without a decision</string>
+    <string name="sms_approve">Approve</string>
+    <string name="sms_deny">Deny</string>
+    <string name="sms_restore">Restore</string>
+    <string name="sms_undo">Undo</string>
+    <string name="sms_approved">Approved</string>
+    <plurals name="sms_n_approved">
+        <item quantity="one">%d approved</item>
+        <item quantity="other">%d approved</item>
+    </plurals>
+    <plurals name="sms_n_denied">
+        <item quantity="one">%d denied</item>
+        <item quantity="other">%d denied</item>
+    </plurals>
+    <plurals name="sms_n_skipped">
+        <item quantity="one">%d still needs details</item>
+        <item quantity="other">%d still need details</item>
+    </plurals>
+    <string name="sms_needs_details_first">Add the missing details first</string>
+    <string name="sms_deny_title">Why deny it?</string>
+    <string name="sms_deny_no_reason">Deny without a reason</string>
+    <string name="sms_deny_hint">Optional. Nothing is written to your records either way.</string>
+    <string name="sms_deny_didnt_happen">Didn\'t happen</string>
+    <string name="sms_deny_duplicate">Duplicate</string>
+    <string name="sms_deny_not_mine">Not mine</string>
+    <string name="sms_deny_not_transaction">Not a transaction</string>
+    <string name="sms_card_question">Which account is the %1$s card ending %2$s?</string>
+    <string name="sms_card_hint">Nexo remembers it for every message from this card.</string>
+    <string name="sms_choose_account">Choose account</string>
+    <string name="sms_assign_account">Set account</string>
+    <string name="sms_empty">You\'re all caught up. New bank SMS will show up here for you to review.</string>
+    <string name="sms_empty_filter">Nothing here</string>
+    <string name="sms_amount_title">Amount</string>
+    <string name="sms_actual_amount_title">Amount in %s</string>
+    <string name="sms_actual_amount_sub">As shown in your bank app or statement</string>
+    <string name="sms_privacy_line">Everything runs on this phone. Messages are never uploaded.</string>
+
+    <!-- Settings -->
+    <string name="sms_settings_title">Bank SMS</string>
+    <string name="sms_capture_title">Auto-capture bank SMS</string>
+    <string name="sms_capture_sub_on">Capturing bank messages received since %s</string>
+    <string name="sms_capture_sub_off">Off. New messages aren\'t added.</string>
+    <string name="sms_capture_sub_permission">Needs SMS permission</string>
+    <string name="sms_permission_title">Read bank SMS?</string>
+    <string name="sms_permission_text">Nexo reads messages from banks on this phone and turns them into transactions for you to approve. Nothing is added without your approval, and messages never leave the phone.</string>
+    <string name="sms_permission_settings">Open app info</string>
+    <string name="sms_permission_denied_text">SMS permission is off for Nexo. Turn it on in App info › Permissions. If Android says the setting is restricted, open App info, tap ⋮, choose Allow restricted settings, then turn on SMS.</string>
+    <string name="sms_queue_row">Review queue</string>
+    <plurals name="sms_queue_row_sub">
+        <item quantity="one">%d waiting</item>
+        <item quantity="other">%d waiting</item>
+    </plurals>
+    <string name="sms_queue_row_empty">Nothing waiting</string>
+    <string name="sms_section_accounts">Accounts</string>
+    <string name="sms_cards">Cards and accounts</string>
+    <plurals name="sms_cards_sub">
+        <item quantity="one">%d remembered</item>
+        <item quantity="other">%d remembered</item>
+    </plurals>
+    <string name="sms_cards_empty">Cards show up here once you approve a transaction from them or tell Nexo which account they belong to.</string>
+    <string name="sms_card_row">Card ending %s</string>
+    <string name="sms_bank_default">Other messages from this bank</string>
+    <string name="sms_remove">Remove</string>
+    <string name="sms_cash_account">Cash withdrawals go to</string>
+    <string name="sms_section_privacy">Privacy</string>
+    <string name="sms_full_text">Store full SMS text</string>
+    <string name="sms_full_text_sub_off">Account numbers, card digits and phone numbers are hidden before a message is saved</string>
+    <string name="sms_full_text_sub_on">Messages are saved as received. Approval codes are always removed</string>
 </resources>

@@ -241,6 +241,7 @@ fun TransactionsTab(todaySignal: Int, vm: TransactionsViewModel = hiltViewModel(
                         Spacer(Modifier.weight(1f))
                         AnimatedVisibility(!filterOpen, enter = fadeIn(NexoMotion.enter()) + expandHorizontally(NexoMotion.snappy()), exit = fadeOut(NexoMotion.exit()) + shrinkHorizontally(NexoMotion.snappy())) {
                             Row {
+                                com.nexo.app.ui.sms.SmsInboxAction()
                                 HeaderAction(Icons.Rounded.StarOutline, stringResource(R.string.bookmarks)) { nav.navigate(BookmarksKey()) }
                                 HeaderAction(Icons.Rounded.Search, stringResource(R.string.search)) { nav.navigate(SearchKey()) }
                             }

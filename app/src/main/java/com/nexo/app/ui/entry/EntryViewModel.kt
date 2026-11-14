@@ -63,6 +63,7 @@ class EntryViewModel @AssistedInject constructor(
     val photoStore: com.nexo.app.core.files.PhotoStore,
     val tagRepo: com.nexo.app.data.TagRepository,
     private val importer: com.nexo.app.backup.TsvImporter,
+    private val sms: com.nexo.app.sms.approve.SmsApprover,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -96,6 +97,7 @@ class EntryViewModel @AssistedInject constructor(
                 EntryMode.REPEAT_EDIT -> loadRule(r, base)
                 EntryMode.PAY_CARD -> loadPayCard(r, base)
                 EntryMode.IMPORT_FIX -> loadImportRow(r, base)
+                EntryMode.SMS -> loadSmsItem(r, base)
                 EntryMode.REPEAT_NEW -> newEntry(r, base).copy(mode = EntryMode.REPEAT_NEW, repeat = key.repeat ?: RepeatType.MONTHLY)
                 else -> newEntry(r, base)
             }
@@ -259,6 +261,46 @@ class EntryViewModel @AssistedInject constructor(
             amount = figures.payAmount,
             note = context.getString(R.string.payment),
         )
+    }
+
+    /** The Review Queue item being reviewed in [EntryMode.SMS] (spec-money-master-sl 04 NQ-003 Edit). */
+    private var smsItem: com.nexo.app.sms.data.SmsItemEntity? = null
+
+    /** NQ-003: the form opens with everything the SMS gave; saving approves the item. */
+    private suspend fun loadSmsItem(r: RefData, base: EntryUi): EntryUi {
+        val item = key.smsItemId?.let { db.smsDao().item(it) } ?: return newEntry(r, base)
+        smsItem = item
+        val (currency, amount) = sms.amountIn(item, r)
+        val kind = item.kind
+        // A payment to someone outside Nexo starts as an expense; picking a destination account turns it into a transfer.
+        val transfer = kind.isTransfer && (kind != com.nexo.app.sms.SmsKind.TRANSFER_OUT || item.toAccountId != null)
+        val (from, to) = if (kind == com.nexo.app.sms.SmsKind.TRANSFER_IN) item.toAccountId to item.accountId else item.accountId to item.toAccountId
+        val dt = com.nexo.app.sms.approve.SmsApprover.localDateTime(item.occurredAt)
+        return base.copy(
+            mode = EntryMode.SMS,
+            type = when {
+                transfer -> EntryType.TRANSFER
+                kind.isInflow -> EntryType.INCOME
+                else -> EntryType.EXPENSE
+            },
+            date = dt.toLocalDate(),
+            time = dt.toLocalTime(),
+            accountId = from,
+            toAccountId = if (transfer) to else null,
+            categoryId = if (transfer) null else item.categoryId,
+            amount = amount,
+            currencyId = currency.id,
+            feeCurrencyId = r.accountCurrency(from).id,
+            note = com.nexo.app.sms.approve.SmsApprover.noteFor(item),
+            description = item.note,
+            sourceText = item.text,
+        )
+    }
+
+    /** NQ-003 Deny from the form. Nothing is written to the ledger. */
+    fun denySms() = viewModelScope.launch {
+        key.smsItemId?.let { sms.deny(listOf(it)) }
+        _events.send(EntryEvent.Close(null))
     }
 
     /** TX-036: pre-fill from a spreadsheet import row. */
@@ -538,6 +580,11 @@ class EntryViewModel @AssistedInject constructor(
             runCatching { writer.save(draft(_ui.value)) }
                 .onSuccess { id ->
                     home.saved(id)
+                    if (key.mode == EntryMode.SMS && key.smsItemId != null) {
+                        val s = _ui.value
+                        val bankAccount = if (smsItem?.kind == com.nexo.app.sms.SmsKind.TRANSFER_IN) s.toAccountId else s.accountId
+                        sms.markApproved(key.smsItemId, id, bankAccount, if (s.isTransfer) null else s.categoryId)
+                    }
                     afterSave(continueAfter)
                 }
                 .onFailure {

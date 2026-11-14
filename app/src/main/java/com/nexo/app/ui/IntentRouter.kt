@@ -36,6 +36,7 @@ object IntentRouter {
             ACTION_SEARCH -> listOf(SearchKey(fromNotification = true))
             ACTION_BOOKMARKS -> listOf(BookmarksKey())
             ACTION_ACCOUNT -> intent.getStringExtra(EXTRA_ACCOUNT)?.let { listOf(AccountDetailKey(it)) }.orEmpty()
+            ACTION_REVIEW -> listOf(com.nexo.app.ui.navigation.SmsQueueKey)
             else -> emptyList()
         }
     }

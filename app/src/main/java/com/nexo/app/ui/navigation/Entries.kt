@@ -50,10 +50,16 @@ import com.nexo.app.ui.memo.MemoEditorScreen
 import com.nexo.app.ui.memo.MemoListScreen
 import com.nexo.app.ui.search.SearchScreen
 import com.nexo.app.ui.shell.MainShell
+import com.nexo.app.ui.sms.SmsCardsScreen
+import com.nexo.app.ui.sms.SmsQueueScreen
+import com.nexo.app.ui.sms.SmsSettingsScreen
 
 /** Every screen of the app. */
 fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<MainKey> { MainShell() }
+    entry<SmsQueueKey> { SmsQueueScreen() }
+    entry<SmsSettingsKey> { SmsSettingsScreen() }
+    entry<SmsCardsKey> { SmsCardsScreen() }
     entry<EntryKey>(metadata = { key -> if (key.fromAdd) SheetSceneStrategy.sheet(key) else emptyMap() }) { EntryScreen(it) }
     entry<BookmarksKey> { BookmarksScreen(it) }
     entry<RepeatListKey> { RepeatListScreen() }

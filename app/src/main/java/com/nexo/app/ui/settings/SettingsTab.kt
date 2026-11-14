@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Sms
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -90,6 +91,7 @@ fun SettingsTab(vm: SettingsViewModel = hiltViewModel()) {
         HubItem(R.string.tab_accounts, Icons.Outlined.AccountBalanceWallet, AccountSettingsMenuKey),
         HubItem(R.string.lock_settings, Icons.Outlined.Lock, LockSettingsKey),
         HubItem(R.string.backup, Icons.Outlined.Backup, BackupKey),
+        HubItem(R.string.sms_settings_title, Icons.Outlined.Sms, com.nexo.app.ui.navigation.SmsSettingsKey),
         HubItem(R.string.style, Icons.Outlined.Palette, StyleKey),
         HubItem(R.string.help, Icons.AutoMirrored.Outlined.HelpOutline, HelpKey),
         HubItem(R.string.feedback, Icons.Outlined.Feedback, FeedbackKey),

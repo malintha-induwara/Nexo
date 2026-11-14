@@ -673,6 +673,7 @@ fun EntryScreen(key: EntryKey) {
                         onBookmark = { haptics.confirm(); vm.bookmark() },
                         onSkip = vm::skip,
                         review = key.reviewUnassigned,
+                        onDeny = vm::denySms,
                     )
                 }
             }
@@ -985,8 +986,10 @@ private fun BottomButtons(
     onBookmark: () -> Unit,
     onSkip: () -> Unit,
     review: Boolean,
+    onDeny: () -> Unit,
 ) {
     val colors = LocalNexoColors.current
+    val sms = s.mode == EntryMode.SMS
     Row(
         Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = Space.gutter, vertical = Space.m),
         horizontalArrangement = Arrangement.spacedBy(Space.s),
@@ -1000,6 +1003,7 @@ private fun BottomButtons(
                 SoftButton(stringResource(R.string.skip), onSkip, Modifier.weight(1f))
                 SoftButton(stringResource(R.string.action_delete), onDelete, Modifier.weight(1f), content = MaterialTheme.colorScheme.error)
             }
+            if (sms) SoftButton(stringResource(R.string.sms_deny), onDeny, Modifier.weight(1f), enabled = !s.saving)
             val interactions = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             Button(
                 onClick = onSave,
@@ -1008,7 +1012,14 @@ private fun BottomButtons(
                 modifier = Modifier.weight(if (review) 1.4f else 2f).height(52.dp).pressScale(interactions, 0.97f),
                 colors = ButtonDefaults.buttonColors(containerColor = colors.text, contentColor = colors.background),
             ) {
-                Text(if (review) stringResource(R.string.save_n, s.unassignedCount) else stringResource(R.string.action_save), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    when {
+                        review -> stringResource(R.string.save_n, s.unassignedCount)
+                        sms -> stringResource(R.string.sms_approve)
+                        else -> stringResource(R.string.action_save)
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                )
             }
             if (s.showContinue && !review) {
                 SoftButton(stringResource(R.string.action_continue), onContinue, Modifier.weight(1f), enabled = !s.saving)

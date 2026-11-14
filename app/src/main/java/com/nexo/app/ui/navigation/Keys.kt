@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data object MainKey : NavKey
 
-enum class EntryMode { NEW, EDIT, COPY, FAVORITE, REPEAT_NEW, REPEAT_EDIT, PAY_CARD, IMPORT_FIX, PASTE }
+enum class EntryMode { NEW, EDIT, COPY, FAVORITE, REPEAT_NEW, REPEAT_EDIT, PAY_CARD, IMPORT_FIX, SMS }
 
 @Serializable
 data class EntryKey(
@@ -31,6 +31,8 @@ data class EntryKey(
     val external: Boolean = false,
     /** Opened from an add button: the form is shown as a drawer over the current screen. */
     val fromAdd: Boolean = false,
+    /** [EntryMode.SMS]: the Review Queue item being reviewed; saving approves it. */
+    val smsItemId: String? = null,
 ) : NavKey
 
 @Serializable
@@ -186,3 +188,13 @@ data class ExcelExportKey(val start: String? = null, val end: String? = null) : 
 
 @Serializable
 data class RestoreFileKey(val uri: String) : NavKey
+
+/** Bank SMS Review Queue (spec-money-master-sl 04 NQ-001). */
+@Serializable
+data object SmsQueueKey : NavKey
+
+@Serializable
+data object SmsSettingsKey : NavKey
+
+@Serializable
+data object SmsCardsKey : NavKey

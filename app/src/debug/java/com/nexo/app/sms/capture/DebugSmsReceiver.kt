@@ -3,6 +3,7 @@ package com.nexo.app.sms.capture
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import com.nexo.app.sms.parse.SmsMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,6 +16,7 @@ import kotlinx.coroutines.launch
  *
  *     adb shell am broadcast -n com.nexo.app/.sms.capture.DebugSmsReceiver \
  *       --es sender COMBANK --es body "Dear Cardholder, Purchase at ..."   [--el timestamp <epoch ms>]
+ *     adb logcat -s DebugSmsReceiver
  */
 class DebugSmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -25,8 +27,9 @@ class DebugSmsReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
             try {
-                val created = context.smsEntry().intake().receive(listOf(IncomingSms(SmsMessage(sender, body, timestamp), now)))
-                resultData = "queued=$created"
+                val changed = context.smsEntry().intake().receive(listOf(IncomingSms(SmsMessage(sender, body, timestamp), now)))
+                // Plain (non-ordered) broadcasts can't carry a result back; read it with `adb logcat -s DebugSmsReceiver`.
+                Log.i("DebugSmsReceiver", "queue items changed: $changed")
             } finally {
                 pending.finish()
             }
