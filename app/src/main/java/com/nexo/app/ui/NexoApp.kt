@@ -31,7 +31,7 @@ import com.nexo.app.ui.navigation.MainKey
 import com.nexo.app.ui.navigation.Navigator
 import com.nexo.app.ui.navigation.SheetSceneStrategy
 import com.nexo.app.ui.navigation.nexoEntries
-import com.nexo.app.ui.onboarding.OnboardingScreen
+import com.nexo.app.ui.onboarding.OnboardingRoute
 import java.time.Clock
 
 @Composable
@@ -47,7 +47,7 @@ fun NexoApp(app: AppViewModel, clock: Clock) {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                 if (d == null) return@Box
                 if (!d.setupDone) {
-                    OnboardingScreen()
+                    OnboardingRoute()
                     return@Box
                 }
                 val backStack = rememberNavBackStack(MainKey)

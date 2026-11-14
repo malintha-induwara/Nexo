@@ -1,7 +1,6 @@
 package com.nexo.app.ui.onboarding
 
 import android.Manifest
-import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -55,6 +54,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -64,16 +64,21 @@ import com.nexo.app.core.common.money.CatalogCurrency
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.model.RestoreResult
 import com.nexo.app.ui.designsystem.component.MessageDialog
+import com.nexo.app.ui.designsystem.preview.NexoPreview
 import com.nexo.app.ui.designsystem.theme.nexo
 
 @Composable
-fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
+fun OnboardingRoute(vm: OnboardingViewModel = hiltViewModel()) {
     val onFinished: () -> Unit = { vm.complete() }
     val state by vm.uiState.collectAsStateWithLifecycle()
     var askPermission by rememberSaveable { mutableStateOf(false) }
     val permission =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
             onFinished()
+        }
+    val picker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri?.let { vm.restore(it) }
         }
     LaunchedEffect(state.done) {
         if (state.done) {
@@ -84,19 +89,49 @@ fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
             }
         }
     }
-    BackHandler(enabled = state.step > 0 && !state.busy) { vm.back() }
+    OnboardingScreen(
+        state = state,
+        askPermission = askPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU,
+        onNext = vm::next,
+        onBack = vm::back,
+        onStartFresh = vm::startFresh,
+        onChooseBackup = { picker.launch(arrayOf("*/*")) },
+        onPickCurrency = vm::setCurrency,
+        onClearError = vm::clearError,
+        onAllowNotifications = {
+            askPermission = false
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        },
+    )
+}
+
+@Composable
+internal fun OnboardingScreen(
+    state: OnboardingUiState,
+    askPermission: Boolean,
+    onNext: () -> Unit,
+    onBack: () -> Unit,
+    onStartFresh: () -> Unit,
+    onChooseBackup: () -> Unit,
+    onPickCurrency: (CatalogCurrency) -> Unit,
+    onClearError: () -> Unit,
+    onAllowNotifications: () -> Unit,
+) {
+    BackHandler(enabled = state.step > 0 && !state.busy, onBack = onBack)
 
     Box(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding(),
     ) {
         when (state.step) {
-            0 -> Welcome(onStart = vm::next)
+            0 -> Welcome(onStart = onNext)
 
             else -> StartingData(
                 state,
-                onStartFresh = vm::startFresh,
-                onRestore = vm::restore,
-                onPickCurrency = vm::setCurrency,
+                onStartFresh = onStartFresh,
+                onChooseBackup = onChooseBackup,
+                onPickCurrency = onPickCurrency,
             )
         }
         if (state.busy) {
@@ -117,19 +152,18 @@ fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
                     else -> R.string.restore_failed
                 },
             ),
-            onDismiss = vm::clearError,
+            onDismiss = onClearError,
         )
     }
-    if (askPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    if (askPermission) {
         AlertDialog(
             onDismissRequest = {},
             title = { Text(stringResource(R.string.permission_title)) },
             text = { Text(stringResource(R.string.permission_text)) },
             confirmButton = {
-                TextButton(onClick = {
-                    askPermission = false
-                    permission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }) { Text(stringResource(R.string.action_ok)) }
+                TextButton(onClick = onAllowNotifications) {
+                    Text(stringResource(R.string.action_ok))
+                }
             },
         )
     }
@@ -190,15 +224,11 @@ private enum class StartChoice { FRESH, RESTORE }
 private fun StartingData(
     state: OnboardingUiState,
     onStartFresh: () -> Unit,
-    onRestore: (Uri) -> Unit,
+    onChooseBackup: () -> Unit,
     onPickCurrency: (CatalogCurrency) -> Unit,
 ) {
     var pickCurrency by rememberSaveable { mutableStateOf(false) }
     var choice by rememberSaveable { mutableStateOf(StartChoice.FRESH) }
-    val picker =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            uri?.let(onRestore)
-        }
     Column(Modifier.fillMaxSize().padding(24.dp)) {
         Column(
             Modifier.weight(1f).verticalScroll(rememberScrollState()),
@@ -268,7 +298,7 @@ private fun StartingData(
                 if (choice == StartChoice.FRESH) {
                     onStartFresh()
                 } else {
-                    picker.launch(arrayOf("*/*"))
+                    onChooseBackup()
                 }
             },
             enabled = !state.busy,
@@ -377,5 +407,37 @@ fun CurrencyPickerDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
+    )
+}
+
+@Preview
+@Composable
+private fun OnboardingWelcomePreview() = NexoPreview {
+    OnboardingScreen(
+        state = OnboardingUiState(),
+        askPermission = false,
+        onNext = {},
+        onBack = {},
+        onStartFresh = {},
+        onChooseBackup = {},
+        onPickCurrency = {},
+        onClearError = {},
+        onAllowNotifications = {},
+    )
+}
+
+@Preview
+@Composable
+private fun OnboardingStartingDataPreview() = NexoPreview(dark = true) {
+    OnboardingScreen(
+        state = OnboardingUiState(step = 1),
+        askPermission = false,
+        onNext = {},
+        onBack = {},
+        onStartFresh = {},
+        onChooseBackup = {},
+        onPickCurrency = {},
+        onClearError = {},
+        onAllowNotifications = {},
     )
 }
