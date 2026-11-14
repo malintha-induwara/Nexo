@@ -17,8 +17,9 @@ import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.data.sms.needsDetails
 import com.nexo.app.domain.sms.ApproveResult
+import com.nexo.app.domain.sms.ApproveSmsUseCase
 import com.nexo.app.domain.sms.FeePlan
-import com.nexo.app.domain.sms.SmsApprover
+import com.nexo.app.domain.sms.GetSmsFeePlanUseCase
 import com.nexo.app.ui.navigation.SmsHistoryKey
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -72,7 +73,8 @@ class SmsHistoryViewModel @AssistedInject constructor(
     private val sms: SmsRepository,
     refs: ReferenceDataRepository,
     private val prefs: UserPreferencesRepository,
-    private val approver: SmsApprover,
+    private val getFeePlan: GetSmsFeePlanUseCase,
+    private val approveSms: ApproveSmsUseCase,
     private val inbox: SmsInboxRepository,
 ) : ViewModel() {
     @AssistedFactory
@@ -212,9 +214,9 @@ class SmsHistoryViewModel @AssistedInject constructor(
                 toQueue++
                 continue
             }
-            when (val plan = approver.feePlan(item)) {
-                FeePlan.None -> if (approver.approve(item.id) is ApproveResult.Done) added++
-                is FeePlan.Auto -> if (approver.approve(item.id, FeeChoice(plan.amount)) is ApproveResult.Done) added++
+            when (val plan = getFeePlan(item)) {
+                FeePlan.None -> if (approveSms(item.id) is ApproveResult.Done) added++
+                is FeePlan.Auto -> if (approveSms(item.id, FeeChoice(plan.amount)) is ApproveResult.Done) added++
                 is FeePlan.Ask -> if (plan.fxDifference) prompts += FeePrompt(listOf(item), plan) else asks.getOrPut(plan.route) { ArrayList() } += item to plan
             }
         }
@@ -228,7 +230,7 @@ class SmsHistoryViewModel @AssistedInject constructor(
         val prompt = _feePrompts.value.firstOrNull() ?: return@launch
         _feePrompts.update { it.drop(1) }
         if (choice == null) toQueue += prompt.items.size
-        else prompt.items.forEach { if (approver.approve(it.id, choice) is ApproveResult.Done) added++ else toQueue++ }
+        else prompt.items.forEach { if (approveSms(it.id, choice) is ApproveResult.Done) added++ else toQueue++ }
         if (_feePrompts.value.isEmpty()) finish()
     }
 

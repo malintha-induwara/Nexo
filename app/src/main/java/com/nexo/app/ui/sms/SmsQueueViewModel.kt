@@ -14,12 +14,14 @@ import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.SmsInboxRepository
 import com.nexo.app.data.repository.SmsRepository
+import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.data.sms.needsAttention
 import com.nexo.app.data.sms.needsDetails
 import com.nexo.app.domain.sms.ApproveResult
+import com.nexo.app.domain.sms.ApproveSmsUseCase
 import com.nexo.app.domain.sms.FeePlan
-import com.nexo.app.domain.sms.SmsApprover
+import com.nexo.app.domain.sms.GetSmsFeePlanUseCase
 import com.nexo.app.ui.designsystem.component.UndoMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -57,7 +59,9 @@ class SmsQueueViewModel @Inject constructor(
     private val sms: SmsRepository,
     refs: ReferenceDataRepository,
     private val prefs: UserPreferencesRepository,
-    private val approver: SmsApprover,
+    private val getFeePlan: GetSmsFeePlanUseCase,
+    private val approveSms: ApproveSmsUseCase,
+    private val transactions: TransactionsRepository,
     private val inbox: SmsInboxRepository,
 ) : ViewModel() {
 
@@ -111,9 +115,9 @@ class SmsQueueViewModel @Inject constructor(
             show(context.getString(R.string.sms_needs_details_first))
             return@launch
         }
-        when (val plan = approver.feePlan(item)) {
-            FeePlan.None -> if (approver.approve(id) is ApproveResult.Done) show(context.getString(R.string.sms_approved))
-            is FeePlan.Auto -> autoFee(item, plan.amount, approver.approve(id, FeeChoice(plan.amount)))
+        when (val plan = getFeePlan(item)) {
+            FeePlan.None -> if (approveSms(id) is ApproveResult.Done) show(context.getString(R.string.sms_approved))
+            is FeePlan.Auto -> autoFee(item, plan.amount, approveSms(id, FeeChoice(plan.amount)))
             is FeePlan.Ask -> _feePrompts.update { it + FeePrompt(listOf(item), plan) }
         }
     }
@@ -123,7 +127,7 @@ class SmsQueueViewModel @Inject constructor(
         val prompt = _feePrompts.value.firstOrNull() ?: return@launch
         _feePrompts.update { it.drop(1) }
         if (choice == null) return@launch
-        val approved = prompt.items.count { approver.approve(it.id, choice) is ApproveResult.Done }
+        val approved = prompt.items.count { approveSms(it.id, choice) is ApproveResult.Done }
         if (approved > 0) show(context.resources.getQuantityString(R.plurals.sms_n_approved, approved, approved))
     }
 
@@ -131,7 +135,7 @@ class SmsQueueViewModel @Inject constructor(
         val feeId = (result as? ApproveResult.Done)?.feeId ?: return
         val text = AmountFormatter.format(amount, ref.value.accountCurrency(item.accountId))
         _undo.value = UndoMessage(context.getString(R.string.fee_auto_added, text), context.getString(R.string.sms_undo)) {
-            viewModelScope.launch { approver.removeFee(feeId) }
+            viewModelScope.launch { transactions.delete(listOf(feeId)) }
         }
     }
 
@@ -170,9 +174,9 @@ class SmsQueueViewModel @Inject constructor(
         val asks = LinkedHashMap<FeeRoute, MutableList<Pair<SmsItem, FeePlan.Ask>>>()
         val prompts = ArrayList<FeePrompt>()
         for (item in ready) {
-            when (val plan = approver.feePlan(item)) {
-                FeePlan.None -> if (approver.approve(item.id) is ApproveResult.Done) approved++
-                is FeePlan.Auto -> if (approver.approve(item.id, FeeChoice(plan.amount)) is ApproveResult.Done) approved++
+            when (val plan = getFeePlan(item)) {
+                FeePlan.None -> if (approveSms(item.id) is ApproveResult.Done) approved++
+                is FeePlan.Auto -> if (approveSms(item.id, FeeChoice(plan.amount)) is ApproveResult.Done) approved++
                 // Each FX difference is its own amount, so those are asked one by one.
                 is FeePlan.Ask -> if (plan.fxDifference) prompts += FeePrompt(listOf(item), plan) else asks.getOrPut(plan.route) { ArrayList() } += item to plan
             }

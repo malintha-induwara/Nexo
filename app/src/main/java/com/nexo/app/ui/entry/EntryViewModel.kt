@@ -27,6 +27,8 @@ import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.data.sms.noteFor
 import com.nexo.app.domain.CardStatement
+import com.nexo.app.domain.sms.GetSmsFeePlanUseCase
+import com.nexo.app.domain.sms.GetSmsLedgerAmountUseCase
 import com.nexo.app.ui.HomeState
 import com.nexo.app.ui.designsystem.component.PadInput
 import com.nexo.app.ui.designsystem.component.PadKey
@@ -68,7 +70,8 @@ class EntryViewModel @AssistedInject constructor(
     val photoStore: com.nexo.app.data.repository.PhotosRepository,
     val tagRepo: com.nexo.app.data.repository.TagsRepository,
     private val importer: com.nexo.app.data.repository.TransactionImportRepository,
-    private val sms: com.nexo.app.domain.sms.SmsApprover,
+    private val getSmsLedgerAmount: GetSmsLedgerAmountUseCase,
+    private val getSmsFeePlan: GetSmsFeePlanUseCase,
     private val receipts: com.nexo.app.data.repository.ReceiptRepository,
 ) : ViewModel() {
     @AssistedFactory
@@ -276,14 +279,14 @@ class EntryViewModel @AssistedInject constructor(
     private suspend fun loadSmsItem(r: RefData, base: EntryUi): EntryUi {
         val item = key.smsItemId?.let { smsRepository.getItem(it) } ?: return newEntry(r, base)
         smsItem = item
-        val (currency, amount) = sms.amountIn(item, r)
+        val (currency, amount) = getSmsLedgerAmount(item, r)
         val kind = item.kind
         // A payment to someone outside Nexo starts as an expense; picking a destination account turns it into a transfer.
         val transfer = kind.isTransfer && (kind != com.nexo.app.core.model.SmsKind.TRANSFER_OUT || item.toAccountId != null)
         val (from, to) = if (kind == com.nexo.app.core.model.SmsKind.TRANSFER_IN) item.toAccountId to item.accountId else item.accountId to item.toAccountId
         val dt = item.occurredAt.toLocalDateTime()
         // The fee field starts filled when the route's preset knows the fee.
-        val presetFee = when (val plan = sms.feePlan(item)) {
+        val presetFee = when (val plan = getSmsFeePlan(item)) {
             is com.nexo.app.domain.sms.FeePlan.Auto -> plan.amount
             is com.nexo.app.domain.sms.FeePlan.Ask -> plan.prefill.takeIf { !plan.fxDifference }
             com.nexo.app.domain.sms.FeePlan.None -> null

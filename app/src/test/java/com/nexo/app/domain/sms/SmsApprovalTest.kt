@@ -43,9 +43,10 @@ import org.robolectric.annotation.Config
 /** Approve / Deny / Edit against a seeded LKR book (accounts "1" bank, "11" cash; category "6" Food). */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
-class SmsApproverTest {
+class SmsApprovalTest {
     private lateinit var db: NexoDatabase
-    private lateinit var approver: SmsApprover
+    private lateinit var approveSms: ApproveSmsUseCase
+    private lateinit var getFeePlan: GetSmsFeePlanUseCase
     private lateinit var transactions: TransactionsRepository
     private lateinit var sms: SmsRepository
     private val at = 1_793_700_000_000L
@@ -59,7 +60,8 @@ class SmsApproverTest {
         val refs = referenceDataRepository(db, scope)
         transactions = transactionsRepository(context, db, refs)
         sms = smsRepository(context, db, refs)
-        approver = SmsApprover(sms, refs, transactions)
+        approveSms = ApproveSmsUseCase(sms, refs, transactions, GetSmsDraftUseCase(GetSmsLedgerAmountUseCase()))
+        getFeePlan = GetSmsFeePlanUseCase(sms, refs)
     }
 
     @After
@@ -93,7 +95,7 @@ class SmsApproverTest {
     @Test
     fun approvingAnExpenseWritesOneRowAndLearns() = runBlocking {
         val i = item()
-        val r = approver.approve(i.id) as ApproveResult.Done
+        val r = approveSms(i.id) as ApproveResult.Done
         val tx = db.transactionDao().getById(r.transactionId)!!
         assertEquals(TxKind.EXPENSE, tx.kind)
         assertEquals("1", tx.accountId)
@@ -108,14 +110,14 @@ class SmsApproverTest {
         assertEquals("1", db.smsDao().source("COMBANK", "4321")!!.accountId)
         assertEquals("6", db.smsDao().merchantRule("green leaf cafe")!!.categoryId)
         // Approving twice does nothing.
-        assertEquals(ApproveResult.Gone, approver.approve(i.id))
+        assertEquals(ApproveResult.Gone, approveSms(i.id))
         assertEquals(1, db.transactionDao().count())
     }
 
     @Test
     fun incompleteItemsAreNotApproved() = runBlocking {
         val i = item(categoryId = null)
-        val r = approver.approve(i.id) as ApproveResult.Incomplete
+        val r = approveSms(i.id) as ApproveResult.Incomplete
         assertEquals(setOf(Missing.CATEGORY), r.missing)
         assertEquals(0, db.transactionDao().count())
     }
@@ -123,7 +125,7 @@ class SmsApproverTest {
     @Test
     fun withdrawalBecomesATransferToCash() = runBlocking {
         val i = item(kind = SmsKind.TRANSFER_TO_CASH, amount = 6000.0, toAccountId = "11", categoryId = null, merchant = "MATARA-2 BR")
-        approver.approve(i.id) as ApproveResult.Done
+        approveSms(i.id) as ApproveResult.Done
         val rows = db.transactionDao().getAll()
         assertEquals(setOf(TxKind.TRANSFER_OUT, TxKind.TRANSFER_IN), rows.map { it.kind }.toSet())
         assertEquals("1", rows.single { it.kind == TxKind.TRANSFER_OUT }.accountId)
@@ -133,7 +135,7 @@ class SmsApproverTest {
     @Test
     fun transferFeeIsWrittenWithTheTransfer() = runBlocking {
         val i = item(kind = SmsKind.TRANSFER_TO_CASH, amount = 5000.0, toAccountId = "11", categoryId = null)
-        approver.approve(i.id, FeeChoice(30.0)) as ApproveResult.Done
+        approveSms(i.id, FeeChoice(30.0)) as ApproveResult.Done
         val fee = db.transactionDao().getAll().single { it.kind == TxKind.EXPENSE }
         assertEquals(30.0, fee.amount, 0.0)
         assertEquals("1", fee.accountId)
@@ -142,7 +144,7 @@ class SmsApproverTest {
     @Test
     fun paymentToAPayeeWithACategoryIsAnExpense() = runBlocking {
         val i = item(kind = SmsKind.TRANSFER_OUT, amount = 1500.0, categoryId = "7", merchant = "", payee = "J Silva", card = null)
-        val r = approver.approve(i.id) as ApproveResult.Done
+        val r = approveSms(i.id) as ApproveResult.Done
         val tx = db.transactionDao().getById(r.transactionId)!!
         assertEquals(TxKind.EXPENSE, tx.kind)
         assertEquals("J Silva", tx.note)
@@ -185,7 +187,7 @@ class SmsApproverTest {
         assertEquals(6912.4, edited.actualAmount!!, 0.0)
         assertEquals(20.0, edited.amount, 0.0)
 
-        val r = approver.approve(i.id) as ApproveResult.Done
+        val r = approveSms(i.id) as ApproveResult.Done
         val tx = db.transactionDao().getById(r.transactionId)!!
         assertEquals("LKR", tx.currencyId)
         assertEquals(6912.4, tx.amount, 0.0)
@@ -215,7 +217,7 @@ class SmsApproverTest {
     @Test
     fun feeOnAnExpenseIsALinkedBankFeeRowThatGoesWithItsParent() = runBlocking {
         val i = item(kind = SmsKind.TRANSFER_OUT, amount = 3600.0, categoryId = "7", card = null, merchant = "", payee = "J Silva", feeRoute = FeeRoute.INTERBANK_TRANSFER)
-        val r = approver.approve(i.id, FeeChoice(30.0)) as ApproveResult.Done
+        val r = approveSms(i.id, FeeChoice(30.0)) as ApproveResult.Done
         val fee = db.transactionDao().getById(r.feeId!!)!!
         assertEquals(TxKind.EXPENSE, fee.kind)
         assertEquals(r.transactionId, fee.feeParentId)
@@ -234,8 +236,8 @@ class SmsApproverTest {
     @Test
     fun deletingOnlyTheFeeKeepsTheParent() = runBlocking {
         val i = item(feeRoute = FeeRoute.INTERBANK_TRANSFER)
-        val r = approver.approve(i.id, FeeChoice(25.0)) as ApproveResult.Done
-        approver.removeFee(r.feeId!!)
+        val r = approveSms(i.id, FeeChoice(25.0)) as ApproveResult.Done
+        transactions.delete(listOf(r.feeId!!))
         assertEquals(1, db.transactionDao().count())
         assertTrue(db.transactionDao().getById(r.transactionId) != null)
     }
@@ -243,7 +245,7 @@ class SmsApproverTest {
     @Test
     fun transferFeeUsesTheBankFeeCategory() = runBlocking {
         val i = item(kind = SmsKind.TRANSFER_TO_CASH, amount = 5000.0, toAccountId = "11", categoryId = null, feeRoute = FeeRoute.OTHER_BANK_ATM)
-        val r = approver.approve(i.id, FeeChoice(30.0)) as ApproveResult.Done
+        val r = approveSms(i.id, FeeChoice(30.0)) as ApproveResult.Done
         val fee = db.transactionDao().getById(r.feeId!!)!!
         assertEquals("Bank fee", db.categoryDao().getById(fee.categoryId!!)!!.name)
     }
@@ -251,31 +253,31 @@ class SmsApproverTest {
     @Test
     fun feePlansFollowThePreset() = runBlocking {
         val first = item(feeRoute = FeeRoute.INTERBANK_TRANSFER)
-        assertEquals(FeePlan.Ask(FeeRoute.INTERBANK_TRANSFER, null), approver.feePlan(first))
+        assertEquals(FeePlan.Ask(FeeRoute.INTERBANK_TRANSFER, null), getFeePlan(first))
         // Within the bank defaults to never asking.
-        assertEquals(FeePlan.None, approver.feePlan(item(feeRoute = FeeRoute.OWN_BANK_TRANSFER)))
+        assertEquals(FeePlan.None, getFeePlan(item(feeRoute = FeeRoute.OWN_BANK_TRANSFER)))
 
-        approver.approve(first.id, FeeChoice(30.0))
-        assertEquals(FeePlan.Ask(FeeRoute.INTERBANK_TRANSFER, 30.0), approver.feePlan(item(feeRoute = FeeRoute.INTERBANK_TRANSFER)))
+        approveSms(first.id, FeeChoice(30.0))
+        assertEquals(FeePlan.Ask(FeeRoute.INTERBANK_TRANSFER, 30.0), getFeePlan(item(feeRoute = FeeRoute.INTERBANK_TRANSFER)))
 
         val remembered = item(feeRoute = FeeRoute.INTERBANK_TRANSFER)
-        approver.approve(remembered.id, FeeChoice(35.0, remember = true))
-        assertEquals(FeePlan.Auto(FeeRoute.INTERBANK_TRANSFER, 35.0), approver.feePlan(item(feeRoute = FeeRoute.INTERBANK_TRANSFER)))
+        approveSms(remembered.id, FeeChoice(35.0, remember = true))
+        assertEquals(FeePlan.Auto(FeeRoute.INTERBANK_TRANSFER, 35.0), getFeePlan(item(feeRoute = FeeRoute.INTERBANK_TRANSFER)))
 
         val never = item(feeRoute = FeeRoute.INTERBANK_TRANSFER)
-        approver.approve(never.id, FeeChoice(null, remember = true))
-        assertEquals(FeePlan.None, approver.feePlan(item(feeRoute = FeeRoute.INTERBANK_TRANSFER)))
+        approveSms(never.id, FeeChoice(null, remember = true))
+        assertEquals(FeePlan.None, getFeePlan(item(feeRoute = FeeRoute.INTERBANK_TRANSFER)))
         assertEquals(35.0, db.smsDao().feePreset("1", FeeRoute.INTERBANK_TRANSFER)!!.lastFee!!, 0.0)
     }
 
     @Test
     fun fxDifferenceIsAskedOnlyAboveTheTolerance() = runBlocking {
         val close = item(amount = 20.0, currency = "USD", certainty = Certainty.ESTIMATED, feeRoute = FeeRoute.FX_CARD_PURCHASE, estimated = 6730.0)
-        assertEquals(FeePlan.None, approver.feePlan(close))
+        assertEquals(FeePlan.None, getFeePlan(close))
         sms.setAmount(close.id, 6760.0)
-        assertEquals(FeePlan.None, approver.feePlan(sms.getItem(close.id)!!))
+        assertEquals(FeePlan.None, getFeePlan(sms.getItem(close.id)!!))
         sms.setAmount(close.id, 6912.4)
-        val plan = approver.feePlan(sms.getItem(close.id)!!) as FeePlan.Ask
+        val plan = getFeePlan(sms.getItem(close.id)!!) as FeePlan.Ask
         assertTrue(plan.fxDifference)
         assertEquals(182.4, plan.prefill!!, 0.001)
     }
@@ -284,7 +286,7 @@ class SmsApproverTest {
     fun fxDifferenceRecordedAsAFeeKeepsThePurchaseAtTheEstimate() = runBlocking {
         val i = item(amount = 20.0, currency = "USD", certainty = Certainty.ESTIMATED, feeRoute = FeeRoute.FX_CARD_PURCHASE, estimated = 6730.0)
         sms.setAmount(i.id, 6912.4)
-        val r = approver.approve(i.id, FeeChoice(182.4)) as ApproveResult.Done
+        val r = approveSms(i.id, FeeChoice(182.4)) as ApproveResult.Done
         assertEquals(6730.0, db.transactionDao().getById(r.transactionId)!!.amount, 0.0)
         assertEquals(182.4, db.transactionDao().getById(r.feeId!!)!!.amount, 0.001)
         // A difference never becomes the route's "last fee".
@@ -295,7 +297,7 @@ class SmsApproverTest {
     fun fxDifferenceIncludedInThePurchaseHasNoFeeRow() = runBlocking {
         val i = item(amount = 20.0, currency = "USD", certainty = Certainty.ESTIMATED, feeRoute = FeeRoute.FX_CARD_PURCHASE, estimated = 6730.0)
         sms.setAmount(i.id, 6912.4)
-        val r = approver.approve(i.id, FeeChoice(182.4, includeInPurchase = true)) as ApproveResult.Done
+        val r = approveSms(i.id, FeeChoice(182.4, includeInPurchase = true)) as ApproveResult.Done
         assertNull(r.feeId)
         assertEquals(6912.4, db.transactionDao().getById(r.transactionId)!!.amount, 0.0)
         assertEquals(1, db.transactionDao().count())
