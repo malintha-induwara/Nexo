@@ -129,8 +129,11 @@ private fun FormatRows(
 
 /** The message toast and the way back once a main-currency change is written. */
 @Composable
-private fun MainCurrencyEffects(state: MainCurrencyUiState, vm: MainCurrencyViewModel) {
-    val nav = LocalNavigator.current
+private fun MainCurrencyEffects(
+    state: MainCurrencyUiState,
+    vm: MainCurrencyViewModel,
+    onClosed: () -> Unit,
+) {
     val effectContext = LocalContext.current
     state.userMessage?.let { message ->
         val text = message.text.asString()
@@ -141,7 +144,7 @@ private fun MainCurrencyEffects(state: MainCurrencyUiState, vm: MainCurrencyView
     }
     LaunchedEffect(state.closed) {
         if (state.closed) {
-            nav.back()
+            onClosed()
             vm.onClosedHandled()
         }
     }
@@ -151,7 +154,7 @@ private fun MainCurrencyEffects(state: MainCurrencyUiState, vm: MainCurrencyView
 fun MainCurrencyRoute(vm: MainCurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    MainCurrencyEffects(state, vm)
+    MainCurrencyEffects(state, vm, nav::back)
     MainCurrencyScreen(
         state = state,
         onBack = nav::back,
@@ -196,7 +199,7 @@ internal fun MainCurrencyScreen(
 fun MainCurrencyPickerRoute(vm: MainCurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    MainCurrencyEffects(state, vm)
+    MainCurrencyEffects(state, vm, nav::back)
     MainCurrencyPickerScreen(
         state = state,
         onBack = nav::back,

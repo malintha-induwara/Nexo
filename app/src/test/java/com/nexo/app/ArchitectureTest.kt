@@ -80,6 +80,43 @@ class ArchitectureTest {
         assertNoViolations(violations)
     }
 
+    /** Top-level `fun` declarations; the name is group 1. */
+    private val topLevelFun = Regex("""^(?:\w+ )*fun (?:<[^>]*> )?(?:[\w.]+\.)?(\w+)""")
+
+    /**
+     * Only a Route reaches for the navigator or a ViewModel, so every screen below it can be
+     * previewed and tested with plain state and lambdas. The app root wires the back stack itself.
+     */
+    @Test
+    fun onlyRoutesReadTheNavigatorOrViewModels() {
+        val reads = listOf("LocalNavigator.current", "hiltViewModel(", "hiltViewModel<")
+        val violations = sources.filter { it.layer == "ui" && it.name != "NexoApp.kt" }
+            .flatMap { source ->
+                var function = ""
+                source.lines.mapIndexedNotNull { i, line ->
+                    topLevelFun.find(line)?.let { function = it.groupValues[1] }
+                    if (reads.any { it in line } && !function.endsWith("Route")) {
+                        "${source.path}:${i + 1} in $function"
+                    } else {
+                        null
+                    }
+                }
+            }
+        assertNoViolations(violations)
+    }
+
+    @Test
+    fun everyFileWithARouteHasAPreview() {
+        val violations = sources.filter { source ->
+            source.lines.any { line ->
+                !line.startsWith("private") &&
+                    topLevelFun.find(line)?.groupValues?.get(1)?.endsWith("Route") == true
+            } &&
+                source.lines.none { "@Preview" in it }
+        }.map { it.path }
+        assertNoViolations(violations)
+    }
+
     private fun assertNoViolations(violations: List<String>) =
         assertTrue(violations.joinToString("\n", prefix = "\n"), violations.isEmpty())
 }
