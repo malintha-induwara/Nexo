@@ -126,7 +126,7 @@ private fun FormatRows(
 }
 
 @Composable
-fun MainCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
+fun MainCurrencyScreen(vm: MainCurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
@@ -172,7 +172,7 @@ fun MainCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun MainCurrencyPickerScreen(vm: CurrencyViewModel = hiltViewModel()) {
+fun MainCurrencyPickerScreen(vm: MainCurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -279,25 +279,10 @@ fun MainCurrencyPickerScreen(vm: CurrencyViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun SubCurrenciesScreen(vm: CurrencyViewModel = hiltViewModel()) {
+fun SubCurrenciesScreen(vm: SubCurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
-    val busy = state.busy
-    val effectContext = LocalContext.current
-    state.userMessage?.let { message ->
-        val text = message.text.asString()
-        LaunchedEffect(message.id) {
-            Toast.makeText(effectContext, text, Toast.LENGTH_LONG).show()
-            vm.onUserMessageShown(message.id)
-        }
-    }
-    LaunchedEffect(state.closed) {
-        if (state.closed) {
-            nav.back()
-            vm.onClosedHandled()
-        }
-    }
     val subs = ref.activeCurrencies.drop(1)
     var hide by remember { mutableStateOf<Currency?>(null) }
     Scaffold(topBar = {
@@ -376,25 +361,10 @@ fun SubCurrenciesScreen(vm: CurrencyViewModel = hiltViewModel()) {
 
 /** Add a built-in sub-currency. */
 @Composable
-fun AddSubCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
+fun AddSubCurrencyScreen(vm: SubCurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
-    val busy = state.busy
-    val effectContext = LocalContext.current
-    state.userMessage?.let { message ->
-        val text = message.text.asString()
-        LaunchedEffect(message.id) {
-            Toast.makeText(effectContext, text, Toast.LENGTH_LONG).show()
-            vm.onUserMessageShown(message.id)
-        }
-    }
-    LaunchedEffect(state.closed) {
-        if (state.closed) {
-            nav.back()
-            vm.onClosedHandled()
-        }
-    }
     var query by remember { mutableStateOf("") }
     val list = CurrencyCatalog.all.filter { c ->
         c.code != ref.mainCurrency.isoCode &&
@@ -444,19 +414,10 @@ fun AddSubCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
 
 /** Edit / add a sub-currency, built-in or custom. */
 @Composable
-fun SubCurrencyEditScreen(key: SubCurrencyEditKey, vm: CurrencyViewModel = hiltViewModel()) {
+fun SubCurrencyEditScreen(key: SubCurrencyEditKey, vm: SubCurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
-    val busy = state.busy
-    val effectContext = LocalContext.current
-    state.userMessage?.let { message ->
-        val text = message.text.asString()
-        LaunchedEffect(message.id) {
-            Toast.makeText(effectContext, text, Toast.LENGTH_LONG).show()
-            vm.onUserMessageShown(message.id)
-        }
-    }
     LaunchedEffect(state.closed) {
         if (state.closed) {
             nav.back()
