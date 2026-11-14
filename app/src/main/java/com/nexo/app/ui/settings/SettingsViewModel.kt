@@ -59,6 +59,8 @@ class SettingsViewModel @Inject constructor(
     /** Sets or changes the PIN; null removes it together with biometric unlock. */
     fun setPin(pin: String?) = viewModelScope.launch { lock.setPin(pin) }
 
+    suspend fun isCurrentPin(pin: String): Boolean = lock.isCurrentPin(pin)
+
     fun lockNow() = lock.lockNow()
 
     /** A fresh biometric key and the cipher to confirm it with, or null if that failed. */

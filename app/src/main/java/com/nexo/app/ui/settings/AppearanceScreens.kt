@@ -65,7 +65,6 @@ import com.nexo.app.core.model.LockTimeout
 import com.nexo.app.core.model.ThemeMode
 import com.nexo.app.core.notifications.Notifications
 import com.nexo.app.core.notifications.ReminderScheduler
-import com.nexo.app.data.lock.PinHasher
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.Formats
@@ -306,7 +305,7 @@ fun LockSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     if (confirmRemove) {
         PinFlowDialog(
             mode = "verify",
-            currentHash = d.pinHash,
+            verify = vm::isCurrentPin,
             descending = d.numberPadDescending,
             onDone = {
                 vm.setPin(null)
@@ -316,7 +315,7 @@ fun LockSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         )
     }
     pinFlow?.let { mode ->
-        PinFlowDialog(mode, d.pinHash, d.numberPadDescending, onDone = { pin ->
+        PinFlowDialog(mode, vm::isCurrentPin, d.numberPadDescending, onDone = { pin ->
             vm.setPin(pin)
             pinFlow = null
         }, onDismiss = { pinFlow = null })
@@ -341,7 +340,7 @@ private fun timeoutLabel(t: LockTimeout) = stringResource(
 @Composable
 private fun PinFlowDialog(
     mode: String,
-    currentHash: String?,
+    verify: suspend (String) -> Boolean,
     descending: Boolean,
     onDone: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -351,6 +350,8 @@ private fun PinFlowDialog(
     var first by remember { mutableStateOf("") }
     var shake by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf<Int?>(null) }
+    var checking by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val title = when (step) {
         0 -> R.string.pin_enter_current
         1 -> R.string.pin_enter_new
@@ -376,20 +377,30 @@ private fun PinFlowDialog(
                     modifier = Modifier.padding(bottom = 16.dp),
                 )
                 PinKeypad(onDigit = { digit ->
-                    if (pin.length >= 4) return@PinKeypad
+                    if (pin.length >= 4 || checking) return@PinKeypad
                     pin += digit
                     if (pin.length == 4) {
                         when (step) {
-                            0 -> if (currentHash != null && PinHasher.verify(pin, currentHash)) {
-                                if (mode == "verify") {
-                                    onDone(pin)
-                                } else {
-                                    step = 1
-                                    message = null
+                            // Hashing is slow, so the dots stay full until the answer is in.
+                            0 -> {
+                                val entered = pin
+                                checking = true
+                                scope.launch {
+                                    if (verify(entered)) {
+                                        if (mode == "verify") {
+                                            onDone(entered)
+                                        } else {
+                                            step = 1
+                                            message = null
+                                        }
+                                    } else {
+                                        shake++
+                                        message = R.string.lock_wrong_pin
+                                    }
+                                    pin = ""
+                                    checking = false
                                 }
-                            } else {
-                                shake++
-                                message = R.string.lock_wrong_pin
+                                return@PinKeypad
                             }
 
                             1 -> {
@@ -409,7 +420,9 @@ private fun PinFlowDialog(
                         }
                         pin = ""
                     }
-                }, onBackspace = { pin = pin.dropLast(1) }, descending = descending)
+                }, onBackspace = {
+                    if (!checking) pin = pin.dropLast(1)
+                }, descending = descending)
                 TextButton(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) {
                     Text(stringResource(R.string.action_cancel))
                 }

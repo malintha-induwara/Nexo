@@ -32,6 +32,9 @@ interface AppLockRepository {
 
     suspend fun verifyPin(pin: String): PinResult
 
+    /** Whether [pin] is the PIN now set. Unlike [verifyPin], a wrong answer does not count as a failure. */
+    suspend fun isCurrentPin(pin: String): Boolean
+
     /** Sets or changes the PIN; null removes it together with biometric unlock. */
     suspend fun setPin(pin: String?)
 

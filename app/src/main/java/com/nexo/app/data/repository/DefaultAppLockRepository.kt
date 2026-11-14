@@ -95,6 +95,10 @@ class DefaultAppLockRepository @Inject constructor(
         }
     }
 
+    override suspend fun isCurrentPin(pin: String): Boolean = withContext(defaultDispatcher) {
+        prefs.getDeviceSettings().pinHash?.let { PinHasher.verify(pin, it) } == true
+    }
+
     override suspend fun setPin(pin: String?) {
         if (pin == null) biometricKey.deleteKey()
         prefs.setPin(pin?.let { withContext(defaultDispatcher) { PinHasher.hash(it) } })
