@@ -26,7 +26,6 @@ import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,18 +53,23 @@ import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.money.AmountFormatter
 import com.nexo.app.ui.components.BarLineChart
 import com.nexo.app.ui.components.ConfirmDialog
+import com.nexo.app.ui.components.FlowAmount
 import com.nexo.app.ui.components.Formats
+import com.nexo.app.ui.components.GroupCard
 import com.nexo.app.ui.components.Legend
 import com.nexo.app.ui.components.MessageDialog
 import com.nexo.app.ui.components.MonthPickerDialog
 import com.nexo.app.ui.components.NexoTopBar
 import com.nexo.app.ui.components.PeriodNavigator
+import com.nexo.app.ui.components.shrinkToFit
 import com.nexo.app.ui.navigation.AccountDetailKey
 import com.nexo.app.ui.navigation.AccountFormKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.theme.LocalMoneyColors
+import com.nexo.app.ui.theme.LocalNexoColors
+import com.nexo.app.ui.theme.NexoType
 import com.nexo.app.ui.transactions.BulkAction
 import com.nexo.app.ui.transactions.BulkDialogs
 import com.nexo.app.ui.transactions.DayGroupList
@@ -184,27 +188,9 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                     },
                 )
             } else {
-                LazyColumn(contentPadding = PaddingValues(bottom = 96.dp)) {
+                LazyColumn(contentPadding = PaddingValues(top = Space.xs, bottom = 96.dp)) {
                     items(ui.periods, key = { it.label + it.range.start }) { p ->
-                        Row(
-                            Modifier.fillMaxWidth().background(if (p.current) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface)
-                                .clickable { p.month?.let(vm::openMonth) ?: p.year?.let(vm::openYear) }.padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(Modifier.width(96.dp)) {
-                                Text(p.label, fontWeight = FontWeight.SemiBold)
-                                Text(Formats.range(p.range.start, p.range.end), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                            }
-                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                                Text(AmountFormatter.format(p.deposit, cur), color = money.income, style = MaterialTheme.typography.bodySmall)
-                                Text(AmountFormatter.format(p.withdrawal, cur), color = money.expense, style = MaterialTheme.typography.bodySmall)
-                            }
-                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                                Text(AmountFormatter.format(p.deposit - p.withdrawal, cur), style = MaterialTheme.typography.bodySmall)
-                                Text("(${AmountFormatter.format(p.balance, cur)})", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                            }
-                        }
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        PeriodCard(p, cur, onClick = { p.month?.let(vm::openMonth) ?: p.year?.let(vm::openYear) }, modifier = Modifier.padding(horizontal = Space.l, vertical = Space.xs))
                     }
                 }
             }
@@ -262,5 +248,29 @@ private fun Figure(label: String, value: String, color: Color, modifier: Modifie
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
         Text(value, color = color, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+    }
+}
+
+/** A month or year of the account: money in and out, the net, and the balance it ended on in brackets. */
+@Composable
+private fun PeriodCard(p: PeriodRowUi, cur: CurrencyEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalNexoColors.current
+    val money = LocalMoneyColors.current
+    GroupCard(modifier, highlighted = p.current, onClick = onClick) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = Space.l, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.s)) {
+            Column(Modifier.width(92.dp)) {
+                Text(p.label, style = MaterialTheme.typography.titleMedium, color = colors.text, maxLines = 1)
+                Text(Formats.range(p.range.start, p.range.end), style = NexoType.Meta, color = if (p.current) colors.primaryText else colors.textTertiary, maxLines = 1)
+            }
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                FlowAmount(p.deposit, cur, money.income, Modifier.shrinkToFit(), NexoType.AmountSmall)
+                Spacer(Modifier.padding(top = Space.xxs))
+                FlowAmount(p.withdrawal, cur, money.expense, Modifier.shrinkToFit(), NexoType.AmountSmall)
+            }
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                FlowAmount(p.deposit - p.withdrawal, cur, colors.text, Modifier.shrinkToFit())
+                Text("(${AmountFormatter.format(p.balance, cur)})", style = NexoType.AmountSmall, color = colors.textTertiary, maxLines = 1, modifier = Modifier.shrinkToFit())
+            }
+        }
     }
 }

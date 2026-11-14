@@ -22,6 +22,8 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.NorthEast
 import androidx.compose.material.icons.rounded.Search
@@ -540,54 +542,100 @@ private fun CalendarDay(cell: CalendarCell, main: CurrencyEntity, money: MoneyCo
     }
 }
 
+/** One card per month: its income, expenses and net, opening to the weeks inside it. */
 @Composable
 private fun MonthlyContent(data: HomeData, main: CurrencyEntity, selected: LocalDate, bottom: Dp, onWeek: (com.nexo.app.core.period.MonthPeriod) -> Unit) {
-    val money = LocalMoneyColors.current
+    val haptics = rememberHaptics()
     var expanded by rememberSaveable(data.year) { mutableStateOf(data.months.firstOrNull { selected in it.period.range }?.period?.key ?: -1) }
     if (data.months.isEmpty()) {
         com.nexo.app.ui.components.EmptyState()
         return
     }
     val today = LocalDate.now()
-    LazyColumn(contentPadding = PaddingValues(bottom = bottom)) {
+    LazyColumn(contentPadding = PaddingValues(top = Space.xs, bottom = bottom)) {
         items(data.months, key = { it.period.key }) { m ->
-            Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
-                Row(
-                    Modifier.fillMaxWidth().clickable { expanded = if (expanded == m.period.key) -1 else m.period.key }.padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.width(96.dp)) {
-                        Text(Formats.monthShort(m.period.label.monthValue), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        if (today in m.period.range || m.period.label.monthValue == 12) {
-                            Text(Formats.range(m.period.start, m.period.end), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                        }
-                    }
-                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                        Text(AmountFormatter.format(m.income, main), color = money.income, style = MaterialTheme.typography.bodyMedium)
-                        Text(AmountFormatter.format(m.expense, main), color = money.expense, style = MaterialTheme.typography.bodyMedium)
-                        Text(AmountFormatter.format(m.income - m.expense, main), style = MaterialTheme.typography.bodySmall)
-                    }
-                    Icon(if (expanded == m.period.key) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, null, tint = MaterialTheme.colorScheme.outline)
-                }
-                if (expanded == m.period.key) {
-                    m.weeks.forEach { w ->
-                        Row(
-                            Modifier.fillMaxWidth().background(if (w.containsToday) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceContainerLow)
-                                .clickable { onWeek(m.period) }.padding(horizontal = 24.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(Formats.range(w.range.start, w.range.end), style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(110.dp))
-                            Text(AmountFormatter.format(w.income, main), color = money.income, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f), maxLines = 1)
-                            Text(AmountFormatter.format(w.expense, main), color = money.expense, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f), maxLines = 1)
-                            Text(
-                                (if (w.containsToday) stringResource(R.string.total) + " " else "") + AmountFormatter.format(w.income - w.expense, main),
-                                style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f), maxLines = 1,
-                            )
-                        }
-                    }
-                }
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            MonthCard(
+                month = m,
+                main = main,
+                open = expanded == m.period.key,
+                showRange = today in m.period.range || m.period.label.monthValue == 12,
+                onToggle = { haptics.tick(); expanded = if (expanded == m.period.key) -1 else m.period.key },
+                onWeek = { onWeek(m.period) },
+                modifier = Modifier.padding(horizontal = Space.l, vertical = Space.xs),
+            )
+        }
+    }
+}
+
+@Composable
+private fun MonthCard(month: MonthRow, main: CurrencyEntity, open: Boolean, showRange: Boolean, onToggle: () -> Unit, onWeek: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalNexoColors.current
+    val money = LocalMoneyColors.current
+    val interactions = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val turn by androidx.compose.animation.core.animateFloatAsState(if (open) 180f else 0f, NexoMotion.snappy(), label = "chevron")
+    com.nexo.app.ui.components.GroupCard(modifier, interactions = interactions) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(interactionSource = interactions, indication = null, onClick = onToggle)
+                .padding(start = Space.l, end = Space.m, top = 14.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(Formats.monthShort(month.period.label.monthValue), style = MaterialTheme.typography.titleMedium, color = colors.text)
+                if (showRange) Text(Formats.range(month.period.start, month.period.end), style = NexoType.Meta, color = colors.textTertiary)
             }
+            Column(horizontalAlignment = Alignment.End) {
+                com.nexo.app.ui.components.FlowAmount(month.income, main, money.income)
+                com.nexo.app.ui.components.FlowAmount(month.expense, main, money.expense)
+                com.nexo.app.ui.components.AmountText(month.income - month.expense, main, style = NexoType.AmountSmall, color = colors.textSecondary)
+            }
+            Icon(
+                Icons.Rounded.KeyboardArrowDown, null, tint = colors.textTertiary,
+                modifier = Modifier.padding(start = Space.xs).size(20.dp).graphicsLayer { rotationZ = turn },
+            )
+        }
+        AnimatedVisibility(
+            visible = open,
+            enter = expandVertically(NexoMotion.snappy()) + fadeIn(NexoMotion.enter()),
+            exit = shrinkVertically(NexoMotion.snappy()) + fadeOut(NexoMotion.exit()),
+        ) {
+            Column(Modifier.padding(start = Space.s, end = Space.s, bottom = Space.s)) {
+                month.weeks.forEach { w -> WeekLine(w, main, onWeek) }
+            }
+        }
+    }
+}
+
+/** A week inside a month card: its dates, then income, expenses and net in three columns. */
+@Composable
+private fun WeekLine(week: WeekRow, main: CurrencyEntity, onClick: () -> Unit) {
+    val colors = LocalNexoColors.current
+    val money = LocalMoneyColors.current
+    val net = week.income - week.expense
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(NexoShapes.control)
+            .background(if (week.containsToday) colors.primarySoft else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = Space.s, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            Formats.range(week.range.start, week.range.end),
+            style = NexoType.Meta, color = if (week.containsToday) colors.primaryText else colors.textSecondary,
+            maxLines = 1, modifier = Modifier.width(88.dp),
+        )
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+            com.nexo.app.ui.components.FlowAmount(week.income, main, money.income, Modifier.shrinkToFit(), NexoType.AmountSmall)
+        }
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+            com.nexo.app.ui.components.FlowAmount(week.expense, main, money.expense, Modifier.shrinkToFit(), NexoType.AmountSmall)
+        }
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+            com.nexo.app.ui.components.FlowAmount(net, main, colors.text, Modifier.shrinkToFit(), NexoType.AmountSmall)
         }
     }
 }
