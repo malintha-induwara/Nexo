@@ -41,12 +41,12 @@ class SmsSettingsViewModel @Inject constructor(
     private val prefs: UserPreferencesRepository,
     private val inbox: SmsInboxRepository,
 ) : ViewModel() {
-    private val _permitted = MutableStateFlow(inbox.hasPermission())
+    private val permitted = MutableStateFlow(inbox.hasPermission())
 
     val uiState: StateFlow<SmsSettingsUiState> = combine(
         refs.getRefDataStream(),
         prefs.getDeviceSettingsStream(),
-        _permitted,
+        permitted,
         sms.getPendingCountStream(),
         combine(sms.getSourcesStream(), sms.getFeePresetsStream(), ::Pair),
     ) { ref, device, permitted, pending, (sources, presets) ->
@@ -55,13 +55,13 @@ class SmsSettingsViewModel @Inject constructor(
 
     /** Coming back from the permission dialog or App info. */
     fun refresh() = viewModelScope.launch {
-        _permitted.value = inbox.hasPermission()
+        permitted.value = inbox.hasPermission()
         inbox.refresh()
     }
 
     fun setEnabled(on: Boolean) = viewModelScope.launch {
         inbox.setCaptureEnabled(on)
-        _permitted.value = inbox.hasPermission()
+        permitted.value = inbox.hasPermission()
     }
 
     fun offerHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(SmsHistoryImport.OFFERED) }

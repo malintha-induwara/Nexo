@@ -98,20 +98,20 @@ class SmsQueueViewModel @Inject constructor(
     private val pending: StateFlow<List<SmsItem>> =
         sms.getItemsStream(listOf(SmsStatus.PENDING)).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    private val _filter = MutableStateFlow(QueueFilter.ALL)
-    private val _selection = MutableStateFlow<Set<String>>(emptySet())
-    private val _notice = MutableStateFlow<QueueNotice?>(null)
-    private val _feePrompts = MutableStateFlow<List<FeePrompt>>(emptyList())
-    private val _permitted = MutableStateFlow(inbox.hasPermission())
+    private val filter = MutableStateFlow(QueueFilter.ALL)
+    private val selection = MutableStateFlow<Set<String>>(emptySet())
+    private val notice = MutableStateFlow<QueueNotice?>(null)
+    private val feePrompts = MutableStateFlow<List<FeePrompt>>(emptyList())
+    private val permitted = MutableStateFlow(inbox.hasPermission())
 
-    private val items: Flow<List<SmsItem>?> = _filter.flatMapLatest { f ->
+    private val items: Flow<List<SmsItem>?> = filter.flatMapLatest { f ->
         sms.getItemsStream(listOf(f.status)).map { list -> if (f == QueueFilter.ATTENTION) list.filter { it.needsAttention } else list }
     }
 
     val uiState: StateFlow<SmsQueueUiState> = combine(
-        combine(ref, prefs.getDeviceSettingsStream(), _filter, ::Triple),
+        combine(ref, prefs.getDeviceSettingsStream(), filter, ::Triple),
         combine(pending, items, ::Pair),
-        combine(_selection, _notice, _feePrompts, _permitted) { sel, notice, prompts, permitted -> Quad(sel, notice, prompts.firstOrNull(), permitted) },
+        combine(selection, notice, feePrompts, permitted) { sel, notice, prompts, permitted -> Quad(sel, notice, prompts.firstOrNull(), permitted) },
     ) { (r, device, filter), (pendingItems, list), (sel, notice, prompt, permitted) ->
         val unmapped = pendingItems.filter { it.accountId == null && it.cardLast4 != null }.map { CardRef(it.bank, it.cardLast4!!) }.distinct()
         SmsQueueUiState(r, device, filter, pendingItems, list, unmapped, sel, notice, prompt, permitted)
@@ -120,12 +120,12 @@ class SmsQueueViewModel @Inject constructor(
     /** The queue is open: nothing is "new" any more, so the notification goes. */
     fun markSeen() = viewModelScope.launch {
         sms.markQueueSeen()
-        _permitted.value = inbox.hasPermission()
+        permitted.value = inbox.hasPermission()
     }
 
     fun setFilter(f: QueueFilter) {
-        _filter.value = f
-        _selection.value = emptySet()
+        filter.value = f
+        selection.value = emptySet()
     }
 
     /** An item on a fee route asks first, unless its preset says always or never. */
@@ -138,14 +138,14 @@ class SmsQueueViewModel @Inject constructor(
         when (val plan = getFeePlan(item)) {
             FeePlan.None -> if (approveSms(id) is ApproveResult.Done) show(UiText.of(R.string.sms_approved))
             is FeePlan.Auto -> autoFee(item, plan.amount, approveSms(id, FeeChoice(plan.amount)))
-            is FeePlan.Ask -> _feePrompts.update { it + FeePrompt(listOf(item), plan) }
+            is FeePlan.Ask -> feePrompts.update { it + FeePrompt(listOf(item), plan) }
         }
     }
 
     /** The answer to the fee question on screen; null is Cancel, which leaves the items in the queue. */
     fun answerFee(choice: FeeChoice?) = viewModelScope.launch {
-        val prompt = _feePrompts.value.firstOrNull() ?: return@launch
-        _feePrompts.update { it.drop(1) }
+        val prompt = feePrompts.value.firstOrNull() ?: return@launch
+        feePrompts.update { it.drop(1) }
         if (choice == null) return@launch
         val approved = prompt.items.count { approveSms(it.id, choice) is ApproveResult.Done }
         if (approved > 0) show(UiText.plural(R.plurals.sms_n_approved, approved))
@@ -154,15 +154,15 @@ class SmsQueueViewModel @Inject constructor(
     private fun autoFee(item: SmsItem, amount: Double, result: ApproveResult) {
         val feeId = (result as? ApproveResult.Done)?.feeId ?: return
         val text = AmountFormatter.format(amount, ref.value.accountCurrency(item.accountId))
-        _notice.value = QueueNotice(UiText.of(R.string.fee_auto_added, text), QueueUndo.RemoveFee(feeId))
+        notice.value = QueueNotice(UiText.of(R.string.fee_auto_added, text), QueueUndo.RemoveFee(feeId))
     }
 
     fun deny(ids: Collection<String>, reason: DenyReason? = null) = viewModelScope.launch {
         val denied = sms.deny(ids, reason)
-        _selection.value = emptySet()
+        selection.value = emptySet()
         if (denied.isEmpty()) return@launch
         val restoreIds = denied.map { it.id }
-        _notice.value = QueueNotice(UiText.plural(R.plurals.sms_n_denied, denied.size), QueueUndo.Restore(restoreIds))
+        notice.value = QueueNotice(UiText.plural(R.plurals.sms_n_denied, denied.size), QueueUndo.Restore(restoreIds))
     }
 
     fun restore(ids: Collection<String>) = viewModelScope.launch { sms.restore(ids) }
@@ -171,10 +171,10 @@ class SmsQueueViewModel @Inject constructor(
 
     fun mapCard(card: CardRef, accountId: String) = viewModelScope.launch { sms.mapCard(card.bank, card.last4, accountId) }
 
-    fun toggleSelect(id: String) = _selection.update { if (id in it) it - id else it + id }
+    fun toggleSelect(id: String) = selection.update { if (id in it) it - id else it + id }
 
     fun clearSelection() {
-        _selection.value = emptySet()
+        selection.value = emptySet()
     }
 
     /**
@@ -182,9 +182,9 @@ class SmsQueueViewModel @Inject constructor(
      * the whole batch. Items that need details stay in the queue.
      */
     fun approveSelected() = viewModelScope.launch {
-        val ids = _selection.value
+        val ids = selection.value
         val ready = pending.value.filter { it.id in ids && !it.needsDetails }
-        _selection.value = emptySet()
+        selection.value = emptySet()
         var approved = 0
         val asks = LinkedHashMap<FeeRoute, MutableList<Pair<SmsItem, FeePlan.Ask>>>()
         val prompts = ArrayList<FeePrompt>()
@@ -197,7 +197,7 @@ class SmsQueueViewModel @Inject constructor(
             }
         }
         asks.values.forEach { group -> prompts += FeePrompt(group.map { it.first }, group.first().second) }
-        _feePrompts.update { it + prompts }
+        feePrompts.update { it + prompts }
         val skipped = ids.size - ready.size
         val parts = buildList {
             if (approved > 0) add(UiText.plural(R.plurals.sms_n_approved, approved))
@@ -207,8 +207,8 @@ class SmsQueueViewModel @Inject constructor(
     }
 
     fun assignAccount(accountId: String) = viewModelScope.launch {
-        sms.setAccounts(_selection.value, accountId)
-        _selection.value = emptySet()
+        sms.setAccounts(selection.value, accountId)
+        selection.value = emptySet()
     }
 
     /** Re-enable hint dismissed. */
@@ -228,10 +228,10 @@ class SmsQueueViewModel @Inject constructor(
     }
 
     fun dismissNotice() {
-        _notice.value = null
+        notice.value = null
     }
 
     private fun show(text: UiText) {
-        _notice.value = QueueNotice(text)
+        notice.value = QueueNotice(text)
     }
 }

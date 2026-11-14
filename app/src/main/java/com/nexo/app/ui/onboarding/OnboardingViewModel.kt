@@ -33,35 +33,35 @@ class OnboardingViewModel @Inject constructor(
     private val prefs: UserPreferencesRepository,
     private val repeats: RepeatRulesRepository,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(OnboardingUiState())
-    val uiState: StateFlow<OnboardingUiState> = _state.asStateFlow()
+    private val _uiState = MutableStateFlow(OnboardingUiState())
+    val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
 
-    fun next() = _state.update { it.copy(step = it.step + 1) }
-    fun back() = _state.update { it.copy(step = (it.step - 1).coerceAtLeast(0)) }
-    fun setCurrency(c: CatalogCurrency) = _state.update { it.copy(currency = c) }
-    fun clearError() = _state.update { it.copy(error = null) }
+    fun next() = _uiState.update { it.copy(step = it.step + 1) }
+    fun back() = _uiState.update { it.copy(step = (it.step - 1).coerceAtLeast(0)) }
+    fun setCurrency(c: CatalogCurrency) = _uiState.update { it.copy(currency = c) }
+    fun clearError() = _uiState.update { it.copy(error = null) }
 
     fun startFresh() = viewModelScope.launch {
-        _state.update { it.copy(busy = true) }
-        book.seedFresh(_state.value.currency)
+        _uiState.update { it.copy(busy = true) }
+        book.seedFresh(_uiState.value.currency)
         finish()
     }
 
     fun restore(uri: Uri) = viewModelScope.launch {
-        _state.update { it.copy(busy = true) }
+        _uiState.update { it.copy(busy = true) }
         when (val r = backups.restore(uri)) {
             RestoreResult.Success -> {
                 // Fill anything the backup lacks (e.g. no currency row).
-                book.seedFresh(_state.value.currency)
+                book.seedFresh(_uiState.value.currency)
                 finish()
             }
-            else -> _state.update { it.copy(busy = false, error = r) }
+            else -> _uiState.update { it.copy(busy = false, error = r) }
         }
     }
 
     private suspend fun finish() {
         repeats.generateIfNewDay(force = true)
-        _state.update { it.copy(busy = false, done = true) }
+        _uiState.update { it.copy(busy = false, done = true) }
     }
 
     /** Leaves onboarding; the root switches to the main screen when the flag flips. */

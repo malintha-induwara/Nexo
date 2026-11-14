@@ -116,22 +116,22 @@ class StatsViewModel @Inject constructor(
 ) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    private val _query = MutableStateFlow(StatsQuery())
-    private val _income = MutableStateFlow(false)
+    private val query = MutableStateFlow(StatsQuery())
+    private val income = MutableStateFlow(false)
 
-    private val data = combine(ref, _query) { r, q -> r to q }.flatMapLatest { (r, q) ->
+    private val data = combine(ref, query) { r, q -> r to q }.flatMapLatest { (r, q) ->
         val range = scopeRange(r.settings.periods, q)
         transactions.getLedgerStream(range).map { l -> StatsData(range, statsRows(r, l.rows, true), statsRows(r, l.rows, false)) }
     }
 
-    val uiState: StateFlow<StatsUiState> = combine(ref, _query, _income, data, ::StatsUiState)
+    val uiState: StateFlow<StatsUiState> = combine(ref, query, income, data, ::StatsUiState)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StatsUiState())
 
     fun setIncome(v: Boolean) {
-        _income.value = v
+        income.value = v
     }
 
-    fun setScope(s: StatsScope) = _query.update { q ->
+    fun setScope(s: StatsScope) = query.update { q ->
         val e = ref.value.settings.periods
         val cur = scopeRange(e, q)
         when (s) {
@@ -141,9 +141,9 @@ class StatsViewModel @Inject constructor(
         }
     }
 
-    fun step(forward: Boolean) = _query.update { it.copy(anchor = stepAnchor(ref.value.settings.periods, it.scope, it.anchor, forward)) }
-    fun setAnchor(d: LocalDate) = _query.update { it.copy(anchor = d) }
-    fun setMonth(m: YearMonth) = _query.update { it.copy(anchor = ref.value.settings.periods.monthPeriodFor(m).end) }
-    fun setRange(f: LocalDate, t: LocalDate) = _query.update { it.copy(from = f, to = t) }
-    fun goToday() = _query.update { it.copy(anchor = LocalDate.now()) }
+    fun step(forward: Boolean) = query.update { it.copy(anchor = stepAnchor(ref.value.settings.periods, it.scope, it.anchor, forward)) }
+    fun setAnchor(d: LocalDate) = query.update { it.copy(anchor = d) }
+    fun setMonth(m: YearMonth) = query.update { it.copy(anchor = ref.value.settings.periods.monthPeriodFor(m).end) }
+    fun setRange(f: LocalDate, t: LocalDate) = query.update { it.copy(from = f, to = t) }
+    fun goToday() = query.update { it.copy(anchor = LocalDate.now()) }
 }

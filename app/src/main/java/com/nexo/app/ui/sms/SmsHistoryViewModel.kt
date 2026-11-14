@@ -109,15 +109,15 @@ class SmsHistoryViewModel @AssistedInject constructor(
     private val gap: Boolean = key.gapFrom > 0 && key.gapUntil > key.gapFrom
 
     /** Everything but the reference data, which comes from its own stream. */
-    private val _state = MutableStateFlow(
+    private val screenState = MutableStateFlow(
         SmsHistoryUiState(gap = gap, range = if (gap) HistoryRange.GAP else HistoryRange.MONTH, permitted = inbox.hasPermission()),
     )
-    private val _feePrompts = MutableStateFlow<List<FeePrompt>>(emptyList())
+    private val feePrompts = MutableStateFlow<List<FeePrompt>>(emptyList())
 
-    val uiState: StateFlow<SmsHistoryUiState> = combine(refs.getRefDataStream(), _state, _feePrompts) { ref, s, prompts ->
+    val uiState: StateFlow<SmsHistoryUiState> = combine(refs.getRefDataStream(), screenState, feePrompts) { ref, s, prompts ->
         val visible = s.rows.orEmpty().filter { s.kind.matches(it.item.kind) && (s.card == null || it.item.cardLast4 == s.card) }
         s.copy(ref = ref, visible = visible, feePrompt = prompts.firstOrNull())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), _state.value)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), screenState.value)
 
     private var initialized = false
     private var added = 0
@@ -131,30 +131,30 @@ class SmsHistoryViewModel @AssistedInject constructor(
     }
 
     fun setRange(r: HistoryRange) {
-        _state.update { it.copy(range = r) }
+        screenState.update { it.copy(range = r) }
         load()
     }
 
     fun setCustom(from: LocalDate, to: LocalDate) {
-        _state.update { it.copy(custom = from to to, range = HistoryRange.CUSTOM) }
+        screenState.update { it.copy(custom = from to to, range = HistoryRange.CUSTOM) }
         load()
     }
 
     fun setKind(k: HistoryKind) {
-        _state.update { it.copy(kind = k) }
+        screenState.update { it.copy(kind = k) }
     }
 
     fun setCard(last4: String?) {
-        _state.update { it.copy(card = last4) }
+        screenState.update { it.copy(card = last4) }
     }
 
     fun onResultHandled() {
-        _state.update { it.copy(result = null) }
+        screenState.update { it.copy(result = null) }
     }
 
     private fun bounds(): Pair<Long, Long> {
         val now = System.currentTimeMillis()
-        val state = _state.value
+        val state = screenState.value
         return when (val r = state.range) {
             HistoryRange.GAP -> key.gapFrom to key.gapUntil
             HistoryRange.CUSTOM -> {
@@ -167,33 +167,33 @@ class SmsHistoryViewModel @AssistedInject constructor(
 
     private fun load() = viewModelScope.launch {
         val permitted = inbox.hasPermission()
-        _state.update { it.copy(rows = null, permitted = permitted) }
+        screenState.update { it.copy(rows = null, permitted = permitted) }
         if (!permitted) {
-            _state.update { it.copy(rows = emptyList()) }
+            screenState.update { it.copy(rows = emptyList()) }
             return@launch
         }
         val (from, until) = bounds()
         val rows = inbox.scanHistory(from, until)
         // Nothing is selected by default; keep only choices that are still on screen.
-        _state.update { s -> s.copy(rows = rows, selection = s.selection.filter { id -> rows.any { it.item.id == id } }.toSet()) }
+        screenState.update { s -> s.copy(rows = rows, selection = s.selection.filter { id -> rows.any { it.item.id == id } }.toSet()) }
     }
 
     fun toggle(row: HistoryRow) {
         if (row.cancelled) return
-        _state.update { s -> s.copy(selection = if (row.item.id in s.selection) s.selection - row.item.id else s.selection + row.item.id) }
+        screenState.update { s -> s.copy(selection = if (row.item.id in s.selection) s.selection - row.item.id else s.selection + row.item.id) }
     }
 
     /** Selects every visible row, or clears them when all are already selected. */
     fun selectAll(rows: List<HistoryRow>) {
         val ids = rows.filter { !it.cancelled }.map { it.item.id }.toSet()
-        _state.update { s -> s.copy(selection = if (ids.all { id -> id in s.selection }) s.selection - ids else s.selection + ids) }
+        screenState.update { s -> s.copy(selection = if (ids.all { id -> id in s.selection }) s.selection - ids else s.selection + ids) }
     }
 
     /** "Which account is the card ending 1111?": remembered for live capture too, and applied to these rows. */
     fun mapCard(card: CardRef, accountId: String) = viewModelScope.launch {
         sms.mapCard(card.bank, card.last4, accountId)
         val ref = refs.getRefData()
-        _state.update { s ->
+        screenState.update { s ->
             s.copy(
                 rows = s.rows?.map { row ->
                     if (row.item.bank == card.bank && row.item.cardLast4 == card.last4 && row.item.accountId == null) {
@@ -209,10 +209,10 @@ class SmsHistoryViewModel @AssistedInject constructor(
      * rows that still lack an account or category wait in the Review Queue.
      */
     fun add() = viewModelScope.launch {
-        val state = _state.value
+        val state = screenState.value
         val chosen = state.rows.orEmpty().filter { it.item.id in state.selection && !it.cancelled }.map { it.item }
         if (chosen.isEmpty() || state.adding) return@launch
-        _state.update { it.copy(adding = true) }
+        screenState.update { it.copy(adding = true) }
         val stored = sms.getItems(sms.keep(chosen))
         prefs.setSmsHistoryImport(SmsHistoryImport.DONE)
         if (gap) prefs.clearSmsGap()
@@ -232,21 +232,21 @@ class SmsHistoryViewModel @AssistedInject constructor(
             }
         }
         asks.values.forEach { group -> prompts += FeePrompt(group.map { it.first }, group.first().second) }
-        _feePrompts.value = prompts
+        feePrompts.value = prompts
         if (prompts.isEmpty()) finish()
     }
 
     /** A fee answer for the batch on screen; Cancel leaves those items in the Review Queue. */
     fun answerFee(choice: FeeChoice?) = viewModelScope.launch {
-        val prompt = _feePrompts.value.firstOrNull() ?: return@launch
-        _feePrompts.update { it.drop(1) }
+        val prompt = feePrompts.value.firstOrNull() ?: return@launch
+        feePrompts.update { it.drop(1) }
         if (choice == null) toQueue += prompt.items.size
         else prompt.items.forEach { if (approveSms(it.id, choice) is ApproveResult.Done) added++ else toQueue++ }
-        if (_feePrompts.value.isEmpty()) finish()
+        if (feePrompts.value.isEmpty()) finish()
     }
 
     private fun finish() {
-        _state.update { it.copy(adding = false, result = HistoryResult(added, toQueue)) }
+        screenState.update { it.copy(adding = false, result = HistoryResult(added, toQueue)) }
     }
 
     private companion object {

@@ -72,13 +72,13 @@ class TransactionsViewModel @Inject constructor(
     /** Waits for the real reference data, so the start screen never flashes the wrong sub-tab. */
     private val tab: Flow<SubTab> = combine(_tab, refs.getRefDataStream()) { t, r -> t ?: startTab(r) }.distinctUntilChanged()
 
-    private val _filter = MutableStateFlow(FilterCriteria())
-    private val _filterOpen = MutableStateFlow(false)
-    private val _selection = MutableStateFlow<Set<String>>(emptySet())
+    private val filter = MutableStateFlow(FilterCriteria())
+    private val filterOpen = MutableStateFlow(false)
+    private val selection = MutableStateFlow<Set<String>>(emptySet())
 
-    val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, _selection)
+    val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, selection)
 
-    private val data: StateFlow<HomeData> = combine(ref, home.selectedDate, tab, _filter) { r, d, t, f -> Params(r, d, t, f) }
+    private val data: StateFlow<HomeData> = combine(ref, home.selectedDate, tab, filter) { r, d, t, f -> Params(r, d, t, f) }
         .distinctUntilChanged()
         .flatMapLatest { p -> load(p) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeData())
@@ -95,7 +95,7 @@ class TransactionsViewModel @Inject constructor(
 
     val uiState: StateFlow<TransactionsUiState> = combine(
         combine(ref, tab, data, home.selectedDate, ::Quad),
-        combine(_filter, _filterOpen, _selection, ::Triple),
+        combine(filter, filterOpen, selection, ::Triple),
         combine(home.focus, home.lastSaved, home.savedMemo, ::Triple),
         budgetBlock,
     ) { (r, t, d, date), (filter, filterOpen, selection), (focus, lastSaved, savedMemo), budget ->
@@ -391,29 +391,29 @@ class TransactionsViewModel @Inject constructor(
     // ---- Filter ------------------------------------------------------------------------------------------------------
 
     fun setFilterOpen(open: Boolean) {
-        _filterOpen.value = open
-        if (!open) _filter.value = FilterCriteria()
+        filterOpen.value = open
+        if (!open) filter.value = FilterCriteria()
         if (open && (currentTab() == SubTab.TOTAL || currentTab() == SubTab.NOTE)) {
             _tab.value = startTab(ref.value)
         }
     }
 
     fun setFilter(f: FilterCriteria) {
-        _filter.value = f
+        filter.value = f
     }
 
     // ---- Multi-select ------------------------------------------------------------------------------------------------
 
     fun toggleSelect(id: String) {
-        _selection.value = if (id in _selection.value) _selection.value - id else _selection.value + id
+        selection.value = if (id in selection.value) selection.value - id else selection.value + id
     }
 
     fun setSelection(ids: Set<String>) {
-        _selection.value = ids
+        selection.value = ids
     }
 
     fun clearSelection() {
-        _selection.value = emptySet()
+        selection.value = emptySet()
     }
 
     companion object {

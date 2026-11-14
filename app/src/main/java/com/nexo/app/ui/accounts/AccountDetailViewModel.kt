@@ -91,17 +91,17 @@ class AccountDetailViewModel @AssistedInject constructor(
 
     /** Kept for event handlers that need the reference data synchronously. */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    private val _tab = MutableStateFlow(DetailTab.DAILY)
-    private val _anchor = MutableStateFlow(key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now())
-    private val _charts = MutableStateFlow(false)
-    private val _selection = MutableStateFlow<Set<String>>(emptySet())
+    private val tab = MutableStateFlow(DetailTab.DAILY)
+    private val anchor = MutableStateFlow(key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now())
+    private val charts = MutableStateFlow(false)
+    private val selection = MutableStateFlow<Set<String>>(emptySet())
     private val restored = MutableStateFlow(false)
-    val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, _selection)
+    val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, selection)
 
-    private val content = combine(ref, _tab, _anchor, _charts, transactions.getChangeStampStream()) { r, t, a, c, _ -> Quad(r, t, a, c) }
+    private val content = combine(ref, tab, anchor, charts, transactions.getChangeStampStream()) { r, t, a, c, _ -> Quad(r, t, a, c) }
         .mapLatest { compute(it.r, it.t, it.a, it.c).copy(ref = it.r, tab = it.t, anchor = it.a, charts = it.c) }
 
-    val uiState: StateFlow<AccountDetailUiState> = combine(content, _selection, restored) { c, ids, done -> c.copy(selection = ids, restored = done) }
+    val uiState: StateFlow<AccountDetailUiState> = combine(content, selection, restored) { c, ids, done -> c.copy(selection = ids, restored = done) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountDetailUiState())
 
     private data class Quad(val r: RefData, val t: DetailTab, val a: LocalDate, val c: Boolean)
@@ -245,40 +245,40 @@ class AccountDetailViewModel @AssistedInject constructor(
     }
 
     fun setTab(t: DetailTab) {
-        _tab.value = t
+        tab.value = t
     }
 
     fun openMonth(m: YearMonth) {
         val a = ref.value.accountById[key.accountId]
-        _anchor.value = engineFor(ref.value, a).monthPeriodFor(m).end
-        _tab.value = DetailTab.DAILY
+        anchor.value = engineFor(ref.value, a).monthPeriodFor(m).end
+        tab.value = DetailTab.DAILY
     }
 
     fun openYear(y: Int) {
         val a = ref.value.accountById[key.accountId]
-        _anchor.value = engineFor(ref.value, a).yearRange(y).start.plusDays(15)
-        _tab.value = DetailTab.MONTHLY
+        anchor.value = engineFor(ref.value, a).yearRange(y).start.plusDays(15)
+        tab.value = DetailTab.MONTHLY
     }
 
     fun setAnchor(d: LocalDate) {
-        _anchor.value = d
+        anchor.value = d
     }
 
     fun step(forward: Boolean) {
         val r = ref.value
         val e = engineFor(r, r.accountById[key.accountId])
-        _anchor.update { d ->
-            when (_tab.value) {
+        anchor.update { d ->
+            when (tab.value) {
                 DetailTab.DAILY -> e.monthPeriodContaining(d).let { if (forward) e.next(it).end else e.previous(it).end }
                 else -> e.yearRange(e.yearOf(d) + if (forward) 1 else -1).start.plusDays(15)
             }
         }
     }
 
-    fun toggleCharts() = _charts.update { !it }
-    fun toggleSelect(id: String) = _selection.update { if (id in it) it - id else it + id }
+    fun toggleCharts() = charts.update { !it }
+    fun toggleSelect(id: String) = selection.update { if (id in it) it - id else it + id }
     fun setSelection(ids: Set<String>) {
-        _selection.value = ids
+        selection.value = ids
     }
 
     fun restore() = viewModelScope.launch {

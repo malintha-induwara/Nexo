@@ -13,8 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 @Singleton
 class HomeState @Inject constructor() {
-    private val _selected = MutableStateFlow(LocalDate.now())
-    val selectedDate: StateFlow<LocalDate> = _selected.asStateFlow()
+    private val _selectedDate = MutableStateFlow(LocalDate.now())
+    val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
 
     private val _focus = MutableStateFlow<LocalDate?>(null)
 
@@ -41,11 +41,11 @@ class HomeState @Inject constructor() {
     }
 
     fun select(date: LocalDate) {
-        _selected.value = date
+        _selectedDate.value = date
     }
 
     fun focusOn(date: LocalDate) {
-        _selected.value = date
+        _selectedDate.value = date
         _focus.value = date
     }
 

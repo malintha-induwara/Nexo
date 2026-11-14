@@ -69,8 +69,7 @@ data class EntryForm(
     val inputOrder: InputOrder = InputOrder.ACCOUNT_FIRST,
     val presetAccountId: String? = null,
     val presetCategoryId: String? = null,
-    /** The foreign amount and rate behind an estimated amount; [fxFromApi] adds the attribution link. */
-    /** An SMS item booked at an FX estimate; the screen shows its rate note. */
+    /** The foreign amount and rate behind an SMS item booked at an FX estimate; [fxFromApi] adds the attribution link. */
     val fxNote: FxNote? = null,
     val fxFromApi: Boolean = false,
     val scan: ScanUi? = null,

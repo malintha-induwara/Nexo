@@ -59,12 +59,12 @@ class AccountsViewModel @Inject constructor(
 ) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    private val _query = MutableStateFlow(AccountsQuery())
+    private val query = MutableStateFlow(AccountsQuery())
 
-    private val data = combine(ref, _query, transactions.getChangeStampStream()) { r, q, _ -> r to q }
+    private val data = combine(ref, query, transactions.getChangeStampStream()) { r, q, _ -> r to q }
         .mapLatest { (r, q) -> compute(r, q) }
 
-    val uiState: StateFlow<AccountsUiState> = combine(ref, prefs.getDeviceSettingsStream(), _query, data, ::AccountsUiState)
+    val uiState: StateFlow<AccountsUiState> = combine(ref, prefs.getDeviceSettingsStream(), query, data, ::AccountsUiState)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountsUiState())
 
     fun range(r: RefData, q: AccountsQuery): DateRange? {
@@ -107,15 +107,15 @@ class AccountsViewModel @Inject constructor(
         return AccountsData(true, figures, AccountsSummaryCalculator.summarize(r, figures, unassigned), changes, unassigned, range)
     }
 
-    fun setMode(m: AccountsMode) = _query.update {
+    fun setMode(m: AccountsMode) = query.update {
         val month = ref.value.settings.periods.monthPeriodContaining(LocalDate.now())
         it.copy(mode = m, anchor = LocalDate.now(), from = month.start, to = month.end)
     }
 
-    fun setRange(from: LocalDate, to: LocalDate) = _query.update { it.copy(from = from, to = to) }
-    fun setAnchor(d: LocalDate) = _query.update { it.copy(anchor = d) }
+    fun setRange(from: LocalDate, to: LocalDate) = query.update { it.copy(from = from, to = to) }
+    fun setAnchor(d: LocalDate) = query.update { it.copy(anchor = d) }
 
-    fun step(forward: Boolean) = _query.update { q ->
+    fun step(forward: Boolean) = query.update { q ->
         val e = ref.value.settings.periods
         val d = q.anchor
         q.copy(
@@ -128,7 +128,7 @@ class AccountsViewModel @Inject constructor(
         )
     }
 
-    fun goToday() = _query.update { it.copy(anchor = LocalDate.now()) }
+    fun goToday() = query.update { it.copy(anchor = LocalDate.now()) }
 
     fun toggleCollapsed(groupId: String) = viewModelScope.launch {
         val cur = prefs.getDeviceSettings().collapsedGroups

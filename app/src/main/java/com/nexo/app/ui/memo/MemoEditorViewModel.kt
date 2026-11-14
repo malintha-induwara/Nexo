@@ -50,8 +50,8 @@ class MemoEditorViewModel @AssistedInject constructor(
         fun create(key: MemoEditorKey): MemoEditorViewModel
     }
 
-    private val _ui = MutableStateFlow(MemoEditorUiState())
-    val uiState: StateFlow<MemoEditorUiState> = _ui.asStateFlow()
+    private val _uiState = MutableStateFlow(MemoEditorUiState())
+    val uiState: StateFlow<MemoEditorUiState> = _uiState.asStateFlow()
     private var original: Memo? = null
     private var initialized = false
 
@@ -63,7 +63,7 @@ class MemoEditorViewModel @AssistedInject constructor(
         viewModelScope.launch {
             val m = key.memoId?.let { memos.getMemo(it) }
             original = m
-            _ui.value = if (m != null) {
+            _uiState.value = if (m != null) {
                 MemoEditorUiState(true, m.id, m.title, m.content.trimEnd('\n'), LocalDate.parse(m.date), m.color, m.pinned, m.pinnedAt)
             } else {
                 MemoEditorUiState(loaded = true, date = key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now())
@@ -71,15 +71,15 @@ class MemoEditorViewModel @AssistedInject constructor(
         }
     }
 
-    fun setTitle(v: String) = _ui.update { it.copy(title = v) }
-    fun setContent(v: String) = _ui.update { it.copy(content = v) }
-    fun setDate(d: LocalDate) = _ui.update { it.copy(date = d) }
-    fun setColor(c: MemoColor) = _ui.update { it.copy(color = c) }
-    fun togglePin() = _ui.update { if (it.pinned) it.copy(pinned = false, pinnedAt = 0) else it.copy(pinned = true, pinnedAt = System.currentTimeMillis()) }
+    fun setTitle(v: String) = _uiState.update { it.copy(title = v) }
+    fun setContent(v: String) = _uiState.update { it.copy(content = v) }
+    fun setDate(d: LocalDate) = _uiState.update { it.copy(date = d) }
+    fun setColor(c: MemoColor) = _uiState.update { it.copy(color = c) }
+    fun togglePin() = _uiState.update { if (it.pinned) it.copy(pinned = false, pinnedAt = 0) else it.copy(pinned = true, pinnedAt = System.currentTimeMillis()) }
 
     /** Saved on back; an emptied existing memo is deleted. */
     fun saveAndClose() = viewModelScope.launch {
-        val s = _ui.value
+        val s = _uiState.value
         val empty = s.title.isBlank() && s.content.isBlank()
         val o = original
         when {
@@ -105,13 +105,13 @@ class MemoEditorViewModel @AssistedInject constructor(
                 home.focusOn(s.date)
             }
         }
-        _ui.update { it.copy(closed = true) }
+        _uiState.update { it.copy(closed = true) }
     }
 
     fun delete() = viewModelScope.launch {
         original?.let { memos.delete(it.id) }
-        _ui.update { it.copy(closed = true) }
+        _uiState.update { it.copy(closed = true) }
     }
 
-    fun onClosed() = _ui.update { it.copy(closed = false) }
+    fun onClosed() = _uiState.update { it.copy(closed = false) }
 }

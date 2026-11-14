@@ -77,9 +77,9 @@ class AccountFormViewModel @AssistedInject constructor(
 
     /** Kept for event handlers that need the reference data synchronously. */
     private val ref = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    private val _ui = MutableStateFlow(AccountFormUiState())
+    private val form = MutableStateFlow(AccountFormUiState())
 
-    val uiState: StateFlow<AccountFormUiState> = combine(_ui, ref) { s, r -> s.copy(ref = r) }
+    val uiState: StateFlow<AccountFormUiState> = combine(form, ref) { s, r -> s.copy(ref = r) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountFormUiState())
 
     private var rows: List<Transaction> = emptyList()
@@ -97,11 +97,11 @@ class AccountFormViewModel @AssistedInject constructor(
             original = a
             if (a == null) {
                 val g = key.groupId ?: r.groups.firstOrNull { it.status == GroupStatus.ACTIVE }?.id
-                _ui.value = AccountFormUiState(loaded = true, groupId = g, name = key.presetName ?: "", currencyId = r.mainCurrency.id, originalCurrencyId = r.mainCurrency.id, pickGroup = key.groupId == null)
+                form.value = AccountFormUiState(loaded = true, groupId = g, name = key.presetName ?: "", currencyId = r.mainCurrency.id, originalCurrencyId = r.mainCurrency.id, pickGroup = key.groupId == null)
             } else {
                 rows = transactions.getAllForAccounts(listOf(a.id) + r.linkedDebitCards(a.id).map { it.id })
                 val bal = Money.round(balanceIn(r, a.currencyId, a), r.currency(a.currencyId).decimals)
-                _ui.value = AccountFormUiState(
+                form.value = AccountFormUiState(
                     loaded = true, isNew = false, id = a.id, groupId = a.groupId, name = a.name, amount = bal, balance = bal,
                     currencyId = a.currencyId, originalCurrencyId = a.currencyId, linkedAccountId = a.linkedAccountId, description = a.description,
                     settlementDay = a.settlementDay, paymentDay = a.paymentDay, includeInTotals = a.includeInTotals, hidden = a.status == AccountStatus.HIDDEN,
@@ -123,23 +123,23 @@ class AccountFormViewModel @AssistedInject constructor(
         )
     }
 
-    fun groupType(): GroupType = ref.value.groupById[_ui.value.groupId]?.type ?: GroupType.NORMAL
+    fun groupType(): GroupType = ref.value.groupById[form.value.groupId]?.type ?: GroupType.NORMAL
 
-    fun setGroup(id: String) = _ui.update { it.copy(groupId = id, pickGroup = false) }
-    fun dismissGroupPicker() = _ui.update { it.copy(pickGroup = false) }
-    fun reopenGroupPicker() = _ui.update { it.copy(pickGroup = true) }
-    fun setName(v: String) = _ui.update { it.copy(name = v) }
-    fun setAmount(v: Double?) = _ui.update { it.copy(amount = v ?: 0.0) }
-    fun setDescription(v: String) = _ui.update { it.copy(description = v) }
-    fun setSettlement(v: Int) = _ui.update { it.copy(settlementDay = if (v in 1..31) v else 1) }
-    fun setPayment(v: Int) = _ui.update { it.copy(paymentDay = if (v in 1..31) v else 1) }
-    fun setInclude(v: Boolean) = _ui.update { it.copy(includeInTotals = v) }
-    fun toggleHidden() = _ui.update { it.copy(hidden = !it.hidden) }
+    fun setGroup(id: String) = form.update { it.copy(groupId = id, pickGroup = false) }
+    fun dismissGroupPicker() = form.update { it.copy(pickGroup = false) }
+    fun reopenGroupPicker() = form.update { it.copy(pickGroup = true) }
+    fun setName(v: String) = form.update { it.copy(name = v) }
+    fun setAmount(v: Double?) = form.update { it.copy(amount = v ?: 0.0) }
+    fun setDescription(v: String) = form.update { it.copy(description = v) }
+    fun setSettlement(v: Int) = form.update { it.copy(settlementDay = if (v in 1..31) v else 1) }
+    fun setPayment(v: Int) = form.update { it.copy(paymentDay = if (v in 1..31) v else 1) }
+    fun setInclude(v: Boolean) = form.update { it.copy(includeInTotals = v) }
+    fun toggleHidden() = form.update { it.copy(hidden = !it.hidden) }
 
     fun setCurrency(id: String) {
         val r = ref.value
         val a = original
-        _ui.update { s ->
+        form.update { s ->
             if (a == null) s.copy(currencyId = id)
             else {
                 val bal = Money.round(balanceIn(r, id, a), r.currency(id).decimals)
@@ -150,7 +150,7 @@ class AccountFormViewModel @AssistedInject constructor(
 
     fun setLinked(id: String?) {
         val r = ref.value
-        _ui.update { s ->
+        form.update { s ->
             var n = s.copy(linkedAccountId = id)
             // A debit card takes its payment account's currency when that is not the main currency.
             if (groupType() == GroupType.DEBIT_CARD && id != null) {
@@ -162,7 +162,7 @@ class AccountFormViewModel @AssistedInject constructor(
     }
 
     fun save(currencyConfirmed: Boolean = false) {
-        val s = _ui.value
+        val s = form.value
         val r = ref.value
         if (s.name.isBlank()) {
             showMessage(R.string.no_title)
@@ -177,7 +177,7 @@ class AccountFormViewModel @AssistedInject constructor(
             }
         }
         if (!s.isNew && s.currencyId != s.originalCurrencyId && !currencyConfirmed) {
-            _ui.update { it.copy(confirmCurrency = true) }
+            form.update { it.copy(confirmCurrency = true) }
             return
         }
         viewModelScope.launch {
@@ -201,30 +201,30 @@ class AccountFormViewModel @AssistedInject constructor(
             )
             repo.saveAccount(account)
             val diff = if (type == GroupType.DEBIT_CARD) 0.0 else Money.round(s.amount - (if (s.isNew) 0.0 else s.balance), r.currency(s.currencyId).decimals)
-            if (diff != 0.0) _ui.update { it.copy(difference = diff, confirmCurrency = false) }
-            else _ui.update { it.copy(close = AccountFormClose.BACK) }
+            if (diff != 0.0) form.update { it.copy(difference = diff, confirmCurrency = false) }
+            else form.update { it.copy(close = AccountFormClose.BACK) }
         }
     }
 
     fun recordDifference(asIncomeExpense: Boolean) {
-        val s = _ui.value
+        val s = form.value
         val diff = s.difference ?: return
         viewModelScope.launch {
             transactions.recordBalanceDifference(s.id, diff, asIncomeExpense, s.description)
-            _ui.update { it.copy(difference = null, close = AccountFormClose.BACK) }
+            form.update { it.copy(difference = null, close = AccountFormClose.BACK) }
         }
     }
 
-    fun dismissCurrency() = _ui.update { it.copy(confirmCurrency = false) }
+    fun dismissCurrency() = form.update { it.copy(confirmCurrency = false) }
 
     fun delete() = viewModelScope.launch {
-        repo.setStatus(_ui.value.id, AccountStatus.DELETED)
-        _ui.update { it.copy(close = AccountFormClose.TO_MAIN) }
+        repo.setStatus(form.value.id, AccountStatus.DELETED)
+        form.update { it.copy(close = AccountFormClose.TO_MAIN) }
     }
 
-    private fun showMessage(@StringRes text: Int) = _ui.update { it.copy(userMessage = UserMessage(UiText.of(text))) }
+    private fun showMessage(@StringRes text: Int) = form.update { it.copy(userMessage = UserMessage(UiText.of(text))) }
 
-    fun onUserMessageShown(id: Long) = _ui.update { if (it.userMessage?.id == id) it.copy(userMessage = null) else it }
+    fun onUserMessageShown(id: Long) = form.update { if (it.userMessage?.id == id) it.copy(userMessage = null) else it }
 
-    fun onCloseHandled() = _ui.update { it.copy(close = null) }
+    fun onCloseHandled() = form.update { it.copy(close = null) }
 }

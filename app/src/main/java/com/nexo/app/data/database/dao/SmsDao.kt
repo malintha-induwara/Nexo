@@ -188,5 +188,3 @@ interface SmsDao {
     )
     suspend fun earliestBoard(ccy: String): List<FxSnapshotEntity>
 }
-
-/** Live capture's [com.nexo.app.data.sms.SmsStore]. */

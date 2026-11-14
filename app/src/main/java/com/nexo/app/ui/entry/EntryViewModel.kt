@@ -99,20 +99,20 @@ class EntryViewModel @AssistedInject constructor(
         fun create(key: EntryKey): EntryViewModel
     }
 
-    private val _ui = MutableStateFlow(EntryForm())
+    private val form = MutableStateFlow(EntryForm())
 
     /** Kept for event handlers that need the reference data synchronously. */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
 
-    private val _suggestions = MutableStateFlow<List<NoteSuggestion>>(emptyList())
+    private val suggestions = MutableStateFlow<List<NoteSuggestion>>(emptyList())
 
-    private val _userMessage = MutableStateFlow<UserMessage?>(null)
-    private val _navigation = MutableStateFlow<EntryNavigation?>(null)
+    private val userMessage = MutableStateFlow<UserMessage?>(null)
+    private val navigation = MutableStateFlow<EntryNavigation?>(null)
 
     val uiState: StateFlow<EntryUiState> = combine(
-        combine(_ui, ref, prefs.getDeviceSettingsStream(), ::Triple),
-        combine(_suggestions, tags.getTagsStream(), ::Pair),
-        combine(_userMessage, _navigation, ::Pair),
+        combine(form, ref, prefs.getDeviceSettingsStream(), ::Triple),
+        combine(suggestions, tags.getTagsStream(), ::Pair),
+        combine(userMessage, navigation, ::Pair),
     ) { (form, r, device), (suggestions, tagList), (message, navigation) ->
         EntryUiState(form, r, device, suggestions, tagList, message, navigation)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EntryUiState())
@@ -146,39 +146,39 @@ class EntryViewModel @AssistedInject constructor(
                 else -> newEntry(r, base)
             }
             val unassigned = if (key.reviewUnassigned) transactions.getUnassigned(loaded.date.toIsoText()).size else 0
-            _ui.value = loaded.copy(loaded = true, unassignedCount = unassigned)
-            originalState = _ui.value
+            form.value = loaded.copy(loaded = true, unassignedCount = unassigned)
+            originalState = form.value
             if (!loaded.viewing && key.mode != EntryMode.PAY_CARD) advance()
             loadSuggestions(r)
         }
         viewModelScope.launch {
             home.pickedFavorite.filterNotNull().collect { id ->
                 home.pickedFavoriteConsumed()
-                _ui.value = applyFavorite(refs.getRefData(), _ui.value, id, keepDate = true)
+                form.value = applyFavorite(refs.getRefData(), form.value, id, keepDate = true)
             }
         }
     }
 
     fun onUserMessageShown(id: Long) {
-        _userMessage.update { if (it?.id == id) null else it }
+        userMessage.update { if (it?.id == id) null else it }
     }
 
     fun onNavigationHandled() {
-        _navigation.value = null
+        navigation.value = null
     }
 
     private fun showMessage(@StringRes text: Int, arg: Int? = null) {
-        _userMessage.value = UserMessage(UiText.Resource(text, listOfNotNull(arg)))
+        userMessage.value = UserMessage(UiText.Resource(text, listOfNotNull(arg)))
     }
 
     /** Leaves the form; with [focusDate] the Transactions tab scrolls there. */
     private fun close(focusDate: LocalDate?) {
         focusDate?.let(home::focusOn)
-        _navigation.value = EntryNavigation.Close
+        navigation.value = EntryNavigation.Close
     }
 
     private fun open(key: EntryKey, replace: Boolean = true) {
-        _navigation.value = EntryNavigation.Open(key, replace)
+        navigation.value = EntryNavigation.Open(key, replace)
     }
 
     fun isPhotoSupported(uri: Uri): Boolean = photos.isSupported(uri)
@@ -201,7 +201,7 @@ class EntryViewModel @AssistedInject constructor(
         if (!r.settings.autocomplete) return
         val cutoff = maxOf(System.currentTimeMillis() - 456L * 24 * 3600 * 1000, r.settings.autocompleteResetAt)
         val cutDate = Instant.ofEpochMilli(cutoff).atZone(ZoneId.systemDefault()).toLocalDate().toIsoText()
-        _suggestions.value = transactions.getNoteUsage(cutDate, cutoff).map { NoteSuggestion(it.note, it.count, it.lastDate) }
+        suggestions.value = transactions.getNoteUsage(cutDate, cutoff).map { NoteSuggestion(it.note, it.count, it.lastDate) }
     }
 
     private fun newEntry(r: RefData, base: EntryForm): EntryForm {
@@ -449,13 +449,13 @@ class EntryViewModel @AssistedInject constructor(
     // ---- Field changes -------------------------------------------------------------------------------------------------
 
     private fun edit(transform: (EntryForm) -> EntryForm) {
-        _ui.update { s -> transform(if (s.viewing) s.copy(viewing = false) else s) }
+        form.update { s -> transform(if (s.viewing) s.copy(viewing = false) else s) }
     }
 
-    fun enterEdit() = _ui.update { it.copy(viewing = false) }
+    fun enterEdit() = form.update { it.copy(viewing = false) }
 
     fun revert() {
-        originalState?.let { _ui.value = it.copy(viewing = true) }
+        originalState?.let { form.value = it.copy(viewing = true) }
     }
 
     fun setType(t: EntryType) {
@@ -475,7 +475,7 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     fun openPanel(p: Panel) {
-        if (p == Panel.CATEGORY && (_ui.value.isBalance)) return
+        if (p == Panel.CATEGORY && (form.value.isBalance)) return
         edit { s ->
             val pad = when (p) {
                 Panel.AMOUNT -> PadInput("", refCurrencyDecimals(s.currencyId), allowSign = true)
@@ -486,7 +486,7 @@ class EntryViewModel @AssistedInject constructor(
         }
     }
 
-    fun closePanel() = _ui.update { it.copy(panel = Panel.NONE) }
+    fun closePanel() = form.update { it.copy(panel = Panel.NONE) }
 
     private fun refCurrencyDecimals(id: String) = ref.value.currency(id).decimals
 
@@ -503,7 +503,7 @@ class EntryViewModel @AssistedInject constructor(
             }
         }
         viewModelScope.launch {
-            if (_ui.value.isTransfer && _ui.value.repeat == RepeatType.NONE && !_ui.value.feeLoaded) _ui.value = loadLastFee(_ui.value)
+            if (form.value.isTransfer && form.value.repeat == RepeatType.NONE && !form.value.feeLoaded) form.value = loadLastFee(form.value)
             advance()
         }
     }
@@ -514,7 +514,7 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     fun swap() {
-        val s = _ui.value
+        val s = form.value
         if (s.accountId == null || s.toAccountId == null) {
             openPanel(if (s.accountId == null) Panel.ACCOUNT else Panel.TO_ACCOUNT)
             return
@@ -524,7 +524,7 @@ class EntryViewModel @AssistedInject constructor(
             if (it.amount == null) n = n.copy(currencyId = ref.value.accountCurrency(n.accountId).id)
             n
         }
-        viewModelScope.launch { if (_ui.value.repeat == RepeatType.NONE) _ui.value = loadLastFee(_ui.value) }
+        viewModelScope.launch { if (form.value.repeat == RepeatType.NONE) form.value = loadLastFee(form.value) }
     }
 
     /** Pre-fill the fee of the most recent transfer between the same accounts. */
@@ -537,7 +537,7 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     fun padKey(k: PadKey) {
-        val s = _ui.value
+        val s = form.value
         val r = s.pad.press(k)
         val forFee = s.panel == Panel.FEE
         val current = if (forFee) s.feeAmount else s.amount
@@ -548,12 +548,12 @@ class EntryViewModel @AssistedInject constructor(
             r.input.buffer.isEmpty() && s.pad.buffer.isEmpty() -> current
             else -> null
         }
-        _ui.value = (if (forFee) s.copy(feeAmount = value?.let { abs(it) }) else s.copy(amount = value)).copy(pad = r.input, viewing = false)
+        form.value = (if (forFee) s.copy(feeAmount = value?.let { abs(it) }) else s.copy(amount = value)).copy(pad = r.input, viewing = false)
     }
 
     fun padDone() {
         val r = ref.value
-        _ui.update { s ->
+        form.update { s ->
             if (s.panel == Panel.FEE) s.copy(feeAmount = s.feeAmount?.let { Money.round(it, r.currency(s.feeCurrencyId).decimals) })
             else s.copy(amount = s.amount?.let { Money.round(it, r.currency(s.currencyId).decimals) })
         }
@@ -561,14 +561,14 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     fun setPadCurrency(id: String) {
-        _ui.update { s ->
+        form.update { s ->
             if (s.panel == Panel.FEE) s.copy(feeCurrencyId = id, pad = PadInput("", refCurrencyDecimals(id), false))
             else s.copy(currencyId = id, rate = null, pad = PadInput("", refCurrencyDecimals(id), true))
         }
     }
 
     fun calculatorResult(v: BigDecimal) {
-        _ui.update { s ->
+        form.update { s ->
             val d = refCurrencyDecimals(if (s.panel == Panel.FEE) s.feeCurrencyId else s.currencyId)
             val value = v.setScale(d, RoundingMode.HALF_UP).toDouble()
             if (s.panel == Panel.FEE) s.copy(feeAmount = abs(value), pad = s.pad.copy(buffer = PadInput.plain(abs(value), d)))
@@ -578,7 +578,7 @@ class EntryViewModel @AssistedInject constructor(
 
     /** Exchange-rate sheet: either the main amount or the rate is edited. */
     fun setMainAmount(main: Double) {
-        val s = _ui.value
+        val s = form.value
         val amount = s.amount ?: return
         if (amount == 0.0) return
         val rate = abs(Money.divide(main, amount, 10))
@@ -610,7 +610,7 @@ class EntryViewModel @AssistedInject constructor(
     /** Reads [uri] on the device; the confirm sheet shows while it runs and then shows what was read. */
     fun scanReceipt(uri: Uri) {
         scanJob?.cancel()
-        _ui.update { it.copy(scan = ScanUi.Reading(uri), panel = Panel.NONE) }
+        form.update { it.copy(scan = ScanUi.Reading(uri), panel = Panel.NONE) }
         scanJob = viewModelScope.launch {
             val read = try {
                 receipts.scan(uri)
@@ -622,17 +622,17 @@ class EntryViewModel @AssistedInject constructor(
                 null
             }
             if (read == null) {
-                _ui.update { it.copy(scan = null) }
+                form.update { it.copy(scan = null) }
                 showMessage(R.string.receipt_unreadable)
             } else {
-                _ui.update { s -> if (s.scan?.uri == uri) s.copy(scan = ScanUi.Done(uri, read)) else s }
+                form.update { s -> if (s.scan?.uri == uri) s.copy(scan = ScanUi.Done(uri, read)) else s }
             }
         }
     }
 
     fun dismissScan() {
         scanJob?.cancel()
-        _ui.update { it.copy(scan = null) }
+        form.update { it.copy(scan = null) }
     }
 
     /**
@@ -641,7 +641,7 @@ class EntryViewModel @AssistedInject constructor(
      * Nothing is saved until the entry is.
      */
     fun applyReceipt(amount: Double?, useDate: Boolean, useMerchant: Boolean) {
-        val done = _ui.value.scan as? ScanUi.Done ?: return
+        val done = form.value.scan as? ScanUi.Done ?: return
         val read = done.read
         edit { s ->
             val photo = PhotoItem.Picked(done.uri.toString())
@@ -682,23 +682,23 @@ class EntryViewModel @AssistedInject constructor(
 
     fun clearRepInst() = edit { it.copy(repeat = RepeatType.NONE, installments = 0, repeatEnd = null) }
 
-    fun dismissRepeatConfirm() = _ui.update { it.copy(confirmRepeat = false) }
-    fun setAskDelete(v: Boolean) = _ui.update { it.copy(askDelete = v) }
+    fun dismissRepeatConfirm() = form.update { it.copy(confirmRepeat = false) }
+    fun setAskDelete(v: Boolean) = form.update { it.copy(askDelete = v) }
 
     /** Opens the first empty field in visual order. */
     private fun advance(fromPad: Boolean = false) {
-        val s = _ui.value
+        val s = form.value
         if (s.viewing) return
         val next = s.fields.firstOrNull { s.isEmpty(it) && !(it == Field.CATEGORY && s.isBalance) }
         if (next != null) {
             if (fromPad && (next == Field.AMOUNT || next == Field.FEE)) {
-                _ui.update { it.copy(panel = Panel.NONE) }
+                form.update { it.copy(panel = Panel.NONE) }
                 return
             }
             openPanel(EntryForm.panelFor(next))
         } else {
             val focus = !s.filledOnce && s.note.isEmpty()
-            _ui.update { it.copy(panel = Panel.NONE, filledOnce = true, noteFocusRequest = if (focus) it.noteFocusRequest + 1 else it.noteFocusRequest) }
+            form.update { it.copy(panel = Panel.NONE, filledOnce = true, noteFocusRequest = if (focus) it.noteFocusRequest + 1 else it.noteFocusRequest) }
         }
     }
 
@@ -713,7 +713,7 @@ class EntryViewModel @AssistedInject constructor(
         }
         val accountFirst = s.inputOrder == InputOrder.ACCOUNT_FIRST
         val checks = mutableListOf<() -> Boolean>()
-        val accountCheck = { s.accountId != null && r.accountById.containsKey(s.accountId) || fail(R.string.select_specific_asset, Panel.ACCOUNT) }
+        val accountCheck = { (s.accountId != null && r.accountById.containsKey(s.accountId)) || fail(R.string.select_specific_asset, Panel.ACCOUNT) }
         val secondCheck = {
             if (s.isTransfer) s.toAccountId != null || fail(R.string.select_specific_asset, Panel.TO_ACCOUNT)
             else s.isBalance || s.isBalanceAdjustment || (s.categoryId != null && r.categoryById.containsKey(s.categoryId)) || fail(R.string.select_specific_category, Panel.CATEGORY)
@@ -732,23 +732,23 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     fun save(continueAfter: Boolean = false) {
-        val s = _ui.value
+        val s = form.value
         if (s.saving || !validate(s)) return
         if (s.repeat != RepeatType.NONE && !s.repeatMode) {
-            _ui.update { it.copy(confirmRepeat = true, panel = Panel.NONE) }
+            form.update { it.copy(confirmRepeat = true, panel = Panel.NONE) }
             return
         }
         if (s.repeatMode) {
             saveRule()
             return
         }
-        _ui.update { it.copy(saving = true) }
+        form.update { it.copy(saving = true) }
         viewModelScope.launch {
-            runCatching { transactions.save(withBankFeeCategory(draft(_ui.value))) }
+            runCatching { transactions.save(withBankFeeCategory(draft(form.value))) }
                 .onSuccess { id ->
                     home.saved(id)
                     if (key.mode == EntryMode.SMS && key.smsItemId != null) {
-                        val s = _ui.value
+                        val s = form.value
                         // Changing an estimate's amount records what the bank actually charged.
                         smsItem?.let { item ->
                             val estimate = item.estimatedAmount
@@ -761,31 +761,31 @@ class EntryViewModel @AssistedInject constructor(
                         smsItem?.let { item -> if (fee != null) smsRepository.recordFee(item, bankAccount, FeeChoice(fee)) }
                     }
                     linkedEstimate?.let { item ->
-                        val amount = _ui.value.amount
+                        val amount = form.value.amount
                         if (key.mode == EntryMode.EDIT && amount != null && amount != original?.amount) smsRepository.setAmount(item.id, amount)
                     }
                     afterSave(continueAfter)
                 }
                 .onFailure {
-                    _ui.update { st -> st.copy(saving = false) }
+                    form.update { st -> st.copy(saving = false) }
                     showMessage(R.string.save_failed)
                 }
         }
     }
 
     fun confirmRepeatSave() {
-        _ui.update { it.copy(confirmRepeat = false) }
+        form.update { it.copy(confirmRepeat = false) }
         saveRule()
     }
 
     private fun saveRule() {
-        val s = _ui.value
+        val s = form.value
         if (s.repeatMode && s.repeat == RepeatType.NONE) {
             close(null)
             return
         }
         val r = ref.value
-        _ui.update { it.copy(saving = true) }
+        form.update { it.copy(saving = true) }
         viewModelScope.launch {
             val now = System.currentTimeMillis()
             val cur = r.currency(s.currencyId)
@@ -837,7 +837,7 @@ class EntryViewModel @AssistedInject constructor(
     )
 
     private suspend fun afterSave(continueAfter: Boolean) {
-        val s = _ui.value
+        val s = form.value
         if (key.reviewUnassigned) {
             // Bulk-assign other unassigned entries with the same note.
             val orig = original
@@ -858,7 +858,7 @@ class EntryViewModel @AssistedInject constructor(
             val r = refs.getRefData()
             val fresh = newEntry(r, EntryForm(inputOrder = r.settings.inputOrder, currencyId = r.mainCurrency.id, feeCurrencyId = r.mainCurrency.id))
                 .copy(type = s.type, date = s.date, time = s.time, loaded = true)
-            _ui.value = fresh
+            form.value = fresh
             advance()
             showMessage(R.string.saved)
         } else {
@@ -867,7 +867,7 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     private suspend fun openNextUnassigned() {
-        val s = _ui.value
+        val s = form.value
         val next = transactions.getUnassigned(s.date.toIsoText()).firstOrNull { it.id != s.originalId }
         if (next == null) close(s.date)
         else open(EntryKey(mode = EntryMode.EDIT, txId = next.id, reviewUnassigned = true))
@@ -876,10 +876,10 @@ class EntryViewModel @AssistedInject constructor(
     fun skip() = viewModelScope.launch { openNextUnassigned() }
 
     fun delete(wholeGroup: Boolean) {
-        val id = _ui.value.originalId ?: return
+        val id = form.value.originalId ?: return
         viewModelScope.launch {
             transactions.delete(listOf(id), wholeGroup)
-            if (key.reviewUnassigned) openNextUnassigned() else close(_ui.value.date)
+            if (key.reviewUnassigned) openNextUnassigned() else close(form.value.date)
         }
     }
 
@@ -893,7 +893,7 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     fun copy(withToday: Boolean) {
-        val id = _ui.value.originalId ?: return
+        val id = form.value.originalId ?: return
         viewModelScope.launch {
             prefs.setCopyWithToday(withToday)
             open(EntryKey(mode = EntryMode.COPY, txId = id, copyWithToday = withToday))

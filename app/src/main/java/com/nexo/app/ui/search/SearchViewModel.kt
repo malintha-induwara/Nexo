@@ -77,19 +77,19 @@ class SearchViewModel @Inject constructor(
 ) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    private val _criteria = MutableStateFlow(SearchCriteria())
-    private val _executed = MutableStateFlow(SearchCriteria())
-    private val _selection = MutableStateFlow<Set<String>>(emptySet())
+    private val criteria = MutableStateFlow(SearchCriteria())
+    private val executed = MutableStateFlow(SearchCriteria())
+    private val selection = MutableStateFlow<Set<String>>(emptySet())
 
-    val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, _selection)
+    val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, selection)
 
-    private val result: Flow<SearchResult> = combine(ref, _executed, transactions.getChangeStampStream()) { r, c, _ -> r to c }
+    private val result: Flow<SearchResult> = combine(ref, executed, transactions.getChangeStampStream()) { r, c, _ -> r to c }
         .mapLatest { (r, c) -> run(r, c) }
 
     /** Note autocomplete, read once the screen starts collecting. */
     private val suggestions: Flow<List<NoteSuggestion>> = flow { emit(loadSuggestions()) }
 
-    val uiState: StateFlow<SearchUiState> = combine(ref, _criteria, result, _selection, suggestions) { r, c, res, selection, notes ->
+    val uiState: StateFlow<SearchUiState> = combine(ref, criteria, result, selection, suggestions) { r, c, res, selection, notes ->
         SearchUiState(r, c, res, selection, notes)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
 
@@ -159,14 +159,14 @@ class SearchViewModel @Inject constructor(
         )
     }
 
-    fun setQuery(q: String) = _criteria.update { it.copy(query = q) }
+    fun setQuery(q: String) = criteria.update { it.copy(query = q) }
     fun execute() {
-        _executed.value = _criteria.value
+        executed.value = criteria.value
     }
 
     /** Criteria changes search immediately. */
     fun update(transform: (SearchCriteria) -> SearchCriteria) {
-        _criteria.update(transform)
+        criteria.update(transform)
         execute()
     }
 
@@ -184,10 +184,10 @@ class SearchViewModel @Inject constructor(
     }
 
     fun toggleSelect(id: String) {
-        _selection.value = if (id in _selection.value) _selection.value - id else _selection.value + id
+        selection.value = if (id in selection.value) selection.value - id else selection.value + id
     }
 
     fun setSelection(ids: Set<String>) {
-        _selection.value = ids
+        selection.value = ids
     }
 }
