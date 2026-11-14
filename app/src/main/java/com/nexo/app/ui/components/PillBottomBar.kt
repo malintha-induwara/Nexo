@@ -10,9 +10,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -44,14 +44,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.coroutineScope
@@ -124,26 +125,76 @@ fun PillBottomBar(
                 Box(
                     Modifier
                         .align(Alignment.CenterStart)
-                        .offset { IntOffset((thumbX.value + THUMB_INSET.toPx()).toInt(), 0) }
-                        .width(with(density) { (thumbW.value.toDp() - THUMB_INSET * 2).coerceAtLeast(0.dp) })
+                        .offset { IntOffset(thumbX.value.toInt(), 0) }
+                        .width(with(density) { thumbW.value.toDp() })
                         .fillMaxHeight()
                         .padding(vertical = THUMB_INSET)
                         .clip(CircleShape)
                         .background(thumbColor),
                 )
             }
-            Row(Modifier.fillMaxWidth().fillMaxHeight().selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-                items.forEachIndexed { i, item ->
-                    if (i == 2) AddButton(onAdd, addLabel, Modifier.weight(1f))
-                    BarTab(
-                        item = item,
-                        selected = i == selected,
-                        onClick = {
-                            if (i != selected) haptics.tick()
-                            onSelect(i)
-                        },
-                        modifier = Modifier.weight(1f).onPlaced { c -> bounds[i] = c.positionInParent().x to c.size.width.toFloat() },
-                    )
+            // Tabs are sized by their labels and the highlight hugs the label, so a long one ("Accounts", or any label at
+            // a large font size) stays inside it. The add button stays centred while both sides fit; when space is
+            // tight the label padding and then the add slot give way before any label is shortened.
+            Layout(
+                modifier = Modifier.fillMaxSize().selectableGroup(),
+                content = {
+                    items.forEachIndexed { i, item ->
+                        if (i == 2) AddButton(onAdd, addLabel, Modifier)
+                        BarTab(
+                            item = item,
+                            selected = i == selected,
+                            onClick = {
+                                if (i != selected) haptics.tick()
+                                onSelect(i)
+                            },
+                            modifier = Modifier,
+                        )
+                    }
+                },
+            ) { measurables, constraints ->
+                val height = constraints.maxHeight
+                val available = constraints.maxWidth
+                val labels = measurables.mapIndexed { j, m -> if (j == ADD_INDEX) 0 else m.maxIntrinsicWidth(height) }
+                val labelSum = labels.sum()
+                val tabs = measurables.size - 1
+                val pad = TAB_PADDING.roundToPx().coerceAtMost((available - ADD_SLOT.roundToPx() - labelSum) / (2 * tabs))
+                    .coerceAtLeast(MIN_TAB_PADDING.roundToPx())
+                val addWidth = ADD_SLOT.roundToPx().coerceAtMost(available - labelSum - 2 * pad * tabs).coerceAtLeast(MIN_ADD_SLOT.roundToPx())
+                val natural = labels.mapIndexed { j, w -> if (j == ADD_INDEX) addWidth else w + 2 * pad }
+                val sum = natural.sum()
+                val half = (available - addWidth) / 2
+                val left = natural[0] + natural[1]
+                val right = natural[3] + natural[4]
+                val widths = when {
+                    // Both sides fit their half: the add button sits in the middle.
+                    left <= half && right <= half -> {
+                        val l = half - left
+                        val r = available - addWidth - half - right
+                        listOf(natural[0] + l / 2, natural[1] + l - l / 2, addWidth, natural[3] + r / 2, natural[4] + r - r / 2)
+                    }
+                    sum <= available -> {
+                        val extra = (available - sum) / natural.size
+                        natural.map { it + extra }.toMutableList().also { it[it.lastIndex] += available - sum - extra * natural.size }
+                    }
+                    else -> {
+                        val room = (available - addWidth).coerceAtLeast(0)
+                        val tabsSum = (sum - addWidth).coerceAtLeast(1)
+                        natural.mapIndexed { j, w -> if (j == ADD_INDEX) addWidth else w * room / tabsSum }
+                    }
+                }
+                val placeables = measurables.mapIndexed { j, m -> m.measure(Constraints.fixed(widths[j], height)) }
+                layout(available, height) {
+                    var x = 0
+                    placeables.forEachIndexed { j, p ->
+                        p.place(x, 0)
+                        if (j != ADD_INDEX) {
+                            val tab = if (j < ADD_INDEX) j else j - 1
+                            val w = minOf(natural[j], widths[j])
+                            bounds[tab] = (x + (widths[j] - w) / 2f) to w.toFloat()
+                        }
+                        x += p.width
+                    }
                 }
             }
         }
@@ -151,6 +202,12 @@ fun PillBottomBar(
 }
 
 private val THUMB_INSET = 5.dp
+/** Padding between a tab's label and the edge of its highlight. */
+private val TAB_PADDING = 12.dp
+private val MIN_TAB_PADDING = 5.dp
+private val ADD_SLOT = 64.dp
+private val MIN_ADD_SLOT = 52.dp
+private const val ADD_INDEX = 2
 
 @Composable
 private fun BarTab(item: BarItem, selected: Boolean, onClick: () -> Unit, modifier: Modifier) {
@@ -173,14 +230,25 @@ private fun BarTab(item: BarItem, selected: Boolean, onClick: () -> Unit, modifi
             )
         }
         Spacer(Modifier.height(2.dp))
-        Text(
-            item.label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-            color = tint,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        // The bold width is always reserved, so selecting a tab never shifts the others.
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                item.label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Transparent,
+                maxLines = 1,
+                modifier = Modifier.clearAndSetSemantics {},
+            )
+            Text(
+                item.label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                color = tint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
