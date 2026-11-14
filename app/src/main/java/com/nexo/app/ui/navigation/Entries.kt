@@ -30,8 +30,8 @@ import com.nexo.app.ui.categories.SubcategoryListScreen
 import com.nexo.app.ui.entry.BookmarksScreen
 import com.nexo.app.ui.entry.EntryRoute
 import com.nexo.app.ui.entry.RepeatListScreen
-import com.nexo.app.ui.memo.MemoEditorScreen
-import com.nexo.app.ui.memo.MemoListScreen
+import com.nexo.app.ui.memo.MemoEditorRoute
+import com.nexo.app.ui.memo.MemoListRoute
 import com.nexo.app.ui.search.SearchScreen
 import com.nexo.app.ui.settings.AddSubCurrencyScreen
 import com.nexo.app.ui.settings.ConfigurationScreen
@@ -71,8 +71,8 @@ fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<BookmarksKey> { BookmarksScreen(it) }
     entry<RepeatListKey> { RepeatListScreen() }
     entry<SearchKey> { SearchScreen(it) }
-    entry<MemoEditorKey> { MemoEditorScreen(it) }
-    entry<MemoListKey> { MemoListScreen(it) }
+    entry<MemoEditorKey> { MemoEditorRoute(it) }
+    entry<MemoListKey> { MemoListRoute(it) }
     entry<AccountDetailKey> { AccountDetailScreen(it) }
     entry<AccountFormKey> { AccountFormScreen(it) }
     entry<AccountSettingsMenuKey> { AccountSettingsMenu() }

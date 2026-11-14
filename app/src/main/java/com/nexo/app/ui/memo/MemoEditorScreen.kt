@@ -45,6 +45,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,15 +55,17 @@ import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.NexoDatePickerDialog
 import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalIsDark
 import com.nexo.app.ui.designsystem.theme.NexoPalette
 import com.nexo.app.ui.designsystem.theme.nexo
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MemoEditorKey
+import java.time.LocalDate
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MemoEditorScreen(key: MemoEditorKey) {
+fun MemoEditorRoute(key: MemoEditorKey) {
     val vm =
         hiltViewModel<MemoEditorViewModel, MemoEditorViewModel.Factory>(creationCallback = {
             it.create(key)
@@ -76,28 +79,51 @@ fun MemoEditorScreen(key: MemoEditorKey) {
             vm.onClosed()
         }
     }
+    MemoEditorScreen(
+        s = s,
+        onClose = { vm.saveAndClose() },
+        onTogglePin = vm::togglePin,
+        onTitleChange = vm::setTitle,
+        onContentChange = vm::setContent,
+        onDateChange = vm::setDate,
+        onColorChange = vm::setColor,
+        onDelete = { vm.delete() },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun MemoEditorScreen(
+    s: MemoEditorUiState,
+    onClose: () -> Unit,
+    onTogglePin: () -> Unit,
+    onTitleChange: (String) -> Unit,
+    onContentChange: (String) -> Unit,
+    onDateChange: (LocalDate) -> Unit,
+    onColorChange: (MemoColor) -> Unit,
+    onDelete: () -> Unit,
+) {
     val dark = LocalIsDark.current
     var palette by rememberSaveable { mutableStateOf(false) }
     var pickDate by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
-    val close = { vm.saveAndClose() }
     val titleFocus = remember { FocusRequester() }
     LaunchedEffect(s.loaded) {
         if (s.loaded && s.id == null) {
             runCatching { titleFocus.requestFocus() }
         }
     }
-    BackHandler { close() }
+    BackHandler { onClose() }
     if (!s.loaded) return
     val bg = NexoPalette.memo(s.color, dark)
     Scaffold(
         containerColor = bg,
         topBar = {
-            NexoTopBar(stringResource(R.string.note), onBack = { close() }, container = bg) {
+            NexoTopBar(stringResource(R.string.note), onBack = onClose, container = bg) {
                 IconButton(onClick = {
                     palette = true
                 }) { Icon(Icons.Outlined.Palette, stringResource(R.string.color)) }
-                IconButton(onClick = vm::togglePin) {
+                IconButton(onClick = onTogglePin) {
                     Icon(
                         if (s.pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
                         stringResource(R.string.pin),
@@ -125,7 +151,7 @@ fun MemoEditorScreen(key: MemoEditorKey) {
             )
             TextField(
                 s.title,
-                vm::setTitle,
+                onTitleChange,
                 placeholder = {
                     Text(stringResource(R.string.title))
                 },
@@ -136,7 +162,7 @@ fun MemoEditorScreen(key: MemoEditorKey) {
                 ),
                 modifier = Modifier.fillMaxWidth().then(Modifier.focusRequester(titleFocus)),
             )
-            TextField(s.content, vm::setContent, placeholder = {
+            TextField(s.content, onContentChange, placeholder = {
                 Text(stringResource(R.string.note))
             }, colors = colors, modifier = Modifier.fillMaxWidth().weight(1f))
         }
@@ -165,7 +191,7 @@ fun MemoEditorScreen(key: MemoEditorKey) {
                                     },
                                     CircleShape,
                                 )
-                                .clickable { vm.setColor(c) },
+                                .clickable { onColorChange(c) },
                         )
                     }
                 }
@@ -173,15 +199,36 @@ fun MemoEditorScreen(key: MemoEditorKey) {
         }
     }
     if (pickDate) {
-        NexoDatePickerDialog(s.date, onPick = vm::setDate, onDismiss = {
+        NexoDatePickerDialog(s.date, onPick = onDateChange, onDismiss = {
             pickDate = false
         })
     }
     if (confirmDelete) {
-        ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
-            vm.delete()
-        }, onDismiss = {
+        ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = onDelete, onDismiss = {
             confirmDelete = false
         })
     }
+}
+
+@Preview
+@Composable
+private fun MemoEditorScreenPreview() = NexoPreview {
+    MemoEditorScreen(
+        s = MemoEditorUiState(
+            loaded = true,
+            id = "memo",
+            title = "Groceries",
+            content = "Rice, dhal, coconut milk\nPay the electricity bill",
+            date = PreviewData.today,
+            color = MemoColor.YELLOW,
+            pinned = true,
+        ),
+        onClose = {},
+        onTogglePin = {},
+        onTitleChange = {},
+        onContentChange = {},
+        onDateChange = {},
+        onColorChange = {},
+        onDelete = {},
+    )
 }
