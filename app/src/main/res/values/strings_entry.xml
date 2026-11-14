@@ -26,7 +26,6 @@
     <string name="main_currency_amount">Main currency amount</string>
     <string name="remove_fee">Remove fee</string>
     <string name="installment_balance_total">balance: %1$s     Total: %2$s</string>
-    <string name="add_photo">Add photo</string>
     <string name="camera">Camera</string>
     <string name="gallery">Gallery</string>
     <string name="original_text">Original text</string>

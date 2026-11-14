@@ -71,7 +71,7 @@ data class EntryUi(
 ) {
     val isTransfer: Boolean get() = type == EntryType.TRANSFER
 
-    /** Scan receipt sits beside Add photo, wherever an expense or income amount can come from a photo of a bill. */
+    /** Scan receipt is offered wherever an expense or income amount can come from a photo of a bill; it is how photos are attached. */
     val scanAllowed: Boolean
         get() = !isTransfer && !isBalance && !isBalanceAdjustment && !repeatMode && repeat == RepeatType.NONE && photos.size < 3
 

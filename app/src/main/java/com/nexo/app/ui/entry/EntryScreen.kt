@@ -56,7 +56,6 @@ import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.DocumentScanner
-import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
@@ -198,10 +197,8 @@ fun EntryScreen(key: EntryKey) {
     var showRepeatEnd by rememberSaveable { mutableStateOf(false) }
     var showTags by rememberSaveable { mutableStateOf(false) }
     var showCopy by rememberSaveable { mutableStateOf(false) }
-    var showPhotoMenu by rememberSaveable { mutableStateOf(false) }
     var showPhotoNotice by rememberSaveable { mutableStateOf(false) }
     var showScanMenu by rememberSaveable { mutableStateOf(false) }
-    var noticeThenScan by rememberSaveable { mutableStateOf(false) }
     var viewerIndex by rememberSaveable { mutableIntStateOf(-1) }
     var rateEdit by rememberSaveable { mutableIntStateOf(0) }
     var showTransferGuide by rememberSaveable { mutableStateOf(false) }
@@ -256,23 +253,8 @@ fun EntryScreen(key: EntryKey) {
         else -> null
     }
 
-    // Photos
+    // Scan receipt: a photo from the camera or the gallery is read, then attached once the user confirms it.
     var cameraUri by rememberSaveable { mutableStateOf<String?>(null) }
-    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
-        if (ok) cameraUri?.let { vm.addPhotos(listOf(Uri.parse(it))) }
-    }
-    val remaining = (3 - s.photos.size).coerceAtLeast(1)
-    val galleryMany = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(maxOf(2, remaining))) { uris ->
-        val ok = uris.filter { vm.photoStore.isSupported(it) }
-        if (ok.size < uris.size) Toast.makeText(context, R.string.unsupported_file_format, Toast.LENGTH_SHORT).show()
-        vm.addPhotos(ok.take(remaining))
-    }
-    val galleryOne = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) {
-            if (vm.photoStore.isSupported(uri)) vm.addPhotos(listOf(uri)) else Toast.makeText(context, R.string.unsupported_file_format, Toast.LENGTH_SHORT).show()
-        }
-    }
-    // Scan receipt: the same camera and gallery, but the photo is read before it is attached.
     val scanCamera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         if (ok) cameraUri?.let { vm.scanReceipt(Uri.parse(it)) }
     }
@@ -281,12 +263,12 @@ fun EntryScreen(key: EntryKey) {
             if (vm.photoStore.isSupported(uri)) vm.scanReceipt(uri) else Toast.makeText(context, R.string.unsupported_file_format, Toast.LENGTH_SHORT).show()
         }
     }
-    fun launchCamera(scan: Boolean = false) {
+    fun launchCamera() {
         val dir = File(context.cacheDir, "temp").apply { mkdirs() }
         val file = File(dir, "camera_${System.currentTimeMillis()}.jpg")
         val uri = FileProvider.getUriForFile(context, context.packageName + ".files", file)
         cameraUri = uri.toString()
-        (if (scan) scanCamera else camera).launch(uri)
+        scanCamera.launch(uri)
     }
 
     /** Keypad input with a shake and a reject buzz when the key cannot change the amount. */
@@ -566,7 +548,7 @@ fun EntryScreen(key: EntryKey) {
                     }
                 }
 
-                // Details: tags and photo as pills, then the description and any thumbnails.
+                // Details: tags and Scan receipt as pills, then the description and any photos already attached.
                 Spacer(Modifier.height(Space.section))
                 val photosAllowed = !s.repeatMode && s.repeat == RepeatType.NONE
                 FlowRow(Modifier.fillMaxWidth().padding(horizontal = Space.gutter), horizontalArrangement = Arrangement.spacedBy(Space.s), verticalArrangement = Arrangement.spacedBy(Space.s)) {
@@ -576,38 +558,15 @@ fun EntryScreen(key: EntryKey) {
                         }
                         FieldPill(text = stringResource(R.string.tags), label = stringResource(R.string.tags), placeholder = true, icon = Icons.Rounded.Add, accent = typeColor) { vm.enterEdit(); showTags = true }
                     }
-                    if (photosAllowed && s.photos.size < 3) {
-                        Box {
-                            FieldPill(text = stringResource(R.string.add_photo), label = stringResource(R.string.add_photo), placeholder = true, icon = Icons.Outlined.PhotoCamera, accent = typeColor) {
-                                vm.enterEdit()
-                                if (device?.photoNoticeShown == false) showPhotoNotice = true else showPhotoMenu = true
-                            }
-                            DropdownMenu(showPhotoMenu, onDismissRequest = { showPhotoMenu = false }) {
-                                if (context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY)) {
-                                    DropdownMenuItem(text = { Text(stringResource(R.string.camera)) }, onClick = { showPhotoMenu = false; launchCamera() })
-                                }
-                                DropdownMenuItem(text = { Text(stringResource(R.string.gallery)) }, onClick = {
-                                    showPhotoMenu = false
-                                    val req = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                    if (3 - s.photos.size > 1) galleryMany.launch(req) else galleryOne.launch(req)
-                                })
-                            }
-                        }
-                    }
                     if (photosAllowed && s.scanAllowed) {
                         Box {
                             FieldPill(text = stringResource(R.string.receipt_scan), label = stringResource(R.string.receipt_scan), placeholder = true, icon = Icons.Outlined.DocumentScanner, accent = typeColor) {
                                 vm.enterEdit()
-                                if (device?.photoNoticeShown == false) {
-                                    noticeThenScan = true
-                                    showPhotoNotice = true
-                                } else {
-                                    showScanMenu = true
-                                }
+                                if (device?.photoNoticeShown == false) showPhotoNotice = true else showScanMenu = true
                             }
                             DropdownMenu(showScanMenu, onDismissRequest = { showScanMenu = false }) {
                                 if (context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY)) {
-                                    DropdownMenuItem(text = { Text(stringResource(R.string.camera)) }, onClick = { showScanMenu = false; launchCamera(scan = true) })
+                                    DropdownMenuItem(text = { Text(stringResource(R.string.camera)) }, onClick = { showScanMenu = false; launchCamera() })
                                 }
                                 DropdownMenuItem(text = { Text(stringResource(R.string.gallery)) }, onClick = {
                                     showScanMenu = false
@@ -793,16 +752,9 @@ fun EntryScreen(key: EntryKey) {
     if (viewerIndex >= 0) PhotoViewer(s.photos, viewerIndex, vm.photoStore, onDismiss = { viewerIndex = -1 })
     if (showPhotoNotice) {
         AlertDialog(
-            onDismissRequest = { showPhotoNotice = false; noticeThenScan = false },
+            onDismissRequest = { showPhotoNotice = false },
             text = { Text(stringResource(R.string.photo_notice)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showPhotoNotice = false
-                    vm.markPhotoNoticeShown()
-                    if (noticeThenScan) showScanMenu = true else showPhotoMenu = true
-                    noticeThenScan = false
-                }) { Text(stringResource(R.string.action_ok)) }
-            },
+            confirmButton = { TextButton(onClick = { showPhotoNotice = false; vm.markPhotoNoticeShown(); showScanMenu = true }) { Text(stringResource(R.string.action_ok)) } },
         )
     }
     if (showTransferGuide) {

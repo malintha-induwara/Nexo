@@ -520,7 +520,6 @@ class EntryViewModel @AssistedInject constructor(
     fun setDescription(text: String) = edit { it.copy(description = text) }
     fun setTags(ids: List<String>) = edit { it.copy(tagIds = ids) }
     fun removeTag(id: String) = edit { it.copy(tagIds = it.tagIds - id) }
-    fun addPhotos(uris: List<Uri>) = edit { s -> s.copy(photos = (s.photos + uris.map { PhotoItem.Picked(it) }).take(3)) }
     fun removePhoto(index: Int) = edit { s -> s.copy(photos = s.photos.filterIndexed { i, _ -> i != index }) }
 
     // ---- Receipt scan --------------------------------------------------------------------------------------------------
