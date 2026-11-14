@@ -4,12 +4,11 @@ import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.nexo.app.R
-import com.nexo.app.core.common.SystemZoneClock
 import com.nexo.app.testing.MainDispatcherRule
 import com.nexo.app.testing.TestBook
-import com.nexo.app.ui.HomeState
 import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.navigation.EntryKey
+import com.nexo.app.ui.navigation.NavResult
 import java.math.BigDecimal
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,7 +36,6 @@ class EntryViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-    private val home = HomeState(SystemZoneClock)
     private lateinit var book: TestBook
 
     @Before
@@ -64,7 +62,6 @@ class EntryViewModelTest {
             b.favorites,
             b.repeats,
             b.prefs,
-            home,
             b.photos,
             b.tags,
             b.importer,
@@ -90,7 +87,7 @@ class EntryViewModelTest {
         assertEquals(UiText.of(R.string.select_specific_category), state.userMessage?.text)
         assertEquals(Panel.CATEGORY, state.form.panel)
         assertNull(state.navigation)
-        assertNull(home.lastSaved.value)
+        assertTrue(state.results.isEmpty())
     }
 
     @Test
@@ -102,17 +99,21 @@ class EntryViewModelTest {
         vm.setNote("Lunch")
         vm.save()
 
-        assertEquals(EntryNavigation.Close, vm.uiState.first { it.navigation != null }.navigation)
-        val tx = book.transactions.getTransaction(home.lastSaved.value!!)!!
+        val closed = vm.uiState.first { it.navigation != null }
+        assertEquals(EntryNavigation.Close, closed.navigation)
+        val id = closed.results.filterIsInstance<NavResult.TransactionSaved>().single().id
+        val tx = book.transactions.getTransaction(id)!!
         assertEquals(2450.0, tx.amount, 0.0)
         assertEquals("1", tx.accountId)
         assertEquals("6", tx.categoryId)
         assertEquals("Lunch", tx.note)
         // The Transactions tab scrolls to the saved day once.
-        assertEquals(vm.uiState.value.form.date, home.focus.value)
+        assertTrue(NavResult.Focus(closed.form.date) in closed.results)
 
+        vm.onResultsDelivered(closed.results)
         vm.onNavigationHandled()
         assertNull(vm.uiState.value.navigation)
+        assertTrue(vm.uiState.value.results.isEmpty())
     }
 
     @Test
@@ -127,7 +128,7 @@ class EntryViewModelTest {
         assertEquals(UiText.of(R.string.saved), state.userMessage?.text)
         assertNull(state.form.amount)
         assertNull(state.navigation)
-        assertTrue(home.lastSaved.value != null)
+        assertTrue(state.results.single() is NavResult.TransactionSaved)
     }
 
     @Test

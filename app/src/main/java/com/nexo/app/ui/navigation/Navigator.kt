@@ -4,9 +4,12 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.navigation3.runtime.NavKey
 
-/** Thin wrapper over the Navigation 3 back stack. */
+/** Thin wrapper over the Navigation 3 back stack, with the results screens hand back. */
 @Stable
-class Navigator(private val stack: MutableList<NavKey>) {
+class Navigator(
+    private val stack: MutableList<NavKey>,
+    val results: NavResultStore = NavResultStore(),
+) {
     fun navigate(key: NavKey) {
         stack.add(key)
     }

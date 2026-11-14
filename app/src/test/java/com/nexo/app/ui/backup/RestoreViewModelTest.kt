@@ -7,7 +7,6 @@ import com.nexo.app.data.file.AppDirs
 import com.nexo.app.testing.MainDispatcherRule
 import com.nexo.app.testing.TestBook
 import com.nexo.app.testing.fixedClock
-import com.nexo.app.ui.HomeState
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +32,6 @@ class RestoreViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-    private val home = HomeState(fixedClock)
     private lateinit var book: TestBook
     private lateinit var dirs: AppDirs
 
@@ -50,7 +48,7 @@ class RestoreViewModelTest {
         book.close()
     }
 
-    private fun restore() = RestoreViewModel(book.backups, book.repeats, home, fixedClock)
+    private fun restore() = RestoreViewModel(book.backups, book.repeats)
 
     @Test
     fun automaticBackupsAreListedAndDeleted() = runTest {
@@ -76,7 +74,6 @@ class RestoreViewModelTest {
         val state = vm.uiState.value
         assertFalse(state.busy)
         assertEquals(BackupResult.Restored(RestoreResult.NotABackup), state.result)
-        assertNull(home.focus.value)
 
         vm.onResultHandled()
         assertNull(vm.uiState.value.result)

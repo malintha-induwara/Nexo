@@ -12,6 +12,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -28,6 +29,7 @@ import com.nexo.app.ui.designsystem.theme.NexoTheme
 import com.nexo.app.ui.lock.LockScreen
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MainKey
+import com.nexo.app.ui.navigation.NavResultStore
 import com.nexo.app.ui.navigation.Navigator
 import com.nexo.app.ui.navigation.SheetSceneStrategy
 import com.nexo.app.ui.navigation.nexoEntries
@@ -51,7 +53,8 @@ fun NexoApp(app: AppViewModel, clock: Clock) {
                     return@Box
                 }
                 val backStack = rememberNavBackStack(MainKey)
-                val navigator = remember(backStack) { Navigator(backStack) }
+                val results = rememberSaveable(saver = NavResultStore.Saver) { NavResultStore() }
+                val navigator = remember(backStack, results) { Navigator(backStack, results) }
                 // Entry forms opened from an add button are drawers over the current screen.
                 val sheets = remember(backStack) { SheetSceneStrategy { it in backStack } }
                 Box(Modifier.fillMaxSize()) {

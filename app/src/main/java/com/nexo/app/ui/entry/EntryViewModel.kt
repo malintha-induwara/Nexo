@@ -30,7 +30,6 @@ import com.nexo.app.data.repository.TagsRepository
 import com.nexo.app.data.repository.TransactionImportRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
-import com.nexo.app.ui.HomeState
 import com.nexo.app.ui.common.getJson
 import com.nexo.app.ui.common.setJson
 import com.nexo.app.ui.designsystem.UiText
@@ -39,6 +38,7 @@ import com.nexo.app.ui.designsystem.component.PadInput
 import com.nexo.app.ui.designsystem.component.PadKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
+import com.nexo.app.ui.navigation.NavResult
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -58,7 +58,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -72,7 +72,6 @@ class EntryViewModel @AssistedInject constructor(
     private val favorites: FavoritesRepository,
     private val repeats: RepeatRulesRepository,
     private val prefs: UserPreferencesRepository,
-    private val home: HomeState,
     private val photos: PhotosRepository,
     private val tags: TagsRepository,
     private val importer: TransactionImportRepository,
@@ -100,13 +99,14 @@ class EntryViewModel @AssistedInject constructor(
 
     private val userMessage = MutableStateFlow<UserMessage?>(null)
     private val navigation = MutableStateFlow<EntryNavigation?>(null)
+    private val results = MutableStateFlow<List<NavResult>>(emptyList())
 
     val uiState: StateFlow<EntryUiState> = combine(
         combine(form, ref, prefs.getDeviceSettingsStream(), ::Triple),
         combine(suggestions, tags.getTagsStream(), ::Pair),
-        combine(userMessage, navigation, ::Pair),
-    ) { (form, r, device), (suggestions, tagList), (message, navigation) ->
-        EntryUiState(form, r, device, suggestions, tagList, message, navigation)
+        combine(userMessage, navigation, results, ::Triple),
+    ) { (form, r, device), (suggestions, tagList), (message, navigation, results) ->
+        EntryUiState(form, r, device, suggestions, tagList, message, navigation, results)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EntryUiState(form.value))
 
     private var initialized = false
@@ -121,7 +121,6 @@ class EntryViewModel @AssistedInject constructor(
     fun initialize(texts: EntryTexts) {
         if (initialized) return
         initialized = true
-        home.pickedFavoriteConsumed()
         viewModelScope.launch {
             val r = refs.getRefData()
             opened = loader.load(key, r, texts)
@@ -146,13 +145,12 @@ class EntryViewModel @AssistedInject constructor(
             loadSuggestions(r)
             form.collect { savedState.setJson(SAVED_FORM, it.toSaved()) }
         }
-        viewModelScope.launch {
-            home.pickedFavorite.filterNotNull().collect { id ->
-                home.pickedFavoriteConsumed()
-                form.value =
-                    loader.applyFavorite(refs.getRefData(), form.value, id, keepDate = true)
-            }
-        }
+    }
+
+    /** A bookmark picked from the list this form opened; it fills the form but keeps the date. */
+    fun applyFavorite(id: String) = viewModelScope.launch {
+        form.first { it.loaded }
+        form.value = loader.applyFavorite(refs.getRefData(), form.value, id, keepDate = true)
     }
 
     fun onUserMessageShown(id: Long) {
@@ -163,13 +161,17 @@ class EntryViewModel @AssistedInject constructor(
         navigation.value = null
     }
 
+    fun onResultsDelivered(delivered: List<NavResult>) {
+        results.update { it - delivered.toSet() }
+    }
+
     private fun showMessage(@StringRes text: Int, arg: Int? = null) {
         userMessage.value = UserMessage(UiText.Resource(text, listOfNotNull(arg)))
     }
 
     /** Leaves the form; with [focusDate] the Transactions tab scrolls there. */
     private fun close(focusDate: LocalDate?) {
-        focusDate?.let(home::focusOn)
+        focusDate?.let { results.update { r -> r + NavResult.Focus(it) } }
         navigation.value = EntryNavigation.Close
     }
 
@@ -542,7 +544,7 @@ class EntryViewModel @AssistedInject constructor(
         viewModelScope.launch {
             runCatching { transactions.save(withBankFeeCategory(form.value.toDraft())) }
                 .onSuccess { id ->
-                    home.saved(id)
+                    results.update { it + NavResult.TransactionSaved(id) }
                     if (key.mode == EntryMode.SMS && key.smsItemId != null) {
                         val s = form.value
                         // Changing an estimate's amount records what the bank actually charged.

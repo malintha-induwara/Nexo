@@ -67,9 +67,12 @@ import com.nexo.app.ui.navigation.HelpPageKey
 import com.nexo.app.ui.navigation.ImportListKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MainKey
+import com.nexo.app.ui.navigation.NavResult
+import com.nexo.app.ui.navigation.Navigator
 import com.nexo.app.ui.navigation.RestoreFileKey
 import java.io.File
 import java.text.NumberFormat
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 
@@ -138,6 +141,7 @@ class BackupActions(
 @Composable
 fun BackupRoute(vm: BackupViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
+    val clock = LocalClock.current
     val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     var photoResult by remember { mutableStateOf<Int?>(null) }
@@ -157,7 +161,7 @@ fun BackupRoute(vm: BackupViewModel = hiltViewModel()) {
 
             BackupResult.ResetDone -> {
                 Toast.makeText(context, R.string.reset_complete, Toast.LENGTH_SHORT).show()
-                nav.resetTo(MainKey)
+                nav.toMainOnToday(clock)
             }
 
             else -> return@LaunchedEffect
@@ -310,6 +314,7 @@ internal fun BackupScreen(state: BackupUiState, photosCopied: Int?, actions: Bac
 @Composable
 fun BackupDeviceRoute(vm: RestoreViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
+    val clock = LocalClock.current
     val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     var message by remember { mutableStateOf<Int?>(null) }
@@ -366,7 +371,7 @@ fun BackupDeviceRoute(vm: RestoreViewModel = hiltViewModel()) {
             val r = result
             result = null
             if (r == RestoreResult.Success) {
-                nav.resetTo(MainKey)
+                nav.toMainOnToday(clock)
             }
         },
     )
@@ -454,6 +459,7 @@ fun displayName(context: Context, uri: Uri): String? = runCatching {
 @Composable
 fun RestoreFileRoute(key: RestoreFileKey, vm: RestoreViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
+    val clock = LocalClock.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     var result by remember { mutableStateOf<RestoreResult?>(null) }
     LaunchedEffect(state.result) {
@@ -467,8 +473,9 @@ fun RestoreFileRoute(key: RestoreFileKey, vm: RestoreViewModel = hiltViewModel()
         onBack = nav::back,
         onRestore = { vm.restore(Uri.parse(key.uri)) },
         onResultShown = {
+            val r = result
             result = null
-            nav.resetTo(MainKey)
+            if (r == RestoreResult.Success) nav.toMainOnToday(clock) else nav.resetTo(MainKey)
         },
     )
 }
@@ -505,6 +512,7 @@ internal fun RestoreFileScreen(
 @Composable
 fun AutoBackupHistoryRoute(vm: RestoreViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
+    val clock = LocalClock.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     var result by remember { mutableStateOf<RestoreResult?>(null) }
     LaunchedEffect(Unit) { vm.refreshFiles() }
@@ -523,7 +531,7 @@ fun AutoBackupHistoryRoute(vm: RestoreViewModel = hiltViewModel()) {
             val r = result
             result = null
             if (r == RestoreResult.Success) {
-                nav.resetTo(MainKey)
+                nav.toMainOnToday(clock)
             }
         },
     )
@@ -785,4 +793,10 @@ private fun ExcelExportScreenPreview() = NexoPreview {
         onBack = {},
         onExport = { _, _ -> },
     )
+}
+
+/** Back to a fresh main screen with the Transactions tab on today, after the book was replaced. */
+private fun Navigator.toMainOnToday(clock: Clock) {
+    results.post(NavResult.Focus(LocalDate.now(clock)))
+    resetTo(MainKey)
 }

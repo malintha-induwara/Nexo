@@ -5,13 +5,12 @@ import com.nexo.app.core.model.Memo
 import com.nexo.app.testing.FakeMemosRepository
 import com.nexo.app.testing.MainDispatcherRule
 import com.nexo.app.testing.fixedClock
-import com.nexo.app.ui.HomeState
 import com.nexo.app.ui.navigation.MemoEditorKey
+import com.nexo.app.ui.navigation.NavResult
 import java.time.LocalDate
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -20,8 +19,6 @@ class MemoEditorViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val home = HomeState(fixedClock)
-
     @Test
     fun newMemoIsSavedAndTheListScrollsToItsDate() = runTest {
         val memos = FakeMemosRepository()
@@ -29,7 +26,6 @@ class MemoEditorViewModelTest {
             MemoEditorViewModel(
                 MemoEditorKey(date = "2026-11-02"),
                 memos,
-                home,
                 fixedClock,
                 SavedStateHandle(),
             )
@@ -47,8 +43,10 @@ class MemoEditorViewModelTest {
         assertEquals("2026-11-02", saved.date)
         assertEquals(1, saved.orderSeq)
         assertTrue(vm.uiState.value.closed)
-        assertEquals(saved.id, home.savedMemo.value)
-        assertEquals(LocalDate.of(2026, 11, 2), home.focus.value)
+        assertEquals(
+            listOf(NavResult.MemoSaved(saved.id), NavResult.Focus(LocalDate.of(2026, 11, 2))),
+            vm.uiState.value.results,
+        )
     }
 
     @Test
@@ -58,7 +56,6 @@ class MemoEditorViewModelTest {
             MemoEditorViewModel(
                 MemoEditorKey(memoId = "m1"),
                 memos,
-                home,
                 fixedClock,
                 SavedStateHandle(),
             )
@@ -72,7 +69,7 @@ class MemoEditorViewModelTest {
 
         assertTrue(memos.current.isEmpty())
         assertTrue(vm.uiState.value.closed)
-        assertNull(home.savedMemo.value)
+        assertTrue(vm.uiState.value.results.isEmpty())
     }
 
     @Test
@@ -82,7 +79,6 @@ class MemoEditorViewModelTest {
             MemoEditorViewModel(
                 MemoEditorKey(memoId = "m1"),
                 memos,
-                home,
                 fixedClock,
                 SavedStateHandle(),
             )
@@ -104,7 +100,6 @@ class MemoEditorViewModelTest {
             MemoEditorViewModel(
                 MemoEditorKey(),
                 FakeMemosRepository(),
-                home,
                 fixedClock,
                 SavedStateHandle(),
             )
@@ -132,7 +127,6 @@ class MemoEditorViewModelTest {
             MemoEditorViewModel(
                 MemoEditorKey(date = "2026-11-02"),
                 FakeMemosRepository(),
-                home,
                 fixedClock,
                 saved,
             )
@@ -143,7 +137,6 @@ class MemoEditorViewModelTest {
         val again = MemoEditorViewModel(
             MemoEditorKey(date = "2026-11-02"),
             FakeMemosRepository(),
-            home,
             fixedClock,
             SavedStateHandle(mapOf("memo" to saved.get<String>("memo"))),
         )

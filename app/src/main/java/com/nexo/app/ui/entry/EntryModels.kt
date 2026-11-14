@@ -15,6 +15,7 @@ import com.nexo.app.ui.designsystem.UserMessage
 import com.nexo.app.ui.designsystem.component.PadInput
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
+import com.nexo.app.ui.navigation.NavResult
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -164,4 +165,6 @@ data class EntryUiState(
     val userMessage: UserMessage? = null,
     /** Handled once, then cleared with [EntryViewModel.onNavigationHandled]. */
     val navigation: EntryNavigation? = null,
+    /** Handed to the screens under the form, then cleared with [EntryViewModel.onResultsDelivered]. */
+    val results: List<NavResult> = emptyList(),
 )

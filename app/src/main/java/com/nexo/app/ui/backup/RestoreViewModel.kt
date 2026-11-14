@@ -6,11 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.model.RestoreResult
 import com.nexo.app.data.repository.BackupRepository
 import com.nexo.app.data.repository.RepeatRulesRepository
-import com.nexo.app.ui.HomeState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
-import java.time.Clock
-import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,8 +28,6 @@ data class RestoreUiState(
 class RestoreViewModel @Inject constructor(
     private val backups: BackupRepository,
     private val repeats: RepeatRulesRepository,
-    private val home: HomeState,
-    private val clock: Clock,
 ) : ViewModel() {
     private val state = MutableStateFlow(RestoreUiState())
     val uiState: StateFlow<RestoreUiState> = state.asStateFlow()
@@ -69,7 +64,6 @@ class RestoreViewModel @Inject constructor(
     private suspend fun afterRestore(r: RestoreResult) {
         if (r == RestoreResult.Success) {
             repeats.generateIfNewDay(force = true)
-            home.focusOn(LocalDate.now(clock))
         }
     }
 

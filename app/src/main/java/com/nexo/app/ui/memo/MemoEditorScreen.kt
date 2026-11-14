@@ -75,6 +75,7 @@ fun MemoEditorRoute(key: MemoEditorKey) {
     LaunchedEffect(Unit) { vm.initialize() }
     LaunchedEffect(s.closed) {
         if (s.closed) {
+            s.results.forEach(nav.results::post)
             nav.back()
             vm.onClosed()
         }

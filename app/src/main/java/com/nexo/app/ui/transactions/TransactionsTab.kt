@@ -135,7 +135,9 @@ import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.ExcelExportKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MemoEditorKey
+import com.nexo.app.ui.navigation.NavResult
 import com.nexo.app.ui.navigation.Navigator
+import com.nexo.app.ui.navigation.ReceiveNavResult
 import com.nexo.app.ui.navigation.RepeatListKey
 import com.nexo.app.ui.navigation.SearchKey
 import com.nexo.app.ui.navigation.SmsQueueKey
@@ -160,6 +162,11 @@ fun TransactionsTabRoute(
     // No effects until the starting sub-tab is known, so a pending "today" signal waits for it.
     if (state.tab == null) return
     LaunchedEffect(todaySignal) { if (todaySignal > 0) vm.goToday() }
+    ReceiveNavResult(nav.results, NavResult.Focus::class) { vm.focusOn(it.date) }
+    ReceiveNavResult(nav.results, NavResult.TransactionSaved::class) {
+        vm.onTransactionSaved(it.id)
+    }
+    ReceiveNavResult(nav.results, NavResult.MemoSaved::class) { vm.onMemoSaved(it.id) }
     // The highlight plays once; clear it so scrolling the row away and back does not replay it.
     val lastSaved = state.lastSaved
     LaunchedEffect(lastSaved) {

@@ -1,6 +1,7 @@
 package com.nexo.app.ui.transactions
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.TxDraft
@@ -8,7 +9,6 @@ import com.nexo.app.testing.MainDispatcherRule
 import com.nexo.app.testing.TestBook
 import com.nexo.app.testing.fixedClock
 import com.nexo.app.testing.fixedToday
-import com.nexo.app.ui.HomeState
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +35,6 @@ class TransactionsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-    private val home = HomeState(fixedClock)
     private lateinit var book: TestBook
 
     @Before
@@ -54,7 +53,9 @@ class TransactionsViewModelTest {
         book.close()
     }
 
-    private suspend fun TestScope.openTab(): TransactionsViewModel {
+    private suspend fun TestScope.openTab(
+        saved: SavedStateHandle = SavedStateHandle(),
+    ): TransactionsViewModel {
         val b = book
         val vm =
             TransactionsViewModel(
@@ -63,8 +64,8 @@ class TransactionsViewModelTest {
                 b.repeats,
                 b.transactions,
                 b.budgets,
-                home,
                 b.clock,
+                saved,
             )
         backgroundScope.launch { vm.uiState.collect {} }
         vm.uiState.first { it.tab != null && it.data.loaded }
@@ -106,8 +107,8 @@ class TransactionsViewModelTest {
     @Test
     fun aSaveFromTheEntryFormIsHighlightedAndFocused() = runTest {
         val vm = openTab()
-        home.saved("tx1")
-        home.focusOn(LocalDate.of(2026, 11, 2))
+        vm.onTransactionSaved("tx1")
+        vm.focusOn(LocalDate.of(2026, 11, 2))
         assertEquals("tx1", vm.uiState.value.lastSaved)
         assertEquals(LocalDate.of(2026, 11, 2), vm.uiState.value.focusDate)
         assertEquals(LocalDate.of(2026, 11, 2), vm.uiState.value.selectedDate)
@@ -116,5 +117,15 @@ class TransactionsViewModelTest {
         vm.clearLastSaved()
         assertEquals(null, vm.uiState.value.focusDate)
         assertEquals(null, vm.uiState.value.lastSaved)
+    }
+
+    @Test
+    fun theSelectedDaySurvivesTheProcessBeingKilled() = runTest {
+        val saved = SavedStateHandle()
+        openTab(saved).select(LocalDate.of(2026, 10, 3))
+
+        // A new ViewModel gets only what the system kept.
+        val restored = SavedStateHandle(mapOf("selectedDate" to saved.get<String>("selectedDate")))
+        assertEquals(LocalDate.of(2026, 10, 3), openTab(restored).uiState.value.selectedDate)
     }
 }

@@ -50,7 +50,9 @@ import com.nexo.app.ui.navigation.BookmarksKey
 import com.nexo.app.ui.navigation.CategoryListKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.LocalNavigator
+import com.nexo.app.ui.navigation.NavResult
 import com.nexo.app.ui.navigation.Navigator
+import com.nexo.app.ui.navigation.ReceiveNavResult
 import com.nexo.app.ui.navigation.SubCurrenciesKey
 import java.time.LocalTime
 
@@ -73,7 +75,13 @@ fun EntryRoute(key: EntryKey) {
             vm.onUserMessageShown(message.id)
         }
     }
-    LaunchedEffect(state.navigation) {
+    ReceiveNavResult(nav.results, NavResult.FavoritePicked::class) { vm.applyFavorite(it.id) }
+    // Results go out before the form closes, while this screen can still deliver them.
+    LaunchedEffect(state.results, state.navigation) {
+        if (state.results.isNotEmpty()) {
+            state.results.forEach(nav.results::post)
+            vm.onResultsDelivered(state.results)
+        }
         when (val target = state.navigation) {
             EntryNavigation.Close -> nav.back()
 

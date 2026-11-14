@@ -8,10 +8,10 @@ import com.nexo.app.core.common.period.toIsoText
 import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.MemoColor
 import com.nexo.app.data.repository.MemosRepository
-import com.nexo.app.ui.HomeState
 import com.nexo.app.ui.common.getJson
 import com.nexo.app.ui.common.setJson
 import com.nexo.app.ui.navigation.MemoEditorKey
+import com.nexo.app.ui.navigation.NavResult
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -39,6 +39,8 @@ data class MemoEditorUiState(
     val pinnedAt: Long = 0,
     /** The memo was saved or deleted: the screen goes back, then calls [MemoEditorViewModel.onClosed]. */
     val closed: Boolean = false,
+    /** Handed to the screens under the editor as it closes. */
+    val results: List<NavResult> = emptyList(),
 )
 
 /** What the user typed into the memo; the rest is loaded again from the nav key. */
@@ -68,7 +70,6 @@ private data class SavedMemo(
 class MemoEditorViewModel @AssistedInject constructor(
     @Assisted private val key: MemoEditorKey,
     private val memos: MemosRepository,
-    private val home: HomeState,
     private val clock: Clock,
     private val savedState: SavedStateHandle,
 ) : ViewModel() {
@@ -134,6 +135,7 @@ class MemoEditorViewModel @AssistedInject constructor(
         val s = _uiState.value
         val empty = s.title.isBlank() && s.content.isBlank()
         val o = original
+        var results = emptyList<NavResult>()
         when {
             empty && o != null -> memos.delete(o.id)
 
@@ -163,11 +165,10 @@ class MemoEditorViewModel @AssistedInject constructor(
                     updatedAt = now,
                 )
                 memos.save(row)
-                home.memoSaved(row.id)
-                home.focusOn(s.date)
+                results = listOf(NavResult.MemoSaved(row.id), NavResult.Focus(s.date))
             }
         }
-        _uiState.update { it.copy(closed = true) }
+        _uiState.update { it.copy(closed = true, results = results) }
     }
 
     fun delete() = viewModelScope.launch {
@@ -175,7 +176,7 @@ class MemoEditorViewModel @AssistedInject constructor(
         _uiState.update { it.copy(closed = true) }
     }
 
-    fun onClosed() = _uiState.update { it.copy(closed = false) }
+    fun onClosed() = _uiState.update { it.copy(closed = false, results = emptyList()) }
 
     private companion object {
         const val SAVED_MEMO = "memo"

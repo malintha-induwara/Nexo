@@ -1,5 +1,6 @@
 package com.nexo.app.ui.transactions
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.money.Money
@@ -27,7 +28,6 @@ import com.nexo.app.domain.BudgetCalc
 import com.nexo.app.domain.Classifier
 import com.nexo.app.domain.InOut
 import com.nexo.app.domain.Totals
-import com.nexo.app.ui.HomeState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.time.Clock
@@ -67,9 +67,23 @@ class TransactionsViewModel @Inject constructor(
     private val repeats: RepeatRulesRepository,
     private val transactions: TransactionsRepository,
     private val budgets: BudgetsRepository,
-    private val home: HomeState,
     private val clock: Clock,
+    private val savedState: SavedStateHandle,
 ) : ViewModel() {
+    /** The day the tab shows; kept across process death. */
+    private val selectedDate = MutableStateFlow(
+        savedState.get<String>(SELECTED_DATE)?.let(LocalDate::parse) ?: LocalDate.now(clock),
+    )
+
+    /** Day to scroll to once, after a save elsewhere; cleared by [onFocusHandled]. */
+    private val focus = MutableStateFlow<LocalDate?>(null)
+
+    /** Transaction just written by the entry form, so its row lights up when the list shows it. */
+    private val lastSaved = MutableStateFlow<String?>(null)
+
+    /** Memo just written by the editor, for its highlight. */
+    private val savedMemo = MutableStateFlow<String?>(null)
+
     /** Kept for event handlers that need the reference data synchronously. */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
@@ -92,7 +106,7 @@ class TransactionsViewModel @Inject constructor(
 
     val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, selection)
 
-    private val data: StateFlow<HomeData> = combine(ref, home.selectedDate, tab, filter) {
+    private val data: StateFlow<HomeData> = combine(ref, selectedDate, tab, filter) {
             r,
             d,
             t,
@@ -132,9 +146,9 @@ class TransactionsViewModel @Inject constructor(
         }
 
     val uiState: StateFlow<TransactionsUiState> = combine(
-        combine(ref, tab, data, home.selectedDate, ::Quad),
+        combine(ref, tab, data, selectedDate, ::Quad),
         combine(filter, filterOpen, selection, ::Triple),
-        combine(home.focus, home.lastSaved, home.savedMemo, ::Triple),
+        combine(focus, lastSaved, savedMemo, ::Triple),
         budgetBlock,
     ) { (r, t, d, date), (filter, filterOpen, selection), (focus, lastSaved, savedMemo), budget ->
         TransactionsUiState(
@@ -143,7 +157,7 @@ class TransactionsViewModel @Inject constructor(
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
-        TransactionsUiState(data = data.value, selectedDate = home.selectedDate.value),
+        TransactionsUiState(data = data.value, selectedDate = selectedDate.value),
     )
 
     private fun startTab(r: RefData) = if (r.settings.startScreen == StartScreen.CALENDAR) {
@@ -154,9 +168,27 @@ class TransactionsViewModel @Inject constructor(
 
     private fun currentTab(): SubTab = _tab.value ?: startTab(ref.value)
 
-    fun clearLastSaved() = home.saved(null)
+    fun clearLastSaved() {
+        lastSaved.value = null
+    }
 
-    fun onFocusHandled() = home.focusConsumed()
+    fun onFocusHandled() {
+        focus.value = null
+    }
+
+    fun onTransactionSaved(id: String) {
+        lastSaved.value = id
+    }
+
+    fun onMemoSaved(id: String) {
+        savedMemo.value = id
+    }
+
+    /** Moves to [date] and scrolls it into view once. */
+    fun focusOn(date: LocalDate) {
+        select(date)
+        focus.value = date
+    }
 
     private fun load(p: Params): Flow<HomeData> {
         val engine = p.ref.settings.periods
@@ -536,14 +568,19 @@ class TransactionsViewModel @Inject constructor(
         _tab.value = t
     }
 
-    fun select(date: LocalDate) = home.select(date)
+    fun select(date: LocalDate) {
+        selectedDate.value = date
+        savedState[SELECTED_DATE] = date.toString()
+    }
 
-    fun consumeSavedMemo() = home.memoSaved(null)
+    fun consumeSavedMemo() {
+        savedMemo.value = null
+    }
 
     fun goToday() {
         viewModelScope.launch {
             _tab.value = startTab(refs.getRefData())
-            home.focusOn(LocalDate.now(clock))
+            focusOn(LocalDate.now(clock))
         }
     }
 
@@ -553,22 +590,22 @@ class TransactionsViewModel @Inject constructor(
         val d = data.value
         if (currentTab() == SubTab.MONTHLY) {
             val y = d.year + if (forward) 1 else -1
-            home.select(engine.yearRange(y).start)
+            select(engine.yearRange(y).start)
         } else {
-            val p = engine.monthPeriodContaining(home.selectedDate.value)
+            val p = engine.monthPeriodContaining(selectedDate.value)
             val n = if (forward) engine.next(p) else engine.previous(p)
-            home.select(n.end)
+            select(n.end)
         }
     }
 
     fun pickMonth(m: YearMonth) {
         val p = ref.value.settings.periods.monthPeriodFor(m)
         val today = LocalDate.now(clock)
-        home.select(if (today in p.range) today else p.end)
+        select(if (today in p.range) today else p.end)
     }
 
     fun openMonth(period: MonthPeriod) {
-        home.select(period.end)
+        select(period.end)
         _tab.value = SubTab.DAILY
     }
 
@@ -607,5 +644,7 @@ class TransactionsViewModel @Inject constructor(
             if (ChronoUnit.DAYS.between(period.end, end) <= 4) end = end.plusDays(7)
             return DateRange(start, end)
         }
+
+        private const val SELECTED_DATE = "selectedDate"
     }
 }

@@ -51,6 +51,7 @@ import com.nexo.app.ui.navigation.BookmarksKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
+import com.nexo.app.ui.navigation.NavResult
 
 @Composable
 fun accountLabel(ref: RefData, id: String?): String {
@@ -71,7 +72,8 @@ fun BookmarksRoute(key: BookmarksKey, vm: BookmarksViewModel = hiltViewModel()) 
         onBack = nav::back,
         onOpen = { id ->
             if (key.pickForForm) {
-                vm.pickForForm(id)
+                // Hands the bookmark to the entry form that opened this list.
+                nav.results.post(NavResult.FavoritePicked(id))
                 nav.back()
             } else {
                 nav.replace(EntryKey(mode = EntryMode.FAVORITE, favoriteId = id))
