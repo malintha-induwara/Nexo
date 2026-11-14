@@ -9,10 +9,10 @@ import javax.inject.Singleton
 
 /** Reads the SMS inbox (READ_SMS). Oldest first. */
 @Singleton
-class InboxReader @Inject constructor(@ApplicationContext private val context: Context) {
+open class InboxReader @Inject constructor(@ApplicationContext private val context: Context) {
 
     /** Messages received in (`after`, `until`) and at or after [from]. */
-    fun read(after: Long, from: Long, until: Long = Long.MAX_VALUE, limit: Int = 500): List<IncomingSms> {
+    open fun read(after: Long, from: Long, until: Long = Long.MAX_VALUE, limit: Int = 500): List<IncomingSms> {
         val projection = arrayOf(Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.DATE_SENT)
         val selection = "${Telephony.Sms.DATE} > ? AND ${Telephony.Sms.DATE} >= ? AND ${Telephony.Sms.DATE} < ?"
         val args = arrayOf(after.toString(), from.toString(), until.toString())

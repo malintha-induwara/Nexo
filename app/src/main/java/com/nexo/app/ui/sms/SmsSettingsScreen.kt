@@ -103,6 +103,10 @@ class SmsSettingsViewModel @Inject constructor(
         _permitted.value = capture.hasPermission()
     }
 
+    fun offerHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.core.settings.SmsHistoryImport.OFFERED) }
+
+    fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.core.settings.SmsHistoryImport.SKIPPED) }
+
     fun setFullText(on: Boolean) = viewModelScope.launch { prefs.setSmsStoreFullText(on) }
     fun setCashAccount(id: String) = viewModelScope.launch { refs.updateSettings { it.copy(smsCashAccountId = id) } }
     fun mapSource(source: SmsSourceEntity, accountId: String) = viewModelScope.launch { approver.mapCard(source.bank, source.last4, accountId) }
@@ -144,6 +148,8 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         if (result.values.all { it }) {
             vm.setEnabled(true)
+            // NQ-032: offered once, right after permission is granted.
+            if (device?.smsHistoryImport == com.nexo.app.core.settings.SmsHistoryImport.NOT_OFFERED) dialog = "offer"
         } else {
             // No rationale after a denial means Android won't ask again (or the setting is restricted): send them to App info.
             val activity = context.findActivity()
@@ -178,6 +184,13 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                     stringResource(R.string.sms_queue_row),
                     if (pending > 0) pluralStringResource(R.plurals.sms_queue_row_sub, pending, pending) else stringResource(R.string.sms_queue_row_empty),
                     onClick = { nav.navigate(SmsQueueKey) },
+                )
+
+                SettingRow(
+                    stringResource(R.string.sms_history_title),
+                    stringResource(R.string.sms_history_row_sub),
+                    onClick = { nav.navigate(com.nexo.app.ui.navigation.SmsHistoryKey()) },
+                    enabled = permitted,
                 )
 
                 SectionHeader(stringResource(R.string.sms_section_accounts))
@@ -230,6 +243,24 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                 launcher.launch(SmsPermissions.ALL)
             },
             onDismiss = { dialog = null },
+        )
+        "offer" -> androidx.compose.material3.AlertDialog(
+            onDismissRequest = { dialog = null },
+            title = { Text(stringResource(R.string.sms_history_offer_title)) },
+            text = { Text(stringResource(R.string.sms_history_offer_text)) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    dialog = null
+                    vm.offerHistory()
+                    nav.navigate(com.nexo.app.ui.navigation.SmsHistoryKey())
+                }) { Text(stringResource(R.string.sms_history_choose)) }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    dialog = null
+                    vm.skipHistory()
+                }) { Text(stringResource(R.string.sms_history_not_now)) }
+            },
         )
         "settings" -> ConfirmDialog(
             title = stringResource(R.string.sms_permission_title),

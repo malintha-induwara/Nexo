@@ -58,6 +58,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
+import com.nexo.app.core.settings.SmsHistoryImport
 import com.nexo.app.sms.Certainty
 import com.nexo.app.sms.SmsStatus
 import com.nexo.app.sms.data.SmsItemEntity
@@ -74,6 +75,7 @@ import com.nexo.app.ui.components.rememberHaptics
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
+import com.nexo.app.ui.navigation.SmsHistoryKey
 import com.nexo.app.ui.navigation.SmsSettingsKey
 import com.nexo.app.ui.theme.LocalNexoColors
 import com.nexo.app.ui.theme.NexoMotion
@@ -165,14 +167,38 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                 onSelect = { haptics.tick(); vm.setFilter(it) },
             )
             val list = items
-            val showCards = filter.status == SmsStatus.PENDING && unmapped.isNotEmpty() && !selecting
+            val queueView = filter.status == SmsStatus.PENDING && !selecting
+            val showCards = queueView && unmapped.isNotEmpty()
+            val gapFrom = device?.smsGapFrom ?: 0L
+            val gapUntil = device?.smsGapUntil ?: 0L
+            val showGap = queueView && gapFrom > 0
+            val showOffer = queueView && !showGap && permitted &&
+                device?.smsHistoryImport.let { it == SmsHistoryImport.NOT_OFFERED || it == SmsHistoryImport.OFFERED }
             when {
                 list == null -> Unit
-                list.isEmpty() && !showCards -> EmptyState(
+                list.isEmpty() && !showCards && !showGap && !showOffer -> EmptyState(
                     stringResource(if (filter == QueueFilter.ALL) R.string.sms_empty else R.string.sms_empty_filter),
                     Modifier.padding(top = Space.xxxl),
                 )
                 else -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 120.dp)) {
+                    if (showGap) {
+                        item(key = "gap") {
+                            SmsPromptCard(
+                                stringResource(R.string.sms_gap_hint), null, stringResource(R.string.sms_history_title),
+                                { nav.navigate(SmsHistoryKey(gapFrom, gapUntil)) }, Modifier.animateItem(),
+                                stringResource(R.string.sms_history_not_now), vm::clearGap,
+                            )
+                        }
+                    }
+                    if (showOffer) {
+                        item(key = "offer") {
+                            SmsPromptCard(
+                                stringResource(R.string.sms_history_offer_title), stringResource(R.string.sms_history_offer_text),
+                                stringResource(R.string.sms_history_choose), { nav.navigate(SmsHistoryKey()) }, Modifier.animateItem(),
+                                stringResource(R.string.sms_history_not_now), vm::skipHistory,
+                            )
+                        }
+                    }
                     if (showCards) {
                         val card = unmapped.first()
                         item(key = "card_${card.bank}_${card.last4}") {
@@ -389,21 +415,15 @@ private fun FilterChips(selected: QueueFilter, pendingCount: Int, attentionCount
     }
 }
 
-/** NQ-032 card mapping, asked once per card at the top of the queue. */
+/** NQ-032 card mapping, asked once per card at the top of a list. */
 @Composable
-private fun CardQuestion(card: CardRef, modifier: Modifier, onChoose: () -> Unit) {
-    val colors = LocalNexoColors.current
+fun CardQuestion(card: CardRef, modifier: Modifier, onChoose: () -> Unit) {
     val bank = com.nexo.app.sms.parse.Banks.byName(card.bank)?.displayName.orEmpty()
-    Column(
-        modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.s).clip(NexoShapes.panel).background(colors.surface).padding(Space.l),
-    ) {
-        Text(stringResource(R.string.sms_card_question, bank, card.last4), style = MaterialTheme.typography.titleSmall, color = colors.text)
-        Spacer(Modifier.height(Space.xxs))
-        Text(stringResource(R.string.sms_card_hint), style = NexoType.Meta, color = colors.textSecondary)
-        Spacer(Modifier.height(Space.m))
-        Button(
-            onClick = onChoose,
-            colors = ButtonDefaults.buttonColors(containerColor = colors.text, contentColor = colors.background),
-        ) { Text(stringResource(R.string.sms_choose_account), style = MaterialTheme.typography.labelLarge) }
-    }
+    SmsPromptCard(
+        stringResource(R.string.sms_card_question, bank, card.last4),
+        stringResource(R.string.sms_card_hint),
+        stringResource(R.string.sms_choose_account),
+        onChoose,
+        modifier,
+    )
 }

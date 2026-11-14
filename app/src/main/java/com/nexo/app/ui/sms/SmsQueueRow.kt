@@ -83,6 +83,8 @@ fun SmsQueueRow(
     onLongClick: (() -> Unit)?,
     onAmountClick: (() -> Unit)?,
     trailing: (@Composable () -> Unit)? = null,
+    /** Replaces the status line's text, e.g. "Possibly already added" in the history picker. */
+    note: String? = null,
 ) {
     val colors = LocalNexoColors.current
     Row(
@@ -114,7 +116,7 @@ fun SmsQueueRow(
         Column(Modifier.weight(1f)) {
             Text(SmsApprover.noteFor(item), style = NexoType.RowTitle, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(metaLine(item, ref), style = NexoType.Meta, color = colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            StatusLine(item, now)
+            StatusLine(item, now, note)
         }
         Spacer(Modifier.width(Space.m))
         if (trailing != null) {
@@ -156,7 +158,7 @@ private fun metaLine(item: SmsItemEntity, ref: RefData): String {
 }
 
 @Composable
-private fun StatusLine(item: SmsItemEntity, now: Long) {
+private fun StatusLine(item: SmsItemEntity, now: Long, note: String?) {
     val colors = LocalNexoColors.current
     val badge = when {
         item.status != SmsStatus.PENDING -> null
@@ -164,7 +166,7 @@ private fun StatusLine(item: SmsItemEntity, now: Long) {
         item.certainty == Certainty.UNVERIFIED -> stringResource(R.string.sms_unverified)
         else -> null
     }
-    val text = statusText(item, now)
+    val text = note ?: statusText(item, now)
     if (badge == null && text == null) return
     Row(Modifier.padding(top = Space.xxs), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(Space.s)) {
         if (badge != null) {

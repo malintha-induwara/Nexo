@@ -133,6 +133,47 @@
     <string name="fx_edit_hint">This is an FX estimate. Change the amount to what your bank charged.</string>
     <string name="fx_attribution">Rates: AllRatesToday. Indicative; your card network\'s rate may differ.</string>
 
+    <!-- Add past transactions (NQ-032) -->
+    <string name="sms_history_title">Add past transactions</string>
+    <string name="sms_history_row_sub">Choose from bank messages received before capture started</string>
+    <string name="sms_history_offer_title">Add past transactions from your bank SMS?</string>
+    <string name="sms_history_offer_text">Nexo won\'t add anything unless you choose it.</string>
+    <string name="sms_history_choose">Choose transactions</string>
+    <string name="sms_history_not_now">Not now</string>
+    <string name="sms_gap_hint">Messages received while auto-capture was off weren\'t added.</string>
+    <string name="sms_history_range_7">Last 7 days</string>
+    <string name="sms_history_range_30">Last 30 days</string>
+    <string name="sms_history_range_90">Last 90 days</string>
+    <string name="sms_history_range_custom">Custom</string>
+    <string name="sms_history_range_gap">While capture was off</string>
+    <string name="sms_history_loading">Reading your bank messages…</string>
+    <string name="sms_history_empty">No bank transactions found in this period.</string>
+    <string name="sms_history_possibly_added">Possibly already added</string>
+    <string name="sms_history_select_all">Select all</string>
+    <string name="sms_history_clear">Clear</string>
+    <string name="sms_history_kind_all">All</string>
+    <string name="sms_history_kind_purchases">Purchases</string>
+    <string name="sms_history_kind_cash">Cash</string>
+    <string name="sms_history_kind_transfers">Transfers</string>
+    <string name="sms_history_card">••%s</string>
+    <plurals name="sms_history_add">
+        <item quantity="one">Add %d transaction</item>
+        <item quantity="other">Add %d transactions</item>
+    </plurals>
+    <plurals name="sms_history_selected">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+    <plurals name="sms_history_added">
+        <item quantity="one">%d transaction added</item>
+        <item quantity="other">%d transactions added</item>
+    </plurals>
+    <plurals name="sms_history_to_queue">
+        <item quantity="one">%d needs details in the Review Queue</item>
+        <item quantity="other">%d need details in the Review Queue</item>
+    </plurals>
+    <string name="sms_history_needs_permission">Allow SMS access in Bank SMS settings to read past messages.</string>
+
     <!-- Settings -->
     <string name="sms_settings_title">Bank SMS</string>
     <string name="sms_capture_title">Auto-capture bank SMS</string>

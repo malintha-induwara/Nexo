@@ -195,6 +195,12 @@ class SmsQueueViewModel @Inject constructor(
         _selection.value = emptySet()
     }
 
+    /** NQ-030 re-enable hint dismissed. */
+    fun clearGap() = viewModelScope.launch { prefs.clearSmsGap() }
+
+    /** NQ-032 "Not now". The picker stays in Settings. */
+    fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.core.settings.SmsHistoryImport.SKIPPED) }
+
     fun dismissUndo() {
         _undo.value = null
     }

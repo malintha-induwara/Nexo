@@ -1,5 +1,6 @@
 package com.nexo.app.ui.sms
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -21,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
@@ -87,6 +89,42 @@ fun DenyReasonList(onPick: (DenyReason?) -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(stringResource(R.string.sms_deny_no_reason), style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+        }
+    }
+}
+
+/** A one-off question at the top of a list: card mapping, the history offer, the re-enable hint. */
+@Composable
+fun SmsPromptCard(
+    title: String,
+    text: String?,
+    primary: String,
+    onPrimary: () -> Unit,
+    modifier: Modifier = Modifier,
+    secondary: String? = null,
+    onSecondary: (() -> Unit)? = null,
+) {
+    val colors = LocalNexoColors.current
+    Column(
+        modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.s)
+            .clip(com.nexo.app.ui.theme.NexoShapes.panel).background(colors.surface).padding(Space.l),
+    ) {
+        Text(title, style = MaterialTheme.typography.titleSmall, color = colors.text)
+        if (text != null) {
+            Spacer(Modifier.size(Space.xxs))
+            Text(text, style = com.nexo.app.ui.theme.NexoType.Meta, color = colors.textSecondary)
+        }
+        Spacer(Modifier.size(Space.m))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.material3.Button(
+                onClick = onPrimary,
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = colors.text, contentColor = colors.background),
+            ) { Text(primary, style = MaterialTheme.typography.labelLarge) }
+            if (secondary != null && onSecondary != null) {
+                androidx.compose.material3.TextButton(onClick = onSecondary, modifier = Modifier.padding(start = Space.s)) {
+                    Text(secondary, color = colors.textSecondary)
+                }
+            }
         }
     }
 }

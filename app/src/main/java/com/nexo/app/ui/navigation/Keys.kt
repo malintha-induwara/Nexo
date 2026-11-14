@@ -201,3 +201,7 @@ data object SmsCardsKey : NavKey
 
 @Serializable
 data object SmsFeesKey : NavKey
+
+/** NQ-032 picker. A non-zero gap opens on the messages that arrived while capture was off. */
+@Serializable
+data class SmsHistoryKey(val gapFrom: Long = 0, val gapUntil: Long = 0) : NavKey
