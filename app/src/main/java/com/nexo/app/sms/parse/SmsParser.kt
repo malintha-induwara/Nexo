@@ -7,9 +7,9 @@ package com.nexo.app.sms.parse
  */
 class SmsParser(
     customSenders: Collection<String> = emptyList(),
-    private val generic: GenericRules? = null,
+    private val generic: GenericRules? = GenericParser,
 ) {
-    /** The last-resort pipeline for banks without templates (spec 01, added in M7). */
+    /** The last-resort pipeline for banks without templates, or template banks' unknown formats (spec 01). */
     fun interface GenericRules {
         fun parse(bank: Bank, body: String, msg: SmsMessage): ParsedSms?
     }

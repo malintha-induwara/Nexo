@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -106,6 +107,13 @@ class SmsSettingsViewModel @Inject constructor(
     fun offerHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.core.settings.SmsHistoryImport.OFFERED) }
 
     fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.core.settings.SmsHistoryImport.SKIPPED) }
+
+    fun addSender(raw: String) = viewModelScope.launch {
+        val id = com.nexo.app.sms.parse.Banks.normalizeSender(raw)
+        if (id.isNotEmpty()) prefs.setSmsCustomSenders(prefs.current().smsCustomSenders + id)
+    }
+
+    fun removeSender(id: String) = viewModelScope.launch { prefs.setSmsCustomSenders(prefs.current().smsCustomSenders - id) }
 
     fun setFullText(on: Boolean) = viewModelScope.launch { prefs.setSmsStoreFullText(on) }
     fun setCashAccount(id: String) = viewModelScope.launch { refs.updateSettings { it.copy(smsCashAccountId = id) } }
@@ -208,6 +216,12 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                     stringResource(R.string.sms_cash_account),
                     ref.smsCashAccount()?.let { ref.accountById[it]?.name },
                     onClick = { cashSheet = true },
+                )
+
+                SettingRow(
+                    stringResource(R.string.sms_senders_title),
+                    stringResource(R.string.sms_senders_row_sub),
+                    onClick = { nav.navigate(com.nexo.app.ui.navigation.SmsSendersKey) },
                 )
 
                 SectionHeader(stringResource(R.string.sms_section_privacy))
@@ -378,5 +392,59 @@ fun SmsFeesScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                 }
             }
         }
+    }
+}
+
+/** Settings → Bank SMS → Bank sender IDs (LKSMS-003): the built-in list, and senders the user adds. */
+@Composable
+fun SmsSendersScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
+    val nav = LocalNavigator.current
+    val colors = LocalNexoColors.current
+    val device by vm.device.collectAsStateWithLifecycle()
+    var adding by remember { mutableStateOf(false) }
+    val custom = device?.smsCustomSenders.orEmpty().sorted()
+
+    Scaffold(
+        topBar = {
+            NexoTopBar(stringResource(R.string.sms_senders_title), onBack = { nav.back() }) {
+                RoundIconButton(androidx.compose.material.icons.Icons.Rounded.Add, stringResource(R.string.sms_senders_add), { adding = true }, modifier = Modifier.padding(end = com.nexo.app.ui.theme.Space.m))
+            }
+        },
+        containerColor = colors.background,
+    ) { p ->
+        Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
+            SectionHeader(stringResource(R.string.sms_senders_custom))
+            if (custom.isEmpty()) {
+                Text(
+                    stringResource(R.string.sms_senders_custom_empty),
+                    Modifier.padding(horizontal = com.nexo.app.ui.theme.Space.gutter),
+                    style = com.nexo.app.ui.theme.NexoType.Meta, color = colors.textSecondary,
+                )
+            }
+            custom.forEach { id ->
+                SettingRow(id, trailing = {
+                    RoundIconButton(Icons.Outlined.Delete, stringResource(R.string.sms_remove), { vm.removeSender(id) }, tint = colors.textTertiary, container = Color.Transparent)
+                })
+            }
+            Text(
+                stringResource(R.string.sms_senders_note),
+                Modifier.padding(horizontal = com.nexo.app.ui.theme.Space.gutter, vertical = com.nexo.app.ui.theme.Space.s),
+                style = com.nexo.app.ui.theme.NexoType.Meta, color = colors.textTertiary,
+            )
+            SectionHeader(stringResource(R.string.sms_senders_builtin))
+            com.nexo.app.sms.parse.Bank.entries.filter { it.senders.isNotEmpty() }.forEach { bank ->
+                SettingRow(bank.senders.joinToString(" · "), bank.displayName)
+            }
+        }
+    }
+    if (adding) {
+        com.nexo.app.ui.components.TextFieldDialog(
+            title = stringResource(R.string.sms_senders_add),
+            initial = "",
+            label = stringResource(R.string.sms_senders_hint),
+            maxLength = 20,
+            onConfirm = { vm.addSender(it); adding = false },
+            onDismiss = { adding = false },
+        )
     }
 }

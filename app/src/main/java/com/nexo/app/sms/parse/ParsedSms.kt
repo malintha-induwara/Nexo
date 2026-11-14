@@ -51,6 +51,8 @@ sealed interface ParsedSms {
         /** The date and time as written in the body, if any. */
         val bodyDate: String? = null,
         val dedupeKey: String,
+        /** A bank charge stated in the body, kept apart from [amount]. */
+        val statedFee: BigDecimal? = null,
     ) : ParsedSms
 
     /** CB-004: a purchase was cancelled. The message carries no amount. */

@@ -34,6 +34,12 @@ class MerchantCleanerTest {
     }
 
     @Test
+    fun trailingPunctuationGoes() {
+        assertEquals("SEASIDE GRILL Negombo", purchase("SEASIDE GRILL Negombo."))
+        assertEquals("SHOP.EXAMPLE", purchase("SHOP.EXAMPLE"))
+    }
+
+    @Test
     fun urlSchemeAndZeroFillers() {
         assertEquals("SHOP.EXAMPLE", purchase("HTTPS://WWW.SHOP.EXAMPLE 0000000 GB"))
     }

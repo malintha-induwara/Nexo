@@ -67,6 +67,8 @@ import com.nexo.app.sms.data.SmsSourceEntity
         AutoMigration(from = 1, to = 2),
         // 3: bank SMS capture (review queue, card mapping, learned categories, fee presets, rate history) and transactions.feeParentId.
         AutoMigration(from = 2, to = 3),
+        // 4: fee stated in the SMS (sms_items.statedFee).
+        AutoMigration(from = 3, to = 4),
     ],
 )
 abstract class NexoDatabase : RoomDatabase() {
@@ -85,7 +87,7 @@ abstract class NexoDatabase : RoomDatabase() {
     abstract fun smsDao(): SmsDao
 
     companion object {
-        const val VERSION = 3
+        const val VERSION = 4
         const val FILE_NAME = "nexo.db"
         /** Room identity table name; its presence identifies a Nexo backup file. */
         const val IDENTITY_TABLE = "room_master_table"

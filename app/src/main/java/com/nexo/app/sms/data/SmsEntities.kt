@@ -75,6 +75,8 @@ data class SmsItemEntity(
     /** The purchase a reversal item undoes (CB-004). */
     val linkedItemId: String? = null,
     val updatedAt: Long,
+    /** A bank charge the SMS itself states, e.g. "CEFT charges LKR 30.00" (spec 02 improvement 3). Added on approve. */
+    val statedFee: Double? = null,
 ) {
     /** Foreign-currency estimate still waiting for the real account amount (NQ-012). */
     val awaitingActual: Boolean get() = certainty == Certainty.ESTIMATED && actualAmount == null

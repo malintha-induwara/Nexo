@@ -44,8 +44,8 @@ sealed interface ApproveResult {
 sealed interface FeePlan {
     data object None : FeePlan
 
-    /** The preset says "always add": no question, an Undo afterwards. */
-    data class Auto(val route: FeeRoute, val amount: Double) : FeePlan
+    /** The preset says "always add", or the SMS stated the fee: no question, an Undo afterwards. */
+    data class Auto(val route: FeeRoute?, val amount: Double) : FeePlan
 
     /** Ask, pre-filled with the last fee on this route — or, for [fxDifference], with actual − estimate (NQ-012). */
     data class Ask(val route: FeeRoute, val prefill: Double?, val fxDifference: Boolean = false) : FeePlan
@@ -102,6 +102,8 @@ class SmsApprover @Inject constructor(
 
     /** NQ-020: whether approving [item] should add, ask about, or skip a bank fee. */
     suspend fun feePlan(item: SmsItemEntity): FeePlan {
+        // The bank said what it charged: nothing to ask.
+        item.statedFee?.takeIf { it > 0 }?.let { return FeePlan.Auto(item.feeRoute, it) }
         val route = item.feeRoute ?: return FeePlan.None
         val account = item.accountId ?: return FeePlan.None
         val preset = dao.feePreset(account, route)

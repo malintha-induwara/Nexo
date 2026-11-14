@@ -39,7 +39,7 @@ object MerchantCleaner {
         s = s.replace(zeroFiller, " ")
         s = s.trim().replace(urlScheme, "")
         s = s.replace('*', ' ')
-        return s.replace(spaces, " ").trim(' ', '-')
+        return s.replace(spaces, " ").trim(' ', '-', '.', ',', ':', ';')
     }
 
     /** Lower-case alphanumerics: all "Dialog Axiata PLC Colombo 02 LK" variants share one key (CB-012). */

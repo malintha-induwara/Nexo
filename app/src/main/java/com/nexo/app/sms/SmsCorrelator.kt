@@ -121,7 +121,7 @@ class SmsCorrelator(private val store: SmsStore) {
                 merchantRaw = merchant.raw, merchant = merchant.name, merchantKey = merchant.key, merchantFromOtp = fromOtp,
                 cardLast4 = m.cardLast4, payee = m.payee, reference = m.reference, route = m.route, feeRoute = m.feeRoute,
                 occurredAt = m.occurredAt, smsAt = msg.timestamp, capturedAt = now, dedupeKey = m.dedupeKey, text = text,
-                updatedAt = now,
+                updatedAt = now, statedFee = m.statedFee?.toDouble(),
             ),
         )
         store.insert(item)
