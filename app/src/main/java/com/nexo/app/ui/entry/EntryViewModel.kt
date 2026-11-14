@@ -90,9 +90,8 @@ class EntryViewModel @AssistedInject constructor(
     private val photos: PhotosRepository,
     private val tags: TagsRepository,
     private val importer: TransactionImportRepository,
-    private val getSmsLedgerAmount: GetSmsLedgerAmountUseCase,
-    private val getSmsFeePlan: GetSmsFeePlanUseCase,
     private val receipts: ReceiptRepository,
+    private val loader: EntryFormLoader,
     private val clock: Clock,
 ) : ViewModel() {
     @AssistedFactory
@@ -100,7 +99,8 @@ class EntryViewModel @AssistedInject constructor(
         fun create(key: EntryKey): EntryViewModel
     }
 
-    private val form = MutableStateFlow(EntryForm(date = LocalDate.now(clock), time = timeNow()))
+    private val form =
+        MutableStateFlow(EntryForm(date = LocalDate.now(clock), time = loader.timeNow()))
 
     /** Kept for event handlers that need the reference data synchronously. */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
@@ -122,60 +122,23 @@ class EntryViewModel @AssistedInject constructor(
         EntryUiState(form, r, device, suggestions, tagList, message, navigation)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EntryUiState(form.value))
 
-    private var texts = EntryTexts(paymentNote = "")
     private var initialized = false
 
     private var originalState: EntryForm? = null
-    private var original: Transaction? = null
-    private var originalRule: RepeatRule? = null
+
+    /** The stored records the form was opened from; see [LoadedEntry]. */
+    private var opened = LoadedEntry(form.value)
 
     /** Loads the form once; safe to call again. [texts] are the strings the form needs as data. */
     @MainThread
     fun initialize(texts: EntryTexts) {
         if (initialized) return
         initialized = true
-        this.texts = texts
         home.pickedFavoriteConsumed()
         viewModelScope.launch {
             val r = refs.getRefData()
-            val base =
-                EntryForm(
-                    date = LocalDate.now(clock),
-                    time = timeNow(),
-                    inputOrder = r.settings.inputOrder,
-                    currencyId = r.mainCurrency.id,
-                    feeCurrencyId = r.mainCurrency.id,
-                )
-            val loaded = when (key.mode) {
-                EntryMode.EDIT -> loadExisting(r, base, copy = false).let { s ->
-                    key.txId?.let { withFxNote(s, it, r) }
-                        ?: s
-                }
-
-                EntryMode.COPY -> loadExisting(r, base, copy = true)
-
-                EntryMode.FAVORITE -> applyFavorite(
-                    r,
-                    base.copy(mode = EntryMode.FAVORITE),
-                    key.favoriteId,
-                )
-
-                EntryMode.REPEAT_EDIT -> loadRule(r, base)
-
-                EntryMode.PAY_CARD -> loadPayCard(r, base)
-
-                EntryMode.IMPORT_FIX -> loadImportRow(r, base)
-
-                EntryMode.SMS -> loadSmsItem(r, base)
-
-                EntryMode.REPEAT_NEW -> newEntry(r, base).copy(
-                    mode = EntryMode.REPEAT_NEW,
-                    repeat =
-                        key.repeat ?: RepeatType.MONTHLY,
-                )
-
-                else -> newEntry(r, base)
-            }
+            opened = loader.load(key, r, texts)
+            val loaded = opened.form
             val unassigned = if (key.reviewUnassigned) {
                 transactions.getUnassigned(loaded.date.toIsoText()).size
             } else {
@@ -189,13 +152,11 @@ class EntryViewModel @AssistedInject constructor(
         viewModelScope.launch {
             home.pickedFavorite.filterNotNull().collect { id ->
                 home.pickedFavoriteConsumed()
-                form.value = applyFavorite(refs.getRefData(), form.value, id, keepDate = true)
+                form.value =
+                    loader.applyFavorite(refs.getRefData(), form.value, id, keepDate = true)
             }
         }
     }
-
-    /** Now to the minute, as the form shows and stores it. */
-    private fun timeNow(): LocalTime = LocalTime.now(clock).withSecond(0).withNano(0)
 
     fun onUserMessageShown(id: Long) {
         userMessage.update { if (it?.id == id) null else it }
@@ -251,300 +212,6 @@ class EntryViewModel @AssistedInject constructor(
             }
     }
 
-    private fun newEntry(r: RefData, base: EntryForm): EntryForm {
-        val date =
-            key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-                ?: LocalDate.now(clock)
-        var s = base.copy(
-            mode = key.mode,
-            date = date,
-            type = key.type ?: EntryType.EXPENSE,
-            sourceText = key.sourceText,
-        )
-        if (key.accountId != null && r.accountById.containsKey(key.accountId)) {
-            s =
-                s.copy(
-                    accountId = key.accountId,
-                    presetAccountId = key.accountId,
-                    currencyId = r.accountCurrency(key.accountId).id,
-                    feeCurrencyId = r.accountCurrency(key.accountId).id,
-                )
-        } else if (r.pickerAccounts.size == 1) {
-            val only = r.pickerAccounts.first()
-            s =
-                s.copy(
-                    accountId = only.id,
-                    currencyId = only.currencyId,
-                    feeCurrencyId = only.currencyId,
-                )
-        }
-        if (key.categoryId != null) {
-            r.categoryById[key.categoryId]?.let { c ->
-                s =
-                    s.copy(
-                        categoryId = c.id,
-                        presetCategoryId = c.id,
-                        type = if (c.kind == CategoryKind.INCOME) {
-                            EntryType.INCOME
-                        } else {
-                            EntryType.EXPENSE
-                        },
-                    )
-            }
-        }
-        return s
-    }
-
-    private suspend fun loadExisting(r: RefData, base: EntryForm, copy: Boolean): EntryForm {
-        var tx = key.txId?.let { transactions.getTransaction(it) } ?: return newEntry(r, base)
-        if (tx.kind == TxKind.TRANSFER_IN) {
-            val out = tx.transferGroupId?.let { g ->
-                transactions.getTransferLegs(g).firstOrNull {
-                    it.kind ==
-                        TxKind.TRANSFER_OUT
-                }
-            }
-            tx =
-                out
-                    ?: tx.copy(
-                        kind = TxKind.TRANSFER_OUT,
-                        accountId = tx.counterpartAccountId,
-                        counterpartAccountId = tx.accountId,
-                    )
-        }
-        original = if (copy) null else tx
-        val dateTime = tx.dateTime.toLocalDateTime(clock.zone)
-        val storedDate = runCatching {
-            LocalDate.parse(tx.date)
-        }.getOrDefault(dateTime.toLocalDate())
-        val type = when (tx.kind) {
-            TxKind.INCOME, TxKind.BALANCE_INCREASE -> EntryType.INCOME
-            TxKind.EXPENSE, TxKind.BALANCE_DECREASE -> EntryType.EXPENSE
-            else -> EntryType.TRANSFER
-        }
-        val fee = if (tx.kind.isTransfer) {
-            tx.feeGroupId?.let {
-                transactions.getFeeRow(it)
-            }
-        } else {
-            null
-        }
-        val tags = transactions.getTagIds(tx.id)
-        val photos = if (copy) {
-            emptyList()
-        } else {
-            transactions.getPhotos(tx.id).map {
-                PhotoItem.Stored(it.fileName, it.checksum, it.fileSize)
-            }
-        }
-        val rate = if (tx.currencyId != r.mainCurrency.id && tx.amount != 0.0) {
-            BigDecimal.valueOf(
-                tx.amountMain,
-            ).divide(BigDecimal.valueOf(tx.amount), 10, RoundingMode.HALF_UP).toDouble()
-        } else {
-            null
-        }
-        val installment = if (!copy && tx.installmentGroupId != null) {
-            val group = transactions.getInstallmentGroup(tx.installmentGroupId).filter {
-                it.kind !=
-                    TxKind.TRANSFER_IN
-            }
-            val total = Money.sum(group.map { it.amount })
-            val after = group.filter {
-                it.date > tx.date ||
-                    (it.date == tx.date && it.dateTime > tx.dateTime)
-            }
-            InstallmentInfo(
-                tx.installmentIndex,
-                tx.installmentCount,
-                Money.sum(
-                    after.map {
-                        it.amount
-                    },
-                ),
-                total,
-            )
-        } else {
-            null
-        }
-        val copyDate = if (copy && key.copyWithToday) LocalDate.now(clock) else storedDate
-        val copyTime = if (copy && key.copyWithToday) {
-            timeNow()
-        } else {
-            dateTime.toLocalTime()
-        }
-        return base.copy(
-            mode = if (copy) EntryMode.NEW else EntryMode.EDIT,
-            viewing = !copy,
-            type = type,
-            balanceKind = if (tx.kind.isBalance) tx.kind else null,
-            isBalanceAdjustment = tx.isBalanceAdjustment || tx.kind.isBalance,
-            date = copyDate,
-            time = copyTime,
-            accountId = tx.accountId,
-            toAccountId = if (tx.kind.isTransfer) tx.counterpartAccountId else null,
-            categoryId = tx.categoryId,
-            amount = tx.amount,
-            currencyId = tx.currencyId,
-            rate = rate,
-            note = tx.note,
-            description = tx.description,
-            tagIds = tags,
-            photos = photos,
-            feeExpanded = fee != null,
-            feeAmount = fee?.amount,
-            feeCurrencyId = fee?.currencyId ?: tx.currencyId,
-            feeLoaded = true,
-            originalId = if (copy) null else tx.id,
-            installmentInfo = installment,
-            sourceText = if (copy) null else tx.sourceText,
-        )
-    }
-
-    private suspend fun applyFavorite(
-        r: RefData,
-        base: EntryForm,
-        favoriteId: String?,
-        keepDate: Boolean = false,
-    ): EntryForm {
-        val fav = favoriteId?.let { favorites.getFavorite(it) } ?: return base
-        val transfer = fav.kind.isTransfer
-        val from = if (fav.kind == TxKind.TRANSFER_IN) fav.toAccountId else fav.accountId
-        val to = if (fav.kind == TxKind.TRANSFER_IN) fav.accountId else fav.toAccountId
-        var s = base.copy(
-            type = when {
-                transfer -> EntryType.TRANSFER
-                fav.kind == TxKind.INCOME -> EntryType.INCOME
-                else -> EntryType.EXPENSE
-            },
-            accountId = from?.takeIf { r.accountById.containsKey(it) },
-            toAccountId = if (transfer) to else null,
-            categoryId = if (transfer) {
-                null
-            } else {
-                fav.categoryId?.takeIf {
-                    r.categoryById[it]?.isDeleted ==
-                        false
-                }
-            },
-            amount = fav.amount,
-            currencyId = r.currency(fav.currencyId).id,
-            rate = null,
-            note = fav.note,
-            description = fav.description,
-            balanceKind = null,
-            isBalanceAdjustment = false,
-            feeExpanded = false,
-            feeAmount = null,
-            feeLoaded = false,
-            installments = 0,
-        )
-        if (!keepDate) {
-            s = s.copy(date = LocalDate.now(clock), time = timeNow())
-        }
-        if (transfer) s = loadLastFee(s)
-        return s
-    }
-
-    private suspend fun loadRule(r: RefData, base: EntryForm): EntryForm {
-        val rule = key.repeatRuleId?.let { repeats.getRule(it) } ?: return newEntry(r, base)
-        originalRule = rule
-        return base.copy(
-            mode = EntryMode.REPEAT_EDIT,
-            type = when (rule.kind) {
-                TxKind.INCOME -> EntryType.INCOME
-                TxKind.TRANSFER_OUT -> EntryType.TRANSFER
-                else -> EntryType.EXPENSE
-            },
-            date = LocalDate.parse(rule.nextDate),
-            accountId = rule.accountId,
-            toAccountId = rule.toAccountId,
-            categoryId = rule.categoryId,
-            amount = rule.amount,
-            currencyId = r.currency(rule.currencyId).id,
-            note = rule.note,
-            description = rule.description,
-            repeat = rule.repeatType,
-            repeatEnd = rule.endDate?.let(LocalDate::parse),
-        )
-    }
-
-    private suspend fun loadPayCard(r: RefData, base: EntryForm): EntryForm {
-        val card = key.accountId?.let { r.accountById[it] } ?: return newEntry(r, base)
-        val ids = listOf(card.id) + r.linkedDebitCards(card.id).map { it.id }
-        val figures = CardStatement.compute(
-            r,
-            card,
-            transactions.getAllForAccounts(ids),
-            LocalDate.now(clock),
-        )
-        val payer = card.linkedAccountId?.takeIf { id ->
-            r.accountById[id]?.let { r.isAccountVisible(it) } ==
-                true
-        }
-        return base.copy(
-            mode = EntryMode.PAY_CARD,
-            type = EntryType.TRANSFER,
-            accountId = payer,
-            toAccountId = card.id,
-            currencyId = card.currencyId,
-            feeCurrencyId = card.currencyId,
-            amount = figures.payAmount,
-            note = texts.paymentNote,
-        )
-    }
-
-    /** The Review Queue item being reviewed in [EntryMode.SMS]. */
-    private var smsItem: SmsItem? = null
-
-    /** The form opens with everything the SMS gave; saving approves the item. */
-    private suspend fun loadSmsItem(r: RefData, base: EntryForm): EntryForm {
-        val item = key.smsItemId?.let { smsRepository.getItem(it) } ?: return newEntry(r, base)
-        smsItem = item
-        val (currency, amount) = getSmsLedgerAmount(item, r)
-        val kind = item.kind
-        // A payment to someone outside Nexo starts as an expense; picking a destination account turns it into a transfer.
-        val transfer = kind.isTransfer && (kind != SmsKind.TRANSFER_OUT || item.toAccountId != null)
-        val (from, to) = if (kind == SmsKind.TRANSFER_IN) {
-            item.toAccountId to item.accountId
-        } else {
-            item.accountId to
-                item.toAccountId
-        }
-        val dt = item.occurredAt.toLocalDateTime(clock.zone)
-        // The fee field starts filled when the route's preset knows the fee.
-        val presetFee = when (val plan = getSmsFeePlan(item)) {
-            is FeePlan.Auto -> plan.amount
-            is FeePlan.Ask -> plan.prefill.takeIf { !plan.fxDifference }
-            FeePlan.None -> null
-        }
-        val estimated = item.certainty == Certainty.ESTIMATED
-        return base.copy(
-            mode = EntryMode.SMS,
-            fxNote = if (estimated) FxNote(item, editHint = false) else null,
-            fxFromApi = estimated && item.rateFromApi,
-            feeExpanded = presetFee != null,
-            feeAmount = presetFee,
-            feeLoaded = true,
-            type = when {
-                transfer -> EntryType.TRANSFER
-                kind.isInflow -> EntryType.INCOME
-                else -> EntryType.EXPENSE
-            },
-            date = dt.toLocalDate(),
-            time = dt.toLocalTime(),
-            accountId = from,
-            toAccountId = if (transfer) to else null,
-            categoryId = if (transfer) null else item.categoryId,
-            amount = amount,
-            currencyId = currency.id,
-            feeCurrencyId = r.accountCurrency(from).id,
-            note = noteFor(item),
-            description = item.note,
-            sourceText = item.text,
-        )
-    }
-
     /** An SMS transfer's fee goes to the system Bank fee category. */
     private suspend fun withBankFeeCategory(d: TxDraft): TxDraft {
         val fee = d.fee ?: return d
@@ -552,60 +219,10 @@ class EntryViewModel @AssistedInject constructor(
         return d.copy(fee = fee.copy(categoryId = transactions.bankFeeCategory()))
     }
 
-    /** An approved SMS transaction still booked at an FX estimate: editing its amount records the actual one. */
-    private var linkedEstimate: SmsItem? = null
-
-    private suspend fun withFxNote(s: EntryForm, txId: String, r: RefData): EntryForm {
-        val item =
-            smsRepository.getItemForTransaction(txId)?.takeIf { it.awaitingActual } ?: return s
-        linkedEstimate = item
-        if (item.estimatedAmount == null) return s
-        return s.copy(fxNote = FxNote(item, editHint = true), fxFromApi = item.rateFromApi)
-    }
-
     /** Deny from the form. Nothing is written to the ledger. */
     fun denySms() = viewModelScope.launch {
         key.smsItemId?.let { smsRepository.deny(listOf(it)) }
         close(null)
-    }
-
-    /** Pre-fill from a spreadsheet import row. */
-    private suspend fun loadImportRow(r: RefData, base: EntryForm): EntryForm {
-        val file = key.importFile ?: return newEntry(r, base)
-        val order = key.importOrder?.let { runCatching { DateOrder.valueOf(it) }.getOrNull() }
-        val row =
-            importer.load(file, order).rows.getOrNull(key.importLine)?.parsed
-                ?: return newEntry(r, base).copy(mode = EntryMode.IMPORT_FIX)
-        val kind = row.kind ?: TxKind.EXPENSE
-        val transferIn = kind == TxKind.TRANSFER_IN
-        val dt = row.dateTime ?: LocalDateTime.now(clock)
-        val cur = r.currency(row.currencyId)
-        return base.copy(
-            mode = EntryMode.IMPORT_FIX,
-            type = when (kind) {
-                TxKind.INCOME -> EntryType.INCOME
-                TxKind.EXPENSE -> EntryType.EXPENSE
-                else -> EntryType.TRANSFER
-            },
-            date = dt.toLocalDate(),
-            time = dt.toLocalTime(),
-            accountId = if (transferIn) row.counterpartId else row.accountId,
-            toAccountId = if (kind.isTransfer) {
-                (if (transferIn) row.accountId else row.counterpartId)
-            } else {
-                null
-            },
-            categoryId = row.categoryId,
-            amount = row.amount,
-            currencyId = cur.id,
-            rate = if (cur.id != r.mainCurrency.id && row.amount != 0.0) {
-                Money.divide(row.main, row.amount, 10)
-            } else {
-                null
-            },
-            note = row.note,
-            description = row.description,
-        )
     }
 
     // ---- Field changes -------------------------------------------------------------------------------------------------
@@ -621,24 +238,7 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     fun setType(t: EntryType) {
-        edit { s ->
-            if (s.type == t && !s.isBalance) return@edit s
-            s.copy(
-                type = t,
-                balanceKind = null,
-                isBalanceAdjustment = false,
-                categoryId = null,
-                toAccountId = null,
-                installments = 0,
-                feeExpanded = if (t == EntryType.TRANSFER ||
-                    (s.mode == EntryMode.SMS && t == EntryType.EXPENSE)
-                ) {
-                    s.feeExpanded
-                } else {
-                    false
-                },
-            )
-        }
+        edit { it.withType(t) }
         advance()
     }
 
@@ -659,30 +259,12 @@ class EntryViewModel @AssistedInject constructor(
     private fun refCurrencyDecimals(id: String) = ref.value.currency(id).decimals
 
     fun selectAccount(id: String) {
-        val r = ref.value
-        edit { s ->
-            when (s.panel) {
-                Panel.TO_ACCOUNT -> s.copy(toAccountId = id)
-
-                else -> {
-                    var n = s.copy(accountId = id)
-                    if (s.amount == null) {
-                        n =
-                            n.copy(
-                                currencyId = r.accountCurrency(id).id,
-                                feeCurrencyId = r.accountCurrency(id).id,
-                                rate = null,
-                            )
-                    }
-                    n
-                }
-            }
-        }
+        edit { it.withAccount(id, ref.value) }
         viewModelScope.launch {
             if (form.value.isTransfer && form.value.repeat == RepeatType.NONE &&
                 !form.value.feeLoaded
             ) {
-                form.value = loadLastFee(form.value)
+                form.value = loader.withLastFee(form.value)
             }
             advance()
         }
@@ -699,63 +281,16 @@ class EntryViewModel @AssistedInject constructor(
             openPanel(if (s.accountId == null) Panel.ACCOUNT else Panel.TO_ACCOUNT)
             return
         }
-        edit {
-            var n = it.copy(
-                accountId = it.toAccountId,
-                toAccountId = it.accountId,
-                feeLoaded = false,
-            )
-            if (it.amount == null) {
-                n = n.copy(currencyId = ref.value.accountCurrency(n.accountId).id)
-            }
-            n
-        }
+        edit { it.swapped(ref.value) }
         viewModelScope.launch {
             if (form.value.repeat == RepeatType.NONE) {
-                form.value = loadLastFee(form.value)
+                form.value = loader.withLastFee(form.value)
             }
         }
-    }
-
-    /** Pre-fill the fee of the most recent transfer between the same accounts. */
-    private suspend fun loadLastFee(s: EntryForm): EntryForm {
-        val from = s.accountId ?: return s
-        val to = s.toAccountId ?: return s
-        val last = transactions.getLastTransferWithFee(from, to) ?: return s.copy(feeLoaded = true)
-        val fee =
-            last.feeGroupId?.let { transactions.getFeeRow(it) } ?: return s.copy(feeLoaded = true)
-        return s.copy(
-            feeExpanded = true,
-            feeAmount = fee.amount,
-            feeCurrencyId = fee.currencyId,
-            feeLoaded = true,
-        )
     }
 
     fun padKey(k: PadKey) {
-        val s = form.value
-        val r = s.pad.press(k)
-        val forFee = s.panel == Panel.FEE
-        val current = if (forFee) s.feeAmount else s.amount
-        val value = when {
-            r.negateExisting -> current?.let { -it }
-            r.input.value != null -> r.input.value
-            r.clearField -> null
-            r.input.buffer.isEmpty() && s.pad.buffer.isEmpty() -> current
-            else -> null
-        }
-        form.value =
-            (
-                if (forFee) {
-                    s.copy(
-                        feeAmount = value?.let {
-                            abs(it)
-                        },
-                    )
-                } else {
-                    s.copy(amount = value)
-                }
-                ).copy(pad = r.input, viewing = false)
+        form.value = form.value.afterPadKey(k)
     }
 
     fun padDone() {
@@ -823,15 +358,7 @@ class EntryViewModel @AssistedInject constructor(
     fun setRate(rate: Double) = edit { it.copy(rate = rate) }
 
     fun setDate(d: LocalDate) {
-        edit { s ->
-            s.copy(
-                date = if (s.repeat != RepeatType.NONE) {
-                    RepeatSchedule.snap(d, s.repeat)
-                } else {
-                    d
-                },
-            )
-        }
+        edit { it.withDate(d) }
         advance()
     }
 
@@ -898,34 +425,8 @@ class EntryViewModel @AssistedInject constructor(
      */
     fun applyReceipt(amount: Double?, useDate: Boolean, useMerchant: Boolean) {
         val done = form.value.scan as? ScanUi.Done ?: return
-        val read = done.read
         edit { s ->
-            val photo = PhotoItem.Picked(done.uri.toString())
-            var n = s.copy(
-                scan = null,
-                photos = if (photo in s.photos) {
-                    s.photos
-                } else {
-                    (s.photos + photo).take(3)
-                },
-            )
-            if (amount != null && amount > 0) {
-                val decimals = refCurrencyDecimals(s.currencyId)
-                n =
-                    n.copy(
-                        amount = BigDecimal.valueOf(
-                            amount,
-                        ).setScale(decimals, RoundingMode.HALF_UP).toDouble(),
-                        pad = PadInput("", decimals, allowSign = true),
-                    )
-            }
-            if (useDate && read.date != null) {
-                n = n.copy(date = read.date, time = read.time ?: n.time)
-            }
-            if (useMerchant && read.merchant != null && s.note.isBlank()) {
-                n = n.copy(note = read.merchant)
-            }
-            n
+            s.withReceipt(done, amount, useDate, useMerchant, refCurrencyDecimals(s.currencyId))
         }
         advance()
     }
@@ -941,35 +442,11 @@ class EntryViewModel @AssistedInject constructor(
         if (expanded) openPanel(Panel.FEE)
     }
 
-    fun setRepeat(type: RepeatType) {
-        edit { s ->
-            if (type == RepeatType.NONE) {
-                s.copy(repeat = RepeatType.NONE, repeatEnd = null)
-            } else {
-                s.copy(
-                    repeat = type,
-                    installments = 0,
-                    date = RepeatSchedule.snap(s.date, type),
-                    tagIds = emptyList(),
-                    feeExpanded = false,
-                    feeAmount = null,
-                )
-            }
-        }
-    }
+    fun setRepeat(type: RepeatType) = edit { it.withRepeat(type) }
 
     fun setRepeatEnd(d: LocalDate?) = edit { it.copy(repeatEnd = d) }
 
-    fun setInstallments(n: Int) = edit {
-        it.copy(
-            installments = n.coerceIn(0, 600),
-            repeat = if (n > 0) {
-                RepeatType.NONE
-            } else {
-                it.repeat
-            },
-        )
-    }
+    fun setInstallments(n: Int) = edit { it.withInstallments(n) }
 
     fun clearRepInst() = edit {
         it.copy(repeat = RepeatType.NONE, installments = 0, repeatEnd = null)
@@ -982,7 +459,7 @@ class EntryViewModel @AssistedInject constructor(
     private fun advance(fromPad: Boolean = false) {
         val s = form.value
         if (s.viewing) return
-        val next = s.fields.firstOrNull { s.isEmpty(it) && !(it == Field.CATEGORY && s.isBalance) }
+        val next = s.nextEmptyField()
         if (next != null) {
             if (fromPad && (next == Field.AMOUNT || next == Field.FEE)) {
                 form.update { it.copy(panel = Panel.NONE) }
@@ -1066,13 +543,13 @@ class EntryViewModel @AssistedInject constructor(
         }
         form.update { it.copy(saving = true) }
         viewModelScope.launch {
-            runCatching { transactions.save(withBankFeeCategory(draft(form.value))) }
+            runCatching { transactions.save(withBankFeeCategory(form.value.toDraft())) }
                 .onSuccess { id ->
                     home.saved(id)
                     if (key.mode == EntryMode.SMS && key.smsItemId != null) {
                         val s = form.value
                         // Changing an estimate's amount records what the bank actually charged.
-                        smsItem?.let { item ->
+                        opened.smsItem?.let { item ->
                             val estimate = item.estimatedAmount
                             if (item.certainty == Certainty.ESTIMATED && s.amount != null &&
                                 estimate != null &&
@@ -1081,7 +558,7 @@ class EntryViewModel @AssistedInject constructor(
                                 smsRepository.setAmount(item.id, s.amount)
                             }
                         }
-                        val bankAccount = if (smsItem?.kind == SmsKind.TRANSFER_IN) {
+                        val bankAccount = if (opened.smsItem?.kind == SmsKind.TRANSFER_IN) {
                             s.toAccountId
                         } else {
                             s.accountId
@@ -1094,16 +571,16 @@ class EntryViewModel @AssistedInject constructor(
                             bankAccount,
                             if (s.isTransfer) null else s.categoryId,
                         )
-                        smsItem?.let { item ->
+                        opened.smsItem?.let { item ->
                             if (fee != null) {
                                 smsRepository.recordFee(item, bankAccount, FeeChoice(fee))
                             }
                         }
                     }
-                    linkedEstimate?.let { item ->
+                    opened.linkedEstimate?.let { item ->
                         val amount = form.value.amount
                         if (key.mode == EntryMode.EDIT && amount != null &&
-                            amount != original?.amount
+                            amount != opened.original?.amount
                         ) {
                             smsRepository.setAmount(item.id, amount)
                         }
@@ -1132,63 +609,24 @@ class EntryViewModel @AssistedInject constructor(
         form.update { it.copy(saving = true) }
         viewModelScope.launch {
             val now = clock.millis()
-            val cur = r.currency(s.currencyId)
-            val rule = RepeatRule(
-                id = originalRule?.id ?: UUID.randomUUID().toString(),
-                kind = when (s.type) {
-                    EntryType.INCOME -> TxKind.INCOME
-                    EntryType.EXPENSE -> TxKind.EXPENSE
-                    EntryType.TRANSFER -> TxKind.TRANSFER_OUT
-                },
-                accountId = s.accountId,
-                toAccountId = if (s.isTransfer) s.toAccountId else null,
-                categoryId = if (s.isTransfer) null else s.categoryId,
-                currencyId = cur.id,
-                amount = Money.round(s.amount ?: 0.0, cur.decimals),
-                note = s.note.trim(),
-                description = s.description,
-                repeatType = s.repeat,
-                nextDate = s.date.toIsoText(),
-                endDate = s.repeatEnd?.toIsoText(),
-                anchorDay = s.date.dayOfMonth,
-                createdAt = originalRule?.createdAt ?: now,
-                updatedAt = now,
+            val rule = opened.originalRule
+            repeats.save(
+                s.toRepeatRule(
+                    id = rule?.id ?: UUID.randomUUID().toString(),
+                    currency = r.currency(s.currencyId),
+                    createdAt = rule?.createdAt ?: now,
+                    now = now,
+                ),
             )
-            repeats.save(rule)
             close(s.date)
         }
     }
-
-    private fun draft(s: EntryForm) = TxDraft(
-        editingId = s.originalId,
-        type = s.type,
-        balanceKind = s.balanceKind,
-        isBalanceAdjustment = s.isBalanceAdjustment && (s.isBalance || s.categoryId == null),
-        accountId = s.accountId,
-        toAccountId = if (s.isTransfer) s.toAccountId else null,
-        categoryId = if (s.isTransfer) null else s.categoryId,
-        dateTime = s.date.atTime(if (s.showTime) s.time else LocalTime.MIDNIGHT),
-        amount = s.amount ?: 0.0,
-        currencyId = s.currencyId,
-        rate = s.rate,
-        note = s.note,
-        description = s.description,
-        tagIds = s.tagIds,
-        photos = s.photos,
-        fee = if (s.isTransfer && s.feeExpanded && s.feeAmount != null) {
-            FeeDraft(s.feeAmount, s.feeCurrencyId)
-        } else {
-            null
-        },
-        installments = if (s.type == EntryType.EXPENSE && !s.isBalance) s.installments else 0,
-        sourceText = s.sourceText,
-    )
 
     private suspend fun afterSave(continueAfter: Boolean) {
         val s = form.value
         if (key.reviewUnassigned) {
             // Bulk-assign other unassigned entries with the same note.
-            val orig = original
+            val orig = opened.original
             if (orig != null && orig.categoryId == null && s.categoryId != null &&
                 s.note.isNotBlank()
             ) {
@@ -1211,16 +649,7 @@ class EntryViewModel @AssistedInject constructor(
         }
         if (continueAfter) {
             val r = refs.getRefData()
-            val fresh = newEntry(
-                r,
-                EntryForm(
-                    date = LocalDate.now(clock),
-                    time = timeNow(),
-                    inputOrder = r.settings.inputOrder,
-                    currencyId = r.mainCurrency.id,
-                    feeCurrencyId = r.mainCurrency.id,
-                ),
-            )
+            val fresh = loader.newEntry(key, r, loader.blank(r))
                 .copy(type = s.type, date = s.date, time = s.time, loaded = true)
             form.value = fresh
             advance()
@@ -1254,7 +683,7 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     fun bookmark() {
-        val tx = original ?: return
+        val tx = opened.original ?: return
         viewModelScope.launch {
             favorites.addFromTransaction(tx)
             showMessage(R.string.bookmark_registered)

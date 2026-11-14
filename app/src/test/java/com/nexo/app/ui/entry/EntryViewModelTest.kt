@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.nexo.app.R
 import com.nexo.app.core.common.SystemZoneClock
-import com.nexo.app.domain.sms.GetSmsLedgerAmountUseCase
 import com.nexo.app.testing.MainDispatcherRule
 import com.nexo.app.testing.TestBook
 import com.nexo.app.ui.HomeState
@@ -65,7 +64,9 @@ class EntryViewModelTest {
             b.photos,
             b.tags,
             b.importer,
-            GetSmsLedgerAmountUseCase(), b.getFeePlan, b.receipts, b.clock,
+            b.receipts,
+            b.entryLoader,
+            b.clock,
         )
         backgroundScope.launch { vm.uiState.collect {} }
         vm.initialize(EntryTexts(paymentNote = "Card payment"))

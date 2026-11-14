@@ -40,6 +40,7 @@ import com.nexo.app.domain.sms.ApproveSmsUseCase
 import com.nexo.app.domain.sms.GetSmsDraftUseCase
 import com.nexo.app.domain.sms.GetSmsFeePlanUseCase
 import com.nexo.app.domain.sms.GetSmsLedgerAmountUseCase
+import com.nexo.app.ui.entry.EntryFormLoader
 import java.io.Closeable
 import java.time.Clock
 import kotlinx.coroutines.CoroutineScope
@@ -178,6 +179,16 @@ class TestBook(
             clock,
         )
     val getFeePlan = GetSmsFeePlanUseCase(sms, refs)
+    val entryLoader = EntryFormLoader(
+        transactions,
+        favorites,
+        repeats,
+        sms,
+        importer,
+        GetSmsLedgerAmountUseCase(),
+        getFeePlan,
+        clock,
+    )
     val approveSms =
         ApproveSmsUseCase(
             sms,

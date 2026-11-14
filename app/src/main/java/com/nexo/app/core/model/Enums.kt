@@ -30,6 +30,14 @@ enum class TxKind {
 /** Type the entry form works with. */
 enum class EntryType { INCOME, EXPENSE, TRANSFER }
 
+/** The form type a stored row opens as; balance changes open as income or expense. */
+val TxKind.entryType: EntryType
+    get() = when (this) {
+        TxKind.INCOME, TxKind.BALANCE_INCREASE -> EntryType.INCOME
+        TxKind.EXPENSE, TxKind.BALANCE_DECREASE -> EntryType.EXPENSE
+        TxKind.TRANSFER_OUT, TxKind.TRANSFER_IN -> EntryType.TRANSFER
+    }
+
 enum class GroupType { NORMAL, CREDIT_CARD, DEBIT_CARD }
 
 enum class GroupStatus { ACTIVE, DELETED, PURGED }
