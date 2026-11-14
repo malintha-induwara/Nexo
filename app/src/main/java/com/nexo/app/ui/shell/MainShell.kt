@@ -68,7 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.ui.accounts.AccountsTab
+import com.nexo.app.ui.accounts.AccountsTabRoute
 import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.BarItem
 import com.nexo.app.ui.designsystem.component.PillBottomBar
@@ -172,7 +172,7 @@ fun MainShell(vm: MainShellViewModel = hiltViewModel()) {
                     when (t) {
                         MainTab.TRANSACTIONS -> TransactionsTab(todaySignal, queue)
                         MainTab.STATS -> StatsTabRoute(todaySignal)
-                        MainTab.ACCOUNTS -> AccountsTab(todaySignal)
+                        MainTab.ACCOUNTS -> AccountsTabRoute(todaySignal)
                         MainTab.MORE -> SettingsTab()
                     }
                 }

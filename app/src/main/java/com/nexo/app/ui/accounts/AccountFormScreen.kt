@@ -32,12 +32,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,29 +59,45 @@ import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.component.SettingRow
 import com.nexo.app.ui.designsystem.component.SwitchRow
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.navigation.AccountFormKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MainKey
 import com.nexo.app.ui.navigation.SubCurrenciesKey
 import java.time.LocalDate
 
+/** What the account form can ask for; the route backs each with the ViewModel or navigation. */
+class AccountFormActions(
+    val onBack: () -> Unit = {},
+    val onToggleHidden: () -> Unit = {},
+    val onDelete: () -> Unit = {},
+    val onOpenGroupPicker: () -> Unit = {},
+    val onPickGroup: (groupId: String) -> Unit = {},
+    val onDismissGroupPicker: () -> Unit = {},
+    val onNameChange: (String) -> Unit = {},
+    val onAmountChange: (Double?) -> Unit = {},
+    val onCurrencyChange: (currencyId: String) -> Unit = {},
+    val onAddCurrency: () -> Unit = {},
+    val onLinkedChange: (accountId: String?) -> Unit = {},
+    val onDescriptionChange: (String) -> Unit = {},
+    val onSettlementDayChange: (Int) -> Unit = {},
+    val onPaymentDayChange: (Int) -> Unit = {},
+    val onIncludeChange: (Boolean) -> Unit = {},
+    val onSave: (currencyConfirmed: Boolean) -> Unit = {},
+    val onDismissCurrency: () -> Unit = {},
+    val onRecordDifference: (asIncomeExpense: Boolean) -> Unit = {},
+)
+
 @Composable
-fun AccountFormScreen(key: AccountFormKey) {
-    val clock = LocalClock.current
+fun AccountFormRoute(key: AccountFormKey) {
     val vm =
         hiltViewModel<AccountFormViewModel, AccountFormViewModel.Factory>(creationCallback = {
             it.create(key)
         })
     val s by vm.uiState.collectAsStateWithLifecycle()
-    val ref = s.ref
     val nav = LocalNavigator.current
     val context = LocalContext.current
-    val payLabel = stringResource(R.string.pay)
-    var editAmount by rememberSaveable { mutableStateOf(false) }
-    var editDay by rememberSaveable { mutableStateOf(0) }
-    var pickLinked by rememberSaveable { mutableStateOf(false) }
-    var showCurrencies by rememberSaveable { mutableStateOf(false) }
-    var confirmDelete by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) { vm.initialize() }
     s.userMessage?.let { message ->
         val text = message.text.asString()
@@ -96,6 +114,41 @@ fun AccountFormScreen(key: AccountFormKey) {
         }
         vm.onCloseHandled()
     }
+    val actions = remember(vm, nav) {
+        AccountFormActions(
+            onBack = nav::back,
+            onToggleHidden = vm::toggleHidden,
+            onDelete = vm::delete,
+            onOpenGroupPicker = vm::reopenGroupPicker,
+            onPickGroup = vm::setGroup,
+            onDismissGroupPicker = vm::dismissGroupPicker,
+            onNameChange = vm::setName,
+            onAmountChange = vm::setAmount,
+            onCurrencyChange = vm::setCurrency,
+            onAddCurrency = { nav.navigate(SubCurrenciesKey) },
+            onLinkedChange = vm::setLinked,
+            onDescriptionChange = vm::setDescription,
+            onSettlementDayChange = vm::setSettlement,
+            onPaymentDayChange = vm::setPayment,
+            onIncludeChange = vm::setInclude,
+            onSave = vm::save,
+            onDismissCurrency = vm::dismissCurrency,
+            onRecordDifference = vm::recordDifference,
+        )
+    }
+    AccountFormScreen(s, actions)
+}
+
+@Composable
+internal fun AccountFormScreen(s: AccountFormUiState, actions: AccountFormActions) {
+    val clock = LocalClock.current
+    val ref = s.ref
+    val payLabel = stringResource(R.string.pay)
+    var editAmount by rememberSaveable { mutableStateOf(false) }
+    var editDay by rememberSaveable { mutableStateOf(0) }
+    var pickLinked by rememberSaveable { mutableStateOf(false) }
+    var showCurrencies by rememberSaveable { mutableStateOf(false) }
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
     if (!s.loaded) return
     val group = ref.groupById[s.groupId]
     val type = group?.type ?: GroupType.NORMAL
@@ -103,12 +156,10 @@ fun AccountFormScreen(key: AccountFormKey) {
     Scaffold(topBar = {
         NexoTopBar(
             stringResource(if (s.isNew) R.string.add_account else R.string.account_info),
-            onBack = {
-                nav.back()
-            },
+            onBack = actions.onBack,
         ) {
             if (!s.isNew) {
-                IconButton(onClick = vm::toggleHidden) {
+                IconButton(onClick = actions.onToggleHidden) {
                     Icon(
                         if (s.hidden) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                         stringResource(R.string.show_hide),
@@ -128,9 +179,9 @@ fun AccountFormScreen(key: AccountFormKey) {
             SettingRow(
                 stringResource(R.string.group),
                 group?.name ?: "",
-                onClick = vm::reopenGroupPicker,
+                onClick = actions.onOpenGroupPicker,
             )
-            OutlinedTextField(s.name, vm::setName, label = {
+            OutlinedTextField(s.name, actions.onNameChange, label = {
                 Text(stringResource(R.string.name))
             }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
             if (type != GroupType.DEBIT_CARD) {
@@ -153,11 +204,11 @@ fun AccountFormScreen(key: AccountFormKey) {
                 ) {
                     ref.activeCurrencies.forEach { c ->
                         FilterChip(c.id == s.currencyId, onClick = {
-                            vm.setCurrency(c.id)
+                            actions.onCurrencyChange(c.id)
                         }, label = { Text(c.isoCode ?: c.symbol) })
                     }
                     FilterChip(false, onClick = {
-                        nav.navigate(SubCurrenciesKey)
+                        actions.onAddCurrency()
                     }, label = { Text("+") })
                 }
             }
@@ -171,7 +222,7 @@ fun AccountFormScreen(key: AccountFormKey) {
             }
             OutlinedTextField(
                 s.description,
-                vm::setDescription,
+                actions.onDescriptionChange,
                 label = {
                     Text(stringResource(R.string.description))
                 },
@@ -223,7 +274,7 @@ fun AccountFormScreen(key: AccountFormKey) {
                 SwitchRow(
                     stringResource(R.string.include_in_totals),
                     s.includeInTotals,
-                    vm::setInclude,
+                    actions.onIncludeChange,
                 )
             }
             val help = when {
@@ -242,7 +293,7 @@ fun AccountFormScreen(key: AccountFormKey) {
             }
             HorizontalDivider()
             Button(onClick = {
-                vm.save()
+                actions.onSave(false)
             }, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Text(stringResource(R.string.action_save))
             }
@@ -256,8 +307,8 @@ fun AccountFormScreen(key: AccountFormKey) {
             },
             group,
             { it.name },
-            onSelect = { vm.setGroup(it.id) },
-            onDismiss = vm::dismissGroupPicker,
+            onSelect = { actions.onPickGroup(it.id) },
+            onDismiss = actions.onDismissGroupPicker,
         )
     }
     if (pickLinked) {
@@ -277,7 +328,7 @@ fun AccountFormScreen(key: AccountFormKey) {
                 it?.name
                     ?: stringResource(R.string.none)
             },
-            onSelect = { vm.setLinked(it?.id) },
+            onSelect = { actions.onLinkedChange(it?.id) },
             onDismiss = { pickLinked = false },
         )
     }
@@ -286,7 +337,7 @@ fun AccountFormScreen(key: AccountFormKey) {
             stringResource(R.string.amount),
             s.amount,
             cur.decimals,
-            onConfirm = vm::setAmount,
+            onConfirm = actions.onAmountChange,
             onDismiss = {
                 editAmount = false
             },
@@ -309,9 +360,9 @@ fun AccountFormScreen(key: AccountFormKey) {
             onConfirm = { v ->
                 val d = (v ?: 1.0).toInt()
                 if (editDay == 1) {
-                    vm.setSettlement(d)
+                    actions.onSettlementDayChange(d)
                 } else {
-                    vm.setPayment(d)
+                    actions.onPaymentDayChange(d)
                 }
             },
             onDismiss = { editDay = 0 },
@@ -321,14 +372,14 @@ fun AccountFormScreen(key: AccountFormKey) {
         ConfirmDialog(
             stringResource(R.string.currency_change_warning),
             onConfirm = {
-                vm.save(currencyConfirmed = true)
+                actions.onSave(true)
             },
-            onDismiss = vm::dismissCurrency,
+            onDismiss = actions.onDismissCurrency,
         )
     }
     s.difference?.let { diff ->
         AlertDialog(
-            onDismissRequest = { vm.recordDifference(false) },
+            onDismissRequest = { actions.onRecordDifference(false) },
             text = {
                 Text(
                     stringResource(
@@ -342,21 +393,66 @@ fun AccountFormScreen(key: AccountFormKey) {
             },
             confirmButton = {
                 TextButton(onClick = {
-                    vm.recordDifference(true)
+                    actions.onRecordDifference(true)
                 }) { Text(stringResource(R.string.action_yes)) }
             },
             dismissButton = {
                 TextButton(onClick = {
-                    vm.recordDifference(false)
+                    actions.onRecordDifference(false)
                 }) { Text(stringResource(R.string.action_no)) }
             },
         )
     }
     if (confirmDelete) {
-        ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = vm::delete, onDismiss = {
-            confirmDelete = false
-        })
+        ConfirmDialog(
+            stringResource(
+                R.string.confirm_delete,
+            ),
+            onConfirm = actions.onDelete,
+            onDismiss = {
+                confirmDelete = false
+            },
+        )
     }
+}
+
+internal val previewAccountFormState = AccountFormUiState(
+    loaded = true,
+    ref = PreviewData.ref,
+    isNew = false,
+    id = "bank",
+    groupId = "1",
+    name = "Savings",
+    amount = 245_000.0,
+    balance = 245_000.0,
+    currencyId = "LKR",
+    originalCurrencyId = "LKR",
+    description = "Salary account",
+)
+
+@Preview
+@Composable
+private fun AccountFormScreenPreview() = NexoPreview {
+    AccountFormScreen(previewAccountFormState, AccountFormActions())
+}
+
+@Preview
+@Composable
+private fun AccountFormCardPreview() = NexoPreview {
+    AccountFormScreen(
+        previewAccountFormState.copy(
+            id = "card",
+            groupId = "2",
+            name = "Visa",
+            amount = -18_250.0,
+            balance = -18_250.0,
+            linkedAccountId = "bank",
+            description = "",
+            settlementDay = 25,
+            paymentDay = 10,
+        ),
+        AccountFormActions(),
+    )
 }
 
 @Composable

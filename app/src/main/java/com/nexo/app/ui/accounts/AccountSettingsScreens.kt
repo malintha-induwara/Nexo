@@ -46,18 +46,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.model.Account
+import com.nexo.app.core.model.AccountGroup
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.CardAccounting
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.model.RefData
 import com.nexo.app.domain.Balances
+import com.nexo.app.domain.Net
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.EmptyState
@@ -70,6 +73,8 @@ import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.component.PeriodNavigator
 import com.nexo.app.ui.designsystem.component.SettingRow
 import com.nexo.app.ui.designsystem.component.SwitchRow
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.Space
 import com.nexo.app.ui.designsystem.theme.nexo
 import com.nexo.app.ui.navigation.AccountDetailKey
@@ -82,6 +87,7 @@ import com.nexo.app.ui.navigation.DeletedAccountsKey
 import com.nexo.app.ui.navigation.DeletedGroupsKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.TransferExpenseKey
+import java.time.YearMonth
 import kotlinx.coroutines.launch
 
 @Composable
@@ -94,30 +100,46 @@ fun cardAccountingLabel(c: CardAccounting) = stringResource(
 )
 
 @Composable
-fun AccountSettingsMenu(vm: AccountSettingsViewModel = hiltViewModel()) {
+fun AccountSettingsMenuRoute(vm: AccountSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    AccountSettingsMenuScreen(
+        state = state,
+        onBack = nav::back,
+        onOpenGroups = { nav.navigate(AccountGroupsKey) },
+        onOpenAccounts = { nav.navigate(AccountListKey()) },
+        onOpenDeletedGroups = { nav.navigate(DeletedGroupsKey) },
+        onOpenDeletedAccounts = { nav.navigate(DeletedAccountsKey) },
+        onOpenTransferExpense = { nav.navigate(TransferExpenseKey) },
+        onCardAccountingChange = { c -> vm.updateSettings { it.copy(cardAccounting = c) } },
+    )
+}
+
+@Composable
+internal fun AccountSettingsMenuScreen(
+    state: AccountSettingsUiState,
+    onBack: () -> Unit,
+    onOpenGroups: () -> Unit,
+    onOpenAccounts: () -> Unit,
+    onOpenDeletedGroups: () -> Unit,
+    onOpenDeletedAccounts: () -> Unit,
+    onOpenTransferExpense: () -> Unit,
+    onCardAccountingChange: (CardAccounting) -> Unit,
+) {
     val ref = state.ref
     var timing by rememberSaveable { mutableStateOf(false) }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.tab_accounts), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.tab_accounts), onBack = onBack)
     }) { p ->
         Column(Modifier.padding(p)) {
-            SettingRow(stringResource(R.string.account_group), onClick = {
-                nav.navigate(AccountGroupsKey)
-            })
-            SettingRow(stringResource(R.string.accounts_setting), onClick = {
-                nav.navigate(AccountListKey())
-            })
-            SettingRow(stringResource(R.string.deleted_groups), onClick = {
-                nav.navigate(DeletedGroupsKey)
-            })
-            SettingRow(stringResource(R.string.deleted_accounts), onClick = {
-                nav.navigate(DeletedAccountsKey)
-            })
-            SettingRow(stringResource(R.string.transfer_expense_setting), onClick = {
-                nav.navigate(TransferExpenseKey)
-            })
+            SettingRow(stringResource(R.string.account_group), onClick = onOpenGroups)
+            SettingRow(stringResource(R.string.accounts_setting), onClick = onOpenAccounts)
+            SettingRow(stringResource(R.string.deleted_groups), onClick = onOpenDeletedGroups)
+            SettingRow(stringResource(R.string.deleted_accounts), onClick = onOpenDeletedAccounts)
+            SettingRow(
+                stringResource(R.string.transfer_expense_setting),
+                onClick = onOpenTransferExpense,
+            )
             SettingRow(
                 stringResource(R.string.card_expense_config),
                 cardAccountingLabel(ref.settings.cardAccounting),
@@ -128,11 +150,11 @@ fun AccountSettingsMenu(vm: AccountSettingsViewModel = hiltViewModel()) {
         }
     }
     if (timing) {
-        CardTimingDialog(ref.settings.cardAccounting, onSelect = { c ->
-            vm.updateSettings { it.copy(cardAccounting = c) }
-        }, onDismiss = {
-            timing = false
-        })
+        CardTimingDialog(
+            ref.settings.cardAccounting,
+            onSelect = onCardAccountingChange,
+            onDismiss = { timing = false },
+        )
     }
 }
 
@@ -157,23 +179,42 @@ fun CardTimingDialog(
 
 /** Account Group list with reorder and delete. */
 @Composable
-fun AccountGroupsScreen(vm: AccountGroupsViewModel = hiltViewModel()) {
+fun AccountGroupsRoute(vm: AccountGroupsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    AccountGroupsScreen(
+        state = state,
+        onBack = nav::back,
+        onAddGroup = { nav.navigate(AccountGroupFormKey()) },
+        onOpenGroup = { nav.navigate(AccountGroupFormKey(it)) },
+        onReorder = vm::reorderGroups,
+        onDelete = { vm.setGroupStatus(it, GroupStatus.DELETED) },
+    )
+}
+
+@Composable
+internal fun AccountGroupsScreen(
+    state: AccountGroupsUiState,
+    onBack: () -> Unit,
+    onAddGroup: () -> Unit,
+    onOpenGroup: (groupId: String) -> Unit,
+    onReorder: (groupIds: List<String>) -> Unit,
+    onDelete: (groupId: String) -> Unit,
+) {
     val ref = state.ref
     val groups = ref.groups.filter { it.status == GroupStatus.ACTIVE }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.account_group), onBack = { nav.back() }) {
-            IconButton(onClick = {
-                nav.navigate(AccountGroupFormKey())
-            }) { Icon(Icons.Filled.Add, stringResource(R.string.action_add)) }
+        NexoTopBar(stringResource(R.string.account_group), onBack = onBack) {
+            IconButton(onClick = onAddGroup) {
+                Icon(Icons.Filled.Add, stringResource(R.string.action_add))
+            }
         }
     }) { p ->
         LazyColumn(Modifier.padding(p)) {
             itemsIndexed(groups, key = { _, g -> g.id }) { i, g ->
                 Row(
                     Modifier.fillMaxWidth().clickable {
-                        nav.navigate(AccountGroupFormKey(g.id))
+                        onOpenGroup(g.id)
                     }.padding(start = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -196,7 +237,7 @@ fun AccountGroupsScreen(vm: AccountGroupsViewModel = hiltViewModel()) {
                         }
                     }
                     IconButton(onClick = {
-                        vm.reorderGroups(
+                        onReorder(
                             groups.map {
                                 it.id
                             }.toMutableList().apply { add(i - 1, removeAt(i)) },
@@ -205,7 +246,7 @@ fun AccountGroupsScreen(vm: AccountGroupsViewModel = hiltViewModel()) {
                         Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up))
                     }
                     IconButton(onClick = {
-                        vm.reorderGroups(
+                        onReorder(
                             groups.map {
                                 it.id
                             }.toMutableList().apply { add(i + 1, removeAt(i)) },
@@ -215,7 +256,7 @@ fun AccountGroupsScreen(vm: AccountGroupsViewModel = hiltViewModel()) {
                     }
                     if (g.builtinId !in setOf(1, 2, 3, 11)) {
                         IconButton(onClick = {
-                            vm.setGroupStatus(g.id, GroupStatus.DELETED)
+                            onDelete(g.id)
                         }) {
                             Icon(
                                 Icons.Filled.RemoveCircle,
@@ -234,16 +275,31 @@ fun AccountGroupsScreen(vm: AccountGroupsViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun AccountGroupFormScreen(groupId: String?, vm: AccountGroupsViewModel = hiltViewModel()) {
+fun AccountGroupFormRoute(groupId: String?, vm: AccountGroupsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val ref = state.ref
     LaunchedEffect(state.groupSaved) {
         if (state.groupSaved) {
             nav.back()
             vm.onGroupSavedHandled()
         }
     }
+    AccountGroupFormScreen(
+        state = state,
+        groupId = groupId,
+        onBack = nav::back,
+        onSave = { name, type -> vm.saveGroup(groupId, name, type) },
+    )
+}
+
+@Composable
+internal fun AccountGroupFormScreen(
+    state: AccountGroupsUiState,
+    groupId: String?,
+    onBack: () -> Unit,
+    onSave: (name: String, type: GroupType) -> Unit,
+) {
+    val ref = state.ref
     val g = groupId?.let { ref.groupById[it] }
     var name by rememberSaveable(g?.id) { mutableStateOf(g?.name ?: "") }
     var type by rememberSaveable(g?.id) { mutableStateOf(g?.type ?: GroupType.NORMAL) }
@@ -251,7 +307,7 @@ fun AccountGroupFormScreen(groupId: String?, vm: AccountGroupsViewModel = hiltVi
     // A built-in group whose type still equals its id has no type selector.
     val selectable = g == null || g.builtinId == null
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.account_group), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.account_group), onBack = onBack)
     }) { p ->
         Column(Modifier.padding(p).padding(16.dp)) {
             OutlinedTextField(
@@ -295,7 +351,7 @@ fun AccountGroupFormScreen(groupId: String?, vm: AccountGroupsViewModel = hiltVi
                 if (name.isBlank()) {
                     error = true
                 } else {
-                    vm.saveGroup(groupId, name, type)
+                    onSave(name, type)
                 }
             }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
                 Text(stringResource(R.string.action_save))
@@ -306,12 +362,34 @@ fun AccountGroupFormScreen(groupId: String?, vm: AccountGroupsViewModel = hiltVi
 
 /** Accounts Setting list with reorder / show-hide / delete modes. */
 @Composable
-fun AccountListScreen(key: AccountListKey, vm: AccountListViewModel = hiltViewModel()) {
+fun AccountListRoute(key: AccountListKey, vm: AccountListViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    AccountListScreen(
+        state = state,
+        startMode = key.mode,
+        onBack = nav::back,
+        onAddAccount = { nav.navigate(AccountFormKey()) },
+        onOpenAccount = { nav.navigate(AccountFormKey(it)) },
+        onStatusChange = vm::setStatus,
+        onReorder = vm::reorderAccounts,
+    )
+}
+
+/** [startMode] is the mode the list opened in; back leaves a mode only when it opened in normal mode. */
+@Composable
+internal fun AccountListScreen(
+    state: AccountListUiState,
+    startMode: AccountListMode,
+    onBack: () -> Unit,
+    onAddAccount: () -> Unit,
+    onOpenAccount: (accountId: String) -> Unit,
+    onStatusChange: (accountId: String, AccountStatus) -> Unit,
+    onReorder: (order: List<Pair<String, String>>) -> Unit,
+) {
     val ref = state.ref
     val balances = state.balances
-    var mode by rememberSaveable { mutableStateOf(key.mode) }
+    var mode by rememberSaveable { mutableStateOf(startMode) }
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
     var menu by remember { mutableStateOf(false) }
     val list = ref.orderedAccounts().filter { a ->
@@ -320,19 +398,19 @@ fun AccountListScreen(key: AccountListKey, vm: AccountListViewModel = hiltViewMo
             (a.status == AccountStatus.ACTIVE || a.status == AccountStatus.HIDDEN)
     }
     val back = {
-        if (mode != AccountListMode.NORMAL && key.mode == AccountListMode.NORMAL) {
+        if (mode != AccountListMode.NORMAL && startMode == AccountListMode.NORMAL) {
             mode = AccountListMode.NORMAL
         } else {
-            nav.back()
+            onBack()
         }
     }
     BackHandler { back() }
     Scaffold(topBar = {
         NexoTopBar(stringResource(R.string.accounts_setting), onBack = back) {
             if (mode == AccountListMode.NORMAL) {
-                IconButton(onClick = {
-                    nav.navigate(AccountFormKey())
-                }) { Icon(Icons.Filled.Add, stringResource(R.string.action_add)) }
+                IconButton(onClick = onAddAccount) {
+                    Icon(Icons.Filled.Add, stringResource(R.string.action_add))
+                }
                 Box {
                     IconButton(onClick = {
                         menu = true
@@ -386,11 +464,11 @@ fun AccountListScreen(key: AccountListKey, vm: AccountListViewModel = hiltViewMo
                         )
                             .clickable {
                                 when (mode) {
-                                    AccountListMode.NORMAL -> nav.navigate(AccountFormKey(a.id))
+                                    AccountListMode.NORMAL -> onOpenAccount(a.id)
 
                                     AccountListMode.REORDER -> selected = a.id
 
-                                    AccountListMode.VISIBILITY -> vm.setStatus(
+                                    AccountListMode.VISIBILITY -> onStatusChange(
                                         a.id,
                                         if (hidden) AccountStatus.ACTIVE else AccountStatus.HIDDEN,
                                     )
@@ -430,7 +508,7 @@ fun AccountListScreen(key: AccountListKey, vm: AccountListViewModel = hiltViewMo
                             }
 
                             AccountListMode.DELETE -> IconButton(onClick = {
-                                vm.setStatus(a.id, AccountStatus.DELETED)
+                                onStatusChange(a.id, AccountStatus.DELETED)
                             }) {
                                 Icon(
                                     Icons.Filled.RemoveCircle,
@@ -442,7 +520,7 @@ fun AccountListScreen(key: AccountListKey, vm: AccountListViewModel = hiltViewMo
                             AccountListMode.REORDER -> if (selected == a.id) {
                                 IconButton(
                                     onClick = {
-                                        vm.reorderAccounts(move(ref, list, index, -1))
+                                        onReorder(move(ref, list, index, -1))
                                     },
                                     enabled =
                                         index > 0 || ref.groups.indexOfFirst {
@@ -452,7 +530,7 @@ fun AccountListScreen(key: AccountListKey, vm: AccountListViewModel = hiltViewMo
                                     Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up))
                                 }
                                 IconButton(onClick = {
-                                    vm.reorderAccounts(move(ref, list, index, 1))
+                                    onReorder(move(ref, list, index, 1))
                                 }) {
                                     Icon(
                                         Icons.Filled.ArrowDownward,
@@ -507,16 +585,31 @@ private fun move(
 
 /** Deleted accounts and deleted groups. */
 @Composable
-fun DeletedAccountsScreen(vm: DeletedItemsViewModel = hiltViewModel()) {
+fun DeletedAccountsRoute(vm: DeletedItemsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    DeletedAccountsScreen(
+        state = state,
+        onBack = nav::back,
+        onOpenAccount = { nav.navigate(AccountDetailKey(it, deleted = true)) },
+        onPurge = { vm.setStatus(it, AccountStatus.PURGED) },
+    )
+}
+
+@Composable
+internal fun DeletedAccountsScreen(
+    state: DeletedItemsUiState,
+    onBack: () -> Unit,
+    onOpenAccount: (accountId: String) -> Unit,
+    onPurge: (accountId: String) -> Unit,
+) {
     val ref = state.ref
     val list = ref.orderedAccounts().filter {
         it.status == AccountStatus.DELETED &&
             ref.groupById[it.groupId]?.status == GroupStatus.ACTIVE
     }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.deleted_accounts), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.deleted_accounts), onBack = onBack)
     }) { p ->
         if (list.isEmpty()) {
             EmptyState(modifier = Modifier.padding(p))
@@ -526,7 +619,7 @@ fun DeletedAccountsScreen(vm: DeletedItemsViewModel = hiltViewModel()) {
             items(list, key = { it.id }) { a ->
                 Row(
                     Modifier.fillMaxWidth().clickable {
-                        nav.navigate(AccountDetailKey(a.id, deleted = true))
+                        onOpenAccount(a.id)
                     }.padding(start = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -539,7 +632,7 @@ fun DeletedAccountsScreen(vm: DeletedItemsViewModel = hiltViewModel()) {
                         )
                     }
                     IconButton(onClick = {
-                        vm.setStatus(a.id, AccountStatus.PURGED)
+                        onPurge(a.id)
                     }) {
                         Icon(
                             Icons.Filled.RemoveCircle,
@@ -555,14 +648,29 @@ fun DeletedAccountsScreen(vm: DeletedItemsViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun DeletedGroupsScreen(vm: DeletedItemsViewModel = hiltViewModel()) {
+fun DeletedGroupsRoute(vm: DeletedItemsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    DeletedGroupsScreen(
+        state = state,
+        onBack = nav::back,
+        onRestore = { vm.setGroupStatus(it, GroupStatus.ACTIVE) },
+        onPurge = { vm.setGroupStatus(it, GroupStatus.PURGED) },
+    )
+}
+
+@Composable
+internal fun DeletedGroupsScreen(
+    state: DeletedItemsUiState,
+    onBack: () -> Unit,
+    onRestore: (groupId: String) -> Unit,
+    onPurge: (groupId: String) -> Unit,
+) {
     val ref = state.ref
     val list = ref.groups.filter { it.status == GroupStatus.DELETED }
     var restore by remember { mutableStateOf<String?>(null) }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.deleted_groups), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.deleted_groups), onBack = onBack)
     }) { p ->
         if (list.isEmpty()) {
             EmptyState(modifier = Modifier.padding(p))
@@ -590,7 +698,7 @@ fun DeletedGroupsScreen(vm: DeletedItemsViewModel = hiltViewModel()) {
                         )
                     }
                     IconButton(onClick = {
-                        vm.setGroupStatus(g.id, GroupStatus.PURGED)
+                        onPurge(g.id)
                     }) {
                         Icon(
                             Icons.Filled.RemoveCircle,
@@ -605,18 +713,33 @@ fun DeletedGroupsScreen(vm: DeletedItemsViewModel = hiltViewModel()) {
     }
     restore?.let { id ->
         ConfirmDialog(stringResource(R.string.restore_question), onConfirm = {
-            vm.setGroupStatus(id, GroupStatus.ACTIVE)
+            onRestore(id)
         }, onDismiss = {
             restore = null
         })
     }
 }
 
-/** The income option is always shown, default on. */
 @Composable
-fun TransferExpenseScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
+fun TransferExpenseRoute(vm: AccountSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    TransferExpenseScreen(
+        state = state,
+        onBack = nav::back,
+        onTransferIncomeChange = { v -> vm.updateSettings { it.copy(transferIncome = v) } },
+        onTransferExpenseChange = vm::setTransferExpense,
+    )
+}
+
+/** The income option is always shown, default on. */
+@Composable
+internal fun TransferExpenseScreen(
+    state: AccountSettingsUiState,
+    onBack: () -> Unit,
+    onTransferIncomeChange: (Boolean) -> Unit,
+    onTransferExpenseChange: (accountId: String, on: Boolean) -> Unit,
+) {
     val ref = state.ref
     val eligible = ref.orderedAccounts().filter { a ->
         val g = ref.groupById[a.groupId] ?: return@filter false
@@ -628,7 +751,7 @@ fun TransferExpenseScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
                 )
     }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.transfer_expense_setting), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.transfer_expense_setting), onBack = onBack)
     }) { p ->
         LazyColumn(Modifier.padding(p)) {
             item {
@@ -640,9 +763,7 @@ fun TransferExpenseScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
                 SwitchRow(
                     stringResource(R.string.transfer_income_option),
                     ref.settings.transferIncome,
-                    { v ->
-                        vm.updateSettings { it.copy(transferIncome = v) }
-                    },
+                    onTransferIncomeChange,
                 )
                 HorizontalDivider()
             }
@@ -662,7 +783,7 @@ fun TransferExpenseScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
                 item(key = a.id) {
                     Row(
                         Modifier.fillMaxWidth().clickable {
-                            vm.setTransferExpense(a.id, !a.transferExpense)
+                            onTransferExpenseChange(a.id, !a.transferExpense)
                         }.padding(horizontal = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -680,21 +801,31 @@ fun TransferExpenseScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun TotalStatsScreen(vm: TotalStatsViewModel = hiltViewModel()) {
+fun TotalStatsRoute(vm: TotalStatsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val ui by vm.uiState.collectAsStateWithLifecycle()
+    TotalStatsScreen(ui = ui, onBack = nav::back, onStep = vm::step, onPickMonth = vm::pickMonth)
+}
+
+@Composable
+internal fun TotalStatsScreen(
+    ui: TotalStatsUiState,
+    onBack: () -> Unit,
+    onStep: (forward: Boolean) -> Unit,
+    onPickMonth: (YearMonth) -> Unit,
+) {
     val ref = ui.ref
     var picker by rememberSaveable { mutableStateOf(false) }
     val main = ref.mainCurrency
     val labels = ui.periods.map { Formats.monthShort(it.label.monthValue) }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.total_stats), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.total_stats), onBack = onBack)
     }) { p ->
         Column(Modifier.fillMaxSize().padding(p)) {
             ui.periods.lastOrNull()?.let { last ->
                 PeriodNavigator(Formats.monthYear(last.label), {
-                    vm.step(false)
-                }, { vm.step(true) }, {
+                    onStep(false)
+                }, { onStep(true) }, {
                     picker = true
                 }, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurface)
             }
@@ -712,7 +843,161 @@ fun TotalStatsScreen(vm: TotalStatsViewModel = hiltViewModel()) {
     }
     if (picker) {
         ui.periods.lastOrNull()?.let { last ->
-            MonthPickerDialog(last.label, onPick = vm::pickMonth, onDismiss = { picker = false })
+            MonthPickerDialog(last.label, onPick = onPickMonth, onDismiss = { picker = false })
         }
     }
+}
+
+/** The preview book plus a savings group, a deleted account and a deleted group. */
+internal val previewSettingsRef = PreviewData.ref.copy(
+    groups = PreviewData.groups +
+        listOf(
+            AccountGroup("4", "Savings", GroupType.NORMAL, 4, 3, updatedAt = 0),
+            AccountGroup(
+                "trip",
+                "Trip fund",
+                GroupType.NORMAL,
+                null,
+                4,
+                GroupStatus.DELETED,
+                updatedAt = 0,
+            ),
+        ),
+    accounts = PreviewData.accounts +
+        listOf(
+            Account(
+                "fd",
+                "Fixed deposit",
+                "4",
+                "LKR",
+                3,
+                transferExpense = true,
+                createdAt = 0,
+                updatedAt = 0,
+            ),
+            Account(
+                "old",
+                "Old wallet",
+                "11",
+                "LKR",
+                4,
+                status = AccountStatus.DELETED,
+                createdAt = 0,
+                updatedAt = 0,
+            ),
+        ),
+)
+
+internal val previewTotalStatsState: TotalStatsUiState = run {
+    val periods = PreviewData.ref.settings.periods
+    TotalStatsUiState(
+        ref = PreviewData.ref,
+        anchor = PreviewData.today,
+        periods = generateSequence(periods.monthPeriodContaining(PreviewData.today)) {
+            periods.previous(it)
+        }.take(6).toList().reversed(),
+        balances = listOf(180_000.0, 192_500.0, 188_000.0, 205_250.0, 221_000.0, 239_250.0),
+        income = listOf(185_000.0, 185_000.0, 190_000.0, 185_000.0, 195_000.0, 185_000.0),
+        expense = listOf(162_000.0, 172_500.0, 194_500.0, 167_750.0, 179_250.0, 166_750.0),
+    )
+}
+
+@Preview
+@Composable
+private fun AccountSettingsMenuScreenPreview() = NexoPreview {
+    AccountSettingsMenuScreen(
+        state = AccountSettingsUiState(PreviewData.ref),
+        onBack = {},
+        onOpenGroups = {},
+        onOpenAccounts = {},
+        onOpenDeletedGroups = {},
+        onOpenDeletedAccounts = {},
+        onOpenTransferExpense = {},
+        onCardAccountingChange = {},
+    )
+}
+
+@Preview
+@Composable
+private fun AccountGroupsScreenPreview() = NexoPreview {
+    AccountGroupsScreen(
+        state = AccountGroupsUiState(previewSettingsRef),
+        onBack = {},
+        onAddGroup = {},
+        onOpenGroup = {},
+        onReorder = {},
+        onDelete = {},
+    )
+}
+
+@Preview
+@Composable
+private fun AccountGroupFormScreenPreview() = NexoPreview {
+    AccountGroupFormScreen(
+        state = AccountGroupsUiState(previewSettingsRef),
+        groupId = null,
+        onBack = {},
+        onSave = { _, _ -> },
+    )
+}
+
+@Preview
+@Composable
+private fun AccountListScreenPreview() = NexoPreview {
+    AccountListScreen(
+        state = AccountListUiState(
+            ref = previewSettingsRef,
+            balances = mapOf(
+                "cash" to Net(12_500.0, 12_500.0),
+                "bank" to Net(245_000.0, 245_000.0),
+                "card" to Net(-18_250.0, -18_250.0),
+                "fd" to Net(500_000.0, 500_000.0),
+            ),
+        ),
+        startMode = AccountListMode.VISIBILITY,
+        onBack = {},
+        onAddAccount = {},
+        onOpenAccount = {},
+        onStatusChange = { _, _ -> },
+        onReorder = {},
+    )
+}
+
+@Preview
+@Composable
+private fun DeletedAccountsScreenPreview() = NexoPreview {
+    DeletedAccountsScreen(
+        state = DeletedItemsUiState(previewSettingsRef),
+        onBack = {},
+        onOpenAccount = {},
+        onPurge = {},
+    )
+}
+
+@Preview
+@Composable
+private fun DeletedGroupsScreenPreview() = NexoPreview {
+    DeletedGroupsScreen(
+        state = DeletedItemsUiState(previewSettingsRef),
+        onBack = {},
+        onRestore = {},
+        onPurge = {},
+    )
+}
+
+@Preview
+@Composable
+private fun TransferExpenseScreenPreview() = NexoPreview {
+    TransferExpenseScreen(
+        state = AccountSettingsUiState(previewSettingsRef),
+        onBack = {},
+        onTransferIncomeChange = {},
+        onTransferExpenseChange = { _, _ -> },
+    )
+}
+
+@Preview
+@Composable
+private fun TotalStatsScreenPreview() = NexoPreview {
+    TotalStatsScreen(ui = previewTotalStatsState, onBack = {}, onStep = {}, onPickMonth = {})
 }

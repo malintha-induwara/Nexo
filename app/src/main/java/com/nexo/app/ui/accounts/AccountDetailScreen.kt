@@ -43,14 +43,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.common.period.DateRange
+import com.nexo.app.core.common.period.PeriodEngine
+import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.GroupType
+import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
@@ -65,6 +69,8 @@ import com.nexo.app.ui.designsystem.component.PeriodNavigator
 import com.nexo.app.ui.designsystem.component.RoundIconButton
 import com.nexo.app.ui.designsystem.component.SegmentedPill
 import com.nexo.app.ui.designsystem.component.shrinkToFit
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoType
@@ -77,25 +83,44 @@ import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MemoListKey
 import com.nexo.app.ui.transactions.BulkAction
 import com.nexo.app.ui.transactions.BulkDialogs
+import com.nexo.app.ui.transactions.BulkEditActions
+import com.nexo.app.ui.transactions.DayGroup
 import com.nexo.app.ui.transactions.DayGroupList
 import com.nexo.app.ui.transactions.SelectionBar
 import com.nexo.app.ui.transactions.TxRow
+import com.nexo.app.ui.transactions.TxRowUi
 import com.nexo.app.ui.transactions.selectedNet
+import java.time.LocalDate
+import java.time.YearMonth
 import java.util.Locale
 import kotlin.math.abs
 
+/** What the account detail screen can ask for; the route backs each with the ViewModel or navigation. */
+class AccountDetailActions(
+    val onBack: () -> Unit = {},
+    val onStep: (forward: Boolean) -> Unit = {},
+    val onSetTab: (DetailTab) -> Unit = {},
+    val onSetAnchor: (LocalDate) -> Unit = {},
+    val onOpenMonth: (YearMonth) -> Unit = {},
+    val onOpenYear: (Int) -> Unit = {},
+    val onToggleCharts: () -> Unit = {},
+    val onToggleSelect: (txId: String) -> Unit = {},
+    val onSetSelection: (Set<String>) -> Unit = {},
+    val onRestore: () -> Unit = {},
+    val onEditAccount: (accountId: String) -> Unit = {},
+    val onPayCard: (accountId: String) -> Unit = {},
+    val onAddTransaction: (accountId: String?, date: LocalDate?) -> Unit = { _, _ -> },
+    val onOpenTransaction: (txId: String) -> Unit = {},
+    val onOpenMemos: (LocalDate) -> Unit = {},
+)
+
 @Composable
-fun AccountDetailScreen(key: AccountDetailKey) {
+fun AccountDetailRoute(key: AccountDetailKey) {
     val vm =
         hiltViewModel<AccountDetailViewModel, AccountDetailViewModel.Factory>(creationCallback = {
             it.create(key)
         })
     val ui by vm.uiState.collectAsStateWithLifecycle()
-    val ref = ui.ref
-    val tab = ui.tab
-    val charts = ui.charts
-    val selection = ui.selection
-    val anchor = ui.anchor
     val nav = LocalNavigator.current
     LaunchedEffect(ui.restored) {
         if (ui.restored) {
@@ -103,7 +128,54 @@ fun AccountDetailScreen(key: AccountDetailKey) {
             vm.onRestoredHandled()
         }
     }
-    val money = LocalMoneyColors.current
+    val actions = remember(vm, nav) {
+        AccountDetailActions(
+            onBack = nav::back,
+            onStep = vm::step,
+            onSetTab = vm::setTab,
+            onSetAnchor = vm::setAnchor,
+            onOpenMonth = vm::openMonth,
+            onOpenYear = vm::openYear,
+            onToggleCharts = vm::toggleCharts,
+            onToggleSelect = vm::toggleSelect,
+            onSetSelection = vm::setSelection,
+            onRestore = vm::restore,
+            onEditAccount = { nav.navigate(AccountFormKey(it)) },
+            onPayCard = { nav.navigate(EntryKey(mode = EntryMode.PAY_CARD, accountId = it)) },
+            onAddTransaction = { accountId, date ->
+                nav.navigate(
+                    EntryKey(date = date?.toString(), accountId = accountId, fromAdd = true),
+                )
+            },
+            onOpenTransaction = { nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = it)) },
+            onOpenMemos = { nav.navigate(MemoListKey(it.toString())) },
+        )
+    }
+    AccountDetailScreen(
+        ui = ui,
+        periods = vm.engineFor(ui.ref, ui.account),
+        deleted = key.deleted,
+        isNone = key.accountId == null,
+        actions = actions,
+        bulkActions = vm.bulkActions,
+    )
+}
+
+/** [periods] is the period engine of the account on screen; [isNone] is the unassigned pseudo-account. */
+@Composable
+internal fun AccountDetailScreen(
+    ui: AccountDetailUiState,
+    periods: PeriodEngine,
+    deleted: Boolean,
+    isNone: Boolean,
+    actions: AccountDetailActions,
+    bulkActions: BulkEditActions,
+) {
+    val ref = ui.ref
+    val tab = ui.tab
+    val charts = ui.charts
+    val selection = ui.selection
+    val anchor = ui.anchor
     var help by rememberSaveable { mutableStateOf(false) }
     var monthPicker by rememberSaveable { mutableStateOf(false) }
     var restore by rememberSaveable { mutableStateOf(false) }
@@ -112,8 +184,7 @@ fun AccountDetailScreen(key: AccountDetailKey) {
     val account = ui.account
     val cur = account?.let { ref.accountCurrency(it.id) } ?: ref.mainCurrency
     val isCard = ui.type == GroupType.CREDIT_CARD
-    val isNone = key.accountId == null
-    BackHandler(enabled = selection.isNotEmpty()) { vm.setSelection(emptySet()) }
+    BackHandler(enabled = selection.isNotEmpty()) { actions.onSetSelection(emptySet()) }
 
     Scaffold(
         topBar = {
@@ -125,7 +196,7 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                     selectedNet(rows, selection),
                     cur,
                     onToggleAll = {
-                        vm.setSelection(
+                        actions.onSetSelection(
                             if (selection.size >= rows.size) {
                                 emptySet()
                             } else {
@@ -133,7 +204,7 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                             },
                         )
                     },
-                    onClose = { vm.setSelection(emptySet()) },
+                    onClose = { actions.onSetSelection(emptySet()) },
                     onAction = {
                         bulkAction = it
                         bulkOpen = true
@@ -141,10 +212,11 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                 )
             } else {
                 Column {
-                    NexoTopBar(account?.name ?: stringResource(R.string.none), onBack = {
-                        nav.back()
-                    }) {
-                        if (key.deleted) {
+                    NexoTopBar(
+                        account?.name ?: stringResource(R.string.none),
+                        onBack = actions.onBack,
+                    ) {
+                        if (deleted) {
                             IconButton(onClick = {
                                 restore = true
                             }) {
@@ -158,8 +230,8 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                     if (!isNone) {
                         PeriodNavigator(
                             ui.title.asString(),
-                            { vm.step(false) },
-                            { vm.step(true) },
+                            { actions.onStep(false) },
+                            { actions.onStep(true) },
                             if (tab == DetailTab.DAILY) ({ monthPicker = true }) else null,
                             modifier = Modifier.fillMaxWidth(),
                             color = MaterialTheme.colorScheme.onSurface,
@@ -167,7 +239,7 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                         SegmentedPill(
                             options = DetailTab.entries,
                             selected = tab,
-                            onSelect = vm::setTab,
+                            onSelect = actions.onSetTab,
                             label = { t ->
                                 stringResource(
                                     when (t) {
@@ -188,22 +260,20 @@ fun AccountDetailScreen(key: AccountDetailKey) {
             }
         },
         floatingActionButton = {
-            if (selection.isEmpty() && !charts && !key.deleted) {
+            if (selection.isEmpty() && !charts && !deleted) {
                 Column(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (isCard && account != null) {
                         ExtendedFloatingActionButton(onClick = {
-                            nav.navigate(
-                                EntryKey(mode = EntryMode.PAY_CARD, accountId = account.id),
-                            )
+                            actions.onPayCard(account.id)
                         }, icon = {
                             Icon(Icons.Outlined.Payments, null)
                         }, text = { Text(stringResource(R.string.pay)) })
                     }
                     FloatingActionButton(onClick = {
-                        nav.navigate(EntryKey(accountId = account?.id, fromAdd = true))
+                        actions.onAddTransaction(account?.id, null)
                     }, containerColor = MaterialTheme.colorScheme.primary) {
                         Icon(
                             Icons.Filled.Add,
@@ -217,11 +287,15 @@ fun AccountDetailScreen(key: AccountDetailKey) {
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (!isNone) {
-                SummaryBlock(ui, cur, tab, charts, onToggleCharts = vm::toggleCharts, onEdit = {
-                    account?.let { nav.navigate(AccountFormKey(it.id)) }
-                }, onHelp = {
-                    help = true
-                })
+                SummaryBlock(
+                    ui,
+                    cur,
+                    tab,
+                    charts,
+                    onToggleCharts = actions.onToggleCharts,
+                    onEdit = { account?.let { actions.onEditAccount(it.id) } },
+                    onHelp = { help = true },
+                )
             }
             if (charts && ui.chart != null) {
                 val c = ui.chart!!
@@ -242,40 +316,30 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                     selection = selection,
                     onRowClick = {
                         if (selection.isNotEmpty()) {
-                            vm.toggleSelect(it.id)
+                            actions.onToggleSelect(it.id)
                         } else {
-                            nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = it.id))
+                            actions.onOpenTransaction(it.id)
                         }
                     },
-                    onRowLongClick = { vm.toggleSelect(it.id) },
-                    onDayClick = if (key.deleted) {
+                    onRowLongClick = { actions.onToggleSelect(it.id) },
+                    onDayClick = if (deleted) {
                         null
                     } else {
-                        (
-                            { d ->
-                                nav.navigate(
-                                    EntryKey(
-                                        date = d.toString(),
-                                        accountId = account?.id,
-                                        fromAdd = true,
-                                    ),
-                                )
-                            }
-                            )
+                        ({ d -> actions.onAddTransaction(account?.id, d) })
                     },
-                    onMemoClick = { d -> nav.navigate(MemoListKey(d.toString())) },
+                    onMemoClick = actions.onOpenMemos,
                     rowContent = { row ->
                         TxRow(
                             row,
                             row.id in selection,
                             onClick = {
                                 if (selection.isNotEmpty()) {
-                                    vm.toggleSelect(row.id)
+                                    actions.onToggleSelect(row.id)
                                 } else {
-                                    nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
+                                    actions.onOpenTransaction(row.id)
                                 }
                             },
-                            onLongClick = { vm.toggleSelect(row.id) },
+                            onLongClick = { actions.onToggleSelect(row.id) },
                             runningBalance = ui.running[row.id]?.let {
                                 AmountFormatter.format(it, cur)
                             },
@@ -286,8 +350,8 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                 LazyColumn(contentPadding = PaddingValues(top = Space.xs, bottom = 96.dp)) {
                     items(ui.periods, key = { it.label + it.range.start }) { p ->
                         PeriodCard(p, cur, onClick = {
-                            p.month?.let(vm::openMonth)
-                                ?: p.year?.let(vm::openYear)
+                            p.month?.let(actions.onOpenMonth)
+                                ?: p.year?.let(actions.onOpenYear)
                         }, modifier = Modifier.padding(horizontal = Space.l, vertical = Space.xs))
                     }
                 }
@@ -296,21 +360,20 @@ fun AccountDetailScreen(key: AccountDetailKey) {
     }
     if (help) MessageDialog(stringResource(R.string.balance_help), onDismiss = { help = false })
     if (monthPicker) {
-        val e = vm.engineFor(ref, account)
-        MonthPickerDialog(e.monthPeriodContaining(anchor).label, onPick = {
-            vm.setAnchor(e.monthPeriodFor(it).end)
+        MonthPickerDialog(periods.monthPeriodContaining(anchor).label, onPick = {
+            actions.onSetAnchor(periods.monthPeriodFor(it).end)
         }, onDismiss = {
             monthPicker = false
         })
     }
     if (restore) {
         ConfirmDialog(stringResource(R.string.restore_question), onConfirm = {
-            vm.restore()
+            actions.onRestore()
         }, onDismiss = {
             restore = false
         })
     }
-    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.bulkActions, onDismiss = {
+    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, bulkActions, onDismiss = {
         bulkOpen = false
     })
 }
@@ -528,4 +591,60 @@ private fun PeriodCard(
             }
         }
     }
+}
+
+private fun previewRow(id: String, category: String, note: String, amount: Double, flow: CashFlow) =
+    TxRowUi(
+        id = id,
+        tx = null,
+        category = UiText.Raw(category),
+        subCategory = null,
+        title = UiText.Raw(note),
+        titleIsNote = true,
+        accountText = UiText.Raw("Savings"),
+        time = null,
+        tags = null,
+        descriptionLine = null,
+        hasPhoto = false,
+        flow = flow,
+        amount = amount,
+        amountText = "Rs. %,.2f".format(amount),
+        amountMain = amount,
+    )
+
+internal val previewAccountDetailState = AccountDetailUiState(
+    loaded = true,
+    account = PreviewData.accounts[1],
+    range = DateRange(PreviewData.today.withDayOfMonth(1), PreviewData.today.withDayOfMonth(30)),
+    title = UiText.Raw("Nov 2026"),
+    ref = PreviewData.ref,
+    anchor = PreviewData.today,
+    days = listOf(
+        DayGroup(
+            PreviewData.today,
+            listOf(
+                previewRow("t1", "Food", "Lunch", 1_250.0, CashFlow.EXPENSE),
+                previewRow("t2", "Salary", "November pay", 185_000.0, CashFlow.INCOME),
+            ),
+            income = 185_000.0,
+            expense = 1_250.0,
+        ),
+    ),
+    running = mapOf("t1" to 244_750.0, "t2" to 246_000.0),
+    deposit = 185_000.0,
+    withdrawal = 1_250.0,
+    balance = 244_750.0,
+)
+
+@Preview
+@Composable
+private fun AccountDetailScreenPreview() = NexoPreview {
+    AccountDetailScreen(
+        ui = previewAccountDetailState,
+        periods = PreviewData.ref.settings.periods,
+        deleted = false,
+        isNone = false,
+        actions = AccountDetailActions(),
+        bulkActions = BulkEditActions({}, {}, {}, {}, {}, { _, _ -> }),
+    )
 }

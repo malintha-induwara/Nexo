@@ -31,14 +31,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.Money
+import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
+import com.nexo.app.domain.AccountFigure
+import com.nexo.app.domain.AccountsSummary
+import com.nexo.app.domain.CardFigures
+import com.nexo.app.domain.GroupFigure
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.DateRangeChips
 import com.nexo.app.ui.designsystem.component.EmptyState
@@ -51,6 +57,8 @@ import com.nexo.app.ui.designsystem.component.NexoMenuItem
 import com.nexo.app.ui.designsystem.component.PeriodNavigator
 import com.nexo.app.ui.designsystem.component.RoundIconButton
 import com.nexo.app.ui.designsystem.component.rememberHaptics
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.Space
 import com.nexo.app.ui.navigation.AccountDetailKey
@@ -59,6 +67,7 @@ import com.nexo.app.ui.navigation.AccountListKey
 import com.nexo.app.ui.navigation.AccountListMode
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.TotalStatsKey
+import java.time.LocalDate
 
 @Composable
 fun accountsModeLabel(m: AccountsMode): String = stringResource(
@@ -72,19 +81,46 @@ fun accountsModeLabel(m: AccountsMode): String = stringResource(
 )
 
 @Composable
-fun AccountsTab(todaySignal: Int, vm: AccountsViewModel = hiltViewModel()) {
+fun AccountsTabRoute(todaySignal: Int, vm: AccountsViewModel = hiltViewModel()) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val nav = LocalNavigator.current
+    LaunchedEffect(todaySignal) { if (todaySignal > 0) vm.goToday() }
+    AccountsTab(
+        state = state,
+        onSetRange = vm::setRange,
+        onStep = vm::step,
+        onSetMode = vm::setMode,
+        onSetAnchor = vm::setAnchor,
+        onToggleCollapsed = vm::toggleCollapsed,
+        onOpenStats = { nav.navigate(TotalStatsKey) },
+        onAddAccount = { nav.navigate(AccountFormKey()) },
+        onOpenAccountList = { nav.navigate(AccountListKey(it)) },
+        onOpenAccount = { id, date -> nav.navigate(AccountDetailKey(id, date = date?.toString())) },
+    )
+}
+
+@Composable
+internal fun AccountsTab(
+    state: AccountsUiState,
+    onSetRange: (from: LocalDate, to: LocalDate) -> Unit,
+    onStep: (forward: Boolean) -> Unit,
+    onSetMode: (AccountsMode) -> Unit,
+    onSetAnchor: (LocalDate) -> Unit,
+    onToggleCollapsed: (groupId: String) -> Unit,
+    onOpenStats: () -> Unit,
+    onAddAccount: () -> Unit,
+    onOpenAccountList: (AccountListMode) -> Unit,
+    onOpenAccount: (accountId: String?, date: LocalDate?) -> Unit,
+) {
     val ref = state.ref
     val data = state.data
     val q = state.query
     val device = state.device
-    val nav = LocalNavigator.current
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
     var menu by rememberSaveable { mutableStateOf(false) }
     var modePicker by rememberSaveable { mutableStateOf(false) }
     var datePicker by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(todaySignal) { if (todaySignal > 0) vm.goToday() }
     val main = ref.mainCurrency
 
     Column(Modifier.fillMaxSize().background(colors.background)) {
@@ -103,7 +139,7 @@ fun AccountsTab(todaySignal: Int, vm: AccountsViewModel = hiltViewModel()) {
                 AccountsMode.PERIOD -> DateRangeChips(
                     q.from,
                     q.to,
-                    onChange = vm::setRange,
+                    onChange = onSetRange,
                     color = colors.text,
                 )
 
@@ -120,8 +156,8 @@ fun AccountsTab(todaySignal: Int, vm: AccountsViewModel = hiltViewModel()) {
                     }
                     PeriodNavigator(
                         label,
-                        { vm.step(false) },
-                        { vm.step(true) },
+                        { onStep(false) },
+                        { onStep(true) },
                         if (q.mode == AccountsMode.ANNUALLY) null else ({ datePicker = true }),
                         modifier = Modifier.padding(start = Space.xs),
                         color = colors.text,
@@ -134,9 +170,13 @@ fun AccountsTab(todaySignal: Int, vm: AccountsViewModel = hiltViewModel()) {
                 modePicker = true
             }
             Spacer(Modifier.width(Space.xs))
-            RoundIconButton(Icons.Rounded.BarChart, stringResource(R.string.total_stats), {
-                nav.navigate(TotalStatsKey)
-            }, tint = colors.textSecondary, container = Color.Transparent)
+            RoundIconButton(
+                Icons.Rounded.BarChart,
+                stringResource(R.string.total_stats),
+                onOpenStats,
+                tint = colors.textSecondary,
+                container = Color.Transparent,
+            )
             Box {
                 RoundIconButton(Icons.Rounded.MoreVert, stringResource(R.string.action_more), {
                     menu = true
@@ -144,19 +184,19 @@ fun AccountsTab(todaySignal: Int, vm: AccountsViewModel = hiltViewModel()) {
                 NexoMenu(menu, onDismissRequest = { menu = false }) {
                     NexoMenuItem(stringResource(R.string.action_add), {
                         menu = false
-                        nav.navigate(AccountFormKey())
+                        onAddAccount()
                     }, Icons.Rounded.Add)
                     NexoMenuItem(stringResource(R.string.show_hide), {
                         menu = false
-                        nav.navigate(AccountListKey(AccountListMode.VISIBILITY))
+                        onOpenAccountList(AccountListMode.VISIBILITY)
                     }, Icons.Rounded.Visibility)
                     NexoMenuItem(stringResource(R.string.modify_orders), {
                         menu = false
-                        nav.navigate(AccountListKey(AccountListMode.REORDER))
+                        onOpenAccountList(AccountListMode.REORDER)
                     }, Icons.Rounded.SwapVert)
                     NexoMenuItem(stringResource(R.string.action_delete), {
                         menu = false
-                        nav.navigate(AccountListKey(AccountListMode.DELETE))
+                        onOpenAccountList(AccountListMode.DELETE)
                     }, Icons.Rounded.DeleteOutline, danger = true)
                 }
             }
@@ -257,40 +297,85 @@ fun AccountsTab(todaySignal: Int, vm: AccountsViewModel = hiltViewModel()) {
         val ui = AccountsUi(sections, data.summary, main)
         val onToggle: (String) -> Unit = {
             haptics.tick()
-            vm.toggleCollapsed(it)
+            onToggleCollapsed(it)
         }
         val onOpen: (AccountUi) -> Unit = { a ->
-            nav.navigate(
-                AccountDetailKey(
-                    a.accountId,
-                    date = if (a.accountId == null) {
-                        null
-                    } else {
-                        data.range?.end?.toString()
-                    },
-                ),
-            )
+            onOpenAccount(a.accountId, if (a.accountId == null) null else data.range?.end)
         }
         AccountCards(ui, onToggle, onOpen)
     }
     if (modePicker) {
         ChoiceDialog(stringResource(R.string.period), AccountsMode.entries, q.mode, {
             accountsModeLabel(it)
-        }, onSelect = vm::setMode, onDismiss = {
+        }, onSelect = onSetMode, onDismiss = {
             modePicker = false
         })
     }
     if (datePicker) {
         if (q.mode == AccountsMode.MONTHLY) {
             MonthPickerDialog(ref.settings.periods.monthPeriodContaining(q.anchor).label, onPick = {
-                vm.setAnchor(ref.settings.periods.monthPeriodFor(it).end)
+                onSetAnchor(ref.settings.periods.monthPeriodFor(it).end)
             }, onDismiss = {
                 datePicker = false
             })
         } else {
-            NexoDatePickerDialog(q.anchor, onPick = vm::setAnchor, onDismiss = {
+            NexoDatePickerDialog(q.anchor, onPick = onSetAnchor, onDismiss = {
                 datePicker = false
             })
         }
     }
+}
+
+internal val previewAccountsState = AccountsUiState(
+    ref = PreviewData.ref,
+    device = PreviewData.device,
+    query = AccountsQuery(anchor = PreviewData.today),
+    data = AccountsData(
+        loaded = true,
+        figures = listOf(
+            AccountFigure(PreviewData.accounts[0], GroupType.NORMAL, 12_500.0),
+            AccountFigure(PreviewData.accounts[1], GroupType.NORMAL, 245_000.0),
+            AccountFigure(
+                PreviewData.accounts[2],
+                GroupType.CREDIT_CARD,
+                -18_250.0,
+                card = CardFigures(
+                    payable = -8_400.0,
+                    outstanding = -9_850.0,
+                    other = 0.0,
+                    current = DateRange(PreviewData.today.withDayOfMonth(1), PreviewData.today),
+                    previous = DateRange(
+                        PreviewData.today.minusMonths(1).withDayOfMonth(1),
+                        PreviewData.today.withDayOfMonth(1).minusDays(1),
+                    ),
+                ),
+            ),
+        ),
+        summary = AccountsSummary(
+            assets = 257_500.0,
+            liabilities = -18_250.0,
+            groups = mapOf(
+                "11" to GroupFigure("11", 12_500.0),
+                "1" to GroupFigure("1", 245_000.0),
+                "2" to GroupFigure("2", -9_850.0, payableSubtotal = -8_400.0),
+            ),
+        ),
+    ),
+)
+
+@Preview
+@Composable
+private fun AccountsTabPreview() = NexoPreview {
+    AccountsTab(
+        state = previewAccountsState,
+        onSetRange = { _, _ -> },
+        onStep = {},
+        onSetMode = {},
+        onSetAnchor = {},
+        onToggleCollapsed = {},
+        onOpenStats = {},
+        onAddAccount = {},
+        onOpenAccountList = {},
+        onOpenAccount = { _, _ -> },
+    )
 }

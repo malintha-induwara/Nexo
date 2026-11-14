@@ -3,16 +3,16 @@ package com.nexo.app.ui.navigation
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
-import com.nexo.app.ui.accounts.AccountDetailScreen
-import com.nexo.app.ui.accounts.AccountFormScreen
-import com.nexo.app.ui.accounts.AccountGroupFormScreen
-import com.nexo.app.ui.accounts.AccountGroupsScreen
-import com.nexo.app.ui.accounts.AccountListScreen
-import com.nexo.app.ui.accounts.AccountSettingsMenu
-import com.nexo.app.ui.accounts.DeletedAccountsScreen
-import com.nexo.app.ui.accounts.DeletedGroupsScreen
-import com.nexo.app.ui.accounts.TotalStatsScreen
-import com.nexo.app.ui.accounts.TransferExpenseScreen
+import com.nexo.app.ui.accounts.AccountDetailRoute
+import com.nexo.app.ui.accounts.AccountFormRoute
+import com.nexo.app.ui.accounts.AccountGroupFormRoute
+import com.nexo.app.ui.accounts.AccountGroupsRoute
+import com.nexo.app.ui.accounts.AccountListRoute
+import com.nexo.app.ui.accounts.AccountSettingsMenuRoute
+import com.nexo.app.ui.accounts.DeletedAccountsRoute
+import com.nexo.app.ui.accounts.DeletedGroupsRoute
+import com.nexo.app.ui.accounts.TotalStatsRoute
+import com.nexo.app.ui.accounts.TransferExpenseRoute
 import com.nexo.app.ui.backup.AutoBackupHistoryScreen
 import com.nexo.app.ui.backup.BackupDeviceScreen
 import com.nexo.app.ui.backup.BackupScreen
@@ -73,16 +73,16 @@ fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<SearchKey> { SearchRoute(it) }
     entry<MemoEditorKey> { MemoEditorRoute(it) }
     entry<MemoListKey> { MemoListRoute(it) }
-    entry<AccountDetailKey> { AccountDetailScreen(it) }
-    entry<AccountFormKey> { AccountFormScreen(it) }
-    entry<AccountSettingsMenuKey> { AccountSettingsMenu() }
-    entry<AccountGroupsKey> { AccountGroupsScreen() }
-    entry<AccountGroupFormKey> { AccountGroupFormScreen(it.groupId) }
-    entry<AccountListKey> { AccountListScreen(it) }
-    entry<DeletedAccountsKey> { DeletedAccountsScreen() }
-    entry<DeletedGroupsKey> { DeletedGroupsScreen() }
-    entry<TransferExpenseKey> { TransferExpenseScreen() }
-    entry<TotalStatsKey> { TotalStatsScreen() }
+    entry<AccountDetailKey> { AccountDetailRoute(it) }
+    entry<AccountFormKey> { AccountFormRoute(it) }
+    entry<AccountSettingsMenuKey> { AccountSettingsMenuRoute() }
+    entry<AccountGroupsKey> { AccountGroupsRoute() }
+    entry<AccountGroupFormKey> { AccountGroupFormRoute(it.groupId) }
+    entry<AccountListKey> { AccountListRoute(it) }
+    entry<DeletedAccountsKey> { DeletedAccountsRoute() }
+    entry<DeletedGroupsKey> { DeletedGroupsRoute() }
+    entry<TransferExpenseKey> { TransferExpenseRoute() }
+    entry<TotalStatsKey> { TotalStatsRoute() }
     entry<StatsDetailKey> { StatsDetailRoute(it) }
     entry<BudgetDetailKey> { BudgetDetailRoute(it) }
     entry<BudgetSettingsKey> { BudgetSettingsRoute() }
