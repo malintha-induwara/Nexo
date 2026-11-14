@@ -1,5 +1,6 @@
 package com.nexo.app.data.receipt
 
+import com.nexo.app.core.model.ReceiptRead
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalTime

@@ -2,9 +2,9 @@ package com.nexo.app.data.sms
 
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.data.database.dao.SmsDao
-import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.repository.FxRatesRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import javax.inject.Inject
@@ -21,7 +21,7 @@ class SmsSuggester @Inject constructor(
     private val fx: FxRatesRepository,
 ) {
 
-    suspend fun prepare(item: SmsItemEntity, ref: RefData? = null): SmsItemEntity {
+    suspend fun prepare(item: SmsItem, ref: RefData? = null): SmsItem {
         val r = ref ?: refs.getRefData()
         fun live(id: String?) = id?.takeIf { a -> r.accountById[a]?.let(r::isAccountVisible) == true }
         fun liveCategory(id: String?) = id?.takeIf { c -> r.categoryById[c]?.let { !it.isDeleted && it.kind == item.kind.categoryKind } == true }

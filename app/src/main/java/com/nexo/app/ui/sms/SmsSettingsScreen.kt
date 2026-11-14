@@ -37,8 +37,8 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.model.FeeMode
-import com.nexo.app.data.database.entity.FeePresetEntity
-import com.nexo.app.data.database.entity.SmsSourceEntity
+import com.nexo.app.core.model.FeePreset
+import com.nexo.app.core.model.SmsSource
 import com.nexo.app.data.sms.SmsPermissions
 import com.nexo.app.data.sms.parser.Banks
 import com.nexo.app.data.sms.smsCashAccount
@@ -234,7 +234,7 @@ fun SmsCardsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     val colors = LocalNexoColors.current
     val ref by vm.ref.collectAsStateWithLifecycle()
     val sources by vm.sources.collectAsStateWithLifecycle()
-    var editing by remember { mutableStateOf<SmsSourceEntity?>(null) }
+    var editing by remember { mutableStateOf<SmsSource?>(null) }
     var sheetOpen by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
@@ -282,11 +282,11 @@ fun SmsFeesScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     val colors = LocalNexoColors.current
     val ref by vm.ref.collectAsStateWithLifecycle()
     val presets by vm.presets.collectAsStateWithLifecycle()
-    var editing by remember { mutableStateOf<FeePresetEntity?>(null) }
+    var editing by remember { mutableStateOf<FeePreset?>(null) }
     var sheetOpen by remember { mutableStateOf(false) }
 
     @Composable
-    fun modeText(p: FeePresetEntity): String {
+    fun modeText(p: FeePreset): String {
         val last = p.lastFee?.let { com.nexo.app.core.common.money.AmountFormatter.format(it, ref.accountCurrency(p.accountId)) }
         return when {
             p.mode == FeeMode.NEVER -> stringResource(R.string.fee_mode_never)

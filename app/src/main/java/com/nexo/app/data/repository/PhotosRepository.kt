@@ -1,7 +1,7 @@
 package com.nexo.app.data.repository
 
 import android.net.Uri
-import com.nexo.app.data.file.StoredPhoto
+import com.nexo.app.core.model.StoredPhoto
 import java.io.File
 
 /** Transaction photos: files in the private photo folder, shared between rows that attach the same picture. */

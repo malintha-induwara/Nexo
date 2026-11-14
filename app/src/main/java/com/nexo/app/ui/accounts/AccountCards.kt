@@ -34,7 +34,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
-import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.core.model.Currency
 import com.nexo.app.domain.CardFigures
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.HeroStat
@@ -70,7 +70,7 @@ private fun AccountUi.balanceColor(): Color {
 
 /** Payable and outstanding side by side, each under its label; overdue beneath when there is any. */
 @Composable
-private fun CardSplit(card: CardFigures, currency: CurrencyEntity, label: Color, value: (Double) -> Color, modifier: Modifier = Modifier) {
+private fun CardSplit(card: CardFigures, currency: Currency, label: Color, value: (Double) -> Color, modifier: Modifier = Modifier) {
     Column(modifier) {
         Row(horizontalArrangement = Arrangement.spacedBy(Space.l)) {
             Column(Modifier.weight(1f)) {
@@ -94,7 +94,7 @@ private fun CardSplit(card: CardFigures, currency: CurrencyEntity, label: Color,
 
 /** "↑ Rs 5,000.00" against the previous period. */
 @Composable
-private fun ChangeCaption(change: Double, currency: CurrencyEntity, color: Color, modifier: Modifier = Modifier) {
+private fun ChangeCaption(change: Double, currency: Currency, color: Color, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         if (change != 0.0) {
             Icon(if (change > 0) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward, null, tint = color, modifier = Modifier.size(14.dp))
@@ -106,7 +106,7 @@ private fun ChangeCaption(change: Double, currency: CurrencyEntity, color: Color
 
 /** Group name over its cards, with the group's total; tap to fold the group. */
 @Composable
-private fun SectionLabel(section: AccountSection, main: CurrencyEntity, onToggle: (String) -> Unit, modifier: Modifier = Modifier) {
+private fun SectionLabel(section: AccountSection, main: Currency, onToggle: (String) -> Unit, modifier: Modifier = Modifier) {
     val colors = LocalNexoColors.current
     val total = when {
         section.neutral || section.total >= 0 -> colors.textSecondary

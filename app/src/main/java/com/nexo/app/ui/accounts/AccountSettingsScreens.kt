@@ -47,12 +47,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.model.Account
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.CardAccounting
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.model.RefData
-import com.nexo.app.data.database.entity.AccountEntity
 import com.nexo.app.domain.Balances
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
@@ -250,7 +250,7 @@ fun AccountListScreen(key: AccountListKey, vm: AccountSettingsViewModel = hiltVi
 }
 
 /** Moving past a group boundary moves the account into the neighbouring group. */
-private fun move(ref: RefData, list: List<AccountEntity>, index: Int, delta: Int): List<Pair<String, String>> {
+private fun move(ref: RefData, list: List<Account>, index: Int, delta: Int): List<Pair<String, String>> {
     val items = list.map { it.id to it.groupId }.toMutableList()
     val (id, group) = items[index]
     val target = index + delta

@@ -1,14 +1,14 @@
 package com.nexo.app.data.repository
 
-import com.nexo.app.data.database.entity.BudgetAmountEntity
-import com.nexo.app.data.database.entity.BudgetEntity
+import com.nexo.app.core.model.Budget
+import com.nexo.app.core.model.BudgetAmount
 import kotlinx.coroutines.flow.Flow
 
 /** Budgets with effective-from monthly amounts. */
 interface BudgetsRepository {
-    fun getBudgetsStream(): Flow<List<BudgetEntity>>
+    fun getBudgetsStream(): Flow<List<Budget>>
 
-    fun getBudgetAmountsStream(): Flow<List<BudgetAmountEntity>>
+    fun getBudgetAmountsStream(): Flow<List<BudgetAmount>>
 
     /** [currentKey] is the label key of the current month. */
     suspend fun add(categoryId: String?, amount: Double, currentKey: Int)

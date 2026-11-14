@@ -1,6 +1,5 @@
 package com.nexo.app.core.model
 
-import com.nexo.app.data.database.entity.BudgetAmountEntity
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -45,7 +44,7 @@ class CalculationsTest {
         assertEquals(d("2024-05-31"), RepeatSchedule.snap(d("2024-05-15"), RepeatType.END_OF_MONTH))
     }
 
-    private fun rec(key: Int, amount: Double) = BudgetAmountEntity(BudgetAmountEntity.idFor("b", key), "b", key, amount, 0)
+    private fun rec(key: Int, amount: Double) = BudgetAmount(BudgetAmount.idFor("b", key), "b", key, amount, 0)
 
     @Test
     fun budgetEffectiveAmount() {

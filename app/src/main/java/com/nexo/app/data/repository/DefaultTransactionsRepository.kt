@@ -1,6 +1,7 @@
 package com.nexo.app.data.repository
 
 import android.content.Context
+import androidx.core.net.toUri
 import androidx.room.withTransaction
 import com.nexo.app.R
 import com.nexo.app.core.common.money.Conversion
@@ -9,22 +10,27 @@ import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.toEpochMillis
 import com.nexo.app.core.common.period.toIsoText
 import com.nexo.app.core.common.period.toLocalDateTime
+import com.nexo.app.core.model.Category
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.Installments
 import com.nexo.app.core.model.Ledger
+import com.nexo.app.core.model.NoteUsage
+import com.nexo.app.core.model.Photo
 import com.nexo.app.core.model.PhotoItem
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.StoredPhoto
+import com.nexo.app.core.model.Transaction
+import com.nexo.app.core.model.TxAggregate
 import com.nexo.app.core.model.TxDraft
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.database.dao.NoteUsage
-import com.nexo.app.data.database.dao.TxAggregate
 import com.nexo.app.data.database.entity.CategoryEntity
 import com.nexo.app.data.database.entity.PhotoEntity
 import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.data.database.entity.TransactionTagEntity
-import com.nexo.app.data.file.StoredPhoto
+import com.nexo.app.data.database.entity.asEntity
+import com.nexo.app.data.database.entity.asExternalModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -63,7 +69,7 @@ class DefaultTransactionsRepository @Inject constructor(
 
     private fun ledger(rows: Flow<List<TransactionEntity>>): Flow<Ledger> =
         combine(rows, db.tagDao().observeLinks(), db.photoDao().observeAll()) { r, links, photos ->
-            Ledger(r, groupLinks(links), photos.mapTo(HashSet()) { it.transactionId })
+            Ledger(r.map(TransactionEntity::asExternalModel), groupLinks(links), photos.mapTo(HashSet()) { it.transactionId })
         }
 
     override fun getChangeStampStream(): Flow<Long> = dao.observeStamp()
@@ -73,32 +79,32 @@ class DefaultTransactionsRepository @Inject constructor(
 
     override fun getAggregatesUpToStream(end: String): Flow<List<TxAggregate>> = dao.observeAggregatesUpTo(end)
 
-    override suspend fun getTransaction(id: String): TransactionEntity? = dao.getById(id)
+    override suspend fun getTransaction(id: String): Transaction? = dao.getById(id)?.asExternalModel()
 
-    override suspend fun getTransferLegs(transferGroupId: String): List<TransactionEntity> = dao.getByTransferGroup(transferGroupId)
+    override suspend fun getTransferLegs(transferGroupId: String): List<Transaction> = dao.getByTransferGroup(transferGroupId).map(TransactionEntity::asExternalModel)
 
-    override suspend fun getInstallmentGroup(installmentGroupId: String): List<TransactionEntity> = dao.getByInstallmentGroup(installmentGroupId)
+    override suspend fun getInstallmentGroup(installmentGroupId: String): List<Transaction> = dao.getByInstallmentGroup(installmentGroupId).map(TransactionEntity::asExternalModel)
 
-    override suspend fun getFeeRow(feeGroupId: String): TransactionEntity? = dao.getFeeRow(feeGroupId)
+    override suspend fun getFeeRow(feeGroupId: String): Transaction? = dao.getFeeRow(feeGroupId)?.asExternalModel()
 
     override suspend fun getTagIds(transactionId: String): List<String> =
         db.tagDao().linksForTransaction(transactionId).sortedBy { it.position }.map { it.tagId }
 
-    override suspend fun getPhotos(transactionId: String): List<PhotoEntity> = db.photoDao().forTransaction(transactionId)
+    override suspend fun getPhotos(transactionId: String): List<Photo> = db.photoDao().forTransaction(transactionId).map(PhotoEntity::asExternalModel)
 
-    override suspend fun getLastTransferWithFee(fromAccountId: String, toAccountId: String): TransactionEntity? =
-        dao.lastTransferWithFee(fromAccountId, toAccountId)
+    override suspend fun getLastTransferWithFee(fromAccountId: String, toAccountId: String): Transaction? =
+        dao.lastTransferWithFee(fromAccountId, toAccountId)?.asExternalModel()
 
-    override suspend fun getAllForAccounts(accountIds: List<String>): List<TransactionEntity> = dao.getAllForAccounts(accountIds)
+    override suspend fun getAllForAccounts(accountIds: List<String>): List<Transaction> = dao.getAllForAccounts(accountIds).map(TransactionEntity::asExternalModel)
 
-    override suspend fun getWithoutAccount(): List<TransactionEntity> = dao.noAccount()
+    override suspend fun getWithoutAccount(): List<Transaction> = dao.noAccount().map(TransactionEntity::asExternalModel)
 
-    override suspend fun getUnassigned(upTo: String): List<TransactionEntity> = dao.unassigned(upTo)
+    override suspend fun getUnassigned(upTo: String): List<Transaction> = dao.unassigned(upTo).map(TransactionEntity::asExternalModel)
 
-    override suspend fun getRange(start: String, end: String): List<TransactionEntity> = dao.getRange(start, end)
+    override suspend fun getRange(start: String, end: String): List<Transaction> = dao.getRange(start, end).map(TransactionEntity::asExternalModel)
 
-    override suspend fun search(start: String, end: String, pattern: String, includeSource: Boolean): List<TransactionEntity> =
-        dao.search(start, end, pattern, includeSource)
+    override suspend fun search(start: String, end: String, pattern: String, includeSource: Boolean): List<Transaction> =
+        dao.search(start, end, pattern, includeSource).map(TransactionEntity::asExternalModel)
 
     override suspend fun getNoteUsage(cutDate: String, cutMillis: Long): List<NoteUsage> = dao.noteUsage(cutDate, cutMillis)
 
@@ -108,7 +114,7 @@ class DefaultTransactionsRepository @Inject constructor(
 
     override suspend fun getAggregatesBefore(before: String): List<TxAggregate> = dao.aggregatesBefore(before)
 
-    override suspend fun getLedgerFor(rows: List<TransactionEntity>): Ledger {
+    override suspend fun getLedgerFor(rows: List<Transaction>): Ledger {
         val ids = rows.map { it.id }
         val links = ids.chunked(500).flatMap { db.tagDao().linksFor(it) }
         val photos = ids.chunked(500).flatMap { db.photoDao().forTransactions(it) }
@@ -136,7 +142,7 @@ class DefaultTransactionsRepository @Inject constructor(
     private suspend fun resolvePhotos(items: List<PhotoItem>): List<StoredPhoto> = items.mapNotNull {
         when (it) {
             is PhotoItem.Stored -> StoredPhoto(it.fileName, it.size, it.checksum)
-            is PhotoItem.Picked -> photos.importPhoto(it.uri)
+            is PhotoItem.Picked -> photos.importPhoto(it.uri.toUri())
         }
     }
 
@@ -334,7 +340,7 @@ class DefaultTransactionsRepository @Inject constructor(
     }
 
     /** Fee category: the system Bank fee category once it exists, else "Fees", else "Other", else the last expense category. */
-    private fun feeCategory(ref: RefData): CategoryEntity? {
+    private fun feeCategory(ref: RefData): Category? {
         val expense = ref.categories.filter { it.kind == CategoryKind.EXPENSE && !it.isDeleted }
         ref.settings.bankFeeCategoryId.takeIf { it.isNotEmpty() }?.let { id -> expense.firstOrNull { it.id == id } }?.let { return it }
         val fees = context.getString(R.string.cat_fees)

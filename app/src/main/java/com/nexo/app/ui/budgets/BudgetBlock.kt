@@ -43,7 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.common.period.MonthPeriod
-import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.core.model.Currency
 import com.nexo.app.domain.BudgetRow
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
@@ -119,7 +119,7 @@ fun BudgetBlock(period: MonthPeriod, vm: BudgetBlockViewModel = hiltViewModel(ke
 @Composable
 fun BudgetRowView(
     row: BudgetRow,
-    main: CurrencyEntity,
+    main: Currency,
     today: Float?,
     onClick: () -> Unit,
     small: Boolean = false,

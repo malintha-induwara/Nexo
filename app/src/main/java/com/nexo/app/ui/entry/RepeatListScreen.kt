@@ -42,9 +42,9 @@ import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.MonthPeriod
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.RepeatReflect
+import com.nexo.app.core.model.RepeatRule
 import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.data.database.entity.RepeatRuleEntity
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.Formats
@@ -58,7 +58,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 
 /** Estimated occurrences of a rule in the current month period. */
-fun estimatedCount(rule: RepeatRuleEntity, period: MonthPeriod): Int {
+fun estimatedCount(rule: RepeatRule, period: MonthPeriod): Int {
     val next = runCatching { LocalDate.parse(rule.nextDate) }.getOrNull() ?: return 0
     val days = period.range.days()
     return when (rule.repeatType) {
@@ -177,7 +177,7 @@ fun RepeatListScreen(vm: RepeatListViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun RuleRow(r: RepeatRuleEntity, ref: RefData, editing: Boolean, checked: Boolean, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+private fun RuleRow(r: RepeatRule, ref: RefData, editing: Boolean, checked: Boolean, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
     val accountText = if (r.kind.isTransfer) "${accountLabel(ref, r.accountId)} → ${accountLabel(ref, r.toAccountId)}"
     else {
         val main = ref.categoryName(ref.mainCategoryId(r.categoryId)) ?: ""

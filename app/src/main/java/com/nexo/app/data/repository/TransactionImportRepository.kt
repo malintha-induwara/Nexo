@@ -1,6 +1,8 @@
 package com.nexo.app.data.repository
 
 import android.net.Uri
+import com.nexo.app.core.model.DateOrder
+import com.nexo.app.core.model.ImportPreview
 import java.io.File
 
 /** Tab-separated transaction files waiting in the import folder, their preview, and saving them to the ledger. */

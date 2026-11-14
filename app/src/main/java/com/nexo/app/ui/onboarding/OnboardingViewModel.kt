@@ -5,10 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.money.CatalogCurrency
 import com.nexo.app.core.common.money.CurrencyCatalog
+import com.nexo.app.core.model.RestoreResult
 import com.nexo.app.data.repository.BackupRepository
 import com.nexo.app.data.repository.BookRepository
 import com.nexo.app.data.repository.RepeatRulesRepository
-import com.nexo.app.data.repository.RestoreResult
 import com.nexo.app.data.repository.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject

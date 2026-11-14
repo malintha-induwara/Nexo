@@ -50,9 +50,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
+import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SwipeMode
-import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.ui.accounts.GroupVisuals
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.CategoryTile
@@ -210,7 +210,7 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
 
 /** The middle of the ring: one category's share, name and amount. */
 @Composable
-private fun ShareLabel(row: StatsRow, main: CurrencyEntity) {
+private fun ShareLabel(row: StatsRow, main: Currency) {
     val colors = LocalNexoColors.current
     AnimatedContent(
         targetState = row,
@@ -228,7 +228,7 @@ private fun ShareLabel(row: StatsRow, main: CurrencyEntity) {
 
 /** One category: its tile in the ring's colour, its name over its share, and the total. */
 @Composable
-private fun CategoryCard(row: StatsRow, ref: RefData, main: CurrencyEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun CategoryCard(row: StatsRow, ref: RefData, main: Currency, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = LocalNexoColors.current
     val color = NexoPalette.Stats[row.colorIndex]
     val interactions = remember { MutableInteractionSource() }

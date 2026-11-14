@@ -12,7 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.core.model.Currency
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
@@ -23,7 +23,7 @@ data class HeroStat(val label: String, val value: Double, val color: Color)
 
 /** A screen's one large number under its label, with a row of smaller labelled figures beneath. */
 @Composable
-fun HeroSummary(label: String, value: Double, currency: CurrencyEntity?, stats: List<HeroStat>, modifier: Modifier = Modifier) {
+fun HeroSummary(label: String, value: Double, currency: Currency?, stats: List<HeroStat>, modifier: Modifier = Modifier) {
     val colors = LocalNexoColors.current
     Column(modifier.fillMaxWidth().padding(start = Space.gutter, end = Space.gutter, top = Space.xs, bottom = Space.m)) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)

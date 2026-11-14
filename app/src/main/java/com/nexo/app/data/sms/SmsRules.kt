@@ -3,8 +3,8 @@ package com.nexo.app.data.sms
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
-import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.sms.parser.Bank
 import com.nexo.app.data.sms.parser.Banks
 
@@ -14,7 +14,7 @@ enum class Missing { ACCOUNT, DESTINATION, CATEGORY, AMOUNT }
 /** Category kind a queue item is filed under. */
 val SmsKind.categoryKind: CategoryKind get() = if (isInflow) CategoryKind.INCOME else CategoryKind.EXPENSE
 
-fun SmsItemEntity.missing(): Set<Missing> = buildSet {
+fun SmsItem.missing(): Set<Missing> = buildSet {
     if (accountId == null) add(Missing.ACCOUNT)
     when (kind) {
         SmsKind.TRANSFER_TO_CASH, SmsKind.CARD_PAYMENT, SmsKind.TRANSFER_IN -> if (toAccountId == null) add(Missing.DESTINATION)
@@ -26,13 +26,13 @@ fun SmsItemEntity.missing(): Set<Missing> = buildSet {
     if (certainty == Certainty.ESTIMATED && estimatedAmount == null && actualAmount == null) add(Missing.AMOUNT)
 }
 
-val SmsItemEntity.needsDetails: Boolean get() = missing().isNotEmpty()
+val SmsItem.needsDetails: Boolean get() = missing().isNotEmpty()
 
 /** "Needs attention": not exact, or incomplete. */
-val SmsItemEntity.needsAttention: Boolean get() = certainty != Certainty.EXACT || needsDetails
+val SmsItem.needsAttention: Boolean get() = certainty != Certainty.EXACT || needsDetails
 
 /** The key learned categories are stored under: the merchant, or the payee of a transfer. */
-val SmsItemEntity.learningKey: String
+val SmsItem.learningKey: String
     get() = merchantKey.ifEmpty { payee?.let(com.nexo.app.data.sms.parser.MerchantCleaner::key).orEmpty() }
 
 /** Where withdrawals go. The chosen account, else the first visible account in the Cash group. */
@@ -44,12 +44,12 @@ fun RefData.smsCashAccount(): String? {
 private const val CASH_GROUP = 11
 
 /** The amount as it would reach the ledger, in the account's currency for foreign items. */
-fun ledgerAmount(item: SmsItemEntity): Double = item.actualAmount ?: item.estimatedAmount ?: item.amount
+fun ledgerAmount(item: SmsItem): Double = item.actualAmount ?: item.estimatedAmount ?: item.amount
 
-fun bankName(item: SmsItemEntity): String = Banks.byName(item.bank)?.displayName ?: Bank.OTHER.displayName
+fun bankName(item: SmsItem): String = Banks.byName(item.bank)?.displayName ?: Bank.OTHER.displayName
 
 /** The row title and transaction note: merchant, else payee, else "<bank> transfer <route>", else the bank. */
-fun noteFor(item: SmsItemEntity): String =
+fun noteFor(item: SmsItem): String =
     item.merchant.ifEmpty { item.payee.orEmpty() }
         .ifEmpty { item.route?.let { "${bankName(item)} transfer $it" }.orEmpty() }
         .ifEmpty { bankName(item) }

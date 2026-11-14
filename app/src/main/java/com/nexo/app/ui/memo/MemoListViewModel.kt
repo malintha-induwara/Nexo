@@ -44,7 +44,7 @@ class MemoListViewModel @AssistedInject constructor(
     val memos = combine(ref, date) { r, d -> r.settings.periods.monthPeriodContaining(d) }.flatMapLatest { p ->
         memosRepository.getMemosStream(p.startText(), p.endText()).map { list ->
             list.filter { it.pinned }.sortedByDescending { it.pinnedAt } +
-                list.filter { !it.pinned && LocalDate.parse(it.date) in p.range }.sortedWith(compareByDescending<com.nexo.app.data.database.entity.MemoEntity> { it.date }.thenByDescending { it.dateTime })
+                list.filter { !it.pinned && LocalDate.parse(it.date) in p.range }.sortedWith(compareByDescending<com.nexo.app.core.model.Memo> { it.date }.thenByDescending { it.dateTime })
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

@@ -47,8 +47,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.GroupType
-import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.FlowAmount
@@ -189,7 +189,7 @@ fun AccountDetailScreen(key: AccountDetailKey) {
 
 /** The statement for the period on screen: the balance on one line, with money in, out and the net beneath. */
 @Composable
-private fun SummaryBlock(ui: AccountDetailUi, cur: CurrencyEntity, tab: DetailTab, charts: Boolean, onToggleCharts: () -> Unit, onEdit: () -> Unit, onHelp: () -> Unit) {
+private fun SummaryBlock(ui: AccountDetailUi, cur: Currency, tab: DetailTab, charts: Boolean, onToggleCharts: () -> Unit, onEdit: () -> Unit, onHelp: () -> Unit) {
     val colors = LocalNexoColors.current
     val money = LocalMoneyColors.current
     GroupCard(Modifier.padding(horizontal = Space.l, vertical = Space.xs)) {
@@ -239,7 +239,7 @@ private fun SummaryBlock(ui: AccountDetailUi, cur: CurrencyEntity, tab: DetailTa
 }
 
 @Composable
-private fun Figure(label: String, value: Double, cur: CurrencyEntity, color: Color, modifier: Modifier) {
+private fun Figure(label: String, value: Double, cur: Currency, color: Color, modifier: Modifier) {
     Column(modifier) {
         Text(label.uppercase(Locale.getDefault()), style = NexoType.Caps, color = LocalNexoColors.current.textTertiary, maxLines = 1)
         FlowAmount(value, cur, color, Modifier.shrinkToFit(), NexoType.AmountSmall)
@@ -248,7 +248,7 @@ private fun Figure(label: String, value: Double, cur: CurrencyEntity, color: Col
 
 /** A month or year of the account: money in and out, the net, and the balance it ended on in brackets. */
 @Composable
-private fun PeriodCard(p: PeriodRowUi, cur: CurrencyEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun PeriodCard(p: PeriodRowUi, cur: Currency, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = LocalNexoColors.current
     val money = LocalMoneyColors.current
     GroupCard(modifier, highlighted = p.current, onClick = onClick) {

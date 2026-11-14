@@ -8,13 +8,13 @@ import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.MonthPeriod
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.GroupType
+import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.RepeatRule
 import com.nexo.app.core.model.RepeatSchedule
 import com.nexo.app.core.model.StartScreen
+import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.data.database.entity.MemoEntity
-import com.nexo.app.data.database.entity.RepeatRuleEntity
-import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.data.repository.MemosRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.RepeatRulesRepository
@@ -124,8 +124,8 @@ class TransactionsViewModel @Inject constructor(
         period: MonthPeriod,
         year: Int,
         l: com.nexo.app.core.model.Ledger,
-        memos: List<MemoEntity>,
-        rules: List<RepeatRuleEntity>,
+        memos: List<Memo>,
+        rules: List<RepeatRule>,
         carry: Double,
         grid: DateRange,
     ): HomeData {
@@ -137,7 +137,7 @@ class TransactionsViewModel @Inject constructor(
         val memoByDay = memos.filter { !it.pinned || LocalDate.parse(it.date) in period.range }
             .filter { LocalDate.parse(it.date) in period.range }
             .groupBy { LocalDate.parse(it.date) }
-            .mapValues { (_, v) -> v.sortedWith(compareByDescending<MemoEntity> { it.dateTime }.thenByDescending { it.orderSeq }) }
+            .mapValues { (_, v) -> v.sortedWith(compareByDescending<Memo> { it.dateTime }.thenByDescending { it.orderSeq }) }
         val carryPair = if (carry != 0.0) period.start to carry else null
         val days = factory.dayGroups(inPeriod, l, if (p.filter.active) emptyMap() else memoByDay, carryPair)
         var totals = InOut()
@@ -179,7 +179,7 @@ class TransactionsViewModel @Inject constructor(
     }
 
     /** Upcoming scheduled repeats from today to the period end. */
-    private fun repeatPreview(ref: RefData, rules: List<RepeatRuleEntity>, period: MonthPeriod): RepeatPreview? {
+    private fun repeatPreview(ref: RefData, rules: List<RepeatRule>, period: MonthPeriod): RepeatPreview? {
         val today = LocalDate.now()
         val from = maxOf(today, period.start)
         if (from.isAfter(period.end)) return null
@@ -216,7 +216,7 @@ class TransactionsViewModel @Inject constructor(
         return RepeatPreview(dates.toList(), names.filter { it.isNotBlank() }, total.toDouble())
     }
 
-    private fun monthly(p: Params, period: MonthPeriod, year: Int, rows: List<TransactionEntity>): HomeData {
+    private fun monthly(p: Params, period: MonthPeriod, year: Int, rows: List<Transaction>): HomeData {
         val ref = p.ref
         val engine = ref.settings.periods
         val c = Classifier(ref)
@@ -253,7 +253,7 @@ class TransactionsViewModel @Inject constructor(
         return HomeData(loaded = true, tab = p.tab, period = period, year = year, months = out, totals = totals)
     }
 
-    private fun total(p: Params, period: MonthPeriod, prev: MonthPeriod, rows: List<TransactionEntity>): HomeData {
+    private fun total(p: Params, period: MonthPeriod, prev: MonthPeriod, rows: List<Transaction>): HomeData {
         val ref = p.ref
         val cur = rows.filter { LocalDate.parse(it.date) in period.range }
         val before = rows.filter { LocalDate.parse(it.date) in prev.range }
@@ -265,9 +265,9 @@ class TransactionsViewModel @Inject constructor(
     }
 
     /** Total-page summary. */
-    private fun summary(ref: RefData, rows: List<TransactionEntity>, previous: List<TransactionEntity>): TotalSummary {
+    private fun summary(ref: RefData, rows: List<Transaction>, previous: List<Transaction>): TotalSummary {
         val c = Classifier(ref)
-        fun inOut(list: List<TransactionEntity>, predicate: (TransactionEntity) -> Boolean = { true }): InOut {
+        fun inOut(list: List<Transaction>, predicate: (Transaction) -> Boolean = { true }): InOut {
             var inc = BigDecimal.ZERO
             var exp = BigDecimal.ZERO
             list.filter(predicate).forEach { r ->
@@ -316,10 +316,10 @@ class TransactionsViewModel @Inject constructor(
         )
     }
 
-    private fun sortMemos(memos: List<MemoEntity>, range: DateRange): List<MemoEntity> {
+    private fun sortMemos(memos: List<Memo>, range: DateRange): List<Memo> {
         val pinned = memos.filter { it.pinned }.sortedByDescending { it.pinnedAt }
         val dated = memos.filter { !it.pinned && LocalDate.parse(it.date) in range }
-            .sortedWith(compareByDescending<MemoEntity> { it.date }.thenByDescending { it.dateTime }.thenByDescending { it.orderSeq })
+            .sortedWith(compareByDescending<Memo> { it.date }.thenByDescending { it.dateTime }.thenByDescending { it.orderSeq })
         return pinned + dated
     }
 

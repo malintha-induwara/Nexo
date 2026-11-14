@@ -5,9 +5,9 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.model.FeeMode
+import com.nexo.app.core.model.FeePreset
 import com.nexo.app.core.model.RefData
-import com.nexo.app.data.database.entity.FeePresetEntity
-import com.nexo.app.data.database.entity.SmsSourceEntity
+import com.nexo.app.core.model.SmsSource
 import com.nexo.app.data.repository.BookSettingsRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.SmsInboxRepository
@@ -64,7 +64,7 @@ class SmsSettingsViewModel @Inject constructor(
 
     fun setFullText(on: Boolean) = viewModelScope.launch { prefs.setSmsStoreFullText(on) }
     fun setCashAccount(id: String) = viewModelScope.launch { bookSettings.updateBookSettings { it.copy(smsCashAccountId = id) } }
-    fun mapSource(source: SmsSourceEntity, accountId: String) = viewModelScope.launch { sms.mapCard(source.bank, source.last4, accountId) }
-    fun removeSource(source: SmsSourceEntity) = viewModelScope.launch { sms.unmapCard(source.bank, source.last4) }
-    fun setFeeMode(preset: FeePresetEntity, mode: FeeMode) = viewModelScope.launch { sms.setFeeMode(preset.accountId, preset.route, mode) }
+    fun mapSource(source: SmsSource, accountId: String) = viewModelScope.launch { sms.mapCard(source.bank, source.last4, accountId) }
+    fun removeSource(source: SmsSource) = viewModelScope.launch { sms.unmapCard(source.bank, source.last4) }
+    fun setFeeMode(preset: FeePreset, mode: FeeMode) = viewModelScope.launch { sms.setFeeMode(preset.accountId, preset.route, mode) }
 }

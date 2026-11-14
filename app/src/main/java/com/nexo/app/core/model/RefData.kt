@@ -1,25 +1,20 @@
 package com.nexo.app.core.model
 
-import com.nexo.app.data.database.entity.AccountEntity
-import com.nexo.app.data.database.entity.AccountGroupEntity
-import com.nexo.app.data.database.entity.CategoryEntity
-import com.nexo.app.data.database.entity.CurrencyEntity
-import com.nexo.app.data.database.entity.TagEntity
 
 /** Snapshot of the reference tables and book settings, used to render and classify transactions. */
 data class RefData(
-    val groups: List<AccountGroupEntity> = emptyList(),
-    val accounts: List<AccountEntity> = emptyList(),
-    val categories: List<CategoryEntity> = emptyList(),
-    val currencies: List<CurrencyEntity> = emptyList(),
-    val tags: List<TagEntity> = emptyList(),
+    val groups: List<AccountGroup> = emptyList(),
+    val accounts: List<Account> = emptyList(),
+    val categories: List<Category> = emptyList(),
+    val currencies: List<Currency> = emptyList(),
+    val tags: List<Tag> = emptyList(),
     val settings: BookSettings = BookSettings(),
 ) {
-    val groupById: Map<String, AccountGroupEntity> = groups.associateBy { it.id }
-    val accountById: Map<String, AccountEntity> = accounts.associateBy { it.id }
-    val categoryById: Map<String, CategoryEntity> = categories.associateBy { it.id }
-    val currencyById: Map<String, CurrencyEntity> = currencies.associateBy { it.id }
-    val tagById: Map<String, TagEntity> = tags.associateBy { it.id }
+    val groupById: Map<String, AccountGroup> = groups.associateBy { it.id }
+    val accountById: Map<String, Account> = accounts.associateBy { it.id }
+    val categoryById: Map<String, Category> = categories.associateBy { it.id }
+    val currencyById: Map<String, Currency> = currencies.associateBy { it.id }
+    val tagById: Map<String, Tag> = tags.associateBy { it.id }
 
     /** Resolved look of every category (emoji or monogram, hue), by id. */
     val visualById: Map<String, CategoryVisual> by lazy {
@@ -28,15 +23,15 @@ data class RefData(
 
     fun visual(categoryId: String?): CategoryVisual? = categoryId?.let { visualById[it] }
 
-    val mainCurrency: CurrencyEntity = currencies.firstOrNull { it.isMain } ?: FALLBACK_MAIN
+    val mainCurrency: Currency = currencies.firstOrNull { it.isMain } ?: FALLBACK_MAIN
 
     /** Main first, then visible sub-currencies in order. */
-    val activeCurrencies: List<CurrencyEntity> =
+    val activeCurrencies: List<Currency> =
         listOf(mainCurrency) + currencies.filter { !it.isMain && it.isVisible }.sortedBy { it.orderSeq }
 
-    fun currency(id: String?): CurrencyEntity = id?.let { currencyById[it] } ?: mainCurrency
+    fun currency(id: String?): Currency = id?.let { currencyById[it] } ?: mainCurrency
 
-    fun groupOf(accountId: String?): AccountGroupEntity? = accountId?.let { accountById[it] }?.let { groupById[it.groupId] }
+    fun groupOf(accountId: String?): AccountGroup? = accountId?.let { accountById[it] }?.let { groupById[it.groupId] }
 
     fun groupType(accountId: String?): GroupType? = groupOf(accountId)?.type
 
@@ -46,31 +41,31 @@ data class RefData(
 
     fun isFlagged(accountId: String?): Boolean = accountId?.let { accountById[it] }?.transferExpense == true
 
-    fun accountCurrency(accountId: String?): CurrencyEntity = currency(accountId?.let { accountById[it] }?.currencyId)
+    fun accountCurrency(accountId: String?): Currency = currency(accountId?.let { accountById[it] }?.currencyId)
 
     /** Debit cards drawing on [accountId]. */
-    fun linkedDebitCards(accountId: String): List<AccountEntity> =
+    fun linkedDebitCards(accountId: String): List<Account> =
         accounts.filter { it.linkedAccountId == accountId && groupType(it.id) == GroupType.DEBIT_CARD }
 
-    fun isAccountVisible(a: AccountEntity): Boolean {
+    fun isAccountVisible(a: Account): Boolean {
         val g = groupById[a.groupId]
         return a.status == AccountStatus.ACTIVE && g != null && g.status == GroupStatus.ACTIVE
     }
 
     /** Accounts offered in pickers: active, in active groups, ordered by group then account order. */
-    val pickerAccounts: List<AccountEntity> by lazy { orderedAccounts().filter { isAccountVisible(it) } }
+    val pickerAccounts: List<Account> by lazy { orderedAccounts().filter { isAccountVisible(it) } }
 
-    fun orderedAccounts(): List<AccountEntity> {
+    fun orderedAccounts(): List<Account> {
         val groupOrder = groups.withIndex().associate { it.value.id to it.index }
         return accounts.sortedWith(
-            compareBy<AccountEntity>({ groupOrder[it.groupId] ?: Int.MAX_VALUE }, { groupById[it.groupId]?.name ?: "" }, { it.orderSeq }, { it.createdAt }),
+            compareBy<Account>({ groupOrder[it.groupId] ?: Int.MAX_VALUE }, { groupById[it.groupId]?.name ?: "" }, { it.orderSeq }, { it.createdAt }),
         )
     }
 
-    fun mainCategories(kind: CategoryKind): List<CategoryEntity> =
+    fun mainCategories(kind: CategoryKind): List<Category> =
         categories.filter { it.kind == kind && it.parentId == null && !it.isDeleted }
 
-    fun subCategories(parentId: String): List<CategoryEntity> =
+    fun subCategories(parentId: String): List<Category> =
         categories.filter { it.parentId == parentId && !it.isDeleted }
 
     fun mainCategoryId(categoryId: String?): String? {
@@ -86,7 +81,7 @@ data class RefData(
     fun categoryName(id: String?): String? = id?.let { categoryById[it]?.name }
 
     companion object {
-        val FALLBACK_MAIN = CurrencyEntity(
+        val FALLBACK_MAIN = Currency(
             id = "USD", isoCode = "USD", name = "USD", symbol = "$", symbolPosition = SymbolPosition.PREFIX,
             decimals = 2, rate = 1.0, isMain = true, isVisible = true, orderSeq = 0, updatedAt = 0,
         )

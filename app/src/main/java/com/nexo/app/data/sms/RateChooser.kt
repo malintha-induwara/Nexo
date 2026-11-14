@@ -1,7 +1,7 @@
 package com.nexo.app.data.sms
 
+import com.nexo.app.core.model.FxSnapshot
 import com.nexo.app.core.model.RateSide
-import com.nexo.app.data.database.entity.FxSnapshotEntity
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -20,8 +20,8 @@ object RateChooser {
      * [board] is one row per bank for the currency. Fallbacks, in order: the issuing bank's own rate; the median across
      * banks; the CBSL official rate plus half a typical spread (minus, for money coming in); otherwise null.
      */
-    fun choose(board: List<FxSnapshotEntity>, issuer: String?, side: RateSide): RateChoice? {
-        fun value(r: FxSnapshotEntity) = if (side == RateSide.SELL) r.sell else r.buy
+    fun choose(board: List<FxSnapshot>, issuer: String?, side: RateSide): RateChoice? {
+        fun value(r: FxSnapshot) = if (side == RateSide.SELL) r.sell else r.buy
         board.firstOrNull { it.bank == issuer }?.let { row -> value(row)?.let { return RateChoice(it, row.bank, row.capturedAt) } }
         val newest = board.maxOfOrNull { it.capturedAt }
         median(board.mapNotNull(::value))?.let { return RateChoice(it, RateChoice.MEDIAN, newest) }

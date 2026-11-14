@@ -1,21 +1,24 @@
 package com.nexo.app.data.repository
 
 import androidx.room.withTransaction
+import com.nexo.app.core.model.Favorite
+import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.FavoriteEntity
-import com.nexo.app.data.database.entity.TransactionEntity
+import com.nexo.app.data.database.entity.asExternalModel
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class DefaultFavoritesRepository @Inject constructor(private val db: NexoDatabase) : FavoritesRepository {
-    override fun getFavoritesStream(): Flow<List<FavoriteEntity>> = db.favoriteDao().observeAll()
+    override fun getFavoritesStream(): Flow<List<Favorite>> = db.favoriteDao().observeAll().map { rows -> rows.map(FavoriteEntity::asExternalModel) }
 
-    override suspend fun getFavorite(id: String): FavoriteEntity? = db.favoriteDao().getById(id)
+    override suspend fun getFavorite(id: String): Favorite? = db.favoriteDao().getById(id)?.asExternalModel()
 
     /** Creates a bookmark, reviving an identical one instead of duplicating it. */
-    override suspend fun addFromTransaction(tx: TransactionEntity) {
+    override suspend fun addFromTransaction(tx: Transaction) {
         val kind = if (tx.kind == TxKind.TRANSFER_IN) TxKind.TRANSFER_OUT else tx.kind
         val account = if (tx.kind == TxKind.TRANSFER_IN) tx.counterpartAccountId else tx.accountId
         val to = when (tx.kind) {

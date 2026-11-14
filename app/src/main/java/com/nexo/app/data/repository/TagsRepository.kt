@@ -1,6 +1,6 @@
 package com.nexo.app.data.repository
 
-import com.nexo.app.data.database.entity.TagEntity
+import com.nexo.app.core.model.Tag
 import kotlinx.coroutines.flow.Flow
 
 sealed interface TagResult {
@@ -11,7 +11,7 @@ sealed interface TagResult {
 
 /** Free-form tags; names are unique ignoring case. */
 interface TagsRepository {
-    fun getTagsStream(): Flow<List<TagEntity>>
+    fun getTagsStream(): Flow<List<Tag>>
 
     suspend fun add(raw: String): TagResult
 

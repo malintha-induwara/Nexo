@@ -6,22 +6,10 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import androidx.room.Upsert
-import com.nexo.app.core.model.TxKind
+import com.nexo.app.core.model.NoteUsage
+import com.nexo.app.core.model.TxAggregate
 import com.nexo.app.data.database.entity.TransactionEntity
 import kotlinx.coroutines.flow.Flow
-
-/** Sum of amounts for one (account, counterpart, kind) combination. */
-data class TxAggregate(
-    val accountId: String?,
-    val counterpartAccountId: String?,
-    val kind: TxKind,
-    val isBalanceAdjustment: Boolean,
-    val main: Double,
-    val account: Double,
-    val count: Int,
-)
-
-data class NoteUsage(val note: String, val count: Int, val lastDate: String)
 
 @Dao
 interface TransactionDao {

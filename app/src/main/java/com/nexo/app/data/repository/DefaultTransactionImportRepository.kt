@@ -10,6 +10,12 @@ import com.nexo.app.core.common.money.Conversion
 import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.common.period.toIsoText
 import com.nexo.app.core.model.CategoryKind
+import com.nexo.app.core.model.DateOrder
+import com.nexo.app.core.model.ImportError
+import com.nexo.app.core.model.ImportErrorType
+import com.nexo.app.core.model.ImportPreview
+import com.nexo.app.core.model.ImportRow
+import com.nexo.app.core.model.ParsedRow
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
@@ -29,34 +35,6 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
-
-enum class DateOrder(val pattern: String) { YMD("yyyy-MM-dd"), YDM("yyyy-dd-MM"), MDY("MM-dd-yyyy"), DMY("dd-MM-yyyy"), MYD("MM-yyyy-dd"), DYM("dd-yyyy-MM") }
-
-enum class ImportErrorType { DATE, TYPE, AMOUNT, INCOME_CATEGORY, EXPENSE_CATEGORY, INCOME_SUB, EXPENSE_SUB, ACCOUNT }
-
-data class ImportError(val type: ImportErrorType, val name: String? = null, val parent: String? = null)
-
-data class ParsedRow(
-    val dateTime: LocalDateTime?,
-    val kind: TxKind?,
-    val accountId: String?,
-    val counterpartId: String?,
-    val categoryId: String?,
-    val note: String,
-    val description: String,
-    val main: Double,
-    val amount: Double,
-    val currencyId: String,
-    val accountAmount: Double?,
-    val tags: String,
-)
-
-data class ImportRow(val index: Int, val raw: String, val cells: List<String>, val error: ImportError?, val parsed: ParsedRow?) {
-    /** Rows with fewer than 6 cells are listed but skipped on save. */
-    val skippable: Boolean get() = cells.size < 6
-}
-
-data class ImportPreview(val rows: List<ImportRow>, val wide: Boolean)
 
 /** Tab-separated spreadsheet import. Accepts the 11-column layout and Nexo's own 12-column export. */
 class DefaultTransactionImportRepository @Inject constructor(

@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.dp
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.common.money.AmountParts
-import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.core.model.Currency
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.Formats
@@ -67,7 +67,7 @@ import java.util.Locale
 @Composable
 fun ColumnScope.ReceiptSheetContent(
     scan: ScanUi,
-    currency: CurrencyEntity,
+    currency: Currency,
     noteEmpty: Boolean,
     onUse: (amount: Double?, useDate: Boolean, useMerchant: Boolean) -> Unit,
     onCancel: () -> Unit,

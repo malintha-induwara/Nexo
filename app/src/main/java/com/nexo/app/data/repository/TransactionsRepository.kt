@@ -2,11 +2,11 @@ package com.nexo.app.data.repository
 
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.model.Ledger
+import com.nexo.app.core.model.NoteUsage
+import com.nexo.app.core.model.Photo
+import com.nexo.app.core.model.Transaction
+import com.nexo.app.core.model.TxAggregate
 import com.nexo.app.core.model.TxDraft
-import com.nexo.app.data.database.dao.NoteUsage
-import com.nexo.app.data.database.dao.TxAggregate
-import com.nexo.app.data.database.entity.PhotoEntity
-import com.nexo.app.data.database.entity.TransactionEntity
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 
@@ -33,31 +33,31 @@ interface TransactionsRepository {
     fun getAggregatesUpToStream(end: String): Flow<List<TxAggregate>>
 
     // One-shot reads
-    suspend fun getTransaction(id: String): TransactionEntity?
+    suspend fun getTransaction(id: String): Transaction?
 
-    suspend fun getTransferLegs(transferGroupId: String): List<TransactionEntity>
+    suspend fun getTransferLegs(transferGroupId: String): List<Transaction>
 
-    suspend fun getInstallmentGroup(installmentGroupId: String): List<TransactionEntity>
+    suspend fun getInstallmentGroup(installmentGroupId: String): List<Transaction>
 
-    suspend fun getFeeRow(feeGroupId: String): TransactionEntity?
+    suspend fun getFeeRow(feeGroupId: String): Transaction?
 
     /** Tag ids of one transaction, in display order. */
     suspend fun getTagIds(transactionId: String): List<String>
 
-    suspend fun getPhotos(transactionId: String): List<PhotoEntity>
+    suspend fun getPhotos(transactionId: String): List<Photo>
 
-    suspend fun getLastTransferWithFee(fromAccountId: String, toAccountId: String): TransactionEntity?
+    suspend fun getLastTransferWithFee(fromAccountId: String, toAccountId: String): Transaction?
 
-    suspend fun getAllForAccounts(accountIds: List<String>): List<TransactionEntity>
+    suspend fun getAllForAccounts(accountIds: List<String>): List<Transaction>
 
-    suspend fun getWithoutAccount(): List<TransactionEntity>
+    suspend fun getWithoutAccount(): List<Transaction>
 
     /** Income/expense rows missing a category or an account, dated on or before [upTo]. */
-    suspend fun getUnassigned(upTo: String): List<TransactionEntity>
+    suspend fun getUnassigned(upTo: String): List<Transaction>
 
-    suspend fun getRange(start: String, end: String): List<TransactionEntity>
+    suspend fun getRange(start: String, end: String): List<Transaction>
 
-    suspend fun search(start: String, end: String, pattern: String, includeSource: Boolean): List<TransactionEntity>
+    suspend fun search(start: String, end: String, pattern: String, includeSource: Boolean): List<Transaction>
 
     suspend fun getNoteUsage(cutDate: String, cutMillis: Long): List<NoteUsage>
 
@@ -68,7 +68,7 @@ interface TransactionsRepository {
     suspend fun getAggregatesBefore(before: String): List<TxAggregate>
 
     /** Tag links and photo flags for already loaded rows. */
-    suspend fun getLedgerFor(rows: List<TransactionEntity>): Ledger
+    suspend fun getLedgerFor(rows: List<Transaction>): Ledger
 
     // Writes
     /** Saves the draft and returns the primary row id. */

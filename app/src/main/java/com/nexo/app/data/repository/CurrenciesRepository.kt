@@ -1,18 +1,18 @@
 package com.nexo.app.data.repository
 
 import com.nexo.app.core.common.money.CatalogCurrency
+import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.SymbolPosition
-import com.nexo.app.data.database.entity.CurrencyEntity
 
 /** The main currency and sub-currencies with manually entered rates. */
 interface CurrenciesRepository {
     suspend fun setMainFormat(position: SymbolPosition, decimals: Int)
 
-    suspend fun saveSub(c: CurrencyEntity)
+    suspend fun saveSub(c: Currency)
 
-    fun builtinSub(c: CatalogCurrency, rate: Double, position: SymbolPosition, decimals: Int, existing: CurrencyEntity?): CurrencyEntity
+    fun builtinSub(c: CatalogCurrency, rate: Double, position: SymbolPosition, decimals: Int, existing: Currency?): Currency
 
-    fun customSub(id: String?, name: String, symbol: String, position: SymbolPosition, decimals: Int, rate: Double): CurrencyEntity
+    fun customSub(id: String?, name: String, symbol: String, position: SymbolPosition, decimals: Int, rate: Double): Currency
 
     suspend fun hide(id: String)
 

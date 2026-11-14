@@ -7,12 +7,12 @@ import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
 import com.nexo.app.core.common.money.Conversion
 import com.nexo.app.core.common.money.Money
+import com.nexo.app.core.model.Account
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.model.RefData
-import com.nexo.app.data.database.entity.AccountEntity
-import com.nexo.app.data.database.entity.TransactionEntity
+import com.nexo.app.core.model.Transaction
 import com.nexo.app.data.repository.AccountsRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
@@ -74,8 +74,8 @@ class AccountFormViewModel @AssistedInject constructor(
     val ui = _ui.asStateFlow()
     private val _events = Channel<AccountFormEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
-    private var rows: List<TransactionEntity> = emptyList()
-    private var original: AccountEntity? = null
+    private var rows: List<Transaction> = emptyList()
+    private var original: Account? = null
 
     init {
         viewModelScope.launch {
@@ -98,7 +98,7 @@ class AccountFormViewModel @AssistedInject constructor(
     }
 
     /** Balance of the account if its rows were expressed in [currencyId]. */
-    private fun balanceIn(r: RefData, currencyId: String, a: AccountEntity): Double {
+    private fun balanceIn(r: RefData, currencyId: String, a: Account): Double {
         val target = r.currency(currencyId)
         return Money.sum(
             rows.map { t ->
@@ -170,7 +170,7 @@ class AccountFormViewModel @AssistedInject constructor(
         viewModelScope.launch {
             val now = System.currentTimeMillis()
             val o = original
-            val account = AccountEntity(
+            val account = Account(
                 id = s.id,
                 name = s.name.trim(),
                 groupId = s.groupId ?: r.groups.first().id,

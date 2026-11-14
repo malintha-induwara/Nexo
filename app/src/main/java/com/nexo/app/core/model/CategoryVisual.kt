@@ -1,6 +1,5 @@
 package com.nexo.app.core.model
 
-import com.nexo.app.data.database.entity.CategoryEntity
 import java.util.Locale
 
 /** What a category looks like: an emoji (or, failing that, a monogram) on a tile of one of the ten hues. */
@@ -17,7 +16,7 @@ data class CategoryVisual(val emoji: String?, val monogram: String, val colorInd
 object CategoryVisuals {
     const val HUES = 10
 
-    fun resolve(category: CategoryEntity, parent: CategoryEntity?): CategoryVisual {
+    fun resolve(category: Category, parent: Category?): CategoryVisual {
         val emoji = category.emoji?.takeIf { it.isNotBlank() }
             ?: parent?.emoji?.takeIf { it.isNotBlank() }
             ?: suggestEmoji(category.name)

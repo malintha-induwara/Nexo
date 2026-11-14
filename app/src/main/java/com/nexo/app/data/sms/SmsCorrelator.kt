@@ -1,10 +1,10 @@
 package com.nexo.app.data.sms
 
 import com.nexo.app.core.model.Certainty
+import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
+import com.nexo.app.core.model.SmsOtpHint
 import com.nexo.app.core.model.SmsStatus
-import com.nexo.app.data.database.entity.SmsItemEntity
-import com.nexo.app.data.database.entity.SmsOtpHintEntity
 import com.nexo.app.data.sms.parser.DedupeKeys
 import com.nexo.app.data.sms.parser.IgnoreReason
 import com.nexo.app.data.sms.parser.MerchantCleaner
@@ -14,24 +14,24 @@ import java.util.UUID
 
 /** What the correlator needs from storage: Room for live capture, memory for the history picker and tests. */
 interface SmsStore {
-    suspend fun byDedupeKey(key: String): SmsItemEntity?
+    suspend fun byDedupeKey(key: String): SmsItem?
 
     /** Pending approval-code item with the same route and amount since [since]. */
-    suspend fun pendingRetry(bank: String, route: String, amount: Double, currency: String, since: Long): SmsItemEntity?
+    suspend fun pendingRetry(bank: String, route: String, amount: Double, currency: String, since: Long): SmsItem?
 
     /** Pending unverified transfer-out with the same amount since [since]. */
-    suspend fun upgradeCandidate(bank: String, amount: Double, currency: String, since: Long): SmsItemEntity?
+    suspend fun upgradeCandidate(bank: String, amount: Double, currency: String, since: Long): SmsItem?
 
     /** Card purchases on [cardLast4] in [since, until], newest first. */
-    suspend fun purchasesOnCard(bank: String, cardLast4: String, since: Long, until: Long): List<SmsItemEntity>
+    suspend fun purchasesOnCard(bank: String, cardLast4: String, since: Long, until: Long): List<SmsItem>
 
-    suspend fun insert(item: SmsItemEntity)
-    suspend fun update(item: SmsItemEntity)
+    suspend fun insert(item: SmsItem)
+    suspend fun update(item: SmsItem)
 
-    suspend fun putHint(hint: SmsOtpHintEntity)
+    suspend fun putHint(hint: SmsOtpHint)
 
     /** Removes and returns the newest hint with this amount in [since, until]. */
-    suspend fun takeHint(bank: String, amount: Double, currency: String, since: Long, until: Long): SmsOtpHintEntity?
+    suspend fun takeHint(bank: String, amount: Double, currency: String, since: Long, until: Long): SmsOtpHint?
 }
 
 /**
@@ -41,14 +41,14 @@ interface SmsStore {
 class SmsCorrelator(private val store: SmsStore) {
 
     sealed interface Outcome {
-        data class Created(val item: SmsItemEntity) : Outcome
-        data class Merged(val item: SmsItemEntity) : Outcome
-        data class Upgraded(val item: SmsItemEntity) : Outcome
-        data class Cancelled(val item: SmsItemEntity) : Outcome
+        data class Created(val item: SmsItem) : Outcome
+        data class Merged(val item: SmsItem) : Outcome
+        data class Upgraded(val item: SmsItem) : Outcome
+        data class Cancelled(val item: SmsItem) : Outcome
 
         /** The cancelled purchase was already approved: a money-back item now waits in the queue. */
-        data class Reversal(val item: SmsItemEntity, val original: SmsItemEntity) : Outcome
-        data class Duplicate(val existing: SmsItemEntity) : Outcome
+        data class Reversal(val item: SmsItem, val original: SmsItem) : Outcome
+        data class Duplicate(val existing: SmsItem) : Outcome
         data object HintStored : Outcome
         data class Skipped(val reason: IgnoreReason, val detail: String = "") : Outcome
     }
@@ -62,12 +62,12 @@ class SmsCorrelator(private val store: SmsStore) {
         parsed: ParsedSms,
         text: String,
         now: Long,
-        prepare: suspend (SmsItemEntity) -> SmsItemEntity = { it },
+        prepare: suspend (SmsItem) -> SmsItem = { it },
     ): Outcome = when (parsed) {
         is ParsedSms.Ignored -> Outcome.Skipped(parsed.reason, parsed.detail)
         is ParsedSms.OtpHint -> {
             store.putHint(
-                SmsOtpHintEntity(uuid(), parsed.bank.name, parsed.merchant, parsed.amount.toDouble(), parsed.currency, msg.timestamp),
+                SmsOtpHint(uuid(), parsed.bank.name, parsed.merchant, parsed.amount.toDouble(), parsed.currency, msg.timestamp),
             )
             Outcome.HintStored
         }
@@ -80,7 +80,7 @@ class SmsCorrelator(private val store: SmsStore) {
         m: ParsedSms.Movement,
         text: String,
         now: Long,
-        prepare: suspend (SmsItemEntity) -> SmsItemEntity,
+        prepare: suspend (SmsItem) -> SmsItem,
     ): Outcome {
         store.byDedupeKey(m.dedupeKey)?.let { return Outcome.Duplicate(it) }
         val bank = m.bank.name
@@ -118,7 +118,7 @@ class SmsCorrelator(private val store: SmsStore) {
         }
 
         val item = prepare(
-            SmsItemEntity(
+            SmsItem(
                 id = uuid(), certainty = m.certainty, reason = m.reason, kind = m.kind, bank = bank, sender = msg.sender,
                 template = m.template, amount = amount, currency = m.currency,
                 merchantRaw = merchant.raw, merchant = merchant.name, merchantKey = merchant.key, merchantFromOtp = fromOtp,
@@ -175,8 +175,8 @@ class SmsCorrelator(private val store: SmsStore) {
 
 /** In-memory [SmsStore]: the history picker's scratch space, and the test double. */
 class MemorySmsStore : SmsStore {
-    val items = LinkedHashMap<String, SmsItemEntity>()
-    val hints = ArrayList<SmsOtpHintEntity>()
+    val items = LinkedHashMap<String, SmsItem>()
+    val hints = ArrayList<SmsOtpHint>()
 
     override suspend fun byDedupeKey(key: String) = items.values.firstOrNull { it.dedupeKey == key }
 
@@ -197,19 +197,19 @@ class MemorySmsStore : SmsStore {
             it.bank == bank && it.template == SmsCorrelator.PURCHASE && it.cardLast4 == cardLast4 && it.smsAt in since..until
         }.sortedByDescending { it.smsAt }
 
-    override suspend fun insert(item: SmsItemEntity) {
+    override suspend fun insert(item: SmsItem) {
         items[item.id] = item
     }
 
-    override suspend fun update(item: SmsItemEntity) {
+    override suspend fun update(item: SmsItem) {
         items[item.id] = item
     }
 
-    override suspend fun putHint(hint: SmsOtpHintEntity) {
+    override suspend fun putHint(hint: SmsOtpHint) {
         hints += hint
     }
 
-    override suspend fun takeHint(bank: String, amount: Double, currency: String, since: Long, until: Long): SmsOtpHintEntity? {
+    override suspend fun takeHint(bank: String, amount: Double, currency: String, since: Long, until: Long): SmsOtpHint? {
         val hit = hints.filter { it.bank == bank && it.amount == amount && it.currency == currency && it.at in since..until }.maxByOrNull { it.at }
         if (hit != null) hints.remove(hit)
         return hit

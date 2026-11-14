@@ -1,15 +1,6 @@
 package com.nexo.app.data.repository
 
-import com.nexo.app.data.database.entity.SmsItemEntity
-
-/** A past message the history picker can offer. */
-data class HistoryRow(
-    val item: SmsItemEntity,
-    /** Cancelled later in the same period: shown struck through, never selectable. */
-    val cancelled: Boolean,
-    /** A transaction already in Nexo matches it (same account and amount, date ±1 day). */
-    val possiblyAdded: Boolean,
-)
+import com.nexo.app.core.model.HistoryRow
 
 /**
  * The phone's SMS inbox: the capture switch's state machine, catch-up on messages missed while the app wasn't

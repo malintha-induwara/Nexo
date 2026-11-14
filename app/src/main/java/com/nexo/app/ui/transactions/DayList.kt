@@ -56,9 +56,9 @@ import androidx.compose.ui.unit.dp
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountParts
 import com.nexo.app.core.model.CashFlow
+import com.nexo.app.core.model.Currency
+import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.MemoColor
-import com.nexo.app.data.database.entity.CurrencyEntity
-import com.nexo.app.data.database.entity.MemoEntity
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.CategoryTile
 import com.nexo.app.ui.designsystem.component.EmptyState
@@ -98,7 +98,7 @@ fun dayLabel(date: LocalDate): String {
 
 /** Upper-case day label with the day's income and expenses on the right. Tapping it adds an entry on that day. */
 @Composable
-fun DayHeader(group: DayGroup, main: CurrencyEntity, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
+fun DayHeader(group: DayGroup, main: Currency, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
     val money = LocalMoneyColors.current
     val colors = LocalNexoColors.current
     Row(
@@ -243,7 +243,7 @@ fun MemoDot(color: MemoColor, size: Int = 8) {
 }
 
 @Composable
-fun MemoStrip(memos: List<MemoEntity>, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun MemoStrip(memos: List<Memo>, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = LocalNexoColors.current
     Column(
         modifier
@@ -268,7 +268,7 @@ fun MemoStrip(memos: List<MemoEntity>, onClick: () -> Unit, modifier: Modifier =
 }
 
 @Composable
-fun RepeatPreviewRow(p: RepeatPreview, main: CurrencyEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun RepeatPreviewRow(p: RepeatPreview, main: Currency, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = LocalNexoColors.current
     Row(
         modifier.fillMaxWidth().heightIn(min = Sizes.row).clickable(onClick = onClick).padding(horizontal = Space.gutter, vertical = Space.s),
@@ -293,7 +293,7 @@ fun RepeatPreviewRow(p: RepeatPreview, main: CurrencyEntity, onClick: () -> Unit
 @Composable
 fun DayGroupList(
     groups: List<DayGroup>,
-    main: CurrencyEntity,
+    main: Currency,
     selection: Set<String>,
     onRowClick: (TxRowUi) -> Unit,
     onRowLongClick: ((TxRowUi) -> Unit)?,

@@ -10,8 +10,8 @@ import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.data.repository.MemosRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
@@ -92,7 +92,7 @@ class StatsDetailViewModel @AssistedInject constructor(
         combine(transactions.getLedgerStream(loadRange), memos.getMemosStream(range.startText, range.endText)) { l, memos -> build(r, range, buckets, l, sel, memos) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StatsDetailUi(color = key.colorIndex))
 
-    private fun matches(r: RefData, c: Classifier, t: TransactionEntity): Boolean = when (key.kind) {
+    private fun matches(r: RefData, c: Classifier, t: Transaction): Boolean = when (key.kind) {
         StatsDetailKind.INCOME, StatsDetailKind.EXPENSE -> {
             val kind = if (key.kind == StatsDetailKind.INCOME) TxKind.INCOME else TxKind.EXPENSE
             t.kind == kind && when (key.targetId) {
@@ -108,13 +108,13 @@ class StatsDetailViewModel @AssistedInject constructor(
     }
 
     /** Breakdown key of a row: subcategory / "other", or the account for transfer groups. */
-    private fun subKey(r: RefData, t: TransactionEntity): String = when (key.kind) {
+    private fun subKey(r: RefData, t: Transaction): String = when (key.kind) {
         StatsDetailKind.TRANSFER_EXPENSE_GROUP -> t.counterpartAccountId ?: ""
         StatsDetailKind.TRANSFER_INCOME_GROUP -> t.accountId ?: ""
         else -> r.subCategoryId(t.categoryId) ?: "other"
     }
 
-    private fun build(r: RefData, range: DateRange, buckets: List<Pair<String, DateRange>>, l: com.nexo.app.core.model.Ledger, sel: String, memos: List<com.nexo.app.data.database.entity.MemoEntity>): StatsDetailUi {
+    private fun build(r: RefData, range: DateRange, buckets: List<Pair<String, DateRange>>, l: com.nexo.app.core.model.Ledger, sel: String, memos: List<com.nexo.app.core.model.Memo>): StatsDetailUi {
         val c = Classifier(r)
         val all = l.rows.filter { matches(r, c, it) }
         val inRange = all.filter { LocalDate.parse(it.date) in range }
@@ -129,7 +129,7 @@ class StatsDetailViewModel @AssistedInject constructor(
         val other = groups["other"]?.takeIf { it != 0.0 }?.let { Breakdown("other", context.getString(R.string.other), it, pct(it)) }
         val breakdown = if (showBreakdown) listOf(Breakdown("all", context.getString(R.string.all), groups.values.sum(), null)) + subs + listOfNotNull(other) else emptyList()
         val visibleBreakdown = if (!isTransfer && breakdown.size < 2) emptyList() else breakdown
-        val filtered = { list: List<TransactionEntity> -> if (sel == "all") list else list.filter { subKey(r, it) == sel } }
+        val filtered = { list: List<Transaction> -> if (sel == "all") list else list.filter { subKey(r, it) == sel } }
         val trend = buckets.map { (_, br) -> Money.round(filtered(all).filter { LocalDate.parse(it.date) in br }.sumOf { it.amountMain }, r.mainCurrency.decimals) }
         val listRows = filtered(inRange)
         val title = when {

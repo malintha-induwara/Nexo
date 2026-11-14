@@ -130,12 +130,12 @@ import com.nexo.app.core.common.money.AmountParts
 import com.nexo.app.core.common.money.Conversion
 import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.model.CategoryKind
+import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.CalculatorDialog
@@ -858,7 +858,7 @@ private fun categoryText(ref: RefData, s: EntryUi): String {
 }
 
 /** The keypad buffer as display parts: locale grouping, the typed decimals, the currency symbol. */
-private fun bufferParts(buffer: String, currency: CurrencyEntity): AmountParts {
+private fun bufferParts(buffer: String, currency: Currency): AmountParts {
     val separator = DecimalFormatSymbols.getInstance().decimalSeparator
     val negative = buffer.startsWith("-")
     val body = buffer.removePrefix("-")
@@ -870,7 +870,7 @@ private fun bufferParts(buffer: String, currency: CurrencyEntity): AmountParts {
 }
 
 /** "0.00" in the currency's shape, shown dimmed before anything is typed. */
-private fun placeholderParts(currency: CurrencyEntity): AmountParts {
+private fun placeholderParts(currency: Currency): AmountParts {
     val separator = DecimalFormatSymbols.getInstance().decimalSeparator
     val prefix = currency.symbolPosition == SymbolPosition.PREFIX
     val fraction = if (currency.decimals > 0) separator + "0".repeat(currency.decimals) else ""
@@ -882,7 +882,7 @@ private fun placeholderParts(currency: CurrencyEntity): AmountParts {
  * shakes it. While the keypad is open a short bar under it breathes in the entry's colour.
  */
 @Composable
-private fun AmountDisplay(s: EntryUi, currency: CurrencyEntity, color: Color, shake: Int, onClick: () -> Unit) {
+private fun AmountDisplay(s: EntryUi, currency: Currency, color: Color, shake: Int, onClick: () -> Unit) {
     val colors = LocalNexoColors.current
     val typing = s.panel == Panel.AMOUNT && s.pad.buffer.isNotEmpty()
     val parts = when {

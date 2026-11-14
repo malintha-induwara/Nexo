@@ -2,6 +2,7 @@ package com.nexo.app.data.database.entity
 
 import androidx.room.Entity
 import androidx.room.Index
+import com.nexo.app.core.model.SmsSource
 
 /** Which account a bank card (or the bank as a whole, when [last4] is empty) belongs to. */
 @Entity(tableName = "sms_sources", primaryKeys = ["bank", "last4"], indices = [Index("accountId")])
@@ -11,4 +12,18 @@ data class SmsSourceEntity(
     val last4: String,
     val accountId: String,
     val updatedAt: Long,
+)
+
+fun SmsSourceEntity.asExternalModel() = SmsSource(
+    bank = bank,
+    last4 = last4,
+    accountId = accountId,
+    updatedAt = updatedAt,
+)
+
+fun SmsSource.asEntity() = SmsSourceEntity(
+    bank = bank,
+    last4 = last4,
+    accountId = accountId,
+    updatedAt = updatedAt,
 )

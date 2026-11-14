@@ -6,12 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.PeriodEngine
+import com.nexo.app.core.model.Account
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.data.database.entity.AccountEntity
-import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.data.repository.AccountsRepository
 import com.nexo.app.data.repository.MemosRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
@@ -48,7 +48,7 @@ data class ChartData(val labels: List<String>, val balances: List<Double>, val i
 
 data class AccountDetailUi(
     val loaded: Boolean = false,
-    val account: AccountEntity? = null,
+    val account: Account? = null,
     val type: GroupType = GroupType.NORMAL,
     val range: DateRange = DateRange.ALL,
     val title: String = "",
@@ -94,7 +94,7 @@ class AccountDetailViewModel @AssistedInject constructor(
 
     private data class Quad(val r: RefData, val t: DetailTab, val a: LocalDate, val c: Boolean)
 
-    fun engineFor(r: RefData, a: AccountEntity?): PeriodEngine =
+    fun engineFor(r: RefData, a: Account?): PeriodEngine =
         if (a != null && r.groupType(a.id) == GroupType.CREDIT_CARD) PeriodEngine(a.settlementDay, weekStart = r.settings.weekStartDay) else r.settings.periods
 
     private suspend fun compute(r: RefData, tab: DetailTab, anchor: LocalDate, charts: Boolean): AccountDetailUi {
@@ -110,11 +110,11 @@ class AccountDetailViewModel @AssistedInject constructor(
         val ids = listOf(account.id) + r.linkedDebitCards(account.id).map { it.id }
         val all = transactions.getAllForAccounts(ids).sortedWith(compareBy({ it.date }, { it.dateTime }, { it.createdAt }))
         val engine = engineFor(r, account)
-        val measure = { t: TransactionEntity -> com.nexo.app.domain.Balances.rowMeasure(r, t, account) }
-        val signed = { t: TransactionEntity -> if (t.kind.isInflow) measure(t) else -measure(t) }
-        fun net(rows: List<TransactionEntity>) = rows.fold(BigDecimal.ZERO) { acc, t -> acc + BigDecimal.valueOf(signed(t)) }.toDouble()
-        fun inflow(rows: List<TransactionEntity>) = rows.filter { it.kind.isInflow }.fold(BigDecimal.ZERO) { a, t -> a + BigDecimal.valueOf(measure(t)) }.toDouble()
-        fun outflow(rows: List<TransactionEntity>) = rows.filter { !it.kind.isInflow }.fold(BigDecimal.ZERO) { a, t -> a + BigDecimal.valueOf(measure(t)) }.toDouble()
+        val measure = { t: Transaction -> com.nexo.app.domain.Balances.rowMeasure(r, t, account) }
+        val signed = { t: Transaction -> if (t.kind.isInflow) measure(t) else -measure(t) }
+        fun net(rows: List<Transaction>) = rows.fold(BigDecimal.ZERO) { acc, t -> acc + BigDecimal.valueOf(signed(t)) }.toDouble()
+        fun inflow(rows: List<Transaction>) = rows.filter { it.kind.isInflow }.fold(BigDecimal.ZERO) { a, t -> a + BigDecimal.valueOf(measure(t)) }.toDouble()
+        fun outflow(rows: List<Transaction>) = rows.filter { !it.kind.isInflow }.fold(BigDecimal.ZERO) { a, t -> a + BigDecimal.valueOf(measure(t)) }.toDouble()
         fun inRange(range: DateRange) = all.filter { LocalDate.parse(it.date) in range }
         fun before(d: LocalDate) = all.filter { LocalDate.parse(it.date).isBefore(d) }
         fun upTo(d: LocalDate) = all.filter { !LocalDate.parse(it.date).isAfter(d) }
@@ -157,7 +157,7 @@ class AccountDetailViewModel @AssistedInject constructor(
                     var p = period
                     val list = ArrayList<com.nexo.app.core.common.period.MonthPeriod>()
                     repeat(6) { list.add(0, p); p = engine.previous(p) }
-                    val nonBalance = { l: List<TransactionEntity> -> l.filter { !it.kind.isBalance } }
+                    val nonBalance = { l: List<Transaction> -> l.filter { !it.kind.isBalance } }
                     ChartData(
                         list.map { com.nexo.app.ui.designsystem.component.Formats.monthShort(it.label.monthValue) },
                         list.map { net(upTo(it.end)) },
@@ -217,11 +217,11 @@ class AccountDetailViewModel @AssistedInject constructor(
     private fun yearChart(
         engine: PeriodEngine,
         year: Int,
-        inRange: (DateRange) -> List<TransactionEntity>,
-        upTo: (LocalDate) -> List<TransactionEntity>,
-        net: (List<TransactionEntity>) -> Double,
-        inflow: (List<TransactionEntity>) -> Double,
-        outflow: (List<TransactionEntity>) -> Double,
+        inRange: (DateRange) -> List<Transaction>,
+        upTo: (LocalDate) -> List<Transaction>,
+        net: (List<Transaction>) -> Double,
+        inflow: (List<Transaction>) -> Double,
+        outflow: (List<Transaction>) -> Double,
     ): ChartData {
         val years = (year - 5..year).toList()
         return ChartData(

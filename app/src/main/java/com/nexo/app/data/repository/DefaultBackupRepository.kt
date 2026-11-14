@@ -8,6 +8,8 @@ import android.net.Uri
 import androidx.room.withTransaction
 import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
+import com.nexo.app.core.model.BackupFormat
+import com.nexo.app.core.model.RestoreResult
 import com.nexo.app.data.backup.LegacyImporter
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.file.AppDirs
@@ -20,15 +22,6 @@ import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
-
-enum class BackupFormat { NEXO, LEGACY_ANDROID, LEGACY_IPHONE, UNKNOWN }
-
-sealed interface RestoreResult {
-    data object Success : RestoreResult
-    data object NotABackup : RestoreResult
-    data object Unsupported : RestoreResult
-    data class Failed(val message: String?) : RestoreResult
-}
 
 /** Backup / restore of the finance database. Backups are plain copies of the database file. */
 class DefaultBackupRepository @Inject constructor(

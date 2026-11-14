@@ -45,8 +45,8 @@ import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.domain.Classifier
 import com.nexo.app.domain.Totals
 import com.nexo.app.ui.designsystem.component.SegmentedPill
@@ -60,7 +60,7 @@ private data class FilterItem(val key: String, val label: String, val amount: Do
 @Composable
 fun FilterPanel(
     ref: RefData,
-    rows: List<TransactionEntity>,
+    rows: List<Transaction>,
     criteria: FilterCriteria,
     collapsed: Boolean,
     onCollapsedChange: (Boolean) -> Unit,
@@ -167,7 +167,7 @@ private fun summaryText(ref: RefData, f: FilterCriteria): String {
 @Composable
 private fun CategoryFilterList(
     ref: RefData,
-    rows: List<TransactionEntity>,
+    rows: List<Transaction>,
     c: Classifier,
     kind: CategoryKind,
     f: FilterCriteria,
@@ -178,7 +178,7 @@ private fun CategoryFilterList(
     val txKind = if (kind == CategoryKind.INCOME) TxKind.INCOME else TxKind.EXPENSE
     val ofKind = rows.filter { it.kind == txKind }
     val byMain = ofKind.filter { !it.isBalanceAdjustment }.groupBy { ref.mainCategoryId(it.categoryId) }
-    val sumOf = { list: List<TransactionEntity> -> list.sumOf { it.amountMain } }
+    val sumOf = { list: List<Transaction> -> list.sumOf { it.amountMain } }
     val allSelected = if (kind == CategoryKind.INCOME) f.incomeAll else f.expenseAll
     val mains = ref.categories.filter { it.kind == kind && it.parentId == null && (!it.isDeleted || byMain.containsKey(it.id)) }
     val noneSum = sumOf(byMain[null].orEmpty())
@@ -242,7 +242,7 @@ private fun CategoryFilterList(
 }
 
 @Composable
-private fun AccountFilterList(ref: RefData, rows: List<TransactionEntity>, f: FilterCriteria, onChange: (FilterCriteria) -> Unit) {
+private fun AccountFilterList(ref: RefData, rows: List<Transaction>, f: FilterCriteria, onChange: (FilterCriteria) -> Unit) {
     val money = LocalMoneyColors.current
     val accounts = ref.orderedAccounts().filter { a -> ref.isAccountVisible(a) || rows.any { it.accountId == a.id } }
     LazyColumn {

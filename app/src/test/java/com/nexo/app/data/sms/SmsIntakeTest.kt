@@ -14,6 +14,7 @@ import com.nexo.app.data.database.entity.AccountEntity
 import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.data.database.entity.SmsMerchantRuleEntity
 import com.nexo.app.data.database.entity.SmsSourceEntity
+import com.nexo.app.data.database.entity.asExternalModel
 import com.nexo.app.data.datastore.DevicePreferencesDataSource
 import com.nexo.app.data.repository.DefaultSmsRepository
 import com.nexo.app.data.repository.DefaultUserPreferencesRepository
@@ -64,7 +65,7 @@ class SmsIntakeTest {
     private suspend fun send(body: String, receivedAt: Long = start + 1_000, s: DeviceSettings = active) =
         intake.receive(listOf(IncomingSms(SmsMessage("COMBANK", body, receivedAt), receivedAt)), s, notify = false)
 
-    private suspend fun only() = db.smsDao().pending().single()
+    private suspend fun only() = db.smsDao().pending().single().asExternalModel()
 
     @Test
     fun nothingIsCapturedBeforeTheStartPointOrWhileOff() = runBlocking {

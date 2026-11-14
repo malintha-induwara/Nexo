@@ -2,6 +2,7 @@ package com.nexo.app.data.database.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.nexo.app.core.model.AccountGroup
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
 
@@ -15,4 +16,24 @@ data class AccountGroupEntity(
     val orderSeq: Int,
     val status: GroupStatus = GroupStatus.ACTIVE,
     val updatedAt: Long,
+)
+
+fun AccountGroupEntity.asExternalModel() = AccountGroup(
+    id = id,
+    name = name,
+    type = type,
+    builtinId = builtinId,
+    orderSeq = orderSeq,
+    status = status,
+    updatedAt = updatedAt,
+)
+
+fun AccountGroup.asEntity() = AccountGroupEntity(
+    id = id,
+    name = name,
+    type = type,
+    builtinId = builtinId,
+    orderSeq = orderSeq,
+    status = status,
+    updatedAt = updatedAt,
 )

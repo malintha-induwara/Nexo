@@ -98,9 +98,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.model.Currency
+import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.SwipeMode
-import com.nexo.app.data.database.entity.CurrencyEntity
-import com.nexo.app.data.database.entity.MemoEntity
 import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.MonthPickerDialog
 import com.nexo.app.ui.designsystem.component.NavMotion
@@ -376,7 +376,7 @@ private fun HeaderAction(icon: ImageVector, description: String, active: Boolean
 
 /** The period's net as the screen's one large number, with income and expenses beneath. */
 @Composable
-private fun NetHero(income: Double, expense: Double, main: CurrencyEntity, modifier: Modifier = Modifier) {
+private fun NetHero(income: Double, expense: Double, main: Currency, modifier: Modifier = Modifier) {
     val money = LocalMoneyColors.current
     val colors = LocalNexoColors.current
     Column(modifier.fillMaxWidth().padding(start = Space.gutter, end = Space.gutter, top = Space.xs, bottom = Space.m)) {
@@ -406,7 +406,7 @@ fun subTabLabel(t: SubTab): Int = when (t) {
 @Composable
 private fun DailyContent(
     data: HomeData,
-    main: CurrencyEntity,
+    main: Currency,
     selection: Set<String>,
     vm: TransactionsViewModel,
     focusDate: LocalDate?,
@@ -453,7 +453,7 @@ private fun DailyContent(
  * Each cell still shows income, expenses and the day's net.
  */
 @Composable
-private fun CalendarContent(data: HomeData, main: CurrencyEntity, weekStart: java.time.DayOfWeek, bottom: Dp, onDay: (LocalDate) -> Unit) {
+private fun CalendarContent(data: HomeData, main: Currency, weekStart: java.time.DayOfWeek, bottom: Dp, onDay: (LocalDate) -> Unit) {
     val money = LocalMoneyColors.current
     val colors = LocalNexoColors.current
     Column(Modifier.fillMaxSize().padding(horizontal = Space.s)) {
@@ -488,7 +488,7 @@ private fun CalendarContent(data: HomeData, main: CurrencyEntity, weekStart: jav
 private val CalendarGap = 3.dp
 
 @Composable
-private fun CalendarDay(cell: CalendarCell, main: CurrencyEntity, money: MoneyColors, modifier: Modifier, onClick: () -> Unit) {
+private fun CalendarDay(cell: CalendarCell, main: Currency, money: MoneyColors, modifier: Modifier, onClick: () -> Unit) {
     val colors = LocalNexoColors.current
     val active = cell.hasTx || cell.memoColors.isNotEmpty()
     val dim = if (cell.inPeriod) 1f else 0.45f
@@ -544,7 +544,7 @@ private fun CalendarDay(cell: CalendarCell, main: CurrencyEntity, money: MoneyCo
 
 /** One card per month: its income, expenses and net, opening to the weeks inside it. */
 @Composable
-private fun MonthlyContent(data: HomeData, main: CurrencyEntity, selected: LocalDate, bottom: Dp, onWeek: (com.nexo.app.core.common.period.MonthPeriod) -> Unit) {
+private fun MonthlyContent(data: HomeData, main: Currency, selected: LocalDate, bottom: Dp, onWeek: (com.nexo.app.core.common.period.MonthPeriod) -> Unit) {
     val haptics = rememberHaptics()
     var expanded by rememberSaveable(data.year) { mutableStateOf(data.months.firstOrNull { selected in it.period.range }?.period?.key ?: -1) }
     if (data.months.isEmpty()) {
@@ -568,7 +568,7 @@ private fun MonthlyContent(data: HomeData, main: CurrencyEntity, selected: Local
 }
 
 @Composable
-private fun MonthCard(month: MonthRow, main: CurrencyEntity, open: Boolean, showRange: Boolean, onToggle: () -> Unit, onWeek: () -> Unit, modifier: Modifier = Modifier) {
+private fun MonthCard(month: MonthRow, main: Currency, open: Boolean, showRange: Boolean, onToggle: () -> Unit, onWeek: () -> Unit, modifier: Modifier = Modifier) {
     val colors = LocalNexoColors.current
     val money = LocalMoneyColors.current
     val interactions = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
@@ -609,7 +609,7 @@ private fun MonthCard(month: MonthRow, main: CurrencyEntity, open: Boolean, show
 
 /** A week inside a month card: its dates, then income, expenses and net in three columns. */
 @Composable
-private fun WeekLine(week: WeekRow, main: CurrencyEntity, onClick: () -> Unit) {
+private fun WeekLine(week: WeekRow, main: Currency, onClick: () -> Unit) {
     val colors = LocalNexoColors.current
     val money = LocalMoneyColors.current
     val net = week.income - week.expense
@@ -642,7 +642,7 @@ private fun WeekLine(week: WeekRow, main: CurrencyEntity, onClick: () -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun NoteContent(memos: List<MemoEntity>, vm: TransactionsViewModel, bottom: Dp) {
+private fun NoteContent(memos: List<Memo>, vm: TransactionsViewModel, bottom: Dp) {
     val nav = LocalNavigator.current
     val saved by vm.savedMemo.collectAsStateWithLifecycle()
     val dark = LocalIsDark.current
@@ -688,7 +688,7 @@ private fun NoteContent(memos: List<MemoEntity>, vm: TransactionsViewModel, bott
 }
 
 @Composable
-private fun TotalContent(data: HomeData, main: CurrencyEntity, bottom: Dp) {
+private fun TotalContent(data: HomeData, main: Currency, bottom: Dp) {
     val nav = LocalNavigator.current
     LazyColumn(contentPadding = PaddingValues(12.dp, 12.dp, 12.dp, bottom), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { data.period?.let { com.nexo.app.ui.budgets.BudgetBlock(it) } }

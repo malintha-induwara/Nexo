@@ -1,7 +1,7 @@
 package com.nexo.app.core.common.money
 
+import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.SymbolPosition
-import com.nexo.app.data.database.entity.CurrencyEntity
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormat
@@ -38,7 +38,7 @@ object AmountFormatter {
         return if (negative) "-$text" else text
     }
 
-    fun format(value: Double, currency: CurrencyEntity?): String =
+    fun format(value: Double, currency: Currency?): String =
         if (currency == null) number(value, 2) else format(value, currency.symbol, currency.symbolPosition, currency.decimals)
 
     /** Exchange-rate display: two decimals when ≥ 1, otherwise enough to show two significant digits. */

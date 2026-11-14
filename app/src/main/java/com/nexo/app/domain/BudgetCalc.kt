@@ -1,11 +1,11 @@
 package com.nexo.app.domain
 
+import com.nexo.app.core.model.Budget
+import com.nexo.app.core.model.BudgetAmount
 import com.nexo.app.core.model.BudgetMath
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.data.database.entity.BudgetAmountEntity
-import com.nexo.app.data.database.entity.BudgetEntity
-import com.nexo.app.data.database.entity.TransactionEntity
 import java.math.BigDecimal
 
 data class BudgetRow(
@@ -27,7 +27,7 @@ data class BudgetBlockData(val total: BudgetRow?, val rows: List<BudgetRow>)
 
 /** Budget rows for one month period. */
 object BudgetCalc {
-    fun usedByCategory(ref: RefData, rows: List<TransactionEntity>): Pair<Map<String?, Double>, Map<String, Double>> {
+    fun usedByCategory(ref: RefData, rows: List<Transaction>): Pair<Map<String?, Double>, Map<String, Double>> {
         val main = HashMap<String?, BigDecimal>()
         val sub = HashMap<String, BigDecimal>()
         rows.filter { it.kind == TxKind.EXPENSE }.forEach { t ->
@@ -43,16 +43,16 @@ object BudgetCalc {
      */
     fun compute(
         ref: RefData,
-        budgets: List<BudgetEntity>,
-        amounts: List<BudgetAmountEntity>,
-        expenseRows: List<TransactionEntity>,
+        budgets: List<Budget>,
+        amounts: List<BudgetAmount>,
+        expenseRows: List<Transaction>,
         key: Int,
         totalLabel: String,
         forSettings: Boolean = false,
     ): BudgetBlockData {
         val (usedMain, usedSub) = usedByCategory(ref, expenseRows)
         val byBudget = amounts.groupBy { it.budgetId }
-        fun amountOf(b: BudgetEntity) = BudgetMath.effective(byBudget[b.id].orEmpty(), key)
+        fun amountOf(b: Budget) = BudgetMath.effective(byBudget[b.id].orEmpty(), key)
         val live = budgets.filter { !it.isDeleted }
         val catBudgets = live.filter { b ->
             val c = b.categoryId?.let { ref.categoryById[it] } ?: return@filter false

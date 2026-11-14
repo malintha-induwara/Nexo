@@ -37,9 +37,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.model.AccountStatus
+import com.nexo.app.core.model.Favorite
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.data.database.entity.FavoriteEntity
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.NexoTopBar
@@ -122,12 +122,12 @@ fun BookmarksScreen(key: BookmarksKey, vm: BookmarksViewModel = hiltViewModel())
 }
 
 @Composable
-private fun favoriteTitle(ref: RefData, f: FavoriteEntity): String = f.note.ifBlank {
+private fun favoriteTitle(ref: RefData, f: Favorite): String = f.note.ifBlank {
     if (f.kind.isTransfer) "${accountLabel(ref, f.accountId)} → ${accountLabel(ref, f.toAccountId)}" else accountLabel(ref, f.accountId)
 }
 
 @Composable
-private fun favoriteSubtitle(ref: RefData, f: FavoriteEntity): String {
+private fun favoriteSubtitle(ref: RefData, f: Favorite): String {
     if (f.kind.isTransfer) {
         val pair = "${accountLabel(ref, f.accountId)} → ${accountLabel(ref, f.toAccountId)}"
         return stringResource(R.string.transfer) + if (f.note.isNotBlank()) " · $pair" else ""

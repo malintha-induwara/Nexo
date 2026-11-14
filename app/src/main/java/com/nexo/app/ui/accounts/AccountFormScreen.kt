@@ -42,9 +42,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.model.Account
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
-import com.nexo.app.data.database.entity.AccountEntity
 import com.nexo.app.domain.CardStatement
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
@@ -146,7 +146,7 @@ fun AccountFormScreen(key: AccountFormKey) {
         )
     }
     if (pickLinked) {
-        val options = listOf<AccountEntity?>(null) + ref.pickerAccounts.filter { it.id != s.id && ref.groupType(it.id) != GroupType.DEBIT_CARD }
+        val options = listOf<Account?>(null) + ref.pickerAccounts.filter { it.id != s.id && ref.groupType(it.id) != GroupType.DEBIT_CARD }
         ChoiceDialog(stringResource(R.string.payment_account), options, s.linkedAccountId?.let { ref.accountById[it] }, { it?.name ?: stringResource(R.string.none) },
             onSelect = { vm.setLinked(it?.id) }, onDismiss = { pickLinked = false })
     }

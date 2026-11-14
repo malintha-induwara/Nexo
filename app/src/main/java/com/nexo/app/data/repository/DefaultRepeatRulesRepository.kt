@@ -6,6 +6,7 @@ import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.common.period.toIsoText
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.RepeatReflect
+import com.nexo.app.core.model.RepeatRule
 import com.nexo.app.core.model.RepeatSchedule
 import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.RepeatWindow
@@ -13,6 +14,8 @@ import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.RepeatRuleEntity
 import com.nexo.app.data.database.entity.TransactionEntity
+import com.nexo.app.data.database.entity.asEntity
+import com.nexo.app.data.database.entity.asExternalModel
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
@@ -20,6 +23,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -32,12 +36,12 @@ class DefaultRepeatRulesRepository @Inject constructor(
 ) : RepeatRulesRepository {
     private val mutex = Mutex()
 
-    override fun getRulesStream(): Flow<List<RepeatRuleEntity>> = db.repeatRuleDao().observeAll()
+    override fun getRulesStream(): Flow<List<RepeatRule>> = db.repeatRuleDao().observeAll().map { rows -> rows.map(RepeatRuleEntity::asExternalModel) }
 
-    override suspend fun getRule(id: String): RepeatRuleEntity? = db.repeatRuleDao().getById(id)
+    override suspend fun getRule(id: String): RepeatRule? = db.repeatRuleDao().getById(id)?.asExternalModel()
 
-    override suspend fun save(rule: RepeatRuleEntity) {
-        db.repeatRuleDao().upsert(listOf(rule))
+    override suspend fun save(rule: RepeatRule) {
+        db.repeatRuleDao().upsert(listOf(rule.asEntity()))
         generate()
     }
 

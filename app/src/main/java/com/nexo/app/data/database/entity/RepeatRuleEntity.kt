@@ -2,6 +2,7 @@ package com.nexo.app.data.database.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.nexo.app.core.model.RepeatRule
 import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.TxKind
 
@@ -26,4 +27,40 @@ data class RepeatRuleEntity(
     val anchorDay: Int,
     val createdAt: Long,
     val updatedAt: Long,
+)
+
+fun RepeatRuleEntity.asExternalModel() = RepeatRule(
+    id = id,
+    kind = kind,
+    accountId = accountId,
+    toAccountId = toAccountId,
+    categoryId = categoryId,
+    currencyId = currencyId,
+    amount = amount,
+    note = note,
+    description = description,
+    repeatType = repeatType,
+    nextDate = nextDate,
+    endDate = endDate,
+    anchorDay = anchorDay,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+)
+
+fun RepeatRule.asEntity() = RepeatRuleEntity(
+    id = id,
+    kind = kind,
+    accountId = accountId,
+    toAccountId = toAccountId,
+    categoryId = categoryId,
+    currencyId = currencyId,
+    amount = amount,
+    note = note,
+    description = description,
+    repeatType = repeatType,
+    nextDate = nextDate,
+    endDate = endDate,
+    anchorDay = anchorDay,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
 )

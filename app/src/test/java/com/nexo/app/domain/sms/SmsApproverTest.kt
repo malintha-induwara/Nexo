@@ -8,12 +8,15 @@ import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.DenyReason
 import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeRoute
+import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.BookSeeder
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.SmsItemEntity
+import com.nexo.app.data.database.entity.asEntity
+import com.nexo.app.data.database.entity.asExternalModel
 import com.nexo.app.data.datastore.DevicePreferencesDataSource
 import com.nexo.app.data.repository.DefaultUserPreferencesRepository
 import com.nexo.app.data.repository.SmsRepository
@@ -75,7 +78,7 @@ class SmsApproverTest {
         payee: String? = null,
         feeRoute: FeeRoute? = null,
         estimated: Double? = null,
-    ): SmsItemEntity {
+    ): SmsItem {
         val e = SmsItemEntity(
             id = UUID.randomUUID().toString(), certainty = certainty, kind = kind, bank = "COMBANK", sender = "COMBANK",
             template = "purchase", amount = amount, currency = currency, merchant = merchant,
@@ -84,7 +87,7 @@ class SmsApproverTest {
             toAccountId = toAccountId, categoryId = categoryId, feeRoute = feeRoute, estimatedAmount = estimated, updatedAt = at,
         )
         db.smsDao().insert(e)
-        return e
+        return e.asExternalModel()
     }
 
     @Test
@@ -175,7 +178,7 @@ class SmsApproverTest {
     @Test
     fun actualAmountSettlesAForeignEstimate() = runBlocking {
         val i = item(amount = 20.0, currency = "USD", certainty = Certainty.ESTIMATED)
-        db.smsDao().update(i.copy(estimatedAmount = 6730.0))
+        db.smsDao().update(i.copy(estimatedAmount = 6730.0).asEntity())
         sms.setAmount(i.id, 6912.4)
         val edited = db.smsDao().item(i.id)!!
         assertEquals(Certainty.EXACT, edited.certainty)
@@ -270,9 +273,9 @@ class SmsApproverTest {
         val close = item(amount = 20.0, currency = "USD", certainty = Certainty.ESTIMATED, feeRoute = FeeRoute.FX_CARD_PURCHASE, estimated = 6730.0)
         assertEquals(FeePlan.None, approver.feePlan(close))
         sms.setAmount(close.id, 6760.0)
-        assertEquals(FeePlan.None, approver.feePlan(db.smsDao().item(close.id)!!))
+        assertEquals(FeePlan.None, approver.feePlan(sms.getItem(close.id)!!))
         sms.setAmount(close.id, 6912.4)
-        val plan = approver.feePlan(db.smsDao().item(close.id)!!) as FeePlan.Ask
+        val plan = approver.feePlan(sms.getItem(close.id)!!) as FeePlan.Ask
         assertTrue(plan.fxDifference)
         assertEquals(182.4, plan.prefill!!, 0.001)
     }

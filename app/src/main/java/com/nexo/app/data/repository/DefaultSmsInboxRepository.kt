@@ -6,6 +6,7 @@ import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.core.common.period.toIsoText
 import com.nexo.app.core.model.Certainty
+import com.nexo.app.core.model.HistoryRow
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.data.sms.MemorySmsStore
 import com.nexo.app.data.sms.SmsCorrelator

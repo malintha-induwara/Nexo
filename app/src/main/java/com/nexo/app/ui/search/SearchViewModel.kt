@@ -6,9 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.toIsoText
 import com.nexo.app.core.model.CashFlow
+import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.data.database.entity.MemoEntity
 import com.nexo.app.data.repository.MemosRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
@@ -51,7 +51,7 @@ data class SearchCriteria(
 data class SearchResult(
     val loaded: Boolean = false,
     val rows: List<Pair<LocalDate, TxRowUi>> = emptyList(),
-    val memos: List<MemoEntity> = emptyList(),
+    val memos: List<Memo> = emptyList(),
     val income: Double = 0.0,
     val expense: Double = 0.0,
     val transfer: Double = 0.0,
@@ -135,7 +135,7 @@ class SearchViewModel @Inject constructor(
             if (classifier.classify(t.kind, t.accountId, t.counterpartAccountId) == CashFlow.NEUTRAL) Unit
         }
         val memos = if (text.isEmpty()) emptyList() else memos.search(range.startText, range.endText, pattern)
-            .sortedWith(compareByDescending<MemoEntity> { it.pinned }.thenByDescending { it.dateTime }.thenByDescending { it.orderSeq })
+            .sortedWith(compareByDescending<Memo> { it.pinned }.thenByDescending { it.dateTime }.thenByDescending { it.orderSeq })
         return SearchResult(
             loaded = true,
             rows = sorted.map { LocalDate.parse(it.date) to factory.row(it, ledger) },

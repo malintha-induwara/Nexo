@@ -5,8 +5,8 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.period.toIsoText
+import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.MemoColor
-import com.nexo.app.data.database.entity.MemoEntity
 import com.nexo.app.data.repository.MemosRepository
 import com.nexo.app.ui.HomeState
 import com.nexo.app.ui.navigation.MemoEditorKey
@@ -47,7 +47,7 @@ class MemoEditorViewModel @AssistedInject constructor(
 
     private val _ui = MutableStateFlow(MemoUi())
     val ui = _ui.asStateFlow()
-    private var original: MemoEntity? = null
+    private var original: Memo? = null
 
     init {
         viewModelScope.launch {
@@ -78,7 +78,7 @@ class MemoEditorViewModel @AssistedInject constructor(
             else -> {
                 val now = System.currentTimeMillis()
                 val time = o?.let { java.time.Instant.ofEpochMilli(it.dateTime.toLong()).atZone(ZoneId.systemDefault()).toLocalTime() } ?: LocalTime.now()
-                val row = MemoEntity(
+                val row = Memo(
                     id = o?.id ?: UUID.randomUUID().toString(),
                     title = s.title.trim(),
                     content = if (s.content.isBlank()) "" else s.content.trimEnd() + "\n",

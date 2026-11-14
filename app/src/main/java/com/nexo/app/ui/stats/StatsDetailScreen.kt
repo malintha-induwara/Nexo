@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.core.model.Currency
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.AreaChart
 import com.nexo.app.ui.designsystem.component.ChartTitle
@@ -152,7 +152,7 @@ fun StatsDetailScreen(key: StatsDetailKey) {
 
 /** The category's total over the recent periods; tap or drag the chart to read another period. */
 @Composable
-private fun TrendCard(title: String, labels: List<String>, values: List<Double>, color: Color, main: CurrencyEntity) {
+private fun TrendCard(title: String, labels: List<String>, values: List<Double>, color: Color, main: Currency) {
     val haptics = rememberHaptics()
     var picked by rememberSaveable(labels) { mutableIntStateOf(labels.lastIndex) }
     val i = picked.coerceIn(0, labels.lastIndex)

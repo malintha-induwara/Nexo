@@ -7,15 +7,15 @@ import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.CategoryLabel
 import com.nexo.app.core.model.CategoryVisual
+import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.Ledger
+import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.TimeDisplay
+import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.core.model.categoryLabel
 import com.nexo.app.core.model.sortedForDay
-import com.nexo.app.data.database.entity.CurrencyEntity
-import com.nexo.app.data.database.entity.MemoEntity
-import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.domain.Classifier
 import java.time.Instant
 import java.time.LocalDate
@@ -26,7 +26,7 @@ import java.time.format.FormatStyle
 
 data class TxRowUi(
     val id: String,
-    val tx: TransactionEntity?,
+    val tx: Transaction?,
     val category: String,
     val subCategory: String?,
     val title: String,
@@ -44,7 +44,7 @@ data class TxRowUi(
     /** Category look; null for transfers, balance adjustments, carry-over and uncategorised rows. */
     val visual: CategoryVisual? = null,
     /** Currency of [amount]. */
-    val currency: CurrencyEntity? = null,
+    val currency: Currency? = null,
 )
 
 data class DayGroup(
@@ -52,7 +52,7 @@ data class DayGroup(
     val rows: List<TxRowUi>,
     val income: Double,
     val expense: Double,
-    val memos: List<MemoEntity> = emptyList(),
+    val memos: List<Memo> = emptyList(),
 )
 
 /** Builds display rows from transactions. */
@@ -66,15 +66,15 @@ class RowFactory(private val context: Context, private val ref: RefData) {
 
     fun accountName(id: String?): String = id?.let { ref.accountById[it]?.name } ?: noneLabel
 
-    fun categoryLabels(tx: TransactionEntity): Pair<String, String?> = when (val label = ref.categoryLabel(tx)) {
+    fun categoryLabels(tx: Transaction): Pair<String, String?> = when (val label = ref.categoryLabel(tx)) {
         CategoryLabel.Transfer -> transferLabel to null
         CategoryLabel.ModifiedBalance -> modifiedLabel to null
         is CategoryLabel.Category -> (label.main ?: noneLabel) to label.sub
     }
 
-    fun flow(tx: TransactionEntity): CashFlow = classifier.classify(tx.kind, tx.accountId, tx.counterpartAccountId)
+    fun flow(tx: Transaction): CashFlow = classifier.classify(tx.kind, tx.accountId, tx.counterpartAccountId)
 
-    fun row(tx: TransactionEntity, ledger: Ledger): TxRowUi {
+    fun row(tx: Transaction, ledger: Ledger): TxRowUi {
         val (cat, sub) = categoryLabels(tx)
         var accountText = if (tx.kind == TxKind.TRANSFER_OUT) "${accountName(tx.accountId)} → ${accountName(tx.counterpartAccountId)}"
         else accountName(tx.accountId)
@@ -125,17 +125,17 @@ class RowFactory(private val context: Context, private val ref: RefData) {
     }
 
     /** Listed rows: every kind except incoming transfer legs and balance rows (balance rows show only in account lists). */
-    fun listable(tx: TransactionEntity, includeBalance: Boolean = false): Boolean =
+    fun listable(tx: Transaction, includeBalance: Boolean = false): Boolean =
         tx.kind != TxKind.TRANSFER_IN && (includeBalance || !tx.kind.isBalance)
 
     /** Groups rows by day, newest day first, ordering within a day per the Time Input setting. */
     fun dayGroups(
-        rows: List<TransactionEntity>,
+        rows: List<Transaction>,
         ledger: Ledger,
-        memos: Map<LocalDate, List<MemoEntity>> = emptyMap(),
+        memos: Map<LocalDate, List<Memo>> = emptyMap(),
         carryOver: Pair<LocalDate, Double>? = null,
         includeBalance: Boolean = false,
-        rowMapper: (TransactionEntity) -> TxRowUi = { row(it, ledger) },
+        rowMapper: (Transaction) -> TxRowUi = { row(it, ledger) },
     ): List<DayGroup> {
         val byDay = rows.filter { listable(it, includeBalance) }.groupBy { LocalDate.parse(it.date) }
         val days = (byDay.keys + memos.keys + listOfNotNull(carryOver?.first)).toSortedSet(compareByDescending { it })
@@ -157,6 +157,6 @@ class RowFactory(private val context: Context, private val ref: RefData) {
     }
 
     companion object {
-        fun sortDay(rows: List<TransactionEntity>, order: TimeDisplay): List<TransactionEntity> = rows.sortedForDay(order)
+        fun sortDay(rows: List<Transaction>, order: TimeDisplay): List<Transaction> = rows.sortedForDay(order)
     }
 }

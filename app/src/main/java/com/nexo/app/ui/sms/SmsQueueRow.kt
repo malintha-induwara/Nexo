@@ -46,10 +46,10 @@ import com.nexo.app.core.common.period.toLocalDateTime
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.DenyReason
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.SmsReason
 import com.nexo.app.core.model.SmsStatus
-import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.sms.Missing
 import com.nexo.app.data.sms.bankName
@@ -77,7 +77,7 @@ private const val DAY_MS = 24 * 60 * 60 * 1000L
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SmsQueueRow(
-    item: SmsItemEntity,
+    item: SmsItem,
     ref: RefData,
     selected: Boolean,
     now: Long,
@@ -130,7 +130,7 @@ fun SmsQueueRow(
 }
 
 @Composable
-private fun ItemTile(item: SmsItemEntity, ref: RefData) {
+private fun ItemTile(item: SmsItem, ref: RefData) {
     val colors = LocalNexoColors.current
     val v = ref.visual(item.categoryId)
     when {
@@ -143,7 +143,7 @@ private fun ItemTile(item: SmsItemEntity, ref: RefData) {
 }
 
 @Composable
-private fun metaLine(item: SmsItemEntity, ref: RefData): String {
+private fun metaLine(item: SmsItem, ref: RefData): String {
     val context = LocalContext.current
     val bank = bankName(item)
     val account = ref.accountById[item.accountId]?.name ?: item.cardLast4?.let { "$bank ••$it" } ?: bank
@@ -160,7 +160,7 @@ private fun metaLine(item: SmsItemEntity, ref: RefData): String {
 }
 
 @Composable
-private fun StatusLine(item: SmsItemEntity, now: Long, note: String?) {
+private fun StatusLine(item: SmsItem, now: Long, note: String?) {
     val colors = LocalNexoColors.current
     val badge = when {
         item.status != SmsStatus.PENDING -> null
@@ -183,7 +183,7 @@ private fun StatusLine(item: SmsItemEntity, now: Long, note: String?) {
 }
 
 @Composable
-private fun statusText(item: SmsItemEntity, now: Long): String? {
+private fun statusText(item: SmsItem, now: Long): String? {
     when (item.status) {
         SmsStatus.DENIED -> return listOfNotNull(stringResource(R.string.sms_denied_label), item.denyReason?.let { stringResource(denyLabel(it)) }).joinToString(" · ")
         SmsStatus.EXPIRED -> return stringResource(R.string.sms_expired_label)
@@ -208,7 +208,7 @@ private fun statusText(item: SmsItemEntity, now: Long): String? {
 }
 
 @Composable
-private fun ItemAmount(item: SmsItemEntity, ref: RefData, onClick: (() -> Unit)?) {
+private fun ItemAmount(item: SmsItem, ref: RefData, onClick: (() -> Unit)?) {
     val colors = LocalNexoColors.current
     val money = LocalMoneyColors.current
     val foreign = item.certainty == Certainty.ESTIMATED || item.actualAmount != null

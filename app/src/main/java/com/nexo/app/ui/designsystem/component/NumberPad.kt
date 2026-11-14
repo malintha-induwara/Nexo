@@ -39,7 +39,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
-import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.core.model.Currency
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 import com.nexo.app.ui.designsystem.theme.NexoShapes
@@ -63,9 +63,9 @@ fun NumberPad(
     descending: Boolean = false,
     decimals: Int = 2,
     signKey: Boolean = true,
-    currencies: List<CurrencyEntity> = emptyList(),
+    currencies: List<Currency> = emptyList(),
     selectedCurrencyId: String? = null,
-    onCurrency: ((CurrencyEntity) -> Unit)? = null,
+    onCurrency: ((Currency) -> Unit)? = null,
     onGlobe: (() -> Unit)? = null,
     accent: Color = MaterialTheme.colorScheme.primary,
 ) {

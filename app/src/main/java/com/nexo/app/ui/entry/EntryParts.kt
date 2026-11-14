@@ -53,7 +53,7 @@ import coil3.compose.AsyncImage
 import com.nexo.app.R
 import com.nexo.app.core.model.PhotoItem
 import com.nexo.app.core.model.RepeatType
-import com.nexo.app.data.database.entity.TagEntity
+import com.nexo.app.core.model.Tag
 import com.nexo.app.data.repository.PhotosRepository
 import com.nexo.app.data.repository.TagResult
 import com.nexo.app.data.repository.TagsRepository
@@ -87,7 +87,7 @@ fun repeatLabel(t: RepeatType): String = stringResource(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TagSelectSheet(
-    tags: List<TagEntity>,
+    tags: List<Tag>,
     initial: List<String>,
     repo: TagsRepository,
     onDone: (List<String>) -> Unit,
@@ -97,8 +97,8 @@ fun TagSelectSheet(
     var selected by remember { mutableStateOf(initial) }
     var editMode by remember { mutableStateOf(false) }
     var adding by remember { mutableStateOf(false) }
-    var renaming by remember { mutableStateOf<TagEntity?>(null) }
-    var deleting by remember { mutableStateOf<TagEntity?>(null) }
+    var renaming by remember { mutableStateOf<Tag?>(null) }
+    var deleting by remember { mutableStateOf<Tag?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val exists = stringResource(R.string.tag_exists)
     val live = tags.filter { !it.isDeleted }

@@ -1,7 +1,7 @@
 package com.nexo.app.core.common.money
 
+import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.SymbolPosition
-import com.nexo.app.data.database.entity.CurrencyEntity
 import java.util.Locale
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -21,7 +21,7 @@ class AmountPartsTest {
     fun tearDown() = Locale.setDefault(saved)
 
     private fun currency(symbol: String, position: SymbolPosition, decimals: Int) =
-        CurrencyEntity("X", "XXX", "X", symbol, position, decimals, 1.0, true, true, 0, 0)
+        Currency("X", "XXX", "X", symbol, position, decimals, 1.0, true, true, 0, 0)
 
     @Test
     fun splitsPrefixIntegerAndFraction() {

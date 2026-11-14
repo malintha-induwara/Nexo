@@ -1,15 +1,18 @@
 package com.nexo.app.data.repository
 
 import androidx.room.withTransaction
+import com.nexo.app.core.model.Tag
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.TagEntity
+import com.nexo.app.data.database.entity.asExternalModel
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class DefaultTagsRepository @Inject constructor(private val db: NexoDatabase) : TagsRepository {
-    override fun getTagsStream(): Flow<List<TagEntity>> = db.tagDao().observeAll()
+    override fun getTagsStream(): Flow<List<Tag>> = db.tagDao().observeAll().map { rows -> rows.map(TagEntity::asExternalModel) }
 
     override suspend fun add(raw: String): TagResult = db.withTransaction {
         val name = TagsRepository.normalize(raw)

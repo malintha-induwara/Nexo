@@ -14,10 +14,10 @@ import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.nexo.app.core.model.AccountGroup
 import com.nexo.app.core.model.CategoryVisuals
+import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.GroupType
-import com.nexo.app.data.database.entity.AccountGroupEntity
-import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.domain.AccountsSummary
 import com.nexo.app.domain.CardFigures
 
@@ -28,7 +28,7 @@ object GroupVisuals {
     val None = GroupVisual(Icons.Rounded.Inbox, 9)
 
     /** Seeded groups get a fixed look; the user's own groups take a stable hue from their id. */
-    fun of(group: AccountGroupEntity): GroupVisual = when (group.builtinId) {
+    fun of(group: AccountGroup): GroupVisual = when (group.builtinId) {
         11 -> GroupVisual(Icons.Rounded.Payments, 3)
         1 -> GroupVisual(Icons.Rounded.AccountBalance, 5)
         2 -> GroupVisual(Icons.Rounded.CreditCard, 7)
@@ -55,7 +55,7 @@ data class AccountUi(
     val name: String,
     val groupName: String,
     val visual: GroupVisual,
-    val currency: CurrencyEntity,
+    val currency: Currency,
     val balance: Double,
     /** Statement split, shown instead of [balance] when present. */
     val card: CardFigures? = null,
@@ -82,5 +82,5 @@ data class AccountSection(
 data class AccountsUi(
     val sections: List<AccountSection>,
     val summary: AccountsSummary,
-    val main: CurrencyEntity,
+    val main: Currency,
 )

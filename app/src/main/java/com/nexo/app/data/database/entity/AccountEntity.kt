@@ -3,6 +3,7 @@ package com.nexo.app.data.database.entity
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.nexo.app.core.model.Account
 import com.nexo.app.core.model.AccountStatus
 
 @Entity(tableName = "accounts", indices = [Index("groupId")])
@@ -22,4 +23,38 @@ data class AccountEntity(
     val transferExpense: Boolean = false,
     val createdAt: Long,
     val updatedAt: Long,
+)
+
+fun AccountEntity.asExternalModel() = Account(
+    id = id,
+    name = name,
+    groupId = groupId,
+    currencyId = currencyId,
+    orderSeq = orderSeq,
+    description = description,
+    status = status,
+    includeInTotals = includeInTotals,
+    linkedAccountId = linkedAccountId,
+    settlementDay = settlementDay,
+    paymentDay = paymentDay,
+    transferExpense = transferExpense,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+)
+
+fun Account.asEntity() = AccountEntity(
+    id = id,
+    name = name,
+    groupId = groupId,
+    currencyId = currencyId,
+    orderSeq = orderSeq,
+    description = description,
+    status = status,
+    includeInTotals = includeInTotals,
+    linkedAccountId = linkedAccountId,
+    settlementDay = settlementDay,
+    paymentDay = paymentDay,
+    transferExpense = transferExpense,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
 )

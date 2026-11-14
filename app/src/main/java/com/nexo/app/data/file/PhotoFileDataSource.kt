@@ -13,6 +13,7 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
+import com.nexo.app.core.model.StoredPhoto
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -23,8 +24,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
-
-data class StoredPhoto(val fileName: String, val size: Long, val checksum: String)
 
 /** Photo files in the private photo folder, plus the shared gallery export. Knows nothing about which rows use them. */
 @Singleton

@@ -3,11 +3,11 @@ package com.nexo.app.ui.transactions
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.MonthPeriod
 import com.nexo.app.core.model.CashFlow
+import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.MemoColor
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.data.database.entity.MemoEntity
-import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.domain.Classifier
 import com.nexo.app.domain.InOut
 import java.time.LocalDate
@@ -53,11 +53,11 @@ data class HomeData(
     val cells: List<CalendarCell> = emptyList(),
     val months: List<MonthRow> = emptyList(),
     val totals: InOut = InOut(),
-    val memos: List<MemoEntity> = emptyList(),
+    val memos: List<Memo> = emptyList(),
     val summary: TotalSummary? = null,
     /** Unfiltered rows of the displayed period, used by the filter panel and the day sheet. */
-    val periodRows: List<TransactionEntity> = emptyList(),
-    val gridRows: List<TransactionEntity> = emptyList(),
+    val periodRows: List<Transaction> = emptyList(),
+    val gridRows: List<Transaction> = emptyList(),
     val carryOver: Double = 0.0,
     val ledger: com.nexo.app.core.model.Ledger = com.nexo.app.core.model.Ledger(),
 )
@@ -84,13 +84,13 @@ data class FilterCriteria(
             modifiedIncome || modifiedExpense || teExpense.isNotEmpty() || teIncome.isNotEmpty()
     val active: Boolean get() = hasCategoryPart || accounts.isNotEmpty()
 
-    fun matches(tx: TransactionEntity, ref: RefData, c: Classifier): Boolean {
+    fun matches(tx: Transaction, ref: RefData, c: Classifier): Boolean {
         val catOk = !hasCategoryPart || categoryMatch(tx, ref, c)
         val accOk = accounts.isEmpty() || tx.accountId in accounts || (tx.kind == TxKind.TRANSFER_OUT && tx.counterpartAccountId in accounts)
         return catOk && accOk
     }
 
-    private fun categoryMatch(tx: TransactionEntity, ref: RefData, c: Classifier): Boolean {
+    private fun categoryMatch(tx: Transaction, ref: RefData, c: Classifier): Boolean {
         val flow = c.classify(tx.kind, tx.accountId, tx.counterpartAccountId)
         if (incomeAll && flow == CashFlow.INCOME) return true
         if (expenseAll && flow == CashFlow.EXPENSE) return true

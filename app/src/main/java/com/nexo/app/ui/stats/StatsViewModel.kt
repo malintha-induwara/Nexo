@@ -8,8 +8,8 @@ import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.PeriodEngine
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.domain.Classifier
@@ -68,7 +68,7 @@ fun stepAnchor(e: PeriodEngine, scope: StatsScope, d: LocalDate, forward: Boolea
     StatsScope.PERIOD -> d
 }
 
-fun statsRows(context: Context, ref: RefData, rows: List<TransactionEntity>, income: Boolean): List<StatsRow> {
+fun statsRows(context: Context, ref: RefData, rows: List<Transaction>, income: Boolean): List<StatsRow> {
     val kind = if (income) TxKind.INCOME else TxKind.EXPENSE
     val cats = HashMap<String, BigDecimal>()
     rows.filter { it.kind == kind }.forEach { t ->

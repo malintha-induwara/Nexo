@@ -3,17 +3,17 @@ package com.nexo.app.domain.sms
 import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.common.period.toLocalDateTime
 import com.nexo.app.core.model.Certainty
+import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeDraft
 import com.nexo.app.core.model.FeeMode
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.core.model.TxDraft
-import com.nexo.app.data.database.entity.CurrencyEntity
-import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.repository.TransactionsRepository
@@ -51,7 +51,7 @@ class SmsApprover @Inject constructor(
     private val transactions: TransactionsRepository,
 ) {
     /** What approving [item] as it stands would save, without any fee. Null while it still needs details. */
-    fun draft(item: SmsItemEntity, ref: RefData): TxDraft? {
+    fun draft(item: SmsItem, ref: RefData): TxDraft? {
         if (item.missing().isNotEmpty()) return null
         val (currency, amount) = amountIn(item, ref)
         val asTransfer = item.kind.isTransfer && item.toAccountId != null
@@ -75,7 +75,7 @@ class SmsApprover @Inject constructor(
     }
 
     /** The ledger currency and amount: foreign estimates are booked in the account's currency. */
-    fun amountIn(item: SmsItemEntity, ref: RefData): Pair<CurrencyEntity, Double> {
+    fun amountIn(item: SmsItem, ref: RefData): Pair<Currency, Double> {
         val account = ref.accountCurrency(if (item.kind == SmsKind.TRANSFER_IN) item.toAccountId else item.accountId)
         if (item.certainty == Certainty.ESTIMATED || item.actualAmount != null) {
             return account to (item.actualAmount ?: item.estimatedAmount ?: item.amount)
@@ -86,7 +86,7 @@ class SmsApprover @Inject constructor(
     }
 
     /** Whether approving [item] should add, ask about, or skip a bank fee. */
-    suspend fun feePlan(item: SmsItemEntity): FeePlan {
+    suspend fun feePlan(item: SmsItem): FeePlan {
         // The bank said what it charged: nothing to ask.
         item.statedFee?.takeIf { it > 0 }?.let { return FeePlan.Auto(item.feeRoute, it) }
         val route = item.feeRoute ?: return FeePlan.None

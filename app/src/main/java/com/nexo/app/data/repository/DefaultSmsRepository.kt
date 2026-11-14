@@ -7,9 +7,12 @@ import com.nexo.app.core.model.DenyReason
 import com.nexo.app.core.model.DeviceSettings
 import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeMode
+import com.nexo.app.core.model.FeePreset
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
+import com.nexo.app.core.model.SmsSource
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.core.notifications.Notifier
 import com.nexo.app.data.database.dao.SmsDao
@@ -17,6 +20,8 @@ import com.nexo.app.data.database.entity.FeePresetEntity
 import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.database.entity.SmsMerchantRuleEntity
 import com.nexo.app.data.database.entity.SmsSourceEntity
+import com.nexo.app.data.database.entity.asEntity
+import com.nexo.app.data.database.entity.asExternalModel
 import com.nexo.app.data.sms.IncomingSms
 import com.nexo.app.data.sms.RoomSmsStore
 import com.nexo.app.data.sms.SmsCorrelator
@@ -29,6 +34,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -43,25 +49,25 @@ class DefaultSmsRepository @Inject constructor(
 ) : SmsRepository {
     private fun now() = System.currentTimeMillis()
 
-    override fun getItemsStream(statuses: List<SmsStatus>): Flow<List<SmsItemEntity>> = dao.observeByStatus(statuses)
+    override fun getItemsStream(statuses: List<SmsStatus>): Flow<List<SmsItem>> = dao.observeByStatus(statuses).map { rows -> rows.map(SmsItemEntity::asExternalModel) }
 
     override fun getPendingCountStream(): Flow<Int> = dao.observePendingCount()
 
-    override suspend fun getItem(id: String): SmsItemEntity? = dao.item(id)
+    override suspend fun getItem(id: String): SmsItem? = dao.item(id)?.asExternalModel()
 
-    override suspend fun getItems(ids: Collection<String>): List<SmsItemEntity> = dao.items(ids.toList())
+    override suspend fun getItems(ids: Collection<String>): List<SmsItem> = dao.items(ids.toList()).map(SmsItemEntity::asExternalModel)
 
-    override suspend fun getItemForTransaction(transactionId: String): SmsItemEntity? = dao.byTransaction(transactionId)
+    override suspend fun getItemForTransaction(transactionId: String): SmsItem? = dao.byTransaction(transactionId)?.asExternalModel()
 
-    override suspend fun prepare(item: SmsItemEntity, ref: RefData?): SmsItemEntity = suggester.prepare(item, ref)
+    override suspend fun prepare(item: SmsItem, ref: RefData?): SmsItem = suggester.prepare(item, ref)
 
     override suspend fun getKnownDedupeKeys(keys: List<String>): Set<String> = keys.chunked(500).flatMap { dao.existingKeys(it) }.toSet()
 
-    override suspend fun keep(items: List<SmsItemEntity>): List<String> {
+    override suspend fun keep(items: List<SmsItem>): List<String> {
         val now = now()
         return items.filter { it.status == SmsStatus.PENDING }.mapNotNull { item ->
             val stored = item.copy(capturedAt = now, updatedAt = now)
-            if (dao.insert(stored) != -1L) stored.id else null
+            if (dao.insert(stored.asEntity()) != -1L) stored.id else null
         }
     }
 
@@ -123,25 +129,25 @@ class DefaultSmsRepository @Inject constructor(
 
     override suspend fun markApproved(itemId: String, transactionId: String, bankAccountId: String?, categoryId: String?) {
         val item = dao.item(itemId)?.takeIf { it.status == SmsStatus.PENDING } ?: return
-        markApproved(item, transactionId, bankAccountId, categoryId)
+        markApproved(item.asExternalModel(), transactionId, bankAccountId, categoryId)
     }
 
-    override suspend fun markApproved(item: SmsItemEntity, transactionId: String, bankAccountId: String?, categoryId: String?) {
+    override suspend fun markApproved(item: SmsItem, transactionId: String, bankAccountId: String?, categoryId: String?) {
         val now = now()
         dao.update(
             item.copy(
                 status = SmsStatus.APPROVED, transactionId = transactionId, accountId = bankAccountId ?: item.accountId,
                 categoryId = categoryId, decidedAt = now, updatedAt = now,
-            ),
+            ).asEntity(),
         )
         learn(item, bankAccountId, categoryId)
     }
 
-    override suspend fun deny(ids: Collection<String>, reason: DenyReason?): List<SmsItemEntity> {
+    override suspend fun deny(ids: Collection<String>, reason: DenyReason?): List<SmsItem> {
         val now = now()
         val before = dao.items(ids.toList()).filter { it.status == SmsStatus.PENDING }
         dao.updateAll(before.map { it.copy(status = SmsStatus.DENIED, denyReason = reason, decidedAt = now, updatedAt = now) })
-        return before
+        return before.map(SmsItemEntity::asExternalModel)
     }
 
     override suspend fun restore(ids: Collection<String>) {
@@ -175,36 +181,36 @@ class DefaultSmsRepository @Inject constructor(
     override suspend fun setAccounts(ids: Collection<String>, accountId: String) {
         val ref = refs.getRefData()
         val now = now()
-        dao.updateAll(dao.items(ids.toList()).filter { it.status == SmsStatus.PENDING }.map { suggester.prepare(it.copy(accountId = accountId), ref).copy(updatedAt = now) })
+        dao.updateAll(dao.items(ids.toList()).filter { it.status == SmsStatus.PENDING }.map { suggester.prepare(it.asExternalModel().copy(accountId = accountId), ref).copy(updatedAt = now).asEntity() })
     }
 
-    override suspend fun update(item: SmsItemEntity) {
+    override suspend fun update(item: SmsItem) {
         val ref = refs.getRefData()
-        dao.update(suggester.prepare(item, ref).copy(updatedAt = now()))
+        dao.update(suggester.prepare(item, ref).copy(updatedAt = now()).asEntity())
     }
 
-    override fun getSourcesStream(): Flow<List<SmsSourceEntity>> = dao.observeSources()
+    override fun getSourcesStream(): Flow<List<SmsSource>> = dao.observeSources().map { rows -> rows.map(SmsSourceEntity::asExternalModel) }
 
     override suspend fun mapCard(bank: String, last4: String, accountId: String) {
         val now = now()
         dao.upsertSource(SmsSourceEntity(bank, last4, accountId, now))
         val ref = refs.getRefData()
         val affected = dao.pending().filter { it.bank == bank && it.cardLast4 == last4 && it.accountId == null }
-        dao.updateAll(affected.map { suggester.prepare(it.copy(accountId = accountId), ref).copy(updatedAt = now) })
+        dao.updateAll(affected.map { suggester.prepare(it.asExternalModel().copy(accountId = accountId), ref).copy(updatedAt = now).asEntity() })
     }
 
     override suspend fun unmapCard(bank: String, last4: String) = dao.deleteSource(bank, last4)
 
-    override fun getFeePresetsStream(): Flow<List<FeePresetEntity>> = dao.observeFeePresets()
+    override fun getFeePresetsStream(): Flow<List<FeePreset>> = dao.observeFeePresets().map { rows -> rows.map(FeePresetEntity::asExternalModel) }
 
-    override suspend fun getFeePreset(accountId: String, route: FeeRoute): FeePresetEntity? = dao.feePreset(accountId, route)
+    override suspend fun getFeePreset(accountId: String, route: FeeRoute): FeePreset? = dao.feePreset(accountId, route)?.asExternalModel()
 
     override suspend fun setFeeMode(accountId: String, route: FeeRoute, mode: FeeMode) {
         val existing = dao.feePreset(accountId, route)
         dao.upsertFeePreset(FeePresetEntity(accountId, route, existing?.lastFee, mode, now()))
     }
 
-    override suspend fun recordFee(item: SmsItemEntity, accountId: String?, choice: FeeChoice) {
+    override suspend fun recordFee(item: SmsItem, accountId: String?, choice: FeeChoice) {
         val route = item.feeRoute ?: return
         val account = accountId ?: return
         val existing = dao.feePreset(account, route)
@@ -219,7 +225,7 @@ class DefaultSmsRepository @Inject constructor(
         dao.upsertFeePreset(FeePresetEntity(account, route, last, mode, now()))
     }
 
-    private suspend fun learn(item: SmsItemEntity, accountId: String?, categoryId: String?) {
+    private suspend fun learn(item: SmsItem, accountId: String?, categoryId: String?) {
         val now = now()
         if (accountId != null) {
             val last4 = item.cardLast4.orEmpty()

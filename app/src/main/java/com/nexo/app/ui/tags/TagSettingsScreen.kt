@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.data.database.entity.TagEntity
+import com.nexo.app.core.model.Tag
 import com.nexo.app.data.repository.TagResult
 import com.nexo.app.data.repository.TagsRepository
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
@@ -45,8 +45,8 @@ fun TagSettingsScreen(vm: TagSettingsViewModel = hiltViewModel()) {
     val all by vm.tags.collectAsStateWithLifecycle()
     val tags = all.filter { !it.isDeleted }
     var adding by remember { mutableStateOf(false) }
-    var renaming by remember { mutableStateOf<TagEntity?>(null) }
-    var deleting by remember { mutableStateOf<TagEntity?>(null) }
+    var renaming by remember { mutableStateOf<Tag?>(null) }
+    var deleting by remember { mutableStateOf<Tag?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val exists = stringResource(R.string.tag_exists)
     Scaffold(topBar = {

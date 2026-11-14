@@ -5,15 +5,15 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.model.Certainty
+import com.nexo.app.core.model.FxSnapshot
 import com.nexo.app.core.model.RateSide
+import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.SmsReason
 import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.data.database.BookSeeder
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.CurrencyEntity
-import com.nexo.app.data.database.entity.FxSnapshotEntity
-import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.datastore.DevicePreferencesDataSource
 import com.nexo.app.data.network.FxRatesNetworkDataSource
 import com.nexo.app.data.repository.DefaultUserPreferencesRepository
@@ -102,7 +102,7 @@ class FxTest {
         Triple(db, fxRatesRepository(context, db, refs), refs)
     }
 
-    private fun usdItem(occurredAt: Long, amount: Double = 20.0) = SmsItemEntity(
+    private fun usdItem(occurredAt: Long, amount: Double = 20.0) = SmsItem(
         id = "i", certainty = Certainty.ESTIMATED, reason = SmsReason.FX_ESTIMATE, kind = SmsKind.EXPENSE, bank = "COMBANK",
         sender = "COMBANK", template = "purchase", amount = amount, currency = "USD", occurredAt = occurredAt, smsAt = occurredAt,
         capturedAt = occurredAt, dedupeKey = "k", text = "", updatedAt = occurredAt,
@@ -112,7 +112,7 @@ class FxTest {
     fun estimateUsesTheBoardOnOrBeforeTheTransactionDay() = runBlocking {
         val (db, fx) = repo().let { it.first to it.second }
         val day = 24 * 3600 * 1000L
-        fx.store(listOf(FxSnapshotEntity(captured - 3 * day, "combank", "USD", 327.0, 335.0)))
+        fx.store(listOf(FxSnapshot(captured - 3 * day, "combank", "USD", 327.0, 335.0)))
         fx.store(FxRatesNetworkDataSource.parse(sample))
         // Same rates a day later add nothing to the history.
         fx.store(FxRatesNetworkDataSource.parse(sample).map { it.copy(capturedAt = it.capturedAt + day) })

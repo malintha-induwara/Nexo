@@ -1,9 +1,9 @@
 package com.nexo.app.data.repository
 
 import android.net.Uri
+import com.nexo.app.core.model.StoredPhoto
 import com.nexo.app.data.database.dao.PhotoDao
 import com.nexo.app.data.file.PhotoFileDataSource
-import com.nexo.app.data.file.StoredPhoto
 import java.io.File
 import javax.inject.Inject
 

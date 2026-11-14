@@ -30,7 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
-import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.core.model.Currency
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
@@ -121,7 +121,7 @@ fun Divider() = HorizontalDivider(color = LocalNexoColors.current.hairline)
 fun TotalsBar(
     income: Double,
     expense: Double,
-    currency: CurrencyEntity?,
+    currency: Currency?,
     incomeColor: Color,
     expenseColor: Color,
     modifier: Modifier = Modifier,
@@ -136,7 +136,7 @@ fun TotalsBar(
 }
 
 @Composable
-private fun TotalCell(label: String, value: Double, currency: CurrencyEntity?, color: Color, modifier: Modifier) {
+private fun TotalCell(label: String, value: Double, currency: Currency?, color: Color, modifier: Modifier) {
     Column(modifier) {
         Text(label.uppercase(Locale.getDefault()), style = NexoType.Caps, color = LocalNexoColors.current.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(Space.xs))

@@ -61,7 +61,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.CatalogCurrency
 import com.nexo.app.core.common.money.CurrencyCatalog
-import com.nexo.app.data.repository.RestoreResult
+import com.nexo.app.core.model.RestoreResult
 import com.nexo.app.ui.designsystem.component.MessageDialog
 import com.nexo.app.ui.designsystem.theme.nexo
 

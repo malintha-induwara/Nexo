@@ -42,10 +42,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.model.CategoryKind
-import com.nexo.app.data.repository.DateOrder
-import com.nexo.app.data.repository.ImportErrorType
-import com.nexo.app.data.repository.ImportPreview
-import com.nexo.app.data.repository.ImportRow
+import com.nexo.app.core.model.DateOrder
+import com.nexo.app.core.model.ImportErrorType
+import com.nexo.app.core.model.ImportPreview
+import com.nexo.app.core.model.ImportRow
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.Formats

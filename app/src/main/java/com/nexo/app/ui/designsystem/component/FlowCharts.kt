@@ -29,7 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
-import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.core.model.Currency
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoShapes
@@ -48,7 +48,7 @@ fun ChartTitle(title: String, period: String) {
  * The key is a square for filled marks and a short stroke for a line; null leaves it out.
  */
 @Composable
-fun KeyFigure(label: String, value: Double, currency: CurrencyEntity?, swatch: Color?, modifier: Modifier = Modifier, stroke: Boolean = false, valueColor: Color = LocalNexoColors.current.text) {
+fun KeyFigure(label: String, value: Double, currency: Currency?, swatch: Color?, modifier: Modifier = Modifier, stroke: Boolean = false, valueColor: Color = LocalNexoColors.current.text) {
     val colors = LocalNexoColors.current
     Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -74,7 +74,7 @@ fun FlowCharts(
     balances: List<Double>,
     inflow: List<Double>,
     outflow: List<Double>,
-    currency: CurrencyEntity?,
+    currency: Currency?,
     flowTitle: String,
     inflowLabel: String,
     outflowLabel: String,

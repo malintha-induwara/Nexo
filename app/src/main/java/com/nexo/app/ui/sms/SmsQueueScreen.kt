@@ -60,8 +60,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.SmsHistoryImport
+import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsStatus
-import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.sms.needsAttention
 import com.nexo.app.data.sms.needsDetails
 import com.nexo.app.ui.designsystem.component.AmountSheet
@@ -112,7 +112,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
 
     var sheet by remember { mutableStateOf<QueueSheet?>(null) }
     var sheetOpen by remember { mutableStateOf(false) }
-    var editAmount by remember { mutableStateOf<SmsItemEntity?>(null) }
+    var editAmount by remember { mutableStateOf<SmsItem?>(null) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -308,7 +308,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
 
 @Composable
 private fun QueueItem(
-    item: SmsItemEntity,
+    item: SmsItem,
     ref: com.nexo.app.core.model.RefData,
     now: Long,
     selected: Boolean,

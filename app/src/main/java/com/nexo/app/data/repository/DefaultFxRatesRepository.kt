@@ -1,12 +1,15 @@
 package com.nexo.app.data.repository
 
 import com.nexo.app.core.model.Certainty
+import com.nexo.app.core.model.FxSnapshot
 import com.nexo.app.core.model.RateSide
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.FxSnapshotEntity
-import com.nexo.app.data.database.entity.SmsItemEntity
+import com.nexo.app.data.database.entity.asEntity
+import com.nexo.app.data.database.entity.asExternalModel
 import com.nexo.app.data.network.FxRatesNetworkDataSource
 import com.nexo.app.data.sms.RateChoice
 import com.nexo.app.data.sms.RateChooser
@@ -39,13 +42,13 @@ class DefaultFxRatesRepository @Inject constructor(
      * New boards are kept only when a bank's rates changed since its last stored board, so the history stays small.
      * Older boards (a past day fetched with `date=`) always fill the history.
      */
-    override suspend fun store(rows: List<FxSnapshotEntity>) {
+    override suspend fun store(rows: List<FxSnapshot>) {
         val fresh = rows.filter { r ->
             val last = dao.latestRate(r.bank, r.ccy)
             last == null || r.capturedAt < last.capturedAt ||
                 (r.capturedAt > last.capturedAt && (last.buy != r.buy || last.sell != r.sell || last.official != r.official))
         }
-        if (fresh.isNotEmpty()) dao.insertSnapshots(fresh)
+        if (fresh.isNotEmpty()) dao.insertSnapshots(fresh.map(FxSnapshot::asEntity))
     }
 
     /**
@@ -53,18 +56,18 @@ class DefaultFxRatesRepository @Inject constructor(
      * (Sri Lankan time). Older than Nexo's history: with [allowNetwork], the API's stored board for that day is fetched;
      * otherwise the earliest snapshot is used and its date shows.
      */
-    override suspend fun estimate(item: SmsItemEntity, ref: RefData?, allowNetwork: Boolean): SmsItemEntity {
+    override suspend fun estimate(item: SmsItem, ref: RefData?, allowNetwork: Boolean): SmsItem {
         if (item.certainty != Certainty.ESTIMATED || item.actualAmount != null) return item
         val r = ref ?: refs.getRefData()
         val side = if (item.kind.isInflow) RateSide.BUY else RateSide.SELL
         val day = Instant.ofEpochMilli(item.occurredAt).atZone(BodyDate.ZONE).toLocalDate()
         val endOfDay = day.plusDays(1).atStartOfDay(BodyDate.ZONE).toInstant().toEpochMilli() - 1
-        var board = recent(dao.boardAtOrBefore(item.currency, endOfDay), endOfDay)
+        var board = recent(dao.boardAtOrBefore(item.currency, endOfDay).map(FxSnapshotEntity::asExternalModel), endOfDay)
         if (board.isEmpty() && allowNetwork && online) {
             client.fetch(day)?.let { store(it) }
-            board = recent(dao.boardAtOrBefore(item.currency, endOfDay), endOfDay)
+            board = recent(dao.boardAtOrBefore(item.currency, endOfDay).map(FxSnapshotEntity::asExternalModel), endOfDay)
         }
-        if (board.isEmpty()) board = dao.earliestBoard(item.currency)
+        if (board.isEmpty()) board = dao.earliestBoard(item.currency).map(FxSnapshotEntity::asExternalModel)
         val issuer = Banks.byName(item.bank)?.rateCode
         val choice = RateChooser.choose(board, issuer, side) ?: manual(item.currency, r) ?: return item
         return item.copy(
@@ -80,10 +83,11 @@ class DefaultFxRatesRepository @Inject constructor(
     override suspend fun fillPending(allowNetwork: Boolean): Int {
         val ref = refs.getRefData()
         var changed = 0
-        for (item in dao.pending().filter { it.certainty == Certainty.ESTIMATED && it.actualAmount == null && it.status == SmsStatus.PENDING }) {
+        for (row in dao.pending().filter { it.certainty == Certainty.ESTIMATED && it.actualAmount == null && it.status == SmsStatus.PENDING }) {
+            val item = row.asExternalModel()
             val updated = estimate(item, ref, allowNetwork)
             if (updated != item) {
-                dao.update(updated.copy(updatedAt = System.currentTimeMillis()))
+                dao.update(updated.copy(updatedAt = System.currentTimeMillis()).asEntity())
                 changed++
             }
         }
@@ -98,7 +102,7 @@ class DefaultFxRatesRepository @Inject constructor(
     }
 
     /** Drops banks whose latest board is much older than the transaction (a bank that stopped publishing). */
-    private fun recent(board: List<FxSnapshotEntity>, at: Long): List<FxSnapshotEntity> {
+    private fun recent(board: List<FxSnapshot>, at: Long): List<FxSnapshot> {
         val fresh = board.filter { at - it.capturedAt <= STALE_MS }
         return fresh.ifEmpty { board }
     }

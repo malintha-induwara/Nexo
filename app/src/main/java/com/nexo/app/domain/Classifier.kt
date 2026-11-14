@@ -66,7 +66,7 @@ data class InOut(val income: Double = 0.0, val expense: Double = 0.0) {
 
 /** Income/expense totals from aggregates or rows, in main currency. */
 object Totals {
-    fun fromAggregates(ref: RefData, rows: List<com.nexo.app.data.database.dao.TxAggregate>): InOut {
+    fun fromAggregates(ref: RefData, rows: List<com.nexo.app.core.model.TxAggregate>): InOut {
         val c = Classifier(ref)
         var inc = java.math.BigDecimal.ZERO
         var exp = java.math.BigDecimal.ZERO
@@ -80,7 +80,7 @@ object Totals {
         return InOut(inc.toDouble(), exp.toDouble())
     }
 
-    fun fromRows(ref: RefData, rows: List<com.nexo.app.data.database.entity.TransactionEntity>): InOut {
+    fun fromRows(ref: RefData, rows: List<com.nexo.app.core.model.Transaction>): InOut {
         val c = Classifier(ref)
         var inc = java.math.BigDecimal.ZERO
         var exp = java.math.BigDecimal.ZERO

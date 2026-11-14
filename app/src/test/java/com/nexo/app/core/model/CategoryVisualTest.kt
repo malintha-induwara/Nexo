@@ -1,13 +1,12 @@
 package com.nexo.app.core.model
 
-import com.nexo.app.data.database.entity.CategoryEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class CategoryVisualTest {
     private fun cat(id: String, name: String, parent: String? = null, emoji: String? = null, color: Int? = null) =
-        CategoryEntity(id, name, CategoryKind.EXPENSE, parent, 0, createdAt = 0, updatedAt = 0, emoji = emoji, colorIndex = color)
+        Category(id, name, CategoryKind.EXPENSE, parent, 0, createdAt = 0, updatedAt = 0, emoji = emoji, colorIndex = color)
 
     @Test
     fun ownEmojiAndColourWin() {

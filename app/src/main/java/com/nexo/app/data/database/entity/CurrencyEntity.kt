@@ -2,6 +2,7 @@ package com.nexo.app.data.database.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.SymbolPosition
 
 @Entity(tableName = "currencies")
@@ -19,6 +20,32 @@ data class CurrencyEntity(
     val isVisible: Boolean,
     val orderSeq: Int,
     val updatedAt: Long,
-) {
-    val isCustom: Boolean get() = isoCode.isNullOrEmpty()
-}
+)
+
+fun CurrencyEntity.asExternalModel() = Currency(
+    id = id,
+    isoCode = isoCode,
+    name = name,
+    symbol = symbol,
+    symbolPosition = symbolPosition,
+    decimals = decimals,
+    rate = rate,
+    isMain = isMain,
+    isVisible = isVisible,
+    orderSeq = orderSeq,
+    updatedAt = updatedAt,
+)
+
+fun Currency.asEntity() = CurrencyEntity(
+    id = id,
+    isoCode = isoCode,
+    name = name,
+    symbol = symbol,
+    symbolPosition = symbolPosition,
+    decimals = decimals,
+    rate = rate,
+    isMain = isMain,
+    isVisible = isVisible,
+    orderSeq = orderSeq,
+    updatedAt = updatedAt,
+)

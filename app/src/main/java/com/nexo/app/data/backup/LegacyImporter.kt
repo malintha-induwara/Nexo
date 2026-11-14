@@ -9,6 +9,8 @@ import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.common.period.toIsoText
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.BookSettings
+import com.nexo.app.core.model.Budget
+import com.nexo.app.core.model.BudgetAmount
 import com.nexo.app.core.model.CardAccounting
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.ColorSet
@@ -18,6 +20,7 @@ import com.nexo.app.core.model.InputOrder
 import com.nexo.app.core.model.MemoColor
 import com.nexo.app.core.model.RepeatReflect
 import com.nexo.app.core.model.RepeatType
+import com.nexo.app.core.model.RestoreResult
 import com.nexo.app.core.model.StartScreen
 import com.nexo.app.core.model.SwipeMode
 import com.nexo.app.core.model.SymbolPosition
@@ -42,7 +45,6 @@ import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.data.database.entity.TransactionTagEntity
 import com.nexo.app.data.repository.BackupRepository
 import com.nexo.app.data.repository.DefaultBackupRepository
-import com.nexo.app.data.repository.RestoreResult
 import java.io.File
 import java.time.DayOfWeek
 import java.time.Instant
@@ -406,7 +408,7 @@ class LegacyImporter @Inject constructor(
             if ((r.int("DO_TYPE") ?: 1) != 1 || (r.int("TRANSFER_TYPE") ?: 0) != 0) return@each
             val total = r.int("IS_TOTAL") == 1
             val target = if (total) null else r.str("targetUid")?.takeIf { it in categoryIds } ?: return@each
-            val id = BudgetEntity.idFor(target)
+            val id = Budget.idFor(target)
             budgetIdMap[uid] = id
             if (budgets[id]?.isDeleted == false) return@each
             budgets[id] = BudgetEntity(id, target, r.int("ORDER_SEQ") ?: 0, r.int("IS_DEL") == 1, now)
@@ -416,7 +418,7 @@ class LegacyImporter @Inject constructor(
             if (deleted(r, "IS_DEL")) return@each
             val budget = r.str("budgetUid")?.let { budgetIdMap[it] } ?: return@each
             val period = r.int("BUDGET_PERIOD") ?: 0
-            val id = BudgetAmountEntity.idFor(budget, period)
+            val id = BudgetAmount.idFor(budget, period)
             budgetAmounts[id] = BudgetAmountEntity(id, budget, period, r.dbl("AMOUNT") ?: 0.0, now)
         }
 

@@ -3,6 +3,7 @@ package com.nexo.app.data.database.entity
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.MemoColor
 
 @Entity(tableName = "memos", indices = [Index("date")])
@@ -17,4 +18,30 @@ data class MemoEntity(
     val orderSeq: Int,
     val color: MemoColor = MemoColor.WHITE,
     val updatedAt: Long,
+)
+
+fun MemoEntity.asExternalModel() = Memo(
+    id = id,
+    title = title,
+    content = content,
+    date = date,
+    dateTime = dateTime,
+    pinned = pinned,
+    pinnedAt = pinnedAt,
+    orderSeq = orderSeq,
+    color = color,
+    updatedAt = updatedAt,
+)
+
+fun Memo.asEntity() = MemoEntity(
+    id = id,
+    title = title,
+    content = content,
+    date = date,
+    dateTime = dateTime,
+    pinned = pinned,
+    pinnedAt = pinnedAt,
+    orderSeq = orderSeq,
+    color = color,
+    updatedAt = updatedAt,
 )

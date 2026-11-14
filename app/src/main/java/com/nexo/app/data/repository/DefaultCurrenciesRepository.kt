@@ -4,9 +4,11 @@ import androidx.room.withTransaction
 import com.nexo.app.core.common.money.CatalogCurrency
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.common.money.Money
+import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.data.database.entity.asEntity
 import com.nexo.app.data.file.AppDirs
 import java.io.File
 import java.math.BigDecimal
@@ -30,17 +32,17 @@ class DefaultCurrenciesRepository @Inject constructor(
         db.currencyDao().upsert(listOf(main.copy(symbolPosition = position, decimals = decimals, rate = 1.0, updatedAt = now())))
     }
 
-    override suspend fun saveSub(c: CurrencyEntity) {
+    override suspend fun saveSub(c: Currency) {
         val order = db.currencyDao().getById(c.id)?.orderSeq ?: (db.currencyDao().maxOrder() + 1)
-        db.currencyDao().upsert(listOf(c.copy(isVisible = true, isMain = false, orderSeq = order, updatedAt = now())))
+        db.currencyDao().upsert(listOf(c.copy(isVisible = true, isMain = false, orderSeq = order, updatedAt = now()).asEntity()))
     }
 
-    override fun builtinSub(c: CatalogCurrency, rate: Double, position: SymbolPosition, decimals: Int, existing: CurrencyEntity?) = CurrencyEntity(
+    override fun builtinSub(c: CatalogCurrency, rate: Double, position: SymbolPosition, decimals: Int, existing: Currency?) = Currency(
         id = c.code, isoCode = c.code, name = c.displayName(), symbol = c.subSymbol, symbolPosition = position, decimals = decimals,
         rate = rate, isMain = false, isVisible = true, orderSeq = existing?.orderSeq ?: 0, updatedAt = now(),
     )
 
-    override fun customSub(id: String?, name: String, symbol: String, position: SymbolPosition, decimals: Int, rate: Double) = CurrencyEntity(
+    override fun customSub(id: String?, name: String, symbol: String, position: SymbolPosition, decimals: Int, rate: Double) = Currency(
         id = id ?: UUID.randomUUID().toString(), isoCode = null, name = name.trim(), symbol = symbol.trim(), symbolPosition = position,
         decimals = decimals, rate = rate, isMain = false, isVisible = true, orderSeq = 0, updatedAt = now(),
     )

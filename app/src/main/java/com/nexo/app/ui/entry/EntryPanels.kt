@@ -55,11 +55,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
+import com.nexo.app.core.model.Account
 import com.nexo.app.core.model.AccountStatus
+import com.nexo.app.core.model.Category
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.RefData
-import com.nexo.app.data.database.entity.AccountEntity
-import com.nexo.app.data.database.entity.CategoryEntity
 import com.nexo.app.ui.designsystem.component.CategoryTile
 import com.nexo.app.ui.designsystem.component.NavMotion
 import com.nexo.app.ui.designsystem.component.RoundIconButton
@@ -178,7 +178,7 @@ fun AccountPanel(
                     }
                 }
                 LazyColumn(Modifier.weight(1.4f)) {
-                    val inGroup: List<AccountEntity> = visible.filter { it.groupId == group }.sortedBy { if (it.status == AccountStatus.HIDDEN) 1 else 0 }
+                    val inGroup: List<Account> = visible.filter { it.groupId == group }.sortedBy { if (it.status == AccountStatus.HIDDEN) 1 else 0 }
                     items(inGroup, key = { it.id }) { a ->
                         ListCell(a.name, a.id == selectedId, accent, dimmed = a.status == AccountStatus.HIDDEN) { onSelect(a.id) }
                     }
@@ -201,7 +201,7 @@ private fun AddCell(onAdd: () -> Unit) {
 
 /** An emoji tile with its name beneath, ringed in the entry's colour when chosen. */
 @Composable
-private fun CategoryCell(category: CategoryEntity, ref: RefData, selected: Boolean, accent: Color, hasChildren: Boolean, label: String = category.name, onClick: () -> Unit) {
+private fun CategoryCell(category: Category, ref: RefData, selected: Boolean, accent: Color, hasChildren: Boolean, label: String = category.name, onClick: () -> Unit) {
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
     val v = ref.visual(category.id)

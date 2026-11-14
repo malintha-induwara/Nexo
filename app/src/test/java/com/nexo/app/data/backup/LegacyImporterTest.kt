@@ -6,10 +6,10 @@ import androidx.test.core.app.ApplicationProvider
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.model.RepeatType
+import com.nexo.app.core.model.RestoreResult
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.BookSeeder
 import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.repository.RestoreResult
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking

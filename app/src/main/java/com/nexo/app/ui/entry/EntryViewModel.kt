@@ -13,12 +13,12 @@ import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.FeeDraft
 import com.nexo.app.core.model.PhotoItem
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.RepeatRule
 import com.nexo.app.core.model.RepeatSchedule
 import com.nexo.app.core.model.RepeatType
+import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxDraft
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.data.database.entity.RepeatRuleEntity
-import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.data.repository.FavoritesRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.RepeatRulesRepository
@@ -89,8 +89,8 @@ class EntryViewModel @AssistedInject constructor(
     val suggestions: StateFlow<List<NoteSuggestion>> = _suggestions.asStateFlow()
 
     private var originalState: EntryUi? = null
-    private var original: TransactionEntity? = null
-    private var originalRule: RepeatRuleEntity? = null
+    private var original: Transaction? = null
+    private var originalRule: RepeatRule? = null
 
     init {
         viewModelScope.launch {
@@ -270,7 +270,7 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     /** The Review Queue item being reviewed in [EntryMode.SMS]. */
-    private var smsItem: com.nexo.app.data.database.entity.SmsItemEntity? = null
+    private var smsItem: com.nexo.app.core.model.SmsItem? = null
 
     /** The form opens with everything the SMS gave; saving approves the item. */
     private suspend fun loadSmsItem(r: RefData, base: EntryUi): EntryUi {
@@ -323,7 +323,7 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     /** An approved SMS transaction still booked at an FX estimate: editing its amount records the actual one. */
-    private var linkedEstimate: com.nexo.app.data.database.entity.SmsItemEntity? = null
+    private var linkedEstimate: com.nexo.app.core.model.SmsItem? = null
 
     private suspend fun withFxNote(s: EntryUi, txId: String, r: RefData): EntryUi {
         val item = smsRepository.getItemForTransaction(txId)?.takeIf { it.awaitingActual } ?: return s
@@ -341,7 +341,7 @@ class EntryViewModel @AssistedInject constructor(
     /** Pre-fill from a spreadsheet import row. */
     private suspend fun loadImportRow(r: RefData, base: EntryUi): EntryUi {
         val file = key.importFile ?: return newEntry(r, base)
-        val order = key.importOrder?.let { runCatching { com.nexo.app.data.repository.DateOrder.valueOf(it) }.getOrNull() }
+        val order = key.importOrder?.let { runCatching { com.nexo.app.core.model.DateOrder.valueOf(it) }.getOrNull() }
         val row = importer.load(file, order).rows.getOrNull(key.importLine)?.parsed ?: return newEntry(r, base).copy(mode = EntryMode.IMPORT_FIX)
         val kind = row.kind ?: TxKind.EXPENSE
         val transferIn = kind == TxKind.TRANSFER_IN
@@ -565,7 +565,7 @@ class EntryViewModel @AssistedInject constructor(
         val done = _ui.value.scan as? ScanUi.Done ?: return
         val read = done.read
         edit { s ->
-            val photo = PhotoItem.Picked(done.uri)
+            val photo = PhotoItem.Picked(done.uri.toString())
             var n = s.copy(scan = null, photos = if (photo in s.photos) s.photos else (s.photos + photo).take(3))
             if (amount != null && amount > 0) {
                 val decimals = refCurrencyDecimals(s.currencyId)
@@ -710,7 +710,7 @@ class EntryViewModel @AssistedInject constructor(
         viewModelScope.launch {
             val now = System.currentTimeMillis()
             val cur = r.currency(s.currencyId)
-            val rule = RepeatRuleEntity(
+            val rule = RepeatRule(
                 id = originalRule?.id ?: UUID.randomUUID().toString(),
                 kind = when (s.type) {
                     EntryType.INCOME -> TxKind.INCOME

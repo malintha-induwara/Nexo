@@ -61,11 +61,11 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
+import com.nexo.app.core.model.Category
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.CategoryVisual
 import com.nexo.app.core.model.CategoryVisuals
 import com.nexo.app.core.model.RefData
-import com.nexo.app.data.database.entity.CategoryEntity
 import com.nexo.app.ui.designsystem.component.CategoryTile
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
@@ -105,13 +105,13 @@ private fun CategoryTileFor(visual: CategoryVisual?, size: androidx.compose.ui.u
 
 @Composable
 private fun EditableList(
-    items: List<CategoryEntity>,
-    visual: (CategoryEntity) -> CategoryVisual?,
-    label: (CategoryEntity) -> String,
-    subtitle: (CategoryEntity) -> String?,
-    onClick: (CategoryEntity) -> Unit,
+    items: List<Category>,
+    visual: (Category) -> CategoryVisual?,
+    label: (Category) -> String,
+    subtitle: (Category) -> String?,
+    onClick: (Category) -> Unit,
     onReorder: (List<String>) -> Unit,
-    onDelete: (CategoryEntity) -> Unit,
+    onDelete: (Category) -> Unit,
     header: @Composable () -> Unit = {},
     empty: String,
 ) {
@@ -243,7 +243,7 @@ fun CategoryFormScreen(key: CategoryFormKey, vm: CategoryViewModel = hiltViewMod
         else -> R.string.expenses_category
     }
     val parentEntity = parent?.let { ref.categoryById[it] }
-    val draft = (existing ?: CategoryEntity("draft", "", key.kind, null, 0, createdAt = 0, updatedAt = 0))
+    val draft = (existing ?: Category("draft", "", key.kind, null, 0, createdAt = 0, updatedAt = 0))
         .copy(name = name, parentId = if (isSub) parent else null, emoji = emoji, colorIndex = color)
     val preview = CategoryVisuals.resolve(draft, if (isSub) parentEntity else null)
 

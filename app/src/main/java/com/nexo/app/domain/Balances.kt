@@ -3,13 +3,13 @@ package com.nexo.app.domain
 import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.PeriodEngine
+import com.nexo.app.core.model.Account
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.model.RefData
-import com.nexo.app.data.database.dao.TxAggregate
-import com.nexo.app.data.database.entity.AccountEntity
-import com.nexo.app.data.database.entity.TransactionEntity
+import com.nexo.app.core.model.Transaction
+import com.nexo.app.core.model.TxAggregate
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -30,7 +30,7 @@ object Balances {
     }
 
     /** Balance of [account] in its own currency, including debit cards linked to it. */
-    fun balance(ref: RefData, account: AccountEntity, net: Map<String?, Net>): Double {
+    fun balance(ref: RefData, account: Account, net: Map<String?, Net>): Double {
         val useMain = account.currencyId == ref.mainCurrency.id
         val ids = listOf(account.id) + ref.linkedDebitCards(account.id).map { it.id }
         return Money.sum(ids.map { id -> net[id]?.let { if (useMain) it.main else it.account } ?: 0.0 })
@@ -48,15 +48,15 @@ object Balances {
         return Money.round(Money.multiply(rounded, rate), ref.mainCurrency.decimals)
     }
 
-    fun rowMeasure(ref: RefData, row: TransactionEntity, forAccount: AccountEntity): Double =
+    fun rowMeasure(ref: RefData, row: Transaction, forAccount: Account): Double =
         if (forAccount.currencyId == ref.mainCurrency.id) row.amountMain else row.amountAccount
 
-    fun signed(row: TransactionEntity, value: Double): Double = if (row.kind.isInflow) value else -value
+    fun signed(row: Transaction, value: Double): Double = if (row.kind.isInflow) value else -value
 }
 
 /** One account as shown on the Accounts tab. Values are in the account's currency. */
 data class AccountFigure(
-    val account: AccountEntity,
+    val account: Account,
     val groupType: GroupType,
     val balance: Double,
     val card: CardFigures? = null,
@@ -122,7 +122,7 @@ object AccountsSummaryCalculator {
         ref: RefData,
         net: Map<String?, Net>,
         debitMonthNet: Map<String?, Net>,
-        cardRows: Map<String, List<TransactionEntity>>,
+        cardRows: Map<String, List<Transaction>>,
         today: LocalDate,
     ): List<AccountFigure> = ref.orderedAccounts().mapNotNull { a ->
         val type = ref.groupType(a.id) ?: return@mapNotNull null
@@ -162,7 +162,7 @@ data class CardFigures(
 
 object CardStatement {
     /** [rows] = all rows of the card and its linked debit cards. Prepayment tags are not used in Nexo. */
-    fun compute(ref: RefData, card: AccountEntity, rows: List<TransactionEntity>, today: LocalDate): CardFigures {
+    fun compute(ref: RefData, card: Account, rows: List<Transaction>, today: LocalDate): CardFigures {
         val engine = PeriodEngine(card.settlementDay.coerceIn(1, 31))
         val c = engine.monthPeriodContaining(today).range
         val p = engine.monthPeriodContaining(c.start.minusDays(1)).range

@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.nexo.app.core.model.RepeatType
+import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
 
 @Entity(
@@ -58,4 +59,60 @@ data class TransactionEntity(
      * Transfer fees keep using [feeGroupId].
      */
     val feeParentId: String? = null,
+)
+
+fun TransactionEntity.asExternalModel() = Transaction(
+    id = id,
+    kind = kind,
+    accountId = accountId,
+    counterpartAccountId = counterpartAccountId,
+    categoryId = categoryId,
+    isBalanceAdjustment = isBalanceAdjustment,
+    dateTime = dateTime,
+    date = date,
+    amount = amount,
+    amountMain = amountMain,
+    amountAccount = amountAccount,
+    currencyId = currencyId,
+    note = note,
+    description = description,
+    transferGroupId = transferGroupId,
+    feeGroupId = feeGroupId,
+    installmentGroupId = installmentGroupId,
+    installmentIndex = installmentIndex,
+    installmentCount = installmentCount,
+    repeatRuleId = repeatRuleId,
+    repeatType = repeatType,
+    sourceText = sourceText,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+    feeParentId = feeParentId,
+)
+
+fun Transaction.asEntity() = TransactionEntity(
+    id = id,
+    kind = kind,
+    accountId = accountId,
+    counterpartAccountId = counterpartAccountId,
+    categoryId = categoryId,
+    isBalanceAdjustment = isBalanceAdjustment,
+    dateTime = dateTime,
+    date = date,
+    amount = amount,
+    amountMain = amountMain,
+    amountAccount = amountAccount,
+    currencyId = currencyId,
+    note = note,
+    description = description,
+    transferGroupId = transferGroupId,
+    feeGroupId = feeGroupId,
+    installmentGroupId = installmentGroupId,
+    installmentIndex = installmentIndex,
+    installmentCount = installmentCount,
+    repeatRuleId = repeatRuleId,
+    repeatType = repeatType,
+    sourceText = sourceText,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+    feeParentId = feeParentId,
 )

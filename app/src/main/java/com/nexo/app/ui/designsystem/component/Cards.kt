@@ -15,7 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
-import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.core.model.Currency
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 import com.nexo.app.ui.designsystem.theme.NexoShapes
@@ -49,6 +49,6 @@ fun GroupCard(
 
 /** An income or expense figure in its colour; zero is dimmed so the periods with activity stand out. */
 @Composable
-fun FlowAmount(value: Double, currency: CurrencyEntity?, color: Color, modifier: Modifier = Modifier, style: TextStyle = NexoType.Amount) {
+fun FlowAmount(value: Double, currency: Currency?, color: Color, modifier: Modifier = Modifier, style: TextStyle = NexoType.Amount) {
     AmountText(value, currency, modifier, style = style, color = if (value == 0.0) LocalNexoColors.current.textTertiary else color)
 }

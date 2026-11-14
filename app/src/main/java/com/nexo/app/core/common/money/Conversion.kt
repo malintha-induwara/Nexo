@@ -1,12 +1,12 @@
 package com.nexo.app.core.common.money
 
-import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.core.model.Currency
 
 data class Amounts(val amount: Double, val main: Double, val account: Double)
 
 /** Three-amount derivation. */
 object Conversion {
-    fun effectiveRate(c: CurrencyEntity): Double = if (c.rate == 0.0) 1.0 else c.rate
+    fun effectiveRate(c: Currency): Double = if (c.rate == 0.0) 1.0 else c.rate
 
     /**
      * [rate] = main units per one unit of [tx] (the form's rate, defaulting to the stored rate).
@@ -14,9 +14,9 @@ object Conversion {
      */
     fun compute(
         typed: Double,
-        tx: CurrencyEntity,
-        account: CurrencyEntity,
-        main: CurrencyEntity,
+        tx: Currency,
+        account: Currency,
+        main: Currency,
         rate: Double = effectiveRate(tx),
         crossRate: Double? = null,
     ): Amounts {
@@ -32,7 +32,7 @@ object Conversion {
     }
 
     /** Account amount for the other side of a transfer. */
-    fun accountAmount(amount: Double, mainAmount: Double, tx: CurrencyEntity, account: CurrencyEntity, main: CurrencyEntity): Double = when {
+    fun accountAmount(amount: Double, mainAmount: Double, tx: Currency, account: Currency, main: Currency): Double = when {
         tx.id == account.id -> amount
         account.id == main.id -> mainAmount
         else -> Money.round(Money.divide(mainAmount, effectiveRate(account)), account.decimals)

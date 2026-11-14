@@ -1,7 +1,7 @@
 package com.nexo.app.core.common.money
 
+import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.SymbolPosition
-import com.nexo.app.data.database.entity.CurrencyEntity
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormatSymbols
@@ -31,7 +31,7 @@ data class AmountParts(
     companion object {
         const val MINUS = "−"
 
-        fun of(value: Double, currency: CurrencyEntity?, sign: Sign = Sign.NEGATIVE): AmountParts =
+        fun of(value: Double, currency: Currency?, sign: Sign = Sign.NEGATIVE): AmountParts =
             of(value, currency?.symbol ?: "", currency?.symbolPosition ?: SymbolPosition.PREFIX, currency?.decimals ?: 2, sign)
 
         fun of(value: Double, symbol: String, position: SymbolPosition, decimals: Int, sign: Sign = Sign.NEGATIVE): AmountParts {

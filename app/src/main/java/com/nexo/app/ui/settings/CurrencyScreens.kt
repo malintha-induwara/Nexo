@@ -46,8 +46,8 @@ import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.common.money.CatalogCurrency
 import com.nexo.app.core.common.money.CurrencyCatalog
+import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.SymbolPosition
-import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
@@ -182,7 +182,7 @@ fun SubCurrenciesScreen(vm: CurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val ref by vm.ref.collectAsStateWithLifecycle()
     val subs = ref.activeCurrencies.drop(1)
-    var hide by remember { mutableStateOf<CurrencyEntity?>(null) }
+    var hide by remember { mutableStateOf<Currency?>(null) }
     Scaffold(topBar = {
         NexoTopBar(stringResource(R.string.sub_currency_setting), onBack = { nav.back() }) {
             IconButton(onClick = { nav.navigate(AddSubCurrencyKey) }) { Icon(Icons.Filled.Add, stringResource(R.string.action_add)) }

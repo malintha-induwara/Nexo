@@ -3,7 +3,7 @@ package com.nexo.app.data.network
 import com.nexo.app.BuildConfig
 import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
-import com.nexo.app.data.database.entity.FxSnapshotEntity
+import com.nexo.app.core.model.FxSnapshot
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
@@ -35,9 +35,9 @@ class FxRatesNetworkDataSource @Inject constructor(
     val hasKey: Boolean get() = key.isNotBlank()
 
     /** The latest boards, or the stored boards for [date] (that day or the nearest of the 5 before). Null on any failure. */
-    suspend fun fetch(date: LocalDate? = null): List<FxSnapshotEntity>? = withContext(ioDispatcher) { fetchBlocking(date) }
+    suspend fun fetch(date: LocalDate? = null): List<FxSnapshot>? = withContext(ioDispatcher) { fetchBlocking(date) }
 
-    private fun fetchBlocking(date: LocalDate?): List<FxSnapshotEntity>? {
+    private fun fetchBlocking(date: LocalDate?): List<FxSnapshot>? {
         if (!hasKey) return null
         val url = URL(BASE + (date?.let { "?date=$it" } ?: ""))
         val connection = (url.openConnection() as HttpURLConnection).apply {
@@ -70,7 +70,7 @@ class FxRatesNetworkDataSource @Inject constructor(
          * Field quirks: `captured_at` (ISO-8601) is the snapshot time, `bank_updated_at` is ignored, non-ISO codes
          * such as "UAE" are dropped, and any rate may be missing.
          */
-        fun parse(text: String): List<FxSnapshotEntity> {
+        fun parse(text: String): List<FxSnapshot> {
             val root = runCatching { Json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return emptyList()
             val banks = runCatching { root.getValue("banks").jsonArray }.getOrNull() ?: return emptyList()
             return banks.flatMap { element ->
@@ -82,7 +82,7 @@ class FxRatesNetworkDataSource @Inject constructor(
                 rates.mapNotNull { r ->
                     val rate = r as? JsonObject ?: return@mapNotNull null
                     val ccy = rate.text("ccy")?.uppercase(Locale.ROOT)?.takeIf { isIso(it) && it in CURRENCIES } ?: return@mapNotNull null
-                    FxSnapshotEntity(
+                    FxSnapshot(
                         capturedAt = captured, bank = code, ccy = ccy,
                         buy = rate.number("buy"), sell = rate.number("sell"), mid = rate.number("mid"),
                         official = rate.number("official"), spreadPct = rate.number("spread_pct"),

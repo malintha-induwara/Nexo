@@ -9,8 +9,8 @@ import com.nexo.app.core.model.DenyReason
 import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsStatus
-import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.SmsInboxRepository
 import com.nexo.app.data.repository.SmsRepository
@@ -45,7 +45,7 @@ enum class QueueFilter(val label: Int, val status: SmsStatus) {
 }
 
 /** One fee question, for a single item or a bulk-approved batch on the same route. */
-data class FeePrompt(val items: List<SmsItemEntity>, val plan: FeePlan.Ask)
+data class FeePrompt(val items: List<SmsItem>, val plan: FeePlan.Ask)
 
 /** A bank card that pending items mention but no account is set for. */
 data class CardRef(val bank: String, val last4: String)
@@ -67,11 +67,11 @@ class SmsQueueViewModel @Inject constructor(
     private val _filter = MutableStateFlow(QueueFilter.ALL)
     val filter: StateFlow<QueueFilter> = _filter.asStateFlow()
 
-    val pending: StateFlow<List<SmsItemEntity>> =
+    val pending: StateFlow<List<SmsItem>> =
         sms.getItemsStream(listOf(SmsStatus.PENDING)).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Null while loading. */
-    val items: StateFlow<List<SmsItemEntity>?> = _filter.flatMapLatest { f ->
+    val items: StateFlow<List<SmsItem>?> = _filter.flatMapLatest { f ->
         sms.getItemsStream(listOf(f.status)).map { list -> if (f == QueueFilter.ATTENTION) list.filter { it.needsAttention } else list }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -127,7 +127,7 @@ class SmsQueueViewModel @Inject constructor(
         if (approved > 0) show(context.resources.getQuantityString(R.plurals.sms_n_approved, approved, approved))
     }
 
-    private fun autoFee(item: SmsItemEntity, amount: Double, result: ApproveResult) {
+    private fun autoFee(item: SmsItem, amount: Double, result: ApproveResult) {
         val feeId = (result as? ApproveResult.Done)?.feeId ?: return
         val text = AmountFormatter.format(amount, ref.value.accountCurrency(item.accountId))
         _undo.value = UndoMessage(context.getString(R.string.fee_auto_added, text), context.getString(R.string.sms_undo)) {
@@ -167,7 +167,7 @@ class SmsQueueViewModel @Inject constructor(
         val ready = pending.value.filter { it.id in ids && !it.needsDetails }
         _selection.value = emptySet()
         var approved = 0
-        val asks = LinkedHashMap<FeeRoute, MutableList<Pair<SmsItemEntity, FeePlan.Ask>>>()
+        val asks = LinkedHashMap<FeeRoute, MutableList<Pair<SmsItem, FeePlan.Ask>>>()
         val prompts = ArrayList<FeePrompt>()
         for (item in ready) {
             when (val plan = approver.feePlan(item)) {

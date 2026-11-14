@@ -1,17 +1,17 @@
 package com.nexo.app.data.repository
 
-import com.nexo.app.data.database.entity.RepeatRuleEntity
+import com.nexo.app.core.model.RepeatRule
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 
 /** Repeat rules and the transactions they generate. */
 interface RepeatRulesRepository {
-    fun getRulesStream(): Flow<List<RepeatRuleEntity>>
+    fun getRulesStream(): Flow<List<RepeatRule>>
 
-    suspend fun getRule(id: String): RepeatRuleEntity?
+    suspend fun getRule(id: String): RepeatRule?
 
     /** Saves the rule and generates whatever is now due. */
-    suspend fun save(rule: RepeatRuleEntity)
+    suspend fun save(rule: RepeatRule)
 
     suspend fun delete(ids: List<String>)
 

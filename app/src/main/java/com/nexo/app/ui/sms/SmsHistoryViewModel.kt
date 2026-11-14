@@ -6,11 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
 import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeRoute
+import com.nexo.app.core.model.HistoryRow
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsHistoryImport
+import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
-import com.nexo.app.data.database.entity.SmsItemEntity
-import com.nexo.app.data.repository.HistoryRow
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.SmsInboxRepository
 import com.nexo.app.data.repository.SmsRepository
@@ -205,7 +205,7 @@ class SmsHistoryViewModel @AssistedInject constructor(
         if (gap) prefs.clearSmsGap()
         added = 0
         toQueue = 0
-        val asks = LinkedHashMap<FeeRoute, MutableList<Pair<SmsItemEntity, FeePlan.Ask>>>()
+        val asks = LinkedHashMap<FeeRoute, MutableList<Pair<SmsItem, FeePlan.Ask>>>()
         val prompts = ArrayList<FeePrompt>()
         for (item in stored) {
             if (item.needsDetails) {

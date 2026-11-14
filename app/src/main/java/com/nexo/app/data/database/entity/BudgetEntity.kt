@@ -2,6 +2,7 @@ package com.nexo.app.data.database.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.nexo.app.core.model.Budget
 
 @Entity(tableName = "budgets")
 data class BudgetEntity(
@@ -11,11 +12,20 @@ data class BudgetEntity(
     val orderSeq: Int,
     val isDeleted: Boolean = false,
     val updatedAt: Long,
-) {
-    val isTotal: Boolean get() = categoryId == null
+)
 
-    companion object {
-        const val TOTAL_ID = "total"
-        fun idFor(categoryId: String?) = if (categoryId == null) TOTAL_ID else "cat_$categoryId"
-    }
-}
+fun BudgetEntity.asExternalModel() = Budget(
+    id = id,
+    categoryId = categoryId,
+    orderSeq = orderSeq,
+    isDeleted = isDeleted,
+    updatedAt = updatedAt,
+)
+
+fun Budget.asEntity() = BudgetEntity(
+    id = id,
+    categoryId = categoryId,
+    orderSeq = orderSeq,
+    isDeleted = isDeleted,
+    updatedAt = updatedAt,
+)

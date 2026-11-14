@@ -2,12 +2,13 @@ package com.nexo.app.data.repository
 
 import androidx.room.withTransaction
 import com.nexo.app.core.common.money.Conversion
+import com.nexo.app.core.model.Account
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.database.entity.AccountEntity
 import com.nexo.app.data.database.entity.AccountGroupEntity
+import com.nexo.app.data.database.entity.asEntity
 import java.util.UUID
 import javax.inject.Inject
 
@@ -39,14 +40,14 @@ class DefaultAccountsRepository @Inject constructor(
     override suspend fun nextAccountOrder(): Int = db.accountDao().maxOrder() + 1
 
     /** Saves an account; a currency change re-derives account amounts of its rows and linked debit cards. */
-    override suspend fun saveAccount(account: AccountEntity) {
+    override suspend fun saveAccount(account: Account) {
         val ref = refs.getRefData()
         db.withTransaction {
             val old = db.accountDao().getById(account.id)
-            db.accountDao().upsert(listOf(account.copy(updatedAt = now())))
+            db.accountDao().upsert(listOf(account.copy(updatedAt = now()).asEntity()))
             if (old != null && old.currencyId != account.currencyId) {
                 val debits = ref.linkedDebitCards(account.id).map { it.copy(currencyId = account.currencyId, updatedAt = now()) }
-                db.accountDao().upsert(debits)
+                db.accountDao().upsert(debits.map(Account::asEntity))
                 val newCur = ref.currency(account.currencyId)
                 val ids = listOf(account.id) + debits.map { it.id }
                 val rows = db.transactionDao().getAllForAccounts(ids)

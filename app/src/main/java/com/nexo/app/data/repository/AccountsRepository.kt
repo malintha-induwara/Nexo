@@ -1,9 +1,9 @@
 package com.nexo.app.data.repository
 
+import com.nexo.app.core.model.Account
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
-import com.nexo.app.data.database.entity.AccountEntity
 
 /** Accounts and account groups. */
 interface AccountsRepository {
@@ -16,7 +16,7 @@ interface AccountsRepository {
     suspend fun nextAccountOrder(): Int
 
     /** Saves an account; a currency change re-derives account amounts of its rows and linked debit cards. */
-    suspend fun saveAccount(account: AccountEntity)
+    suspend fun saveAccount(account: Account)
 
     suspend fun setStatus(id: String, status: AccountStatus)
 

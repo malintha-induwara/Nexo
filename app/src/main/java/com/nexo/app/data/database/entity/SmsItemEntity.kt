@@ -7,6 +7,7 @@ import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.DenyReason
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.RateSide
+import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.SmsReason
 import com.nexo.app.core.model.SmsStatus
@@ -76,7 +77,92 @@ data class SmsItemEntity(
     val updatedAt: Long,
     /** A bank charge the SMS itself states, e.g. "CEFT charges LKR 30.00". Added on approve. */
     val statedFee: Double? = null,
-) {
-    /** Foreign-currency estimate still waiting for the real account amount. */
-    val awaitingActual: Boolean get() = certainty == Certainty.ESTIMATED && actualAmount == null
-}
+)
+
+fun SmsItemEntity.asExternalModel() = SmsItem(
+    id = id,
+    status = status,
+    certainty = certainty,
+    reason = reason,
+    kind = kind,
+    bank = bank,
+    sender = sender,
+    template = template,
+    amount = amount,
+    currency = currency,
+    merchantRaw = merchantRaw,
+    merchant = merchant,
+    merchantKey = merchantKey,
+    merchantFromOtp = merchantFromOtp,
+    cardLast4 = cardLast4,
+    payee = payee,
+    reference = reference,
+    route = route,
+    feeRoute = feeRoute,
+    occurredAt = occurredAt,
+    smsAt = smsAt,
+    capturedAt = capturedAt,
+    dedupeKey = dedupeKey,
+    text = text,
+    accountId = accountId,
+    toAccountId = toAccountId,
+    categoryId = categoryId,
+    note = note,
+    actualAmount = actualAmount,
+    fxRate = fxRate,
+    fxSide = fxSide,
+    fxSource = fxSource,
+    fxSnapshotAt = fxSnapshotAt,
+    estimatedAmount = estimatedAmount,
+    evidenceCount = evidenceCount,
+    denyReason = denyReason,
+    decidedAt = decidedAt,
+    transactionId = transactionId,
+    linkedItemId = linkedItemId,
+    updatedAt = updatedAt,
+    statedFee = statedFee,
+)
+
+fun SmsItem.asEntity() = SmsItemEntity(
+    id = id,
+    status = status,
+    certainty = certainty,
+    reason = reason,
+    kind = kind,
+    bank = bank,
+    sender = sender,
+    template = template,
+    amount = amount,
+    currency = currency,
+    merchantRaw = merchantRaw,
+    merchant = merchant,
+    merchantKey = merchantKey,
+    merchantFromOtp = merchantFromOtp,
+    cardLast4 = cardLast4,
+    payee = payee,
+    reference = reference,
+    route = route,
+    feeRoute = feeRoute,
+    occurredAt = occurredAt,
+    smsAt = smsAt,
+    capturedAt = capturedAt,
+    dedupeKey = dedupeKey,
+    text = text,
+    accountId = accountId,
+    toAccountId = toAccountId,
+    categoryId = categoryId,
+    note = note,
+    actualAmount = actualAmount,
+    fxRate = fxRate,
+    fxSide = fxSide,
+    fxSource = fxSource,
+    fxSnapshotAt = fxSnapshotAt,
+    estimatedAmount = estimatedAmount,
+    evidenceCount = evidenceCount,
+    denyReason = denyReason,
+    decidedAt = decidedAt,
+    transactionId = transactionId,
+    linkedItemId = linkedItemId,
+    updatedAt = updatedAt,
+    statedFee = statedFee,
+)

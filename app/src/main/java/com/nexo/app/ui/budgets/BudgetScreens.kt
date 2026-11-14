@@ -190,7 +190,7 @@ fun BudgetSettingsScreen(vm: BudgetSettingsViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun SettingsBudgetRow(row: BudgetRow, main: com.nexo.app.data.database.entity.CurrencyEntity, onClick: () -> Unit, onDelete: (() -> Unit)?, onEdit: (() -> Unit)? = null, virtual: Boolean = false) {
+private fun SettingsBudgetRow(row: BudgetRow, main: com.nexo.app.core.model.Currency, onClick: () -> Unit, onDelete: (() -> Unit)?, onEdit: (() -> Unit)? = null, virtual: Boolean = false) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(row.name + if (row.children.isNotEmpty()) "  ▾" else "", Modifier.weight(1f).padding(vertical = 14.dp), fontWeight = if (row.isTotal) FontWeight.SemiBold else FontWeight.Normal)
         if (!virtual) Text(AmountFormatter.format(row.amount, main), style = MaterialTheme.typography.bodyMedium)

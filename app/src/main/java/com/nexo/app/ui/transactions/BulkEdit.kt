@@ -46,8 +46,8 @@ import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.CategoryKind
+import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.RefData
-import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.IncomeExpensePill
@@ -78,7 +78,7 @@ fun SelectionBar(
     count: Int,
     total: Int,
     net: Double,
-    main: CurrencyEntity,
+    main: Currency,
     onToggleAll: () -> Unit,
     onClose: () -> Unit,
     onAction: (BulkAction?) -> Unit,

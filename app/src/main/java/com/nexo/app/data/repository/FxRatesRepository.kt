@@ -1,8 +1,8 @@
 package com.nexo.app.data.repository
 
+import com.nexo.app.core.model.FxSnapshot
 import com.nexo.app.core.model.RefData
-import com.nexo.app.data.database.entity.FxSnapshotEntity
-import com.nexo.app.data.database.entity.SmsItemEntity
+import com.nexo.app.core.model.SmsItem
 import com.nexo.app.data.network.FxRatesNetworkDataSource
 import com.nexo.app.data.sms.parser.BodyDate
 import java.time.Instant
@@ -20,10 +20,10 @@ interface FxRatesRepository {
     suspend fun refreshIfStale(now: Long = System.currentTimeMillis()): Boolean
 
     /** Keeps new boards only when a bank's rates changed; older boards always fill the history. */
-    suspend fun store(rows: List<FxSnapshotEntity>)
+    suspend fun store(rows: List<FxSnapshot>)
 
     /** [item] with its estimate filled from the closest board, or from Nexo's own rate. */
-    suspend fun estimate(item: SmsItemEntity, ref: RefData? = null, allowNetwork: Boolean = false): SmsItemEntity
+    suspend fun estimate(item: SmsItem, ref: RefData? = null, allowNetwork: Boolean = false): SmsItem
 
     /** Fills "Rate pending" queue items; returns how many changed. */
     suspend fun fillPending(allowNetwork: Boolean = false): Int

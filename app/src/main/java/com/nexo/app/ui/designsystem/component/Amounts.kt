@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.times
 import com.nexo.app.core.common.money.AmountParts
-import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.core.model.Currency
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 import com.nexo.app.ui.designsystem.theme.NexoType
@@ -51,7 +51,7 @@ private fun TextStyle.minor(scale: Float): TextStyle = copy(
 @Composable
 fun AmountText(
     value: Double,
-    currency: CurrencyEntity?,
+    currency: Currency?,
     modifier: Modifier = Modifier,
     style: TextStyle = NexoType.Amount,
     color: Color = LocalNexoColors.current.text,
@@ -98,7 +98,7 @@ fun AmountText(
 @Composable
 fun RollingAmount(
     value: Double,
-    currency: CurrencyEntity?,
+    currency: Currency?,
     modifier: Modifier = Modifier,
     style: TextStyle = NexoType.Hero,
     color: Color = LocalNexoColors.current.text,

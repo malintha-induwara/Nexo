@@ -2,33 +2,33 @@ package com.nexo.app.domain
 
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.common.money.Conversion
+import com.nexo.app.core.model.Account
+import com.nexo.app.core.model.AccountGroup
 import com.nexo.app.core.model.BookSettings
 import com.nexo.app.core.model.CardAccounting
 import com.nexo.app.core.model.CashFlow
+import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SymbolPosition
+import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.data.database.entity.AccountEntity
-import com.nexo.app.data.database.entity.AccountGroupEntity
-import com.nexo.app.data.database.entity.CurrencyEntity
-import com.nexo.app.data.database.entity.TransactionEntity
 import java.time.LocalDate
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class LedgerTest {
-    private val usd = CurrencyEntity("USD", "USD", "USD", "$", SymbolPosition.PREFIX, 2, 1.0, true, true, 0, 0)
-    private val eur = CurrencyEntity("EUR", "EUR", "EUR", "€", SymbolPosition.PREFIX, 2, 1.1, false, true, 1, 0)
+    private val usd = Currency("USD", "USD", "USD", "$", SymbolPosition.PREFIX, 2, 1.0, true, true, 0, 0)
+    private val eur = Currency("EUR", "EUR", "EUR", "€", SymbolPosition.PREFIX, 2, 1.1, false, true, 1, 0)
     private val groups = listOf(
-        AccountGroupEntity("1", "Accounts", GroupType.NORMAL, 1, 1, updatedAt = 0),
-        AccountGroupEntity("2", "Card", GroupType.CREDIT_CARD, 2, 2, updatedAt = 0),
-        AccountGroupEntity("3", "Debit", GroupType.DEBIT_CARD, 3, 3, updatedAt = 0),
-        AccountGroupEntity("4", "Savings", GroupType.NORMAL, 4, 4, updatedAt = 0),
+        AccountGroup("1", "Accounts", GroupType.NORMAL, 1, 1, updatedAt = 0),
+        AccountGroup("2", "Card", GroupType.CREDIT_CARD, 2, 2, updatedAt = 0),
+        AccountGroup("3", "Debit", GroupType.DEBIT_CARD, 3, 3, updatedAt = 0),
+        AccountGroup("4", "Savings", GroupType.NORMAL, 4, 4, updatedAt = 0),
     )
     private fun acc(id: String, group: String, flagged: Boolean = false, linked: String? = null, settle: Int = 1) =
-        AccountEntity(id, id, group, "USD", 0, transferExpense = flagged, linkedAccountId = linked, settlementDay = settle, createdAt = 0, updatedAt = 0)
+        Account(id, id, group, "USD", 0, transferExpense = flagged, linkedAccountId = linked, settlementDay = settle, createdAt = 0, updatedAt = 0)
     private val accounts = listOf(acc("bank", "1"), acc("card", "2", linked = "bank", settle = 10), acc("debit", "3", linked = "bank"), acc("save", "4", flagged = true))
 
     private fun ref(lump: Boolean = false, ti: Boolean = true) = RefData(
@@ -54,7 +54,7 @@ class LedgerTest {
     }
 
     private var n = 0
-    private fun tx(kind: TxKind, account: String, date: String, amount: Double) = TransactionEntity(
+    private fun tx(kind: TxKind, account: String, date: String, amount: Double) = Transaction(
         id = "t${n++}", kind = kind, accountId = account, dateTime = 0, date = date, amount = amount, amountMain = amount,
         amountAccount = amount, currencyId = "USD", createdAt = 0, updatedAt = 0,
     )
