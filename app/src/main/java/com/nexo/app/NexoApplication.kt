@@ -24,6 +24,7 @@ class NexoApplication : Application(), Configuration.Provider {
     @Inject lateinit var repeats: RepeatEngine
     @Inject @ApplicationScope lateinit var scope: CoroutineScope
     @Inject lateinit var refs: com.nexo.app.data.RefRepository
+    @Inject lateinit var smsCapture: com.nexo.app.sms.capture.SmsCapture
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
@@ -40,6 +41,8 @@ class NexoApplication : Application(), Configuration.Provider {
                         com.nexo.app.work.Notifications.updateQuickAdd(this@NexoApplication, refs.snapshot().settings.quickAddNotification)
                     }
                 }
+                // NQ-031 catch-up and NQ-033 expiry run at app start and on every foreground.
+                scope.launch { smsCapture.refresh() }
             }
 
             override fun onStop(owner: LifecycleOwner) {

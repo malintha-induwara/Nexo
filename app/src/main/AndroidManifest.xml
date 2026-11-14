@@ -8,6 +8,10 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Bank SMS capture (spec-money-master-sl 01/04). Restricted on Google Play: needs the SMS declaration. -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
@@ -120,6 +124,14 @@
         </receiver>
         <receiver android:name=".work.ReminderReceiver" android:exported="false" />
         <receiver android:name=".work.QuickAddRepostReceiver" android:exported="false" />
+        <receiver
+            android:name=".sms.capture.SmsReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
         <receiver android:name=".work.BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

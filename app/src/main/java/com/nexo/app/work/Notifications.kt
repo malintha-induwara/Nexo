@@ -43,8 +43,10 @@ interface NotificationsEntryPoint {
 object Notifications {
     const val CHANNEL_REMINDER = "reminder"
     const val CHANNEL_QUICK_ADD = "quick_add"
+    const val CHANNEL_SMS = "sms_review"
     private const val ID_REMINDER = 1001
     private const val ID_QUICK_ADD = 1002
+    private const val ID_SMS = 1003
 
     fun ensureChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -57,6 +59,11 @@ object Notifications {
         )
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_QUICK_ADD, context.getString(R.string.quick_add), NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) },
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_SMS, context.getString(R.string.sms_channel_name), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = context.getString(R.string.sms_channel_description)
+            },
         )
     }
 
@@ -98,6 +105,31 @@ object Notifications {
             .build()
         try {
             nm.notify(ID_QUICK_ADD, n)
+        } catch (_: SecurityException) {
+            // Notification permission revoked meanwhile.
+        }
+    }
+
+    /** LKSMS-015: only a count, never message text or amounts. [count] 0 removes it. */
+    fun postSmsReview(context: Context, count: Int) {
+        val nm = NotificationManagerCompat.from(context)
+        if (count <= 0) {
+            nm.cancel(ID_SMS)
+            return
+        }
+        if (!canPost(context)) return
+        ensureChannels(context)
+        val n = NotificationCompat.Builder(context, CHANNEL_SMS)
+            .setSmallIcon(R.drawable.ic_stat_nexo)
+            .setContentTitle(context.getString(R.string.sms_review_title))
+            .setContentText(context.resources.getQuantityString(R.plurals.sms_review_count, count, count))
+            .setNumber(count)
+            .setOnlyAlertOnce(true)
+            .setAutoCancel(true)
+            .setContentIntent(activityIntent(context, IntentRouter.ACTION_REVIEW, 50))
+            .build()
+        try {
+            nm.notify(ID_SMS, n)
         } catch (_: SecurityException) {
             // Notification permission revoked meanwhile.
         }

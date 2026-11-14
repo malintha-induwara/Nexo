@@ -31,6 +31,10 @@ data class BookSettings(
     val transferIncome: Boolean = true,
     val subcategories: Boolean = false,
     val repeatReflect: RepeatReflect = RepeatReflect.ON_DATE,
+    /** Account that SMS cash withdrawals go to (CB-005); "" = the first account in the Cash group. */
+    val smsCashAccountId: String = "",
+    /** System "Bank Fee" category, created on first use (spec 02 improvement 1); "" = not created yet. */
+    val bankFeeCategoryId: String = "",
 ) {
     val periods: PeriodEngine by lazy { PeriodEngine(monthStartDay, weekendRule, weekStartDay) }
 
@@ -53,6 +57,8 @@ data class BookSettings(
         Keys.TRANSFER_INCOME to transferIncome.toString(),
         Keys.SUBCATEGORIES to subcategories.toString(),
         Keys.REPEAT_REFLECT to repeatReflect.name,
+        Keys.SMS_CASH_ACCOUNT to smsCashAccountId,
+        Keys.BANK_FEE_CATEGORY to bankFeeCategoryId,
     )
 
     object Keys {
@@ -74,6 +80,8 @@ data class BookSettings(
         const val TRANSFER_INCOME = "transfer_income"
         const val SUBCATEGORIES = "subcategories"
         const val REPEAT_REFLECT = "repeat_reflect"
+        const val SMS_CASH_ACCOUNT = "sms_cash_account"
+        const val BANK_FEE_CATEGORY = "bank_fee_category"
     }
 
     companion object {
@@ -102,6 +110,8 @@ data class BookSettings(
                 transferIncome = bool(Keys.TRANSFER_INCOME, d.transferIncome),
                 subcategories = bool(Keys.SUBCATEGORIES, d.subcategories),
                 repeatReflect = enumOr(map[Keys.REPEAT_REFLECT], d.repeatReflect),
+                smsCashAccountId = map[Keys.SMS_CASH_ACCOUNT].orEmpty(),
+                bankFeeCategoryId = map[Keys.BANK_FEE_CATEGORY].orEmpty(),
             )
         }
 

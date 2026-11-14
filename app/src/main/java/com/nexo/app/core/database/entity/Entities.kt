@@ -88,6 +88,7 @@ data class CurrencyEntity(
         Index("transferGroupId"),
         Index("feeGroupId"),
         Index("installmentGroupId"),
+        Index("feeParentId"),
     ],
 )
 data class TransactionEntity(
@@ -124,6 +125,11 @@ data class TransactionEntity(
     val sourceText: String? = null,
     val createdAt: Long,
     val updatedAt: Long,
+    /**
+     * Bank fee charged on a non-transfer row (spec 02 Nexo improvement 1): the fee expense points at its parent.
+     * Transfer fees keep using [feeGroupId].
+     */
+    val feeParentId: String? = null,
 )
 
 @Entity(tableName = "transaction_tags", primaryKeys = ["transactionId", "tagId"], indices = [Index("tagId")])

@@ -37,11 +37,13 @@ class DataReset @Inject constructor(
         widgets.refresh()
     }
 
-    /** Reset contents only: transactions, photos and tag links. */
+    /** Reset contents only: transactions, photos, tag links and the SMS review queue that points at them. */
     suspend fun contentsReset(deletePhotos: Boolean) = withContext(Dispatchers.IO) {
         db.transactionDao().deleteAll()
         db.photoDao().deleteAll()
         db.tagDao().deleteAllLinks()
+        db.smsDao().deleteAllItems()
+        db.smsDao().deleteAllHints()
         vacuum()
         if (deletePhotos) dirs.photos.listFiles()?.forEach { it.delete() }
         widgets.refresh()

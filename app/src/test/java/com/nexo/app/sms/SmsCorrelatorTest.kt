@@ -84,7 +84,7 @@ class SmsCorrelatorTest {
         assertEquals(SmsStatus.PENDING, o.item.status)
         assertEquals(created.id, o.item.linkedItemId)
         assertEquals("acc", o.item.accountId)
-        assertEquals("cat", o.item.categoryId)
+        assertEquals(null, o.item.categoryId)
         assertEquals(null, o.item.transactionId)
         // The bank repeating the cancellation doesn't queue a second refund.
         assertTrue(send("YOUR TRANSACTION AT Mega*Store ON YOUR CARD ENDING WITH 9876 HAS BEEN CANCELLED.", base + 2 * minute) is Outcome.Duplicate)

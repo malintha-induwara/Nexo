@@ -5,6 +5,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.nexo.app.sms.Certainty
 import com.nexo.app.sms.DenyReason
+import com.nexo.app.sms.FeeMode
 import com.nexo.app.sms.FeeRoute
 import com.nexo.app.sms.RateSide
 import com.nexo.app.sms.SmsKind
@@ -88,4 +89,47 @@ data class SmsOtpHintEntity(
     val amount: Double,
     val currency: String,
     val at: Long,
+)
+
+/** Which account a bank card (or the bank as a whole, when [last4] is empty) belongs to (CB-001, NQ-032 card mapping). */
+@Entity(tableName = "sms_sources", primaryKeys = ["bank", "last4"], indices = [Index("accountId")])
+data class SmsSourceEntity(
+    val bank: String,
+    /** Card or account digits; "" is the bank's default account. */
+    val last4: String,
+    val accountId: String,
+    val updatedAt: Long,
+)
+
+/** Learned merchant → category (LKSMS-018, CB-012). Keyed on the cleaned merchant key. */
+@Entity(tableName = "sms_merchant_rules")
+data class SmsMerchantRuleEntity(
+    @PrimaryKey val merchantKey: String,
+    val categoryId: String,
+    val updatedAt: Long,
+)
+
+/** NQ fee preset, keyed by source account and route. */
+@Entity(tableName = "fee_presets", primaryKeys = ["accountId", "route"])
+data class FeePresetEntity(
+    val accountId: String,
+    val route: FeeRoute,
+    val lastFee: Double? = null,
+    val mode: FeeMode,
+    val updatedAt: Long,
+)
+
+/** One bank's board rate for one currency at one fetch (NQ-010). Kept to build a local rate history. */
+@Entity(tableName = "fx_snapshots", primaryKeys = ["capturedAt", "bank", "ccy"], indices = [Index("ccy", "capturedAt")])
+data class FxSnapshotEntity(
+    val capturedAt: Long,
+    /** API bank code, e.g. "combank". */
+    val bank: String,
+    val ccy: String,
+    /** LKR per one unit of [ccy]. */
+    val buy: Double? = null,
+    val sell: Double? = null,
+    val mid: Double? = null,
+    val official: Double? = null,
+    val spreadPct: Double? = null,
 )

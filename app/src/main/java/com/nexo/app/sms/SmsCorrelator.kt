@@ -146,6 +146,8 @@ class SmsCorrelator(private val store: SmsStore) {
                     kind = SmsKind.INCOME, template = CANCELLED, feeRoute = null, smsAt = msg.timestamp,
                     occurredAt = msg.timestamp, capturedAt = now, dedupeKey = key, evidenceCount = 1, transactionId = null,
                     linkedItemId = target.id, decidedAt = null, denyReason = null, updatedAt = now,
+                    // Money back is income; the purchase's expense category doesn't apply.
+                    categoryId = null, toAccountId = null, actualAmount = null,
                 )
                 store.insert(reversal)
                 Outcome.Reversal(reversal, target)

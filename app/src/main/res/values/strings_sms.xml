@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Notification -->
+    <string name="sms_channel_name">Bank SMS review</string>
+    <string name="sms_channel_description">Lets you know when a bank SMS is waiting for you to review</string>
+    <string name="sms_review_title">Bank transactions to review</string>
+    <plurals name="sms_review_count">
+        <item quantity="one">%d new transaction from your bank SMS</item>
+        <item quantity="other">%d new transactions from your bank SMS</item>
+    </plurals>
+</resources>

@@ -24,6 +24,9 @@ enum class ThemeMode { LIGHT, DARK, SYSTEM }
 
 enum class ThemeColor { WHITE, RED, PINK, GREEN, BLUE, BLACK }
 
+/** NQ-032 first-run "Add past transactions" offer. */
+enum class SmsHistoryImport { NOT_OFFERED, OFFERED, DONE, SKIPPED }
+
 enum class LockTimeout(val seconds: Int) { IMMEDIATELY(0), ONE_MINUTE(60), FIVE_MINUTES(300), FIFTEEN_MINUTES(900), ONE_HOUR(3600) }
 
 /** Device-level preferences (07 tier 2). Never part of a data backup. */
@@ -54,6 +57,24 @@ data class DeviceSettings(
     val transferGuideShown: Boolean = false,
     val budgetHelpHidden: Boolean = false,
     val memoHelpHidden: Boolean = false,
+    /** NQ-030 "Auto-capture bank SMS", on by default. */
+    val smsCaptureEnabled: Boolean = true,
+    /** NQ-031 start point: when capture last became active (switch on and permission granted); 0 = not active. */
+    val smsCaptureStartedAt: Long = 0,
+    /** When capture last stopped; turns into the re-enable gap. */
+    val smsCaptureStoppedAt: Long = 0,
+    /** Catch-up watermark (inbox `date`); never earlier than the start point. */
+    val smsLastProcessedAt: Long = 0,
+    val smsHistoryImport: SmsHistoryImport = SmsHistoryImport.NOT_OFFERED,
+    /** LKSMS-013: keep message text unredacted. */
+    val smsStoreFullText: Boolean = false,
+    /** LKSMS-003 user-added sender IDs. */
+    val smsCustomSenders: Set<String> = emptySet(),
+    /** Last time the Review Queue was opened; the notification counts items captured after it. */
+    val smsSeenAt: Long = 0,
+    /** NQ-030 re-enable hint: messages in [smsGapFrom, smsGapUntil) were not captured. 0 = no hint. */
+    val smsGapFrom: Long = 0,
+    val smsGapUntil: Long = 0,
 ) {
     val lockEnabled: Boolean get() = pinHash != null
 }
@@ -87,6 +108,16 @@ class DevicePrefs @Inject constructor(@ApplicationContext private val context: C
         val transferGuide = booleanPreferencesKey("transfer_guide_shown")
         val budgetHelpHidden = booleanPreferencesKey("budget_help_hidden")
         val memoHelpHidden = booleanPreferencesKey("memo_help_hidden")
+        val smsCaptureEnabled = booleanPreferencesKey("sms_capture_enabled")
+        val smsCaptureStartedAt = longPreferencesKey("sms_capture_started_at")
+        val smsCaptureStoppedAt = longPreferencesKey("sms_capture_stopped_at")
+        val smsLastProcessedAt = longPreferencesKey("sms_last_processed_at")
+        val smsHistoryImport = stringPreferencesKey("sms_history_import_state")
+        val smsStoreFullText = booleanPreferencesKey("sms_store_full_text")
+        val smsCustomSenders = stringSetPreferencesKey("sms_custom_senders")
+        val smsSeenAt = longPreferencesKey("sms_seen_at")
+        val smsGapFrom = longPreferencesKey("sms_gap_from")
+        val smsGapUntil = longPreferencesKey("sms_gap_until")
     }
 
     private fun widgetModeKey(id: Int) = intPreferencesKey("widget_mode_$id")
@@ -119,6 +150,16 @@ class DevicePrefs @Inject constructor(@ApplicationContext private val context: C
             transferGuideShown = p[K.transferGuide] ?: false,
             budgetHelpHidden = p[K.budgetHelpHidden] ?: false,
             memoHelpHidden = p[K.memoHelpHidden] ?: false,
+            smsCaptureEnabled = p[K.smsCaptureEnabled] ?: true,
+            smsCaptureStartedAt = p[K.smsCaptureStartedAt] ?: 0,
+            smsCaptureStoppedAt = p[K.smsCaptureStoppedAt] ?: 0,
+            smsLastProcessedAt = p[K.smsLastProcessedAt] ?: 0,
+            smsHistoryImport = p[K.smsHistoryImport]?.let { runCatching { SmsHistoryImport.valueOf(it) }.getOrNull() } ?: SmsHistoryImport.NOT_OFFERED,
+            smsStoreFullText = p[K.smsStoreFullText] ?: false,
+            smsCustomSenders = p[K.smsCustomSenders] ?: emptySet(),
+            smsSeenAt = p[K.smsSeenAt] ?: 0,
+            smsGapFrom = p[K.smsGapFrom] ?: 0,
+            smsGapUntil = p[K.smsGapUntil] ?: 0,
         )
     }
 
@@ -164,4 +205,33 @@ class DevicePrefs @Inject constructor(@ApplicationContext private val context: C
     suspend fun setTransferGuideShown() = context.dataStore.edit { it[K.transferGuide] = true }
     suspend fun setBudgetHelpHidden(v: Boolean) = context.dataStore.edit { it[K.budgetHelpHidden] = v }
     suspend fun setMemoHelpHidden(v: Boolean) = context.dataStore.edit { it[K.memoHelpHidden] = v }
+
+    suspend fun setSmsCaptureEnabled(v: Boolean) = context.dataStore.edit { it[K.smsCaptureEnabled] = v }
+
+    /** Capture became active: a new start point (BR-Q7). After an earlier stop, the gap becomes the re-enable hint. */
+    suspend fun markSmsCaptureStarted(now: Long) = context.dataStore.edit {
+        val stopped = it[K.smsCaptureStoppedAt] ?: 0
+        if (stopped in 1 until now) {
+            it[K.smsGapFrom] = stopped
+            it[K.smsGapUntil] = now
+        }
+        it[K.smsCaptureStartedAt] = now
+        it[K.smsLastProcessedAt] = now
+        it[K.smsCaptureStoppedAt] = 0
+    }
+
+    suspend fun markSmsCaptureStopped(now: Long) = context.dataStore.edit {
+        it[K.smsCaptureStartedAt] = 0
+        it[K.smsCaptureStoppedAt] = now
+    }
+
+    suspend fun setSmsLastProcessed(v: Long) = context.dataStore.edit { it[K.smsLastProcessedAt] = v }
+    suspend fun setSmsHistoryImport(v: SmsHistoryImport) = context.dataStore.edit { it[K.smsHistoryImport] = v.name }
+    suspend fun setSmsStoreFullText(v: Boolean) = context.dataStore.edit { it[K.smsStoreFullText] = v }
+    suspend fun setSmsCustomSenders(v: Set<String>) = context.dataStore.edit { it[K.smsCustomSenders] = v }
+    suspend fun setSmsSeenAt(v: Long) = context.dataStore.edit { it[K.smsSeenAt] = v }
+    suspend fun clearSmsGap() = context.dataStore.edit {
+        it[K.smsGapFrom] = 0
+        it[K.smsGapUntil] = 0
+    }
 }

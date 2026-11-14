@@ -15,6 +15,7 @@ object IntentRouter {
     const val ACTION_BOOKMARKS = "com.nexo.app.action.BOOKMARKS"
     const val ACTION_ACCOUNT = "com.nexo.app.action.ACCOUNT"
     const val ACTION_MAIN = "com.nexo.app.action.MAIN"
+    const val ACTION_REVIEW = "com.nexo.app.action.REVIEW"
     const val EXTRA_TYPE = "type"
     const val EXTRA_ACCOUNT = "account"
     const val SCHEME = "nexo"
