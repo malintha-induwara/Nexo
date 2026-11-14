@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -56,6 +57,8 @@ import com.nexo.app.ui.designsystem.component.MessageDialog
 import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.component.SectionHeader
 import com.nexo.app.ui.designsystem.component.SettingRow
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.lock.expectReturn
 import com.nexo.app.ui.navigation.AutoBackupHistoryKey
 import com.nexo.app.ui.navigation.BackupDeviceKey
@@ -116,16 +119,27 @@ private fun restoreMessage(r: RestoreResult) = stringResource(
     },
 )
 
+/** What the backup screen can do; each action defaults to nothing. */
+class BackupActions(
+    val onBack: () -> Unit = {},
+    val onBackupDevice: () -> Unit = {},
+    val onShareBackup: () -> Unit = {},
+    val onExcelExport: () -> Unit = {},
+    val onImportExcel: () -> Unit = {},
+    val onExportPhotos: () -> Unit = {},
+    val onImportPhotos: () -> Unit = {},
+    val onHelp: () -> Unit = {},
+    val localPhotoCount: () -> Int = { 0 },
+    val onCompleteReset: (deletePhotos: Boolean) -> Unit = {},
+    val onContentsReset: (deletePhotos: Boolean) -> Unit = {},
+    val onPhotosCopiedShown: () -> Unit = {},
+)
+
 @Composable
-fun BackupScreen(vm: BackupViewModel = hiltViewModel()) {
+fun BackupRoute(vm: BackupViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val busy = state.busy
-    val progress = state.progress
-    var resetFlow by rememberSaveable { mutableStateOf<String?>(null) }
-    var resetStep by rememberSaveable { mutableStateOf(0) }
-    var deletePhotos by rememberSaveable { mutableStateOf(false) }
     var photoResult by remember { mutableStateOf<Int?>(null) }
     val subject = stringResource(R.string.backup_mail_subject)
     val body = stringResource(R.string.backup_mail_body)
@@ -158,41 +172,59 @@ fun BackupScreen(vm: BackupViewModel = hiltViewModel()) {
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
             uri?.let(vm::importPhotos)
         }
+    BackupScreen(
+        state = state,
+        photosCopied = photoResult,
+        actions = BackupActions(
+            onBack = nav::back,
+            onBackupDevice = { nav.navigate(BackupDeviceKey) },
+            onShareBackup = vm::shareBackup,
+            onExcelExport = { nav.navigate(ExcelExportKey()) },
+            onImportExcel = { nav.navigate(ImportListKey) },
+            onExportPhotos = {
+                context.expectReturn()
+                exportTree.launch(null)
+            },
+            onImportPhotos = {
+                context.expectReturn()
+                importTree.launch(null)
+            },
+            onHelp = { nav.navigate(HelpPageKey("backup")) },
+            localPhotoCount = vm::localPhotoCount,
+            onCompleteReset = vm::completeReset,
+            onContentsReset = vm::contentsReset,
+            onPhotosCopiedShown = { photoResult = null },
+        ),
+    )
+}
+
+/** [photosCopied] is how many photos an export or import just copied, shown until dismissed. */
+@Composable
+internal fun BackupScreen(state: BackupUiState, photosCopied: Int?, actions: BackupActions) {
+    val busy = state.busy
+    val progress = state.progress
+    var resetFlow by rememberSaveable { mutableStateOf<String?>(null) }
+    var resetStep by rememberSaveable { mutableStateOf(0) }
+    var deletePhotos by rememberSaveable { mutableStateOf(false) }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.backup), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.backup), onBack = actions.onBack)
     }) { p ->
         Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
-            SettingRow(stringResource(R.string.backup_on_device), onClick = {
-                nav.navigate(BackupDeviceKey)
-            })
-            SettingRow(stringResource(R.string.share_backup), onClick = {
-                vm.shareBackup()
-            })
-            SettingRow(stringResource(R.string.export_to_excel), onClick = {
-                nav.navigate(ExcelExportKey())
-            })
-            SettingRow(stringResource(R.string.import_excel), onClick = {
-                nav.navigate(ImportListKey)
-            })
+            SettingRow(stringResource(R.string.backup_on_device), onClick = actions.onBackupDevice)
+            SettingRow(stringResource(R.string.share_backup), onClick = actions.onShareBackup)
+            SettingRow(stringResource(R.string.export_to_excel), onClick = actions.onExcelExport)
+            SettingRow(stringResource(R.string.import_excel), onClick = actions.onImportExcel)
             SettingRow(
                 stringResource(R.string.export_photos),
                 stringResource(R.string.export_photos_text),
-                onClick = {
-                    context.expectReturn()
-                    exportTree.launch(null)
-                },
+                onClick = actions.onExportPhotos,
             )
             SettingRow(
                 stringResource(R.string.import_photos),
                 stringResource(R.string.import_photos_text),
-                onClick = {
-                    context.expectReturn()
-                    importTree.launch(null)
-                },
+                onClick = actions.onImportPhotos,
             )
-            SettingRow(stringResource(R.string.help_backup), onClick = {
-                nav.navigate(HelpPageKey("backup"))
-            })
+            SettingRow(stringResource(R.string.help_backup), onClick = actions.onHelp)
             SectionHeader(stringResource(R.string.action_reset))
             SettingRow(stringResource(R.string.complete_reset), onClick = {
                 resetFlow = "all"
@@ -207,17 +239,22 @@ fun BackupScreen(vm: BackupViewModel = hiltViewModel()) {
         }
     }
     BusyOverlay(busy, progress)
-    photoResult?.let {
-        MessageDialog(stringResource(R.string.photos_copied, it), onDismiss = {
-            photoResult = null
-        })
+    photosCopied?.let {
+        MessageDialog(
+            stringResource(R.string.photos_copied, it),
+            onDismiss = actions.onPhotosCopiedShown,
+        )
     }
     val flow = resetFlow
     if (flow != null) {
-        val photoCount = vm.localPhotoCount()
+        val photoCount = actions.localPhotoCount()
         val finish = {
             resetFlow = null
-            if (flow == "all") vm.completeReset(deletePhotos) else vm.contentsReset(deletePhotos)
+            if (flow == "all") {
+                actions.onCompleteReset(deletePhotos)
+            } else {
+                actions.onContentsReset(deletePhotos)
+            }
         }
         when (resetStep) {
             1 -> ConfirmDialog(
@@ -270,15 +307,11 @@ fun BackupScreen(vm: BackupViewModel = hiltViewModel()) {
     }
 }
 
-/** Backup / restore on device. */
 @Composable
-fun BackupDeviceScreen(vm: RestoreViewModel = hiltViewModel()) {
-    val clock = LocalClock.current
+fun BackupDeviceRoute(vm: RestoreViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val busy = state.busy
-    val files = state.backups
     var message by remember { mutableStateOf<Int?>(null) }
     var pending by remember { mutableStateOf<Uri?>(null) }
     var result by remember { mutableStateOf<RestoreResult?>(null) }
@@ -311,8 +344,58 @@ fun BackupDeviceScreen(vm: RestoreViewModel = hiltViewModel()) {
             }
         }
     }
+    BackupDeviceScreen(
+        state = state,
+        message = message,
+        pendingRestore = pending,
+        restoreResult = result,
+        onBack = nav::back,
+        onBackup = {
+            context.expectReturn()
+            create.launch(vm.backupFileName())
+        },
+        onPickBackupFile = {
+            context.expectReturn()
+            open.launch(arrayOf("*/*"))
+        },
+        onAutoBackupHistory = { nav.navigate(AutoBackupHistoryKey) },
+        onMessageShown = { message = null },
+        onRestore = vm::restore,
+        onRestoreDismissed = { pending = null },
+        onResultShown = {
+            val r = result
+            result = null
+            if (r == RestoreResult.Success) {
+                nav.resetTo(MainKey)
+            }
+        },
+    )
+}
+
+/**
+ * Backup / restore on device. [message] is a string resource to show, [pendingRestore] a picked
+ * file waiting for confirmation, and [restoreResult] the outcome of the last restore.
+ */
+@Composable
+internal fun BackupDeviceScreen(
+    state: RestoreUiState,
+    message: Int?,
+    pendingRestore: Uri?,
+    restoreResult: RestoreResult?,
+    onBack: () -> Unit,
+    onBackup: () -> Unit,
+    onPickBackupFile: () -> Unit,
+    onAutoBackupHistory: () -> Unit,
+    onMessageShown: () -> Unit,
+    onRestore: (Uri) -> Unit,
+    onRestoreDismissed: () -> Unit,
+    onResultShown: () -> Unit,
+) {
+    val clock = LocalClock.current
+    val busy = state.busy
+    val files = state.backups
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.backup_on_device), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.backup_on_device), onBack = onBack)
     }) { p ->
         Column(Modifier.padding(p)) {
             Text(
@@ -324,18 +407,12 @@ fun BackupDeviceScreen(vm: RestoreViewModel = hiltViewModel()) {
             SettingRow(
                 stringResource(R.string.data_backup),
                 stringResource(R.string.data_backup_text),
-                onClick = {
-                    context.expectReturn()
-                    create.launch(vm.backupFileName())
-                },
+                onClick = onBackup,
             )
             SettingRow(
                 stringResource(R.string.data_recovery),
                 stringResource(R.string.data_recovery_text),
-                onClick = {
-                    context.expectReturn()
-                    open.launch(arrayOf("*/*"))
-                },
+                onClick = onPickBackupFile,
             )
             files.firstOrNull()?.let { newest ->
                 SettingRow(
@@ -345,29 +422,20 @@ fun BackupDeviceScreen(vm: RestoreViewModel = hiltViewModel()) {
                             newest.lastModified(),
                         ).atZone(clock.zone).toLocalDateTime(),
                     ),
-                    onClick = {
-                        nav.navigate(AutoBackupHistoryKey)
-                    },
+                    onClick = onAutoBackupHistory,
                 )
             }
         }
     }
     BusyOverlay(busy, null)
-    message?.let { MessageDialog(stringResource(it), onDismiss = { message = null }) }
-    pending?.let { uri ->
+    message?.let { MessageDialog(stringResource(it), onDismiss = onMessageShown) }
+    pendingRestore?.let { uri ->
         ConfirmDialog(stringResource(R.string.restore_selected_question), onConfirm = {
-            vm.restore(uri)
-        }, onDismiss = {
-            pending = null
-        })
+            onRestore(uri)
+        }, onDismiss = onRestoreDismissed)
     }
-    result?.let { r ->
-        MessageDialog(restoreMessage(r), onDismiss = {
-            result = null
-            if (r == RestoreResult.Success) {
-                nav.resetTo(MainKey)
-            }
-        })
+    restoreResult?.let { r ->
+        MessageDialog(restoreMessage(r), onDismiss = onResultShown)
     }
 }
 
@@ -383,51 +451,61 @@ fun displayName(context: Context, uri: Uri): String? = runCatching {
     }
 }.getOrNull() ?: uri.lastPathSegment
 
-/** Restore requested by opening a backup file with Nexo. */
 @Composable
-fun RestoreFileScreen(key: RestoreFileKey, vm: RestoreViewModel = hiltViewModel()) {
+fun RestoreFileRoute(key: RestoreFileKey, vm: RestoreViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val busy = state.busy
     var result by remember { mutableStateOf<RestoreResult?>(null) }
-    var asked by remember { mutableStateOf(true) }
     LaunchedEffect(state.result) {
         val r = state.result as? BackupResult.Restored ?: return@LaunchedEffect
         result = r.result
         vm.onResultHandled()
     }
+    RestoreFileScreen(
+        state = state,
+        restoreResult = result,
+        onBack = nav::back,
+        onRestore = { vm.restore(Uri.parse(key.uri)) },
+        onResultShown = {
+            result = null
+            nav.resetTo(MainKey)
+        },
+    )
+}
+
+/** Restore requested by opening a backup file with Nexo. */
+@Composable
+internal fun RestoreFileScreen(
+    state: RestoreUiState,
+    restoreResult: RestoreResult?,
+    onBack: () -> Unit,
+    onRestore: () -> Unit,
+    onResultShown: () -> Unit,
+) {
+    val busy = state.busy
+    var asked by remember { mutableStateOf(true) }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.data_recovery), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.data_recovery), onBack = onBack)
     }) { p -> Column(Modifier.padding(p)) {} }
     if (asked) {
         ConfirmDialog(stringResource(R.string.restore_selected_question), onConfirm = {
             asked = false
-            vm.restore(Uri.parse(key.uri))
+            onRestore()
         }, onDismiss = {
             asked = false
-            nav.back()
+            onBack()
         })
     }
     BusyOverlay(busy, null)
-    result?.let { r ->
-        MessageDialog(restoreMessage(r), onDismiss = {
-            result = null
-            nav.resetTo(MainKey)
-        })
+    restoreResult?.let { r ->
+        MessageDialog(restoreMessage(r), onDismiss = onResultShown)
     }
 }
 
 @Composable
-fun AutoBackupHistoryScreen(vm: RestoreViewModel = hiltViewModel()) {
-    val clock = LocalClock.current
+fun AutoBackupHistoryRoute(vm: RestoreViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val files = state.backups
-    val busy = state.busy
-    var editing by remember { mutableStateOf(false) }
-    var checked by remember { mutableStateOf(setOf<String>()) }
-    var confirmDelete by remember { mutableStateOf(false) }
-    var restore by remember { mutableStateOf<File?>(null) }
     var result by remember { mutableStateOf<RestoreResult?>(null) }
     LaunchedEffect(Unit) { vm.refreshFiles() }
     LaunchedEffect(state.result) {
@@ -435,12 +513,44 @@ fun AutoBackupHistoryScreen(vm: RestoreViewModel = hiltViewModel()) {
         result = r.result
         vm.onResultHandled()
     }
+    AutoBackupHistoryScreen(
+        state = state,
+        restoreResult = result,
+        onBack = nav::back,
+        onDelete = vm::deleteBackups,
+        onRestore = vm::restoreFile,
+        onResultShown = {
+            val r = result
+            result = null
+            if (r == RestoreResult.Success) {
+                nav.resetTo(MainKey)
+            }
+        },
+    )
+}
+
+@Composable
+internal fun AutoBackupHistoryScreen(
+    state: RestoreUiState,
+    restoreResult: RestoreResult?,
+    onBack: () -> Unit,
+    onDelete: (List<File>) -> Unit,
+    onRestore: (File) -> Unit,
+    onResultShown: () -> Unit,
+) {
+    val clock = LocalClock.current
+    val files = state.backups
+    val busy = state.busy
+    var editing by remember { mutableStateOf(false) }
+    var checked by remember { mutableStateOf(setOf<String>()) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    var restore by remember { mutableStateOf<File?>(null) }
     Scaffold(topBar = {
         NexoTopBar(stringResource(R.string.auto_backup_history), onBack = {
             if (editing) {
                 editing = false
             } else {
-                nav.back()
+                onBack()
             }
         }) {
             if (editing) {
@@ -504,7 +614,7 @@ fun AutoBackupHistoryScreen(vm: RestoreViewModel = hiltViewModel()) {
     BusyOverlay(busy, null)
     if (confirmDelete) {
         ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
-            vm.deleteBackups(
+            onDelete(
                 files.filter {
                     it.name in
                         checked
@@ -516,28 +626,51 @@ fun AutoBackupHistoryScreen(vm: RestoreViewModel = hiltViewModel()) {
     }
     restore?.let { f ->
         ConfirmDialog(stringResource(R.string.restore_selected_question), onConfirm = {
-            vm.restoreFile(f)
+            onRestore(f)
         }, onDismiss = {
             restore = null
         })
     }
-    result?.let { r ->
-        MessageDialog(restoreMessage(r), onDismiss = {
-            result = null
-            if (r == RestoreResult.Success) {
-                nav.resetTo(MainKey)
-            }
-        })
+    restoreResult?.let { r ->
+        MessageDialog(restoreMessage(r), onDismiss = onResultShown)
     }
+}
+
+@Composable
+fun ExcelExportRoute(key: ExcelExportKey, vm: ExcelExportViewModel = hiltViewModel()) {
+    val nav = LocalNavigator.current
+    val context = LocalContext.current
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val noBackup = stringResource(R.string.excel_not_backup)
+    val subjectBase = stringResource(R.string.excel_subject)
+    LaunchedEffect(state.result) {
+        val r = state.result as? BackupResult.ExcelReady ?: return@LaunchedEffect
+        val subject = if (r.total) {
+            subjectBase
+        } else {
+            "$subjectBase ${Formats.shortDate(r.range.start)} ~ ${Formats.shortDate(r.range.end)}"
+        }
+        shareFile(
+            context,
+            r.file,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            subject,
+            noBackup,
+        )
+        vm.onResultHandled()
+    }
+    ExcelExportScreen(key = key, state = state, onBack = nav::back, onExport = vm::exportExcel)
 }
 
 /** Excel period dialog. */
 @Composable
-fun ExcelExportScreen(key: ExcelExportKey, vm: ExcelExportViewModel = hiltViewModel()) {
+internal fun ExcelExportScreen(
+    key: ExcelExportKey,
+    state: ExcelExportUiState,
+    onBack: () -> Unit,
+    onExport: (DateRange, total: Boolean) -> Unit,
+) {
     val clock = LocalClock.current
-    val nav = LocalNavigator.current
-    val context = LocalContext.current
-    val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
     val busy = state.busy
     val e = ref.settings.periods
@@ -559,26 +692,8 @@ fun ExcelExportScreen(key: ExcelExportKey, vm: ExcelExportViewModel = hiltViewMo
             true,
         ),
     )
-    val noBackup = stringResource(R.string.excel_not_backup)
-    val subjectBase = stringResource(R.string.excel_subject)
-    LaunchedEffect(state.result) {
-        val r = state.result as? BackupResult.ExcelReady ?: return@LaunchedEffect
-        val subject = if (r.total) {
-            subjectBase
-        } else {
-            "$subjectBase ${Formats.shortDate(r.range.start)} ~ ${Formats.shortDate(r.range.end)}"
-        }
-        shareFile(
-            context,
-            r.file,
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            subject,
-            noBackup,
-        )
-        vm.onResultHandled()
-    }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.export_to_excel), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.export_to_excel), onBack = onBack)
     }) { p ->
         Column(Modifier.padding(p)) {
             options.forEach { (label, range, total) ->
@@ -590,11 +705,84 @@ fun ExcelExportScreen(key: ExcelExportKey, vm: ExcelExportViewModel = hiltViewMo
                         "${Formats.shortDate(range.start)} ~ ${Formats.shortDate(range.end)}"
                     },
                     onClick = {
-                        vm.exportExcel(range, total)
+                        onExport(range, total)
                     },
                 )
             }
         }
     }
     BusyOverlay(busy, null)
+}
+
+/** A file for previews: a name, a time and a size, without anything on disk. */
+internal fun previewFile(name: String, modified: Instant, bytes: Long): File = object : File(name) {
+    override fun lastModified() = modified.toEpochMilli()
+
+    override fun length() = bytes
+}
+
+private val previewBackups = listOf(
+    previewFile("nexo_auto_2.nexobak", Instant.parse("2026-11-14T03:00:00Z"), 184_000),
+    previewFile("nexo_auto_1.nexobak", Instant.parse("2026-11-13T03:00:00Z"), 181_000),
+)
+
+@Preview
+@Composable
+private fun BackupScreenPreview() = NexoPreview {
+    BackupScreen(state = BackupUiState(), photosCopied = null, actions = BackupActions())
+}
+
+@Preview
+@Composable
+private fun BackupDeviceScreenPreview() = NexoPreview {
+    BackupDeviceScreen(
+        state = RestoreUiState(backups = previewBackups),
+        message = null,
+        pendingRestore = null,
+        restoreResult = null,
+        onBack = {},
+        onBackup = {},
+        onPickBackupFile = {},
+        onAutoBackupHistory = {},
+        onMessageShown = {},
+        onRestore = {},
+        onRestoreDismissed = {},
+        onResultShown = {},
+    )
+}
+
+@Preview
+@Composable
+private fun RestoreFileScreenPreview() = NexoPreview {
+    RestoreFileScreen(
+        state = RestoreUiState(),
+        restoreResult = null,
+        onBack = {},
+        onRestore = {},
+        onResultShown = {},
+    )
+}
+
+@Preview
+@Composable
+private fun AutoBackupHistoryScreenPreview() = NexoPreview {
+    AutoBackupHistoryScreen(
+        state = RestoreUiState(backups = previewBackups),
+        restoreResult = null,
+        onBack = {},
+        onDelete = {},
+        onRestore = {},
+        onResultShown = {},
+    )
+}
+
+@Preview
+@Composable
+private fun ExcelExportScreenPreview() = NexoPreview {
+    ExcelExportScreen(
+        key = ExcelExportKey(),
+        state = ExcelExportUiState(ref = PreviewData.ref),
+        onBack = {},
+        onExport = { _, _ -> },
+    )
 }

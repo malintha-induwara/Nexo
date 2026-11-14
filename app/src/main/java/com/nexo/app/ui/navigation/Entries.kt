@@ -13,13 +13,13 @@ import com.nexo.app.ui.accounts.DeletedAccountsRoute
 import com.nexo.app.ui.accounts.DeletedGroupsRoute
 import com.nexo.app.ui.accounts.TotalStatsRoute
 import com.nexo.app.ui.accounts.TransferExpenseRoute
-import com.nexo.app.ui.backup.AutoBackupHistoryScreen
-import com.nexo.app.ui.backup.BackupDeviceScreen
-import com.nexo.app.ui.backup.BackupScreen
-import com.nexo.app.ui.backup.ExcelExportScreen
-import com.nexo.app.ui.backup.ImportListScreen
-import com.nexo.app.ui.backup.ImportPreviewScreen
-import com.nexo.app.ui.backup.RestoreFileScreen
+import com.nexo.app.ui.backup.AutoBackupHistoryRoute
+import com.nexo.app.ui.backup.BackupDeviceRoute
+import com.nexo.app.ui.backup.BackupRoute
+import com.nexo.app.ui.backup.ExcelExportRoute
+import com.nexo.app.ui.backup.ImportListRoute
+import com.nexo.app.ui.backup.ImportPreviewRoute
+import com.nexo.app.ui.backup.RestoreFileRoute
 import com.nexo.app.ui.budgets.BudgetAddRoute
 import com.nexo.app.ui.budgets.BudgetDetailRoute
 import com.nexo.app.ui.budgets.BudgetEditorRoute
@@ -102,13 +102,13 @@ fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<StyleKey> { StyleRoute() }
     entry<ReminderKey> { ReminderRoute() }
     entry<LockSettingsKey> { LockSettingsRoute() }
-    entry<BackupKey> { BackupScreen() }
-    entry<BackupDeviceKey> { BackupDeviceScreen() }
-    entry<AutoBackupHistoryKey> { AutoBackupHistoryScreen() }
-    entry<ImportListKey> { ImportListScreen() }
-    entry<ImportPreviewKey> { ImportPreviewScreen(it) }
-    entry<ExcelExportKey> { ExcelExportScreen(it) }
-    entry<RestoreFileKey> { RestoreFileScreen(it) }
+    entry<BackupKey> { BackupRoute() }
+    entry<BackupDeviceKey> { BackupDeviceRoute() }
+    entry<AutoBackupHistoryKey> { AutoBackupHistoryRoute() }
+    entry<ImportListKey> { ImportListRoute() }
+    entry<ImportPreviewKey> { ImportPreviewRoute(it) }
+    entry<ExcelExportKey> { ExcelExportRoute(it) }
+    entry<RestoreFileKey> { RestoreFileRoute(it) }
     entry<HelpKey> { HelpRoute() }
     entry<HelpPageKey> { HelpPageRoute(it) }
     entry<FeedbackKey> { FeedbackRoute() }

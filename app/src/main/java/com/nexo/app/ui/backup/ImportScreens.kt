@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -45,6 +46,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.DateOrder
+import com.nexo.app.core.model.ImportError
 import com.nexo.app.core.model.ImportErrorType
 import com.nexo.app.core.model.ImportPreview
 import com.nexo.app.core.model.ImportRow
@@ -53,6 +55,8 @@ import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.lock.expectReturn
 import com.nexo.app.ui.navigation.AccountFormKey
 import com.nexo.app.ui.navigation.AccountListKey
@@ -69,15 +73,10 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun ImportListScreen(vm: ImportViewModel = hiltViewModel()) {
-    val clock = LocalClock.current
+fun ImportListRoute(vm: ImportViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val files = state.imports
-    var editing by remember { mutableStateOf(false) }
-    var checked by remember { mutableStateOf(setOf<String>()) }
-    var confirm by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { vm.refreshFiles() }
     LaunchedEffect(state.result) {
         val r = state.result as? BackupResult.ImportAdded ?: return@LaunchedEffect
@@ -87,11 +86,40 @@ fun ImportListScreen(vm: ImportViewModel = hiltViewModel()) {
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let(vm::addImport)
     }
+    ImportListScreen(
+        state = state,
+        onBack = nav::back,
+        onHelp = { nav.navigate(HelpPageKey("import")) },
+        onPickFile = {
+            context.expectReturn()
+            picker.launch(
+                arrayOf("text/*", "application/octet-stream", "text/tab-separated-values"),
+            )
+        },
+        onOpen = { name -> nav.navigate(ImportPreviewKey(name)) },
+        onDelete = vm::deleteImports,
+    )
+}
+
+@Composable
+internal fun ImportListScreen(
+    state: ImportUiState,
+    onBack: () -> Unit,
+    onHelp: () -> Unit,
+    onPickFile: () -> Unit,
+    onOpen: (fileName: String) -> Unit,
+    onDelete: (fileNames: Set<String>) -> Unit,
+) {
+    val clock = LocalClock.current
+    val files = state.imports
+    var editing by remember { mutableStateOf(false) }
+    var checked by remember { mutableStateOf(setOf<String>()) }
+    var confirm by remember { mutableStateOf(false) }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.import_excel), onBack = { nav.back() }) {
-            IconButton(onClick = {
-                nav.navigate(HelpPageKey("import"))
-            }) { Icon(Icons.AutoMirrored.Outlined.HelpOutline, stringResource(R.string.help)) }
+        NexoTopBar(stringResource(R.string.import_excel), onBack = onBack) {
+            IconButton(onClick = onHelp) {
+                Icon(Icons.AutoMirrored.Outlined.HelpOutline, stringResource(R.string.help))
+            }
             if (editing) {
                 TextButton(onClick = {
                     if (checked.isNotEmpty()) confirm = true
@@ -110,12 +138,10 @@ fun ImportListScreen(vm: ImportViewModel = hiltViewModel()) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(16.dp),
             )
-            Button(onClick = {
-                context.expectReturn()
-                picker.launch(
-                    arrayOf("text/*", "application/octet-stream", "text/tab-separated-values"),
-                )
-            }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Button(
+                onClick = onPickFile,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            ) {
                 Text(stringResource(R.string.import_excel))
             }
             if (files.isEmpty()) EmptyState()
@@ -131,7 +157,7 @@ fun ImportListScreen(vm: ImportViewModel = hiltViewModel()) {
                                         checked + f.name
                                     }
                             } else {
-                                nav.navigate(ImportPreviewKey(f.name))
+                                onOpen(f.name)
                             }
                         }.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -164,7 +190,7 @@ fun ImportListScreen(vm: ImportViewModel = hiltViewModel()) {
     }
     if (confirm) {
         ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
-            vm.deleteImports(checked)
+            onDelete(checked)
             checked = emptySet()
             editing = false
         }, onDismiss = { confirm = false })
@@ -200,23 +226,28 @@ private fun errorText(row: ImportRow): String? {
     }
 }
 
-/** Import preview with row fixing. */
+/** What the import preview can do; each action defaults to nothing. */
+class ImportPreviewActions(
+    val onBack: () -> Unit = {},
+    val onSave: () -> Unit = {},
+    val onRemoveLine: (line: Int) -> Unit = {},
+    val onEditLine: (line: Int) -> Unit = {},
+    val onDateOrder: (DateOrder) -> Unit = {},
+    val onCategories: (CategoryKind) -> Unit = {},
+    val onAddCategory: (CategoryKind, name: String?) -> Unit = { _, _ -> },
+    val onAddSubcategory: (CategoryKind, parentId: String?, name: String?) -> Unit = { _, _, _ -> },
+    val onAccounts: () -> Unit = {},
+    val onAddAccount: (name: String?) -> Unit = {},
+)
+
 @Composable
-fun ImportPreviewScreen(key: ImportPreviewKey, vm: ImportViewModel = hiltViewModel()) {
-    val clock = LocalClock.current
+fun ImportPreviewRoute(key: ImportPreviewKey, vm: ImportViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val resources = LocalResources.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val ref = state.ref
-    val busy = state.busy
-    val preview = state.preview
     var order by rememberSaveable { mutableStateOf<DateOrder?>(null) }
     var reload by remember { mutableIntStateOf(0) }
-    var shown by rememberSaveable { mutableIntStateOf(50) }
-    var fix by remember { mutableStateOf<ImportRow?>(null) }
-    var confirmSave by remember { mutableStateOf(false) }
-    var deleteRow by remember { mutableStateOf<ImportRow?>(null) }
     LaunchedEffect(order, reload) { vm.loadPreview(key.fileName, order) }
     LaunchedEffect(state.result) {
         when (val r = state.result) {
@@ -242,9 +273,52 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: ImportViewModel = hiltViewMod
         reload++
         onPauseOrDispose {}
     }
+    ImportPreviewScreen(
+        state = state,
+        actions = ImportPreviewActions(
+            onBack = nav::back,
+            onSave = { vm.saveImport(key.fileName, order) },
+            onRemoveLine = { line -> vm.removeLine(key.fileName, line) },
+            onEditLine = { line ->
+                nav.navigate(
+                    EntryKey(
+                        mode = EntryMode.IMPORT_FIX,
+                        importFile = key.fileName,
+                        importLine = line,
+                        importOrder = order?.name,
+                    ),
+                )
+            },
+            onDateOrder = { order = it },
+            onCategories = { kind -> nav.navigate(CategoryListKey(kind)) },
+            onAddCategory = { kind, name ->
+                nav.navigate(CategoryFormKey(kind, presetName = name))
+            },
+            onAddSubcategory = { kind, parentId, name ->
+                nav.navigate(
+                    CategoryFormKey(kind, parentId = parentId, sub = true, presetName = name),
+                )
+            },
+            onAccounts = { nav.navigate(AccountListKey()) },
+            onAddAccount = { name -> nav.navigate(AccountFormKey(presetName = name)) },
+        ),
+    )
+}
+
+/** Import preview with row fixing. */
+@Composable
+internal fun ImportPreviewScreen(state: ImportUiState, actions: ImportPreviewActions) {
+    val clock = LocalClock.current
+    val ref = state.ref
+    val busy = state.busy
+    val preview = state.preview
+    var shown by rememberSaveable { mutableIntStateOf(50) }
+    var fix by remember { mutableStateOf<ImportRow?>(null) }
+    var confirmSave by remember { mutableStateOf(false) }
+    var deleteRow by remember { mutableStateOf<ImportRow?>(null) }
     val rows = preview?.rows.orEmpty()
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.import_input_n, rows.size), onBack = { nav.back() }) {
+        NexoTopBar(stringResource(R.string.import_input_n, rows.size), onBack = actions.onBack) {
             TextButton(onClick = {
                 confirmSave = true
             }, enabled = rows.isNotEmpty()) { Text(stringResource(R.string.action_save)) }
@@ -259,14 +333,7 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: ImportViewModel = hiltViewMod
                         if (row.error != null) {
                             fix = row
                         } else {
-                            nav.navigate(
-                                EntryKey(
-                                    mode = EntryMode.IMPORT_FIX,
-                                    importFile = key.fileName,
-                                    importLine = row.index,
-                                    importOrder = order?.name,
-                                ),
-                            )
+                            actions.onEditLine(row.index)
                         }
                     }.padding(start = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -312,28 +379,21 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: ImportViewModel = hiltViewMod
     BusyOverlay(busy, null)
     deleteRow?.let { r ->
         ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
-            vm.removeLine(key.fileName, r.index)
+            actions.onRemoveLine(r.index)
         }, onDismiss = {
             deleteRow = null
         })
     }
     if (confirmSave) {
-        ConfirmDialog(stringResource(R.string.save_question), onConfirm = {
-            vm.saveImport(key.fileName, order)
-        }, onDismiss = { confirmSave = false })
+        ConfirmDialog(
+            stringResource(R.string.save_question),
+            onConfirm = actions.onSave,
+            onDismiss = { confirmSave = false },
+        )
     }
     fix?.let { row ->
         val e = row.error!!
-        val edit = {
-            nav.navigate(
-                EntryKey(
-                    mode = EntryMode.IMPORT_FIX,
-                    importFile = key.fileName,
-                    importLine = row.index,
-                    importOrder = order?.name,
-                ),
-            )
-        }
+        val edit = { actions.onEditLine(row.index) }
         val kind = if (e.type == ImportErrorType.INCOME_CATEGORY ||
             e.type == ImportErrorType.INCOME_SUB
         ) {
@@ -354,7 +414,7 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: ImportViewModel = hiltViewMod
                         ImportErrorType.DATE -> DateOrder.entries.forEach { o ->
                             TextButton(onClick = {
                                 fix = null
-                                order = o
+                                actions.onDateOrder(o)
                             }) {
                                 val sample = LocalDate.now(clock).format(
                                     DateTimeFormatter.ofPattern(o.pattern),
@@ -366,7 +426,7 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: ImportViewModel = hiltViewMod
                         ImportErrorType.INCOME_CATEGORY, ImportErrorType.EXPENSE_CATEGORY -> {
                             TextButton(onClick = {
                                 fix = null
-                                nav.navigate(CategoryListKey(kind))
+                                actions.onCategories(kind)
                             }) {
                                 Text(
                                     stringResource(
@@ -380,7 +440,7 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: ImportViewModel = hiltViewMod
                             }
                             TextButton(onClick = {
                                 fix = null
-                                nav.navigate(CategoryFormKey(kind, presetName = e.name))
+                                actions.onAddCategory(kind, e.name)
                             }) {
                                 Text(stringResource(R.string.add_named, e.name ?: ""))
                             }
@@ -389,7 +449,7 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: ImportViewModel = hiltViewMod
                         ImportErrorType.INCOME_SUB, ImportErrorType.EXPENSE_SUB -> {
                             TextButton(onClick = {
                                 fix = null
-                                nav.navigate(CategoryListKey(kind))
+                                actions.onCategories(kind)
                             }) {
                                 Text(
                                     stringResource(
@@ -407,14 +467,7 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: ImportViewModel = hiltViewMod
                             }?.id
                             TextButton(onClick = {
                                 fix = null
-                                nav.navigate(
-                                    CategoryFormKey(
-                                        kind,
-                                        parentId = parentId,
-                                        sub = true,
-                                        presetName = e.name,
-                                    ),
-                                )
+                                actions.onAddSubcategory(kind, parentId, e.name)
                             }) {
                                 Text(stringResource(R.string.add_named, "${e.name} → ${e.parent}"))
                             }
@@ -423,11 +476,11 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: ImportViewModel = hiltViewMod
                         ImportErrorType.ACCOUNT -> {
                             TextButton(onClick = {
                                 fix = null
-                                nav.navigate(AccountListKey())
+                                actions.onAccounts()
                             }) { Text(stringResource(R.string.tab_accounts)) }
                             TextButton(onClick = {
                                 fix = null
-                                nav.navigate(AccountFormKey(presetName = e.name))
+                                actions.onAddAccount(e.name)
                             }) {
                                 Text(stringResource(R.string.add_named, e.name ?: ""))
                             }
@@ -445,4 +498,46 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: ImportViewModel = hiltViewMod
             },
         )
     }
+}
+
+private fun previewImportRow(index: Int, raw: String, error: ImportError? = null) =
+    ImportRow(index, raw, raw.split('\t'), error, parsed = null)
+
+private val previewImport = ImportPreview(
+    rows = listOf(
+        previewImportRow(1, "2026-11-12\tExpense\tWallet\tFood\tGroceries\t2,450.00"),
+        previewImportRow(
+            2,
+            "2026-11-13\tExpense\tWallet\tPets\t\t1,200.00",
+            ImportError(ImportErrorType.EXPENSE_CATEGORY, name = "Pets"),
+        ),
+        previewImportRow(3, "2026-11-13\tIncome\tSavings\tSalary\t\t180,000.00"),
+    ),
+    wide = false,
+)
+
+@Preview
+@Composable
+private fun ImportListScreenPreview() = NexoPreview {
+    ImportListScreen(
+        state = ImportUiState(
+            imports = listOf(
+                previewFile("november.tsv", Instant.parse("2026-11-14T05:10:00Z"), 12_000),
+            ),
+        ),
+        onBack = {},
+        onHelp = {},
+        onPickFile = {},
+        onOpen = {},
+        onDelete = {},
+    )
+}
+
+@Preview
+@Composable
+private fun ImportPreviewScreenPreview() = NexoPreview {
+    ImportPreviewScreen(
+        state = ImportUiState(ref = PreviewData.ref, preview = previewImport),
+        actions = ImportPreviewActions(),
+    )
 }
