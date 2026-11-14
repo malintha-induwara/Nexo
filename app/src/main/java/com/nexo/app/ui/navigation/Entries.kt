@@ -27,9 +27,9 @@ import com.nexo.app.ui.budgets.BudgetSettingsRoute
 import com.nexo.app.ui.categories.CategoryFormRoute
 import com.nexo.app.ui.categories.CategoryListRoute
 import com.nexo.app.ui.categories.SubcategoryListRoute
-import com.nexo.app.ui.entry.BookmarksScreen
+import com.nexo.app.ui.entry.BookmarksRoute
 import com.nexo.app.ui.entry.EntryRoute
-import com.nexo.app.ui.entry.RepeatListScreen
+import com.nexo.app.ui.entry.RepeatListRoute
 import com.nexo.app.ui.memo.MemoEditorRoute
 import com.nexo.app.ui.memo.MemoListRoute
 import com.nexo.app.ui.search.SearchRoute
@@ -68,8 +68,8 @@ fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<EntryKey>(metadata = { key ->
         if (key.fromAdd) SheetSceneStrategy.sheet(key) else emptyMap()
     }) { EntryRoute(it) }
-    entry<BookmarksKey> { BookmarksScreen(it) }
-    entry<RepeatListKey> { RepeatListScreen() }
+    entry<BookmarksKey> { BookmarksRoute(it) }
+    entry<RepeatListKey> { RepeatListRoute() }
     entry<SearchKey> { SearchRoute(it) }
     entry<MemoEditorKey> { MemoEditorRoute(it) }
     entry<MemoListKey> { MemoListRoute(it) }

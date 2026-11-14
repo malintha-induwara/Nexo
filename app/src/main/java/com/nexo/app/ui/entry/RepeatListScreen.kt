@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,6 +53,8 @@ import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.component.SettingRow
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
@@ -103,12 +106,33 @@ fun estimatedCount(rule: RepeatRule, period: MonthPeriod): Int {
 }
 
 @Composable
-fun RepeatListScreen(vm: RepeatListViewModel = hiltViewModel()) {
-    val clock = LocalClock.current
+fun RepeatListRoute(vm: RepeatListViewModel = hiltViewModel()) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val nav = LocalNavigator.current
+    RepeatListScreen(
+        state = state,
+        onBack = nav::back,
+        onOpenRule = { id ->
+            nav.navigate(EntryKey(mode = EntryMode.REPEAT_EDIT, repeatRuleId = id))
+        },
+        onAdd = { type -> nav.navigate(EntryKey(mode = EntryMode.REPEAT_NEW, repeat = type)) },
+        onSetReflect = vm::setReflect,
+        onDelete = vm::delete,
+    )
+}
+
+@Composable
+internal fun RepeatListScreen(
+    state: RepeatListUiState,
+    onBack: () -> Unit,
+    onOpenRule: (ruleId: String) -> Unit,
+    onAdd: (RepeatType) -> Unit,
+    onSetReflect: (RepeatReflect) -> Unit,
+    onDelete: (ids: List<String>) -> Unit,
+) {
+    val clock = LocalClock.current
     val rules = state.rules
     val ref = state.ref
-    val nav = LocalNavigator.current
     val money = LocalMoneyColors.current
     var editing by remember { mutableStateOf(false) }
     var checked by remember { mutableStateOf(setOf<String>()) }
@@ -118,7 +142,7 @@ fun RepeatListScreen(vm: RepeatListViewModel = hiltViewModel()) {
     var addType by remember { mutableStateOf(false) }
     val period = ref.settings.periods.monthPeriodContaining(LocalDate.now(clock))
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.repeat_setting), onBack = { nav.back() }) {
+        NexoTopBar(stringResource(R.string.repeat_setting), onBack = onBack) {
             if (editing) {
                 IconButton(onClick = {
                     if (checked.isNotEmpty()) confirmDelete = true
@@ -221,9 +245,7 @@ fun RepeatListScreen(vm: RepeatListViewModel = hiltViewModel()) {
                         if (editing) {
                             checked = if (r.id in checked) checked - r.id else checked + r.id
                         } else {
-                            nav.navigate(
-                                EntryKey(mode = EntryMode.REPEAT_EDIT, repeatRuleId = r.id),
-                            )
+                            onOpenRule(r.id)
                         }
                     }
                 }
@@ -248,7 +270,7 @@ fun RepeatListScreen(vm: RepeatListViewModel = hiltViewModel()) {
                 if (it == RepeatReflect.FIRST_OF_PERIOD) {
                     confirmFirstDay = true
                 } else {
-                    vm.setReflect(it)
+                    onSetReflect(it)
                 }
             },
             onDismiss = { pickReflect = false },
@@ -257,7 +279,7 @@ fun RepeatListScreen(vm: RepeatListViewModel = hiltViewModel()) {
     if (confirmFirstDay) {
         ConfirmDialog(
             stringResource(R.string.reflect_first_day_confirm, Formats.shortDate(period.end)),
-            onConfirm = { vm.setReflect(RepeatReflect.FIRST_OF_PERIOD) },
+            onConfirm = { onSetReflect(RepeatReflect.FIRST_OF_PERIOD) },
             onDismiss = { confirmFirstDay = false },
         )
     }
@@ -267,13 +289,13 @@ fun RepeatListScreen(vm: RepeatListViewModel = hiltViewModel()) {
             options = RepeatType.pickerOrder.filter { it != RepeatType.NONE },
             selected = null,
             label = { repeatLabel(it) },
-            onSelect = { t -> nav.navigate(EntryKey(mode = EntryMode.REPEAT_NEW, repeat = t)) },
+            onSelect = onAdd,
             onDismiss = { addType = false },
         )
     }
     if (confirmDelete) {
         ConfirmDialog(stringResource(R.string.want_to_delete_n, checked.size), onConfirm = {
-            vm.delete(checked.toList())
+            onDelete(checked.toList())
             checked = emptySet()
             editing = false
         }, onDismiss = { confirmDelete = false })
@@ -354,3 +376,64 @@ private fun RuleRow(
 
 @Suppress("unused")
 private fun range(p: MonthPeriod) = DateRange(p.start, p.end)
+
+/** Made-up repeats for previews and tests: a monthly salary, a weekly bus pass and a vegetable box. */
+internal val previewRepeatListState = RepeatListUiState(
+    ref = PreviewData.ref,
+    rules = listOf(
+        RepeatRule(
+            "salary",
+            TxKind.INCOME,
+            "bank",
+            categoryId = "salary",
+            currencyId = "LKR",
+            amount = 150_000.0,
+            note = "Salary",
+            repeatType = RepeatType.MONTHLY,
+            nextDate = PreviewData.today.withDayOfMonth(25).toString(),
+            anchorDay = 25,
+            createdAt = 0,
+            updatedAt = 0,
+        ),
+        RepeatRule(
+            "bus",
+            TxKind.EXPENSE,
+            "cash",
+            categoryId = "transport",
+            currencyId = "LKR",
+            amount = 1_200.0,
+            repeatType = RepeatType.WEEKLY,
+            nextDate = PreviewData.today.plusDays(2).toString(),
+            anchorDay = 16,
+            createdAt = 0,
+            updatedAt = 0,
+        ),
+        RepeatRule(
+            "veg",
+            TxKind.EXPENSE,
+            "bank",
+            categoryId = "groceries",
+            currencyId = "LKR",
+            amount = 3_000.0,
+            note = "Vegetable box",
+            repeatType = RepeatType.MONTHLY,
+            nextDate = PreviewData.today.plusMonths(1).withDayOfMonth(1).toString(),
+            anchorDay = 1,
+            createdAt = 0,
+            updatedAt = 0,
+        ),
+    ),
+)
+
+@Preview
+@Composable
+private fun RepeatListScreenPreview() = NexoPreview {
+    RepeatListScreen(
+        previewRepeatListState,
+        onBack = {},
+        onOpenRule = {},
+        onAdd = {},
+        onSetReflect = {},
+        onDelete = {},
+    )
+}

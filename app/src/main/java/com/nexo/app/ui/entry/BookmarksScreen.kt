@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,6 +44,8 @@ import com.nexo.app.core.model.TxKind
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.NexoTopBar
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.navigation.BookmarksKey
 import com.nexo.app.ui.navigation.EntryKey
@@ -60,17 +63,41 @@ fun accountLabel(ref: RefData, id: String?): String {
 }
 
 @Composable
-fun BookmarksScreen(key: BookmarksKey, vm: BookmarksViewModel = hiltViewModel()) {
+fun BookmarksRoute(key: BookmarksKey, vm: BookmarksViewModel = hiltViewModel()) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val nav = LocalNavigator.current
+    BookmarksScreen(
+        state = state,
+        onBack = nav::back,
+        onOpen = { id ->
+            if (key.pickForForm) {
+                vm.pickForForm(id)
+                nav.back()
+            } else {
+                nav.replace(EntryKey(mode = EntryMode.FAVORITE, favoriteId = id))
+            }
+        },
+        onMove = vm::move,
+        onDelete = vm::delete,
+    )
+}
+
+@Composable
+internal fun BookmarksScreen(
+    state: BookmarksUiState,
+    onBack: () -> Unit,
+    onOpen: (favoriteId: String) -> Unit,
+    onMove: (orderedIds: List<String>) -> Unit,
+    onDelete: (ids: List<String>) -> Unit,
+) {
     val list = state.favorites
     val ref = state.ref
-    val nav = LocalNavigator.current
     val money = LocalMoneyColors.current
     var editing by remember { mutableStateOf(false) }
     var checked by remember { mutableStateOf(setOf<String>()) }
     var confirm by remember { mutableStateOf(false) }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.bookmarks), onBack = { nav.back() }) {
+        NexoTopBar(stringResource(R.string.bookmarks), onBack = onBack) {
             if (editing) {
                 IconButton(onClick = {
                     if (checked.isNotEmpty()) confirm = true
@@ -113,14 +140,7 @@ fun BookmarksScreen(key: BookmarksKey, vm: BookmarksViewModel = hiltViewModel())
                                 checked =
                                     if (f.id in checked) checked - f.id else checked + f.id
 
-                            key.pickForForm -> {
-                                vm.pickForForm(f.id)
-                                nav.back()
-                            }
-
-                            else -> nav.replace(
-                                EntryKey(mode = EntryMode.FAVORITE, favoriteId = f.id),
-                            )
+                            else -> onOpen(f.id)
                         }
                     }.padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -151,7 +171,7 @@ fun BookmarksScreen(key: BookmarksKey, vm: BookmarksViewModel = hiltViewModel())
                     }
                     if (editing) {
                         IconButton(onClick = {
-                            vm.move(
+                            onMove(
                                 list.map {
                                     it.id
                                 }.toMutableList().apply { add(index - 1, removeAt(index)) },
@@ -160,7 +180,7 @@ fun BookmarksScreen(key: BookmarksKey, vm: BookmarksViewModel = hiltViewModel())
                             Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up))
                         }
                         IconButton(onClick = {
-                            vm.move(
+                            onMove(
                                 list.map {
                                     it.id
                                 }.toMutableList().apply { add(index + 1, removeAt(index)) },
@@ -185,7 +205,7 @@ fun BookmarksScreen(key: BookmarksKey, vm: BookmarksViewModel = hiltViewModel())
     }
     if (confirm) {
         ConfirmDialog(stringResource(R.string.want_to_delete_n, checked.size), onConfirm = {
-            vm.delete(checked.toList())
+            onDelete(checked.toList())
             checked = emptySet()
         }, onDismiss = { confirm = false })
     }
@@ -210,4 +230,60 @@ private fun favoriteSubtitle(ref: RefData, f: Favorite): String {
     val sub = ref.subCategoryId(f.categoryId)?.let { ref.categoryName(it) }
     val cat = if (sub != null) "$main/$sub" else main
     return if (f.note.isNotBlank()) "$cat · ${accountLabel(ref, f.accountId)}" else cat
+}
+
+/** Made-up bookmarks for previews and tests: a grocery run, a salary and a cash top-up. */
+internal val previewBookmarksState = BookmarksUiState(
+    ref = PreviewData.ref,
+    favorites = listOf(
+        Favorite(
+            "weekly",
+            TxKind.EXPENSE,
+            "card",
+            categoryId = "groceries",
+            currencyId = "LKR",
+            amount = 4_500.0,
+            note = "Weekly groceries",
+            orderSeq = 0,
+            updatedAt = 0,
+        ),
+        Favorite(
+            "salary",
+            TxKind.INCOME,
+            "bank",
+            categoryId = "salary",
+            currencyId = "LKR",
+            amount = 150_000.0,
+            orderSeq = 1,
+            updatedAt = 0,
+        ),
+        Favorite(
+            "topup",
+            TxKind.TRANSFER_OUT,
+            "bank",
+            toAccountId = "cash",
+            currencyId = "LKR",
+            amount = 10_000.0,
+            orderSeq = 2,
+            updatedAt = 0,
+        ),
+    ),
+)
+
+@Preview
+@Composable
+private fun BookmarksScreenPreview() = NexoPreview {
+    BookmarksScreen(previewBookmarksState, onBack = {}, onOpen = {}, onMove = {}, onDelete = {})
+}
+
+@Preview
+@Composable
+private fun BookmarksScreenEmptyPreview() = NexoPreview {
+    BookmarksScreen(
+        BookmarksUiState(ref = PreviewData.ref),
+        onBack = {},
+        onOpen = {},
+        onMove = {},
+        onDelete = {},
+    )
 }
