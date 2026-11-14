@@ -7,6 +7,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
 import com.nexo.app.BuildConfig
 import com.nexo.app.R
+import com.nexo.app.ui.shell.LocalShell
 import com.nexo.app.ui.navigation.AccountSettingsMenuKey
 import com.nexo.app.ui.navigation.BackupKey
 import com.nexo.app.ui.navigation.ConfigurationKey
@@ -121,7 +123,13 @@ fun SettingsTab(vm: SettingsViewModel = hiltViewModel()) {
                 }
             }
         }
-        LazyVerticalGrid(GridCells.Fixed(3), Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyVerticalGrid(
+            GridCells.Fixed(3),
+            Modifier.padding(horizontal = 8.dp),
+            contentPadding = PaddingValues(bottom = LocalShell.current.bottomInset),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             items(items) { item ->
                 Column(
                     Modifier.background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp)).clickable { nav.navigate(item.key) }.padding(vertical = 18.dp),

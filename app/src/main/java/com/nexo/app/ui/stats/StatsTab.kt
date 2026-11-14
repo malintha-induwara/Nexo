@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
+import com.nexo.app.ui.shell.LocalShell
 import com.nexo.app.ui.components.SegmentedPill
 import com.nexo.app.ui.theme.LocalMoneyColors
 import com.nexo.app.ui.theme.Space
@@ -128,7 +129,7 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
                 }
             })
         }
-        LazyColumn(Modifier.fillMaxSize().then(swipeModifier), contentPadding = PaddingValues(bottom = 24.dp)) {
+        LazyColumn(Modifier.fillMaxSize().then(swipeModifier), contentPadding = PaddingValues(bottom = LocalShell.current.bottomInset)) {
             // An empty period shows the list's empty state alone, not the chart's "No data" as well.
             if (rows.isNotEmpty()) item {
                 PieChart(

@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
@@ -80,9 +79,6 @@ class ShellController(hidden: MutableState<Boolean> = mutableStateOf(false)) {
 
 val LocalShell = staticCompositionLocalOf { ShellController() }
 
-/** Tabs already redesigned to draw edge to edge under the floating bar. The rest stop above it. */
-private val EDGE_TO_EDGE = setOf(MainTab.TRANSACTIONS)
-
 /** App shell with the four top-level tabs. Re-selecting a tab sends a "go to today" signal. */
 @Composable
 fun MainShell() {
@@ -121,8 +117,8 @@ fun MainShell() {
                 },
                 label = "tab",
             ) { t ->
-                val stopAbove = t !in EDGE_TO_EDGE && barVisible
-                Box(Modifier.fillMaxSize().padding(bottom = if (stopAbove) PillBottomBarHeight + navInset else 0.dp)) {
+                // Every tab draws under the floating bar; its list pads its end by [ShellController.bottomInset].
+                Box(Modifier.fillMaxSize()) {
                     when (t) {
                         MainTab.TRANSACTIONS -> TransactionsTab(todaySignal)
                         MainTab.STATS -> StatsTab(todaySignal)

@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
+import com.nexo.app.ui.shell.LocalShell
 import com.nexo.app.core.database.entity.CurrencyEntity
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupStatus
@@ -133,7 +134,7 @@ fun AccountsTab(todaySignal: Int, vm: AccountsViewModel = hiltViewModel()) {
             EmptyState()
             return@Column
         }
-        LazyColumn(contentPadding = PaddingValues(bottom = 32.dp)) {
+        LazyColumn(contentPadding = PaddingValues(bottom = LocalShell.current.bottomInset)) {
             data.unassigned?.let { value ->
                 item(key = "none") {
                     GroupHeader(stringResource(R.string.none), value, null, main, money.signed(value), collapsed = false, onToggle = {})
