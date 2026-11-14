@@ -52,9 +52,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -62,9 +62,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.model.Banks
 import com.nexo.app.core.model.Certainty
+import com.nexo.app.core.model.DenyReason
+import com.nexo.app.core.model.FeeChoice
+import com.nexo.app.core.model.RateChoice
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsHistoryImport
 import com.nexo.app.core.model.SmsItem
+import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.core.model.needsAttention
 import com.nexo.app.core.model.needsDetails
@@ -79,6 +83,8 @@ import com.nexo.app.ui.designsystem.component.SwipeActionRow
 import com.nexo.app.ui.designsystem.component.UndoBar
 import com.nexo.app.ui.designsystem.component.UndoMessage
 import com.nexo.app.ui.designsystem.component.rememberHaptics
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 import com.nexo.app.ui.designsystem.theme.NexoShapes
@@ -97,14 +103,75 @@ private sealed interface QueueSheet {
     data class Deny(val ids: Set<String>) : QueueSheet
 }
 
+/** What the review queue can ask for; the route backs each with the ViewModel or navigation. */
+class SmsQueueActions(
+    val onBack: () -> Unit = {},
+    val onOpenSettings: () -> Unit = {},
+    val onOpenItem: (itemId: String) -> Unit = {},
+    val onReviewGap: (gapFrom: Long, gapUntil: Long) -> Unit = { _, _ -> },
+    val onChooseHistory: () -> Unit = {},
+    val onOpenRatesAttribution: () -> Unit = {},
+    val onSetFilter: (QueueFilter) -> Unit = {},
+    val onToggleSelect: (itemId: String) -> Unit = {},
+    val onClearSelection: () -> Unit = {},
+    val onApproveSelected: () -> Unit = {},
+    val onAssignAccount: (accountId: String) -> Unit = {},
+    val onApprove: (itemId: String) -> Unit = {},
+    val onDeny: (ids: Collection<String>, reason: DenyReason?) -> Unit = { _, _ -> },
+    val onRestore: (ids: Collection<String>) -> Unit = {},
+    val onSetAmount: (itemId: String, value: Double) -> Unit = { _, _ -> },
+    val onMapCard: (CardRef, accountId: String) -> Unit = { _, _ -> },
+    val onClearGap: () -> Unit = {},
+    val onSkipHistory: () -> Unit = {},
+    val onAnswerFee: (FeeChoice?) -> Unit = {},
+    val onUndo: (QueueNotice) -> Unit = {},
+    val onDismissNotice: () -> Unit = {},
+)
+
 @Composable
-fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
-    val clock = LocalClock.current
+fun SmsQueueRoute(vm: SmsQueueViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    LifecycleResumeEffect(Unit) {
+        vm.markSeen()
+        onPauseOrDispose {}
+    }
+    val actions = remember(vm, nav, context) {
+        SmsQueueActions(
+            onBack = nav::back,
+            onOpenSettings = { nav.navigate(SmsSettingsKey) },
+            onOpenItem = { id ->
+                nav.navigate(EntryKey(mode = EntryMode.SMS, smsItemId = id, fromAdd = true))
+            },
+            onReviewGap = { from, until -> nav.navigate(SmsHistoryKey(from, until)) },
+            onChooseHistory = { nav.navigate(SmsHistoryKey()) },
+            onOpenRatesAttribution = { openRatesAttribution(context) },
+            onSetFilter = vm::setFilter,
+            onToggleSelect = vm::toggleSelect,
+            onClearSelection = vm::clearSelection,
+            onApproveSelected = vm::approveSelected,
+            onAssignAccount = vm::assignAccount,
+            onApprove = vm::approve,
+            onDeny = vm::deny,
+            onRestore = vm::restore,
+            onSetAmount = vm::setAmount,
+            onMapCard = vm::mapCard,
+            onClearGap = vm::clearGap,
+            onSkipHistory = vm::skipHistory,
+            onAnswerFee = vm::answerFee,
+            onUndo = vm::undo,
+            onDismissNotice = vm::dismissNotice,
+        )
+    }
+    SmsQueueScreen(state, actions)
+}
+
+@Composable
+internal fun SmsQueueScreen(state: SmsQueueUiState, actions: SmsQueueActions) {
+    val clock = LocalClock.current
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
-    val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
     val device = state.device
     val filter = state.filter
@@ -118,7 +185,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
     val undo = state.notice?.let { notice ->
         val text = notice.text.asString()
         remember(notice.id) {
-            UndoMessage(text, undoLabel.takeIf { notice.undo != null }) { vm.undo(notice) }
+            UndoMessage(text, undoLabel.takeIf { notice.undo != null }) { actions.onUndo(notice) }
         }
     }
     // Keeps the last question drawn while the sheet slides away.
@@ -135,11 +202,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
             now = clock.millis()
         }
     }
-    LifecycleResumeEffect(Unit) {
-        vm.markSeen()
-        onPauseOrDispose {}
-    }
-    BackHandler(selection.isNotEmpty()) { vm.clearSelection() }
+    BackHandler(selection.isNotEmpty()) { actions.onClearSelection() }
 
     fun open(s: QueueSheet) {
         sheet = s
@@ -156,12 +219,12 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                 if (sel) {
                     SelectionHeader(
                         count = selection.size,
-                        onClose = vm::clearSelection,
+                        onClose = actions.onClearSelection,
                         onAssign = { open(QueueSheet.Assign) },
                         onDeny = { open(QueueSheet.Deny(selection)) },
                         onApprove = {
                             haptics.confirm()
-                            vm.approveSelected()
+                            actions.onApproveSelected()
                         },
                     )
                 } else {
@@ -174,9 +237,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                         RoundIconButton(
                             Icons.AutoMirrored.Rounded.ArrowBack,
                             stringResource(R.string.action_back),
-                            {
-                                nav.back()
-                            },
+                            actions.onBack,
                         )
                         Spacer(Modifier.width(Space.m))
                         Text(
@@ -196,7 +257,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                                 else -> stringResource(R.string.sms_capture_on)
                             },
                             on = device?.smsCaptureEnabled != false && permitted,
-                        ) { nav.navigate(SmsSettingsKey) }
+                        ) { actions.onOpenSettings() }
                     }
                 }
             }
@@ -206,7 +267,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                 attentionCount = pending.count { it.needsAttention },
                 onSelect = {
                     haptics.tick()
-                    vm.setFilter(it)
+                    actions.onSetFilter(it)
                 },
             )
             val list = items
@@ -244,12 +305,10 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                                 stringResource(R.string.sms_gap_hint),
                                 null,
                                 stringResource(R.string.sms_history_title),
-                                {
-                                    nav.navigate(SmsHistoryKey(gapFrom, gapUntil))
-                                },
+                                { actions.onReviewGap(gapFrom, gapUntil) },
                                 Modifier.animateItem(),
                                 stringResource(R.string.sms_history_not_now),
-                                vm::clearGap,
+                                actions.onClearGap,
                             )
                         }
                     }
@@ -259,12 +318,10 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                                 stringResource(R.string.sms_history_offer_title),
                                 stringResource(R.string.sms_history_offer_text),
                                 stringResource(R.string.sms_history_choose),
-                                {
-                                    nav.navigate(SmsHistoryKey())
-                                },
+                                actions.onChooseHistory,
                                 Modifier.animateItem(),
                                 stringResource(R.string.sms_history_not_now),
-                                vm::skipHistory,
+                                actions.onSkipHistory,
                             )
                         }
                     }
@@ -286,26 +343,20 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                             modifier = Modifier.animateItem(),
                             onOpen = {
                                 if (selecting) {
-                                    vm.toggleSelect(item.id)
+                                    actions.onToggleSelect(item.id)
                                 } else if (item.status == SmsStatus.PENDING) {
-                                    nav.navigate(
-                                        EntryKey(
-                                            mode = EntryMode.SMS,
-                                            smsItemId = item.id,
-                                            fromAdd = true,
-                                        ),
-                                    )
+                                    actions.onOpenItem(item.id)
                                 }
                             },
                             onSelect = {
                                 haptics.longPress()
-                                vm.toggleSelect(item.id)
+                                actions.onToggleSelect(item.id)
                             },
-                            onApprove = { vm.approve(item.id) },
-                            onDeny = { vm.deny(listOf(item.id)) },
+                            onApprove = { actions.onApprove(item.id) },
+                            onDeny = { actions.onDeny(listOf(item.id), null) },
                             onRestore = {
                                 haptics.confirm()
-                                vm.restore(listOf(item.id))
+                                actions.onRestore(listOf(item.id))
                             },
                             onAmount = { editAmount = item },
                         )
@@ -314,9 +365,9 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                         item(key = "fx_attribution") {
                             Text(
                                 stringResource(R.string.fx_attribution),
-                                Modifier.fillMaxWidth().clickable {
-                                    openRatesAttribution(context)
-                                }.padding(horizontal = Space.xxl, vertical = Space.m),
+                                Modifier.fillMaxWidth().clickable(
+                                    onClick = actions.onOpenRatesAttribution,
+                                ).padding(horizontal = Space.xxl, vertical = Space.m),
                                 style = NexoType.Meta,
                                 color = colors.textSecondary,
                                 textAlign = TextAlign.Center,
@@ -339,7 +390,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
             }
         }
 
-        UndoBar(undo, vm::dismissNotice, Modifier.align(Alignment.BottomCenter))
+        UndoBar(undo, actions.onDismissNotice, Modifier.align(Alignment.BottomCenter))
 
         InlineBottomSheet(
             visible = sheetOpen,
@@ -357,7 +408,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                         stringResource(R.string.sms_card_hint),
                     )
                     AccountPickList(ref, null) { id ->
-                        vm.mapCard(s.card, id)
+                        actions.onMapCard(s.card, id)
                         sheetOpen = false
                     }
                 }
@@ -365,7 +416,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                 QueueSheet.Assign -> {
                     SheetTitle(stringResource(R.string.sms_assign_account))
                     AccountPickList(ref, null) { id ->
-                        vm.assignAccount(id)
+                        actions.onAssignAccount(id)
                         sheetOpen = false
                     }
                 }
@@ -376,7 +427,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                         stringResource(R.string.sms_deny_hint),
                     )
                     DenyReasonList { reason ->
-                        vm.deny(s.ids, reason)
+                        actions.onDeny(s.ids, reason)
                         sheetOpen = false
                     }
                 }
@@ -386,9 +437,9 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
         }
 
         InlineBottomSheet(visible = feePrompt != null, onDismiss = {
-            vm.answerFee(null)
+            actions.onAnswerFee(null)
         }, heightFraction = 0.6f) {
-            shownPrompt[0]?.let { p -> FeePromptContent(p, ref) { vm.answerFee(it) } }
+            shownPrompt[0]?.let { p -> FeePromptContent(p, ref, actions.onAnswerFee) }
         }
     }
 
@@ -407,7 +458,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
             allowSign = false,
             validate = { (it ?: 0.0) > 0.0 },
             onConfirm = { v ->
-                if (v != null && v > 0) vm.setAmount(item.id, v)
+                if (v != null && v > 0) actions.onSetAmount(item.id, v)
                 editAmount = null
             },
             onDismiss = { editAmount = null },
@@ -610,5 +661,105 @@ fun CardQuestion(card: CardRef, modifier: Modifier, onChoose: () -> Unit) {
         stringResource(R.string.sms_choose_account),
         onChoose,
         modifier,
+    )
+}
+
+private val previewNow = PreviewData.clock.millis()
+
+private fun previewItem(
+    id: String,
+    kind: SmsKind,
+    bank: String,
+    amount: Double,
+    hoursAgo: Long,
+    merchant: String = "",
+    currency: String = "LKR",
+    cardLast4: String? = null,
+    accountId: String? = null,
+    categoryId: String? = null,
+) = (previewNow - hoursAgo * 3_600_000).let { at ->
+    SmsItem(
+        id = id,
+        certainty = Certainty.EXACT,
+        kind = kind,
+        bank = bank,
+        sender = bank,
+        template = "purchase",
+        amount = amount,
+        currency = currency,
+        merchant = merchant,
+        cardLast4 = cardLast4,
+        occurredAt = at,
+        smsAt = at,
+        capturedAt = at,
+        dedupeKey = id,
+        text = "Sample message",
+        accountId = accountId,
+        categoryId = categoryId,
+        updatedAt = at,
+    )
+}
+
+/** Made-up queue items for previews and tests: a card purchase, a foreign estimate, an unmapped withdrawal. */
+internal val previewSmsItems = listOf(
+    previewItem(
+        "grocery",
+        SmsKind.EXPENSE,
+        "COMBANK",
+        2_450.0,
+        hoursAgo = 2,
+        merchant = "Corner Grocer",
+        cardLast4 = "1234",
+        accountId = "card",
+        categoryId = "groceries",
+    ),
+    previewItem(
+        "streaming",
+        SmsKind.EXPENSE,
+        "COMBANK",
+        12.99,
+        hoursAgo = 20,
+        merchant = "Sample Streaming",
+        currency = "USD",
+        cardLast4 = "1234",
+        accountId = "card",
+    ).copy(
+        certainty = Certainty.ESTIMATED,
+        estimatedAmount = 3_897.0,
+        fxRate = 300.0,
+        fxSource = RateChoice.MEDIAN,
+        fxSnapshotAt = previewNow,
+    ),
+    previewItem(
+        "atm",
+        SmsKind.TRANSFER_TO_CASH,
+        "BOC",
+        10_000.0,
+        hoursAgo = 30,
+        cardLast4 = "5678",
+    ),
+)
+
+internal val previewSmsQueueState = SmsQueueUiState(
+    ref = PreviewData.ref,
+    device = PreviewData.device,
+    pending = previewSmsItems,
+    items = previewSmsItems,
+    unmappedCards = listOf(CardRef("BOC", "5678")),
+    permitted = true,
+)
+
+@Preview
+@Composable
+private fun SmsQueueScreenPreview() = NexoPreview {
+    SmsQueueScreen(previewSmsQueueState, SmsQueueActions())
+}
+
+@Preview
+@Composable
+private fun SmsQueueScreenSelectingPreview() = NexoPreview(dark = true) {
+    SmsQueueScreen(
+        previewSmsQueueState.copy(selection = setOf("grocery", "streaming")),
+        SmsQueueActions(),
     )
 }

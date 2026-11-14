@@ -47,24 +47,24 @@ import com.nexo.app.ui.settings.StyleRoute
 import com.nexo.app.ui.settings.SubCurrenciesRoute
 import com.nexo.app.ui.settings.SubCurrencyEditRoute
 import com.nexo.app.ui.shell.MainShell
-import com.nexo.app.ui.sms.SmsCardsScreen
-import com.nexo.app.ui.sms.SmsFeesScreen
-import com.nexo.app.ui.sms.SmsHistoryScreen
-import com.nexo.app.ui.sms.SmsQueueScreen
-import com.nexo.app.ui.sms.SmsSendersScreen
-import com.nexo.app.ui.sms.SmsSettingsScreen
+import com.nexo.app.ui.sms.SmsCardsRoute
+import com.nexo.app.ui.sms.SmsFeesRoute
+import com.nexo.app.ui.sms.SmsHistoryRoute
+import com.nexo.app.ui.sms.SmsQueueRoute
+import com.nexo.app.ui.sms.SmsSendersRoute
+import com.nexo.app.ui.sms.SmsSettingsRoute
 import com.nexo.app.ui.stats.StatsDetailRoute
 import com.nexo.app.ui.tags.TagSettingsRoute
 
 /** Every screen of the app. */
 fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<MainKey> { MainShell() }
-    entry<SmsQueueKey> { SmsQueueScreen() }
-    entry<SmsSettingsKey> { SmsSettingsScreen() }
-    entry<SmsCardsKey> { SmsCardsScreen() }
-    entry<SmsFeesKey> { SmsFeesScreen() }
-    entry<SmsHistoryKey> { SmsHistoryScreen(it) }
-    entry<SmsSendersKey> { SmsSendersScreen() }
+    entry<SmsQueueKey> { SmsQueueRoute() }
+    entry<SmsSettingsKey> { SmsSettingsRoute() }
+    entry<SmsCardsKey> { SmsCardsRoute() }
+    entry<SmsFeesKey> { SmsFeesRoute() }
+    entry<SmsHistoryKey> { SmsHistoryRoute(it) }
+    entry<SmsSendersKey> { SmsSendersRoute() }
     entry<EntryKey>(metadata = { key ->
         if (key.fromAdd) SheetSceneStrategy.sheet(key) else emptyMap()
     }) { EntryRoute(it) }

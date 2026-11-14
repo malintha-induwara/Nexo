@@ -42,12 +42,15 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.model.Banks
+import com.nexo.app.core.model.FeeChoice
+import com.nexo.app.core.model.HistoryRow
 import com.nexo.app.core.model.ledgerAmount
 import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.asString
@@ -56,6 +59,8 @@ import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.InlineBottomSheet
 import com.nexo.app.ui.designsystem.component.RoundIconButton
 import com.nexo.app.ui.designsystem.component.rememberHaptics
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 import com.nexo.app.ui.designsystem.theme.NexoShapes
@@ -63,11 +68,11 @@ import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SmsHistoryKey
+import java.time.LocalDate
 
 /** "Add past transactions": nothing selected by default, picked rows go straight to the ledger. */
 @Composable
-fun SmsHistoryScreen(key: SmsHistoryKey) {
-    val clock = LocalClock.current
+fun SmsHistoryRoute(key: SmsHistoryKey) {
     val vm =
         hiltViewModel<SmsHistoryViewModel, SmsHistoryViewModel.Factory>(creationCallback = {
             it.create(key)
@@ -75,9 +80,50 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val resources = LocalResources.current
+    val state by vm.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) { vm.initialize() }
+    state.result?.let { r ->
+        LaunchedEffect(r) {
+            r.message?.let {
+                Toast.makeText(context, it.asString(resources), Toast.LENGTH_LONG).show()
+            }
+            vm.onResultHandled()
+            nav.back()
+        }
+    }
+    SmsHistoryScreen(
+        state = state,
+        onBack = nav::back,
+        onSetRange = vm::setRange,
+        onSetCustom = vm::setCustom,
+        onSetKind = vm::setKind,
+        onSetCard = vm::setCard,
+        onToggle = vm::toggle,
+        onSelectAll = vm::selectAll,
+        onAdd = vm::add,
+        onMapCard = vm::mapCard,
+        onAnswerFee = vm::answerFee,
+    )
+}
+
+@Composable
+internal fun SmsHistoryScreen(
+    state: SmsHistoryUiState,
+    onBack: () -> Unit,
+    onSetRange: (HistoryRange) -> Unit,
+    onSetCustom: (from: LocalDate, to: LocalDate) -> Unit,
+    onSetKind: (HistoryKind) -> Unit,
+    onSetCard: (last4: String?) -> Unit,
+    onToggle: (HistoryRow) -> Unit,
+    onSelectAll: (List<HistoryRow>) -> Unit,
+    onAdd: () -> Unit,
+    onMapCard: (CardRef, accountId: String) -> Unit,
+    onAnswerFee: (FeeChoice?) -> Unit,
+) {
+    val clock = LocalClock.current
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
-    val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
     val range = state.range
     val custom = state.custom
@@ -93,17 +139,6 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
     var mappingOpen by remember { mutableStateOf(false) }
     val now = remember { clock.millis() }
 
-    LaunchedEffect(Unit) { vm.initialize() }
-    state.result?.let { r ->
-        LaunchedEffect(r) {
-            r.message?.let {
-                Toast.makeText(context, it.asString(resources), Toast.LENGTH_LONG).show()
-            }
-            vm.onResultHandled()
-            nav.back()
-        }
-    }
-
     Box(Modifier.fillMaxSize().background(colors.background)) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Row(
@@ -113,9 +148,7 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                 RoundIconButton(
                     Icons.AutoMirrored.Rounded.ArrowBack,
                     stringResource(R.string.action_back),
-                    {
-                        nav.back()
-                    },
+                    onBack,
                 )
                 Spacer(Modifier.width(Space.m))
                 Text(
@@ -136,11 +169,11 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                 label = { stringResource(it.label) },
                 onSelect = {
                     haptics.tick()
-                    vm.setRange(it)
+                    onSetRange(it)
                 },
             )
             if (range == HistoryRange.CUSTOM) {
-                DateRangeChips(custom.first, custom.second, vm::setCustom, color = colors.text)
+                DateRangeChips(custom.first, custom.second, onSetCustom, color = colors.text)
             }
 
             val list = rows
@@ -172,7 +205,7 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                         label = { stringResource(it.label) },
                         onSelect = {
                             haptics.tick()
-                            vm.setKind(it)
+                            onSetKind(it)
                         },
                     )
                     if (cards.size > 1) {
@@ -185,7 +218,7 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                             },
                             onSelect = {
                                 haptics.tick()
-                                vm.setCard(it)
+                                onSetCard(it)
                             },
                         )
                     }
@@ -233,7 +266,7 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                                 )
                                 TextButton(onClick = {
                                     haptics.tick()
-                                    vm.selectAll(visible)
+                                    onSelectAll(visible)
                                 }) {
                                     Text(
                                         stringResource(
@@ -257,7 +290,7 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                                     now = now,
                                     onClick = {
                                         haptics.tick()
-                                        vm.toggle(row)
+                                        onToggle(row)
                                     },
                                     onLongClick = null,
                                     onAmountClick = null,
@@ -279,7 +312,7 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                 Button(
                     onClick = {
                         haptics.confirm()
-                        vm.add()
+                        onAdd()
                     },
                     enabled = !adding,
                     modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(
@@ -321,15 +354,15 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                     stringResource(R.string.sms_card_hint),
                 )
                 AccountPickList(ref, null) { id ->
-                    vm.mapCard(c, id)
+                    onMapCard(c, id)
                     mappingOpen = false
                 }
             }
         }
         InlineBottomSheet(visible = feePrompt != null, onDismiss = {
-            vm.answerFee(null)
+            onAnswerFee(null)
         }, heightFraction = 0.6f) {
-            shownPrompt[0]?.let { p -> FeePromptContent(p, ref) { vm.answerFee(it) } }
+            shownPrompt[0]?.let { p -> FeePromptContent(p, ref, onAnswerFee) }
         }
     }
 }
@@ -372,4 +405,36 @@ private fun <T> ChipRow(
             )
         }
     }
+}
+
+internal val previewSmsHistoryState = previewSmsItems.map {
+    HistoryRow(it, cancelled = false, possiblyAdded = false)
+}
+    .let { rows ->
+        SmsHistoryUiState(
+            ref = PreviewData.ref,
+            custom = PreviewData.today.minusDays(30) to PreviewData.today,
+            rows = rows,
+            permitted = true,
+            visible = rows,
+            selection = setOf("grocery"),
+        )
+    }
+
+@Preview
+@Composable
+private fun SmsHistoryScreenPreview() = NexoPreview {
+    SmsHistoryScreen(
+        state = previewSmsHistoryState,
+        onBack = {},
+        onSetRange = {},
+        onSetCustom = { _, _ -> },
+        onSetKind = {},
+        onSetCard = {},
+        onToggle = {},
+        onSelectAll = {},
+        onAdd = {},
+        onMapCard = { _, _ -> },
+        onAnswerFee = {},
+    )
 }

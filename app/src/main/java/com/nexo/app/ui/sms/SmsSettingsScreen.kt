@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -45,6 +46,7 @@ import com.nexo.app.core.model.Bank
 import com.nexo.app.core.model.Banks
 import com.nexo.app.core.model.FeeMode
 import com.nexo.app.core.model.FeePreset
+import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.SmsHistoryImport
 import com.nexo.app.core.model.SmsSource
 import com.nexo.app.core.model.smsCashAccount
@@ -59,6 +61,8 @@ import com.nexo.app.ui.designsystem.component.SectionHeader
 import com.nexo.app.ui.designsystem.component.SettingRow
 import com.nexo.app.ui.designsystem.component.SwitchRow
 import com.nexo.app.ui.designsystem.component.TextFieldDialog
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
@@ -69,7 +73,6 @@ import com.nexo.app.ui.navigation.SmsHistoryKey
 import com.nexo.app.ui.navigation.SmsQueueKey
 import com.nexo.app.ui.navigation.SmsSendersKey
 import java.time.Instant
-import kotlinx.coroutines.launch
 
 private fun Context.findActivity(): Activity? {
     var c: Context? = this
@@ -85,22 +88,33 @@ private fun appInfoIntent(context: Context) = Intent(
     Uri.fromParts("package", context.packageName, null),
 )
 
+/** The dialogs of the Bank SMS settings; the permission result opens some of them, so the route holds which. */
+internal enum class SmsSettingsDialog { ASK, OFFER, SETTINGS }
+
+/** What the Bank SMS settings can ask for; the route backs each with the ViewModel, navigation or the system. */
+class SmsSettingsActions(
+    val onBack: () -> Unit = {},
+    val onSetEnabled: (Boolean) -> Unit = {},
+    val onRequestPermission: () -> Unit = {},
+    val onOpenAppSettings: () -> Unit = {},
+    val onOpenQueue: () -> Unit = {},
+    val onOpenHistory: () -> Unit = {},
+    val onChooseHistory: () -> Unit = {},
+    val onSkipHistory: () -> Unit = {},
+    val onOpenCards: () -> Unit = {},
+    val onOpenFees: () -> Unit = {},
+    val onOpenSenders: () -> Unit = {},
+    val onSetCashAccount: (accountId: String) -> Unit = {},
+    val onSetFullText: (Boolean) -> Unit = {},
+)
+
 /** Settings → Bank SMS (capture switch, card mapping, privacy). */
 @Composable
-fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
-    val clock = LocalClock.current
+fun SmsSettingsRoute(vm: SmsSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
-    val colors = LocalNexoColors.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val device = state.device
-    val ref = state.ref
-    val permitted = state.permitted
-    val pending = state.pendingCount
-    val sources = state.sources
-    val presets = state.presets
-    var dialog by rememberSaveable { mutableStateOf<String?>(null) }
-    var cashSheet by remember { mutableStateOf(false) }
+    var dialog by rememberSaveable { mutableStateOf<SmsSettingsDialog?>(null) }
 
     LifecycleResumeEffect(Unit) {
         vm.refresh()
@@ -113,7 +127,9 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
             if (result.values.all { it }) {
                 vm.setEnabled(true)
                 // Offered once, right after permission is granted.
-                if (device?.smsHistoryImport == SmsHistoryImport.NOT_OFFERED) dialog = "offer"
+                if (state.device?.smsHistoryImport == SmsHistoryImport.NOT_OFFERED) {
+                    dialog = SmsSettingsDialog.OFFER
+                }
             } else {
                 // No rationale after a denial means Android won't ask again (or the setting is restricted): send them to App info.
                 val activity = context.findActivity()
@@ -122,23 +138,67 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                         SmsPermissions.ALL.none {
                             ActivityCompat.shouldShowRequestPermissionRationale(activity, it)
                         }
-                if (blocked) dialog = "settings"
+                if (blocked) dialog = SmsSettingsDialog.SETTINGS
                 vm.refresh()
             }
         }
+    val actions = remember(vm, nav, context, launcher) {
+        SmsSettingsActions(
+            onBack = nav::back,
+            onSetEnabled = vm::setEnabled,
+            onRequestPermission = { launcher.launch(SmsPermissions.ALL) },
+            onOpenAppSettings = { runCatching { context.startActivity(appInfoIntent(context)) } },
+            onOpenQueue = { nav.navigate(SmsQueueKey) },
+            onOpenHistory = { nav.navigate(SmsHistoryKey()) },
+            onChooseHistory = {
+                vm.offerHistory()
+                nav.navigate(SmsHistoryKey())
+            },
+            onSkipHistory = vm::skipHistory,
+            onOpenCards = { nav.navigate(SmsCardsKey) },
+            onOpenFees = { nav.navigate(SmsFeesKey) },
+            onOpenSenders = { nav.navigate(SmsSendersKey) },
+            onSetCashAccount = vm::setCashAccount,
+            onSetFullText = vm::setFullText,
+        )
+    }
+    SmsSettingsScreen(state, dialog, { dialog = it }, actions)
+}
+
+@Composable
+internal fun SmsSettingsScreen(
+    state: SmsSettingsUiState,
+    dialog: SmsSettingsDialog?,
+    onDialogChange: (SmsSettingsDialog?) -> Unit,
+    actions: SmsSettingsActions,
+) {
+    val clock = LocalClock.current
+    val colors = LocalNexoColors.current
+    val device = state.device
+    val ref = state.ref
+    val permitted = state.permitted
+    val pending = state.pendingCount
+    val sources = state.sources
+    val presets = state.presets
+    var cashSheet by remember { mutableStateOf(false) }
+
     val enabled = device?.smsCaptureEnabled ?: true
     val startedAt = device?.smsCaptureStartedAt ?: 0L
 
     Box(Modifier.fillMaxSize()) {
         Scaffold(topBar = {
-            NexoTopBar(stringResource(R.string.sms_settings_title), onBack = { nav.back() })
+            NexoTopBar(stringResource(R.string.sms_settings_title), onBack = actions.onBack)
         }, containerColor = colors.background) { p ->
             Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
                 SwitchRow(
                     title = stringResource(R.string.sms_capture_title),
                     checked = enabled,
                     onChange = { on ->
-                        if (on && !permitted) dialog = "ask" else vm.setEnabled(on)
+                        if (on && !permitted) {
+                            onDialogChange(SmsSettingsDialog.ASK)
+                        } else {
+                            actions.onSetEnabled(on)
+                        }
                     },
                     subtitle = when {
                         !enabled -> stringResource(R.string.sms_capture_sub_off)
@@ -161,9 +221,7 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                     SettingRow(
                         stringResource(R.string.sms_permission_title),
                         stringResource(R.string.sms_permission_text),
-                        onClick = {
-                            dialog = "ask"
-                        },
+                        onClick = { onDialogChange(SmsSettingsDialog.ASK) },
                     )
                 }
                 SettingRow(
@@ -173,13 +231,13 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                     } else {
                         stringResource(R.string.sms_queue_row_empty)
                     },
-                    onClick = { nav.navigate(SmsQueueKey) },
+                    onClick = actions.onOpenQueue,
                 )
 
                 SettingRow(
                     stringResource(R.string.sms_history_title),
                     stringResource(R.string.sms_history_row_sub),
-                    onClick = { nav.navigate(SmsHistoryKey()) },
+                    onClick = actions.onOpenHistory,
                     enabled = permitted,
                 )
 
@@ -191,7 +249,7 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                     } else {
                         null
                     },
-                    onClick = { nav.navigate(SmsCardsKey) },
+                    onClick = actions.onOpenCards,
                 )
                 SettingRow(
                     stringResource(R.string.fee_presets_title),
@@ -200,7 +258,7 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                     } else {
                         stringResource(R.string.sms_fees_sub_none)
                     },
-                    onClick = { nav.navigate(SmsFeesKey) },
+                    onClick = actions.onOpenFees,
                 )
                 SettingRow(
                     stringResource(R.string.sms_cash_account),
@@ -211,14 +269,14 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                 SettingRow(
                     stringResource(R.string.sms_senders_title),
                     stringResource(R.string.sms_senders_row_sub),
-                    onClick = { nav.navigate(SmsSendersKey) },
+                    onClick = actions.onOpenSenders,
                 )
 
                 SectionHeader(stringResource(R.string.sms_section_privacy))
                 SwitchRow(
                     stringResource(R.string.sms_full_text),
                     device?.smsStoreFullText == true,
-                    vm::setFullText,
+                    actions.onSetFullText,
                     subtitle = stringResource(
                         if (device?.smsStoreFullText == true) {
                             R.string.sms_full_text_sub_on
@@ -238,62 +296,78 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
         InlineBottomSheet(cashSheet, onDismiss = { cashSheet = false }, heightFraction = 0.7f) {
             SheetTitle(stringResource(R.string.sms_cash_account))
             AccountPickList(ref, ref.smsCashAccount()) { id ->
-                vm.setCashAccount(id)
+                actions.onSetCashAccount(id)
                 cashSheet = false
             }
         }
     }
 
     when (dialog) {
-        "ask" -> ConfirmDialog(
+        SmsSettingsDialog.ASK -> ConfirmDialog(
             title = stringResource(R.string.sms_permission_title),
             message = stringResource(R.string.sms_permission_text),
             confirmText = stringResource(R.string.action_continue),
             onConfirm = {
-                dialog = null
-                launcher.launch(SmsPermissions.ALL)
+                onDialogChange(null)
+                actions.onRequestPermission()
             },
-            onDismiss = { dialog = null },
+            onDismiss = { onDialogChange(null) },
         )
 
-        "offer" -> AlertDialog(
-            onDismissRequest = { dialog = null },
+        SmsSettingsDialog.OFFER -> AlertDialog(
+            onDismissRequest = { onDialogChange(null) },
             title = { Text(stringResource(R.string.sms_history_offer_title)) },
             text = { Text(stringResource(R.string.sms_history_offer_text)) },
             confirmButton = {
                 TextButton(onClick = {
-                    dialog = null
-                    vm.offerHistory()
-                    nav.navigate(SmsHistoryKey())
+                    onDialogChange(null)
+                    actions.onChooseHistory()
                 }) { Text(stringResource(R.string.sms_history_choose)) }
             },
             dismissButton = {
                 TextButton(onClick = {
-                    dialog = null
-                    vm.skipHistory()
+                    onDialogChange(null)
+                    actions.onSkipHistory()
                 }) { Text(stringResource(R.string.sms_history_not_now)) }
             },
         )
 
-        "settings" -> ConfirmDialog(
+        SmsSettingsDialog.SETTINGS -> ConfirmDialog(
             title = stringResource(R.string.sms_permission_title),
             message = stringResource(R.string.sms_permission_denied_text),
             confirmText = stringResource(R.string.sms_permission_settings),
             onConfirm = {
-                dialog = null
-                runCatching { context.startActivity(appInfoIntent(context)) }
+                onDialogChange(null)
+                actions.onOpenAppSettings()
             },
-            onDismiss = { dialog = null },
+            onDismiss = { onDialogChange(null) },
         )
+
+        null -> Unit
     }
 }
 
 /** Settings → Bank SMS → Cards and accounts. */
 @Composable
-fun SmsCardsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
+fun SmsCardsRoute(vm: SmsSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val colors = LocalNexoColors.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    SmsCardsScreen(
+        state = state,
+        onBack = nav::back,
+        onMapSource = vm::mapSource,
+        onRemoveSource = vm::removeSource,
+    )
+}
+
+@Composable
+internal fun SmsCardsScreen(
+    state: SmsSettingsUiState,
+    onBack: () -> Unit,
+    onMapSource: (SmsSource, accountId: String) -> Unit,
+    onRemoveSource: (SmsSource) -> Unit,
+) {
+    val colors = LocalNexoColors.current
     val ref = state.ref
     val sources = state.sources
     var editing by remember { mutableStateOf<SmsSource?>(null) }
@@ -301,7 +375,7 @@ fun SmsCardsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
 
     Box(Modifier.fillMaxSize()) {
         Scaffold(topBar = {
-            NexoTopBar(stringResource(R.string.sms_cards), onBack = { nav.back() })
+            NexoTopBar(stringResource(R.string.sms_cards), onBack = onBack)
         }, containerColor = colors.background) { p ->
             Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
                 if (sources.isEmpty()) EmptyState(stringResource(R.string.sms_cards_empty))
@@ -323,9 +397,7 @@ fun SmsCardsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                                 RoundIconButton(
                                     Icons.Outlined.Delete,
                                     stringResource(R.string.sms_remove),
-                                    {
-                                        vm.removeSource(s)
-                                    },
+                                    { onRemoveSource(s) },
                                     tint = colors.textTertiary,
                                     container = Color.Transparent,
                                 )
@@ -350,7 +422,7 @@ fun SmsCardsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                     },
                 )
                 AccountPickList(ref, s.accountId) { id ->
-                    vm.mapSource(s, id)
+                    onMapSource(s, id)
                     sheetOpen = false
                 }
             }
@@ -360,10 +432,19 @@ fun SmsCardsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
 
 /** Settings → Bank SMS → Bank fees: the remembered answers per account and route, each resettable to "ask". */
 @Composable
-fun SmsFeesScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
+fun SmsFeesRoute(vm: SmsSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val colors = LocalNexoColors.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    SmsFeesScreen(state = state, onBack = nav::back, onSetFeeMode = vm::setFeeMode)
+}
+
+@Composable
+internal fun SmsFeesScreen(
+    state: SmsSettingsUiState,
+    onBack: () -> Unit,
+    onSetFeeMode: (FeePreset, FeeMode) -> Unit,
+) {
+    val colors = LocalNexoColors.current
     val ref = state.ref
     val presets = state.presets
     var editing by remember { mutableStateOf<FeePreset?>(null) }
@@ -382,7 +463,7 @@ fun SmsFeesScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
 
     Box(Modifier.fillMaxSize()) {
         Scaffold(topBar = {
-            NexoTopBar(stringResource(R.string.fee_presets_title), onBack = { nav.back() })
+            NexoTopBar(stringResource(R.string.fee_presets_title), onBack = onBack)
         }, containerColor = colors.background) { p ->
             Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
                 if (presets.isEmpty()) EmptyState(stringResource(R.string.fee_presets_empty))
@@ -419,7 +500,7 @@ fun SmsFeesScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                     SettingRow(
                         label,
                         onClick = {
-                            vm.setFeeMode(preset, mode)
+                            onSetFeeMode(preset, mode)
                             sheetOpen = false
                         },
                         showChevron = false,
@@ -441,17 +522,32 @@ fun SmsFeesScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
 
 /** Settings → Bank SMS → Bank sender IDs: the built-in list, and senders the user adds. */
 @Composable
-fun SmsSendersScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
+fun SmsSendersRoute(vm: SmsSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val colors = LocalNexoColors.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    SmsSendersScreen(
+        state = state,
+        onBack = nav::back,
+        onAddSender = vm::addSender,
+        onRemoveSender = vm::removeSender,
+    )
+}
+
+@Composable
+internal fun SmsSendersScreen(
+    state: SmsSettingsUiState,
+    onBack: () -> Unit,
+    onAddSender: (String) -> Unit,
+    onRemoveSender: (String) -> Unit,
+) {
+    val colors = LocalNexoColors.current
     val device = state.device
     var adding by remember { mutableStateOf(false) }
     val custom = device?.smsCustomSenders.orEmpty().sorted()
 
     Scaffold(
         topBar = {
-            NexoTopBar(stringResource(R.string.sms_senders_title), onBack = { nav.back() }) {
+            NexoTopBar(stringResource(R.string.sms_senders_title), onBack = onBack) {
                 RoundIconButton(Icons.Rounded.Add, stringResource(R.string.sms_senders_add), {
                     adding = true
                 }, modifier = Modifier.padding(end = Space.m))
@@ -472,7 +568,7 @@ fun SmsSendersScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
             custom.forEach { id ->
                 SettingRow(id, trailing = {
                     RoundIconButton(Icons.Outlined.Delete, stringResource(R.string.sms_remove), {
-                        vm.removeSender(id)
+                        onRemoveSender(id)
                     }, tint = colors.textTertiary, container = Color.Transparent)
                 })
             }
@@ -495,10 +591,67 @@ fun SmsSendersScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
             label = stringResource(R.string.sms_senders_hint),
             maxLength = 20,
             onConfirm = {
-                vm.addSender(it)
+                onAddSender(it)
                 adding = false
             },
             onDismiss = { adding = false },
         )
     }
+}
+
+/** Made-up settings for previews and tests: two card mappings, two fee answers and a custom sender. */
+internal val previewSmsSettingsState = SmsSettingsUiState(
+    ref = PreviewData.ref,
+    device = PreviewData.device.copy(
+        smsCaptureStartedAt = PreviewData.clock.millis() - 86_400_000,
+        smsCustomSenders = setOf("MYBANK"),
+    ),
+    permitted = true,
+    pendingCount = 3,
+    sources = listOf(
+        SmsSource("COMBANK", "1234", "card", updatedAt = 0),
+        SmsSource("COMBANK", "", "bank", updatedAt = 0),
+    ),
+    presets = listOf(
+        FeePreset(
+            "bank",
+            FeeRoute.INTERBANK_TRANSFER,
+            lastFee = 30.0,
+            mode = FeeMode.AUTO,
+            updatedAt = 0,
+        ),
+        FeePreset("card", FeeRoute.FX_CARD_PURCHASE, mode = FeeMode.ASK, updatedAt = 0),
+    ),
+)
+
+@Preview
+@Composable
+private fun SmsSettingsScreenPreview() = NexoPreview {
+    SmsSettingsScreen(previewSmsSettingsState, null, {}, SmsSettingsActions())
+}
+
+@Preview
+@Composable
+private fun SmsSettingsScreenNoPermissionPreview() = NexoPreview(dark = true) {
+    SmsSettingsScreen(previewSmsSettingsState.copy(permitted = false), null, {
+    }, SmsSettingsActions())
+}
+
+@Preview
+@Composable
+private fun SmsCardsScreenPreview() = NexoPreview {
+    SmsCardsScreen(previewSmsSettingsState, onBack = {
+    }, onMapSource = { _, _ -> }, onRemoveSource = {})
+}
+
+@Preview
+@Composable
+private fun SmsFeesScreenPreview() = NexoPreview {
+    SmsFeesScreen(previewSmsSettingsState, onBack = {}, onSetFeeMode = { _, _ -> })
+}
+
+@Preview
+@Composable
+private fun SmsSendersScreenPreview() = NexoPreview {
+    SmsSendersScreen(previewSmsSettingsState, onBack = {}, onAddSender = {}, onRemoveSender = {})
 }
