@@ -96,12 +96,13 @@ private fun themeModeLabel(m: ThemeMode) = stringResource(
 @Composable
 fun StyleScreen(vm: SettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val device by vm.device.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val device = state.device
     val d = device ?: return
     Scaffold(topBar = { NexoTopBar(stringResource(R.string.style), onBack = { nav.back() }) }) { p ->
         Column(Modifier.padding(p)) {
             listOf(ThemeMode.SYSTEM, ThemeMode.DARK, ThemeMode.LIGHT).forEach { m ->
-                Row(Modifier.fillMaxWidth().clickable { vm.device { setThemeMode(m) } }.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().clickable { vm.setThemeMode(m) }.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(d.themeMode == m, onClick = null, modifier = Modifier.padding(8.dp))
                     Text(themeModeLabel(m))
                 }
@@ -113,12 +114,13 @@ fun StyleScreen(vm: SettingsViewModel = hiltViewModel()) {
 @Composable
 fun WidgetSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val device by vm.device.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val device = state.device
     val d = device ?: return
     var opacity by remember(d.widgetOpacity) { mutableFloatStateOf(d.widgetOpacity) }
     LaunchedEffect(opacity) {
         delay(500)
-        if (opacity != d.widgetOpacity) vm.device { setWidgetOpacity(opacity) }
+        if (opacity != d.widgetOpacity) vm.setWidgetOpacity(opacity)
     }
     Scaffold(topBar = { NexoTopBar(stringResource(R.string.widget_settings), onBack = { nav.back() }) }) { p ->
         Column(Modifier.padding(p).padding(16.dp)) {
@@ -135,7 +137,7 @@ fun WidgetSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             }
             Text(stringResource(R.string.widget_background), style = MaterialTheme.typography.titleSmall)
             listOf(ThemeMode.LIGHT, ThemeMode.DARK, ThemeMode.SYSTEM).forEach { m ->
-                Row(Modifier.fillMaxWidth().clickable { vm.device { setWidgetTheme(m) } }, verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().clickable { vm.setWidgetTheme(m) }, verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(d.widgetTheme == m, onClick = null, modifier = Modifier.padding(8.dp))
                     Text(themeModeLabel(m))
                 }
@@ -151,12 +153,13 @@ fun WidgetSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
 fun ReminderScreen(vm: SettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
-    val device by vm.device.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val device = state.device
     val d = device ?: return
     var time by rememberSaveable { mutableStateOf(false) }
     var exactPrompt by rememberSaveable { mutableStateOf(false) }
     fun apply(enabled: Boolean, h: Int, m: Int, days: Set<Int>) {
-        vm.device { setReminder(enabled, h, m, days) }
+        vm.setReminder(enabled, h, m, days)
         ReminderScheduler.schedule(context, enabled, h, m)
     }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
@@ -194,7 +197,8 @@ fun ReminderScreen(vm: SettingsViewModel = hiltViewModel()) {
 fun LockSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
-    val device by vm.device.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val device = state.device
     val d = device ?: return
     val scope = rememberCoroutineScope()
     var pinFlow by rememberSaveable { mutableStateOf<String?>(null) }
@@ -218,7 +222,7 @@ fun LockSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                             vm.setBiometricsEnabled(false)
                         } else {
                             val activity = context as? FragmentActivity ?: return@SwitchRow
-                            val cipher = vm.lock.createBiometricKey()
+                            val cipher = vm.createBiometricKey()
                             if (cipher != null) {
                                 BiometricPrompter.prompt(activity, promptTitle, cancel, cipher, onSuccess = { vm.setBiometricsEnabled(true) })
                             }
@@ -232,16 +236,16 @@ fun LockSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             }
         }
     }
-    if (timeout) ChoiceDialog(stringResource(R.string.lock_after), LockTimeout.entries, d.lockTimeout, { timeoutLabel(it) }, onSelect = { t -> vm.device { setLockTimeout(t) } }, onDismiss = { timeout = false })
+    if (timeout) ChoiceDialog(stringResource(R.string.lock_after), LockTimeout.entries, d.lockTimeout, { timeoutLabel(it) }, onSelect = { t -> vm.setLockTimeout(t) }, onDismiss = { timeout = false })
     if (confirmRemove) {
         PinFlowDialog(
             mode = "verify", currentHash = d.pinHash, descending = d.numberPadDescending,
-            onDone = { scope.launch { vm.lock.setPin(null) }; confirmRemove = false },
+            onDone = { vm.setPin(null); confirmRemove = false },
             onDismiss = { confirmRemove = false },
         )
     }
     pinFlow?.let { mode ->
-        PinFlowDialog(mode, d.pinHash, d.numberPadDescending, onDone = { pin -> scope.launch { vm.lock.setPin(pin) }; pinFlow = null }, onDismiss = { pinFlow = null })
+        PinFlowDialog(mode, d.pinHash, d.numberPadDescending, onDone = { pin -> vm.setPin(pin); pinFlow = null }, onDismiss = { pinFlow = null })
     }
 }
 

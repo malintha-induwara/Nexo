@@ -26,11 +26,12 @@ import com.nexo.app.ui.navigation.nexoEntries
 import com.nexo.app.ui.onboarding.OnboardingScreen
 
 @Composable
-fun NexoRoot(app: AppViewModel) {
-    val device by app.device.collectAsStateWithLifecycle()
-    val book by app.book.collectAsStateWithLifecycle()
-    val locked by app.locked.collectAsStateWithLifecycle()
-    val pending by app.pending.collectAsStateWithLifecycle()
+fun NexoApp(app: AppViewModel) {
+    val state by app.uiState.collectAsStateWithLifecycle()
+    val device = state.device
+    val book = state.book
+    val locked = state.locked
+    val pending = state.pending
     val d = device
     NexoTheme(mode = d?.themeMode ?: com.nexo.app.core.model.ThemeMode.SYSTEM, colorSet = book.colorSet) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -75,8 +76,10 @@ fun NexoRoot(app: AppViewModel) {
             }
             if (locked) {
                 LockScreen(
-                    lock = app.lock,
                     device = d,
+                    unlockCipher = app::unlockCipher,
+                    onUnlock = app::unlock,
+                    onVerifyPin = app::verifyPin,
                     onBiometricsInvalidated = app::disableBiometrics,
                     onEraseAll = app::eraseAll,
                 )

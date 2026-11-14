@@ -79,8 +79,9 @@ fun timeDisplayLabel(t: TimeDisplay) = stringResource(
 @Composable
 fun ConfigurationScreen(vm: SettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val device by vm.device.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val device = state.device
     val context = LocalContext.current
     val s = ref.settings
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
@@ -156,7 +157,7 @@ fun ConfigurationScreen(vm: SettingsViewModel = hiltViewModel()) {
             vm.update { it.copy(quickAddNotification = v) }
             com.nexo.app.core.notifications.Notifications.updateQuickAdd(context, v)
         }, onDismiss = close, description = stringResource(R.string.quick_add_text))
-        "pad" -> ChoiceDialog(stringResource(R.string.number_pad_order), listOf(false, true), device?.numberPadDescending == true, { stringResource(if (it) R.string.pad_descending else R.string.pad_ascending) }, onSelect = { v -> vm.device { setNumberPadDescending(v) } }, onDismiss = close)
+        "pad" -> ChoiceDialog(stringResource(R.string.number_pad_order), listOf(false, true), device?.numberPadDescending == true, { stringResource(if (it) R.string.pad_descending else R.string.pad_ascending) }, onSelect = { v -> vm.setNumberPadDescending(v) }, onDismiss = close)
         "lang" -> LanguageDialog(onDismiss = close)
     }
     pendingSwipe?.let { m ->
@@ -203,7 +204,8 @@ private fun LanguageDialog(onDismiss: () -> Unit) {
 @Composable
 fun MonthStartScreen(vm: SettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
     var pad by rememberSaveable { mutableStateOf(false) }
     val s = ref.settings
     Scaffold(topBar = { NexoTopBar(stringResource(R.string.monthly_start_date), onBack = { nav.back() }) }) { p ->

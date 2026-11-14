@@ -1,6 +1,5 @@
 package com.nexo.app.ui.sms
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
@@ -20,22 +19,20 @@ import com.nexo.app.domain.sms.ApproveResult
 import com.nexo.app.domain.sms.ApproveSmsUseCase
 import com.nexo.app.domain.sms.FeePlan
 import com.nexo.app.domain.sms.GetSmsFeePlanUseCase
+import com.nexo.app.ui.designsystem.UiText
+import com.nexo.app.ui.designsystem.joinToUiText
 import com.nexo.app.ui.navigation.SmsHistoryKey
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -64,14 +61,41 @@ enum class HistoryKind(val label: Int) {
 }
 
 /** The result of "Add N transactions": written to the ledger, and left in the queue for details. */
-data class HistoryResult(val added: Int, val toQueue: Int)
+data class HistoryResult(val added: Int, val toQueue: Int) {
+    /** Null when nothing happened worth saying. */
+    val message: UiText?
+        get() = buildList {
+            if (added > 0) add(UiText.plural(R.plurals.sms_history_added, added))
+            if (toQueue > 0) add(UiText.plural(R.plurals.sms_history_to_queue, toQueue))
+        }.takeIf { it.isNotEmpty() }?.joinToUiText(" · ")
+}
+
+data class SmsHistoryUiState(
+    val ref: RefData = RefData(),
+    /** Opened from the re-enable hint: the missed stretch is one of the ranges. */
+    val gap: Boolean = false,
+    val range: HistoryRange = HistoryRange.MONTH,
+    val custom: Pair<LocalDate, LocalDate> = LocalDate.now().minusDays(30) to LocalDate.now(),
+    /** Null while reading the inbox. */
+    val rows: List<HistoryRow>? = null,
+    val permitted: Boolean = false,
+    val kind: HistoryKind = HistoryKind.ALL,
+    val card: String? = null,
+    /** Rows passing the kind and card filters. */
+    val visible: List<HistoryRow> = emptyList(),
+    val selection: Set<String> = emptySet(),
+    val adding: Boolean = false,
+    /** The fee question on screen; the rest wait their turn. */
+    val feePrompt: FeePrompt? = null,
+    /** Set when "Add" is done; the screen reports it and leaves. */
+    val result: HistoryResult? = null,
+)
 
 @HiltViewModel(assistedFactory = SmsHistoryViewModel.Factory::class)
 class SmsHistoryViewModel @AssistedInject constructor(
     @Assisted private val key: SmsHistoryKey,
-    @ApplicationContext private val context: Context,
     private val sms: SmsRepository,
-    refs: ReferenceDataRepository,
+    private val refs: ReferenceDataRepository,
     private val prefs: UserPreferencesRepository,
     private val getFeePlan: GetSmsFeePlanUseCase,
     private val approveSms: ApproveSmsUseCase,
@@ -82,115 +106,101 @@ class SmsHistoryViewModel @AssistedInject constructor(
         fun create(key: SmsHistoryKey): SmsHistoryViewModel
     }
     private val zone = ZoneId.systemDefault()
-    val gap: Boolean = key.gapFrom > 0 && key.gapUntil > key.gapFrom
+    private val gap: Boolean = key.gapFrom > 0 && key.gapUntil > key.gapFrom
 
-    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-
-    private val _range = MutableStateFlow(if (gap) HistoryRange.GAP else HistoryRange.MONTH)
-    val range: StateFlow<HistoryRange> = _range.asStateFlow()
-
-    private val _custom = MutableStateFlow(LocalDate.now().minusDays(30) to LocalDate.now())
-    val custom: StateFlow<Pair<LocalDate, LocalDate>> = _custom.asStateFlow()
-
-    /** Null while reading the inbox. */
-    private val _rows = MutableStateFlow<List<HistoryRow>?>(null)
-    val rows: StateFlow<List<HistoryRow>?> = _rows.asStateFlow()
-
-    private val _kind = MutableStateFlow(HistoryKind.ALL)
-    val kind: StateFlow<HistoryKind> = _kind.asStateFlow()
-
-    private val _card = MutableStateFlow<String?>(null)
-    val card: StateFlow<String?> = _card.asStateFlow()
-
-    private val _selection = MutableStateFlow<Set<String>>(emptySet())
-    val selection: StateFlow<Set<String>> = _selection.asStateFlow()
-
-    private val _adding = MutableStateFlow(false)
-    val adding: StateFlow<Boolean> = _adding.asStateFlow()
-
+    /** Everything but the reference data, which comes from its own stream. */
+    private val _state = MutableStateFlow(
+        SmsHistoryUiState(gap = gap, range = if (gap) HistoryRange.GAP else HistoryRange.MONTH, permitted = inbox.hasPermission()),
+    )
     private val _feePrompts = MutableStateFlow<List<FeePrompt>>(emptyList())
-    val feePrompt: StateFlow<FeePrompt?> = _feePrompts.map { it.firstOrNull() }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    private val _done = Channel<HistoryResult>(Channel.BUFFERED)
-    val done = _done.receiveAsFlow()
+    val uiState: StateFlow<SmsHistoryUiState> = combine(refs.getRefDataStream(), _state, _feePrompts) { ref, s, prompts ->
+        val visible = s.rows.orEmpty().filter { s.kind.matches(it.item.kind) && (s.card == null || it.item.cardLast4 == s.card) }
+        s.copy(ref = ref, visible = visible, feePrompt = prompts.firstOrNull())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), _state.value)
 
-    val permitted: Boolean get() = inbox.hasPermission()
-
+    private var initialized = false
     private var added = 0
     private var toQueue = 0
 
-    init {
+    /** Reads the inbox the first time the screen opens. */
+    fun initialize() {
+        if (initialized) return
+        initialized = true
         load()
     }
 
     fun setRange(r: HistoryRange) {
-        _range.value = r
+        _state.update { it.copy(range = r) }
         load()
     }
 
     fun setCustom(from: LocalDate, to: LocalDate) {
-        _custom.value = from to to
-        _range.value = HistoryRange.CUSTOM
+        _state.update { it.copy(custom = from to to, range = HistoryRange.CUSTOM) }
         load()
     }
 
     fun setKind(k: HistoryKind) {
-        _kind.value = k
+        _state.update { it.copy(kind = k) }
     }
 
     fun setCard(last4: String?) {
-        _card.value = last4
+        _state.update { it.copy(card = last4) }
+    }
+
+    fun onResultHandled() {
+        _state.update { it.copy(result = null) }
     }
 
     private fun bounds(): Pair<Long, Long> {
         val now = System.currentTimeMillis()
-        return when (val r = _range.value) {
+        val state = _state.value
+        return when (val r = state.range) {
             HistoryRange.GAP -> key.gapFrom to key.gapUntil
             HistoryRange.CUSTOM -> {
-                val (from, to) = _custom.value
+                val (from, to) = state.custom
                 from.atStartOfDay(zone).toInstant().toEpochMilli() to to.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
             }
             else -> now - r.days!! * DAY_MS to now
         }
     }
 
-    fun load() = viewModelScope.launch {
-        _rows.value = null
-        if (!inbox.hasPermission()) {
-            _rows.value = emptyList()
+    private fun load() = viewModelScope.launch {
+        val permitted = inbox.hasPermission()
+        _state.update { it.copy(rows = null, permitted = permitted) }
+        if (!permitted) {
+            _state.update { it.copy(rows = emptyList()) }
             return@launch
         }
         val (from, until) = bounds()
         val rows = inbox.scanHistory(from, until)
-        _rows.value = rows
         // Nothing is selected by default; keep only choices that are still on screen.
-        _selection.update { sel -> sel.filter { id -> rows.any { it.item.id == id } }.toSet() }
+        _state.update { s -> s.copy(rows = rows, selection = s.selection.filter { id -> rows.any { it.item.id == id } }.toSet()) }
     }
-
-    /** Rows passing the kind and card filters. */
-    fun visible(rows: List<HistoryRow>, kind: HistoryKind, card: String?): List<HistoryRow> =
-        rows.filter { kind.matches(it.item.kind) && (card == null || it.item.cardLast4 == card) }
 
     fun toggle(row: HistoryRow) {
         if (row.cancelled) return
-        _selection.update { if (row.item.id in it) it - row.item.id else it + row.item.id }
+        _state.update { s -> s.copy(selection = if (row.item.id in s.selection) s.selection - row.item.id else s.selection + row.item.id) }
     }
 
+    /** Selects every visible row, or clears them when all are already selected. */
     fun selectAll(rows: List<HistoryRow>) {
         val ids = rows.filter { !it.cancelled }.map { it.item.id }.toSet()
-        _selection.update { if (ids.all { id -> id in it }) it - ids else it + ids }
+        _state.update { s -> s.copy(selection = if (ids.all { id -> id in s.selection }) s.selection - ids else s.selection + ids) }
     }
 
     /** "Which account is the card ending 1111?": remembered for live capture too, and applied to these rows. */
     fun mapCard(card: CardRef, accountId: String) = viewModelScope.launch {
         sms.mapCard(card.bank, card.last4, accountId)
-        val ref = ref.value
-        _rows.update { rows ->
-            rows?.map { row ->
-                if (row.item.bank == card.bank && row.item.cardLast4 == card.last4 && row.item.accountId == null) {
-                    row.copy(item = sms.prepare(row.item.copy(accountId = accountId), ref))
-                } else row
-            }
+        val ref = refs.getRefData()
+        _state.update { s ->
+            s.copy(
+                rows = s.rows?.map { row ->
+                    if (row.item.bank == card.bank && row.item.cardLast4 == card.last4 && row.item.accountId == null) {
+                        row.copy(item = sms.prepare(row.item.copy(accountId = accountId), ref))
+                    } else row
+                },
+            )
         }
     }
 
@@ -199,9 +209,10 @@ class SmsHistoryViewModel @AssistedInject constructor(
      * rows that still lack an account or category wait in the Review Queue.
      */
     fun add() = viewModelScope.launch {
-        val chosen = _rows.value.orEmpty().filter { it.item.id in _selection.value && !it.cancelled }.map { it.item }
-        if (chosen.isEmpty()) return@launch
-        _adding.value = true
+        val state = _state.value
+        val chosen = state.rows.orEmpty().filter { it.item.id in state.selection && !it.cancelled }.map { it.item }
+        if (chosen.isEmpty() || state.adding) return@launch
+        _state.update { it.copy(adding = true) }
         val stored = sms.getItems(sms.keep(chosen))
         prefs.setSmsHistoryImport(SmsHistoryImport.DONE)
         if (gap) prefs.clearSmsGap()
@@ -234,15 +245,9 @@ class SmsHistoryViewModel @AssistedInject constructor(
         if (_feePrompts.value.isEmpty()) finish()
     }
 
-    private suspend fun finish() {
-        _adding.value = false
-        _done.send(HistoryResult(added, toQueue))
+    private fun finish() {
+        _state.update { it.copy(adding = false, result = HistoryResult(added, toQueue)) }
     }
-
-    fun resultText(r: HistoryResult): String = buildList {
-        if (r.added > 0) add(context.resources.getQuantityString(R.plurals.sms_history_added, r.added, r.added))
-        if (r.toQueue > 0) add(context.resources.getQuantityString(R.plurals.sms_history_to_queue, r.toQueue, r.toQueue))
-    }.joinToString(" · ")
 
     private companion object {
         const val DAY_MS = 24 * 60 * 60 * 1000L

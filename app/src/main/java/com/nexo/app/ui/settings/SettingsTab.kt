@@ -87,7 +87,8 @@ fun SettingsTab(vm: SettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val header = LocalHeaderColors.current
     val context = LocalContext.current
-    val device by vm.device.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val device = state.device
     val items = listOf(
         HubItem(R.string.configuration, Icons.Outlined.Settings, ConfigurationKey),
         HubItem(R.string.tab_accounts, Icons.Outlined.AccountBalanceWallet, AccountSettingsMenuKey),

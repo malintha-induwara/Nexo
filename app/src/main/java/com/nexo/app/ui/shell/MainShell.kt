@@ -80,7 +80,6 @@ import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SmsQueueKey
 import com.nexo.app.ui.settings.SettingsTab
-import com.nexo.app.ui.sms.SmsBadgeViewModel
 import com.nexo.app.ui.stats.StatsTab
 import com.nexo.app.ui.transactions.TransactionsTab
 
@@ -109,7 +108,7 @@ val LocalShell = staticCompositionLocalOf { ShellController() }
 
 /** App shell with the four top-level tabs. Re-selecting a tab sends a "go to today" signal. */
 @Composable
-fun MainShell() {
+fun MainShell(vm: MainShellViewModel = hiltViewModel()) {
     var tab by rememberSaveable { mutableStateOf(MainTab.TRANSACTIONS) }
     var todaySignal by remember { mutableIntStateOf(0) }
     val barHidden = rememberSaveable { mutableStateOf(false) }
@@ -120,7 +119,8 @@ fun MainShell() {
     val context = LocalContext.current
     val colors = LocalNexoColors.current
     var lastBack by remember { mutableLongStateOf(0L) }
-    val queue by hiltViewModel<SmsBadgeViewModel>().badge.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val queue = state.smsBadge
     var addMenu by remember { mutableStateOf(false) }
     val haptics = rememberHaptics()
     val pressAgain = stringResource(R.string.press_back_again)

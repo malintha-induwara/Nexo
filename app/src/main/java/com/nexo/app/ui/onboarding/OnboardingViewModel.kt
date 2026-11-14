@@ -13,11 +13,12 @@ import com.nexo.app.data.repository.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class OnboardingState(
+data class OnboardingUiState(
     val step: Int = 0,
     val currency: CatalogCurrency = CurrencyCatalog.forLocale(),
     val busy: Boolean = false,
@@ -32,8 +33,8 @@ class OnboardingViewModel @Inject constructor(
     private val prefs: UserPreferencesRepository,
     private val repeats: RepeatRulesRepository,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(OnboardingState())
-    val state = _state.asStateFlow()
+    private val _state = MutableStateFlow(OnboardingUiState())
+    val uiState: StateFlow<OnboardingUiState> = _state.asStateFlow()
 
     fun next() = _state.update { it.copy(step = it.step + 1) }
     fun back() = _state.update { it.copy(step = (it.step - 1).coerceAtLeast(0)) }

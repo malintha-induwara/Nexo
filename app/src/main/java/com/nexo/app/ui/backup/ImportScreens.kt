@@ -70,13 +70,19 @@ import java.time.format.DateTimeFormatter
 fun ImportListScreen(vm: BackupViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
-    val files by vm.imports.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val files = state.imports
     var editing by remember { mutableStateOf(false) }
     var checked by remember { mutableStateOf(setOf<String>()) }
     var confirm by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { vm.refreshFiles() }
+    LaunchedEffect(state.result) {
+        val r = state.result as? BackupResult.ImportAdded ?: return@LaunchedEffect
+        if (!r.ok) Toast.makeText(context, R.string.not_excel_file, Toast.LENGTH_SHORT).show()
+        vm.onResultHandled()
+    }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { vm.addImport(it) { ok -> if (!ok) Toast.makeText(context, R.string.not_excel_file, Toast.LENGTH_SHORT).show() } }
+        uri?.let(vm::addImport)
     }
     Scaffold(topBar = {
         NexoTopBar(stringResource(R.string.import_excel), onBack = { nav.back() }) {
@@ -132,16 +138,31 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: BackupViewModel = hiltViewMod
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val resources = androidx.compose.ui.platform.LocalResources.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val busy by vm.busy.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val busy = state.busy
+    val preview = state.preview
     var order by rememberSaveable { mutableStateOf<DateOrder?>(null) }
-    var preview by remember { mutableStateOf<ImportPreview?>(null) }
     var reload by remember { mutableIntStateOf(0) }
     var shown by rememberSaveable { mutableIntStateOf(50) }
     var fix by remember { mutableStateOf<ImportRow?>(null) }
     var confirmSave by remember { mutableStateOf(false) }
     var deleteRow by remember { mutableStateOf<ImportRow?>(null) }
-    LaunchedEffect(order, reload) { preview = vm.preview(key.fileName, order) }
+    LaunchedEffect(order, reload) { vm.loadPreview(key.fileName, order) }
+    LaunchedEffect(state.result) {
+        when (val r = state.result) {
+            BackupResult.LineRemoved -> reload++
+            is BackupResult.ImportSaved -> if (r.failed == 0) {
+                Toast.makeText(context, R.string.saved, Toast.LENGTH_SHORT).show()
+                nav.backTo { it is ImportListKey }
+            } else {
+                Toast.makeText(context, resources.getString(R.string.import_partial, r.saved, r.failed), Toast.LENGTH_LONG).show()
+                reload++
+            }
+            else -> return@LaunchedEffect
+        }
+        vm.onResultHandled()
+    }
     androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
         reload++
         onPauseOrDispose {}
@@ -172,18 +193,10 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: BackupViewModel = hiltViewMod
         }
     }
     BusyOverlay(busy, null)
-    deleteRow?.let { r -> ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.removeLine(key.fileName, r.index) { reload++ } }, onDismiss = { deleteRow = null }) }
+    deleteRow?.let { r -> ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.removeLine(key.fileName, r.index) }, onDismiss = { deleteRow = null }) }
     if (confirmSave) {
         ConfirmDialog(stringResource(R.string.save_question), onConfirm = {
-            vm.saveImport(key.fileName, order) { ok, failed ->
-                if (failed == 0) {
-                    Toast.makeText(context, R.string.saved, Toast.LENGTH_SHORT).show()
-                    nav.backTo { it is ImportListKey }
-                } else {
-                    Toast.makeText(context, resources.getString(R.string.import_partial, ok, failed), Toast.LENGTH_LONG).show()
-                    reload++
-                }
-            }
+            vm.saveImport(key.fileName, order)
         }, onDismiss = { confirmSave = false })
     }
     fix?.let { row ->

@@ -36,6 +36,9 @@ import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SmsQueueKey
 
 /** The Review Queue's way in from the Transactions header. Shown only while something waits. */
+/** Pending count, and whether any of them needs attention (home badge and dot). */
+data class QueueBadge(val count: Int = 0, val attention: Boolean = false)
+
 @Composable
 fun SmsInboxAction(badge: QueueBadge) {
     val nav = LocalNavigator.current

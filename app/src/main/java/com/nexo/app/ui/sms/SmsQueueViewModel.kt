@@ -1,11 +1,11 @@
 package com.nexo.app.ui.sms
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.model.DenyReason
+import com.nexo.app.core.model.DeviceSettings
 import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.RefData
@@ -22,15 +22,16 @@ import com.nexo.app.domain.sms.ApproveResult
 import com.nexo.app.domain.sms.ApproveSmsUseCase
 import com.nexo.app.domain.sms.FeePlan
 import com.nexo.app.domain.sms.GetSmsFeePlanUseCase
-import com.nexo.app.ui.designsystem.component.UndoMessage
+import com.nexo.app.ui.designsystem.UiText
+import com.nexo.app.ui.designsystem.joinToUiText
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -52,10 +53,36 @@ data class FeePrompt(val items: List<SmsItem>, val plan: FeePlan.Ask)
 /** A bank card that pending items mention but no account is set for. */
 data class CardRef(val bank: String, val last4: String)
 
+/** What the Undo button of a [QueueNotice] reverses. */
+sealed interface QueueUndo {
+    data class RemoveFee(val feeId: String) : QueueUndo
+
+    data class Restore(val ids: List<String>) : QueueUndo
+}
+
+/** The message bar under the queue; a new [id] restarts its timer even with the same text. */
+data class QueueNotice(val text: UiText, val undo: QueueUndo? = null, val id: Long = System.nanoTime())
+
+data class SmsQueueUiState(
+    val ref: RefData = RefData(),
+    val device: DeviceSettings? = null,
+    val filter: QueueFilter = QueueFilter.ALL,
+    val pending: List<SmsItem> = emptyList(),
+    /** Null while loading. */
+    val items: List<SmsItem>? = null,
+    val unmappedCards: List<CardRef> = emptyList(),
+    val selection: Set<String> = emptySet(),
+    val notice: QueueNotice? = null,
+    /** The fee question on screen; the rest wait their turn. */
+    val feePrompt: FeePrompt? = null,
+    val permitted: Boolean = false,
+)
+
+private data class Quad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SmsQueueViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val sms: SmsRepository,
     refs: ReferenceDataRepository,
     private val prefs: UserPreferencesRepository,
@@ -65,37 +92,29 @@ class SmsQueueViewModel @Inject constructor(
     private val inbox: SmsInboxRepository,
 ) : ViewModel() {
 
-    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    val device = prefs.getDeviceSettingsStream().stateIn(viewModelScope, SharingStarted.Eagerly, null)
-
-    private val _filter = MutableStateFlow(QueueFilter.ALL)
-    val filter: StateFlow<QueueFilter> = _filter.asStateFlow()
-
-    val pending: StateFlow<List<SmsItem>> =
+    /** Kept for event handlers that need these synchronously. */
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val pending: StateFlow<List<SmsItem>> =
         sms.getItemsStream(listOf(SmsStatus.PENDING)).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    /** Null while loading. */
-    val items: StateFlow<List<SmsItem>?> = _filter.flatMapLatest { f ->
-        sms.getItemsStream(listOf(f.status)).map { list -> if (f == QueueFilter.ATTENTION) list.filter { it.needsAttention } else list }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-
-    val unmappedCards: StateFlow<List<CardRef>> = pending.map { list ->
-        list.filter { it.accountId == null && it.cardLast4 != null }.map { CardRef(it.bank, it.cardLast4!!) }.distinct()
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-
+    private val _filter = MutableStateFlow(QueueFilter.ALL)
     private val _selection = MutableStateFlow<Set<String>>(emptySet())
-    val selection: StateFlow<Set<String>> = _selection.asStateFlow()
-
-    private val _undo = MutableStateFlow<UndoMessage?>(null)
-    val undo: StateFlow<UndoMessage?> = _undo.asStateFlow()
-
+    private val _notice = MutableStateFlow<QueueNotice?>(null)
     private val _feePrompts = MutableStateFlow<List<FeePrompt>>(emptyList())
-
-    /** The fee question on screen; the rest wait their turn. */
-    val feePrompt: StateFlow<FeePrompt?> = _feePrompts.map { it.firstOrNull() }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
-
     private val _permitted = MutableStateFlow(inbox.hasPermission())
-    val permitted: StateFlow<Boolean> = _permitted.asStateFlow()
+
+    private val items: Flow<List<SmsItem>?> = _filter.flatMapLatest { f ->
+        sms.getItemsStream(listOf(f.status)).map { list -> if (f == QueueFilter.ATTENTION) list.filter { it.needsAttention } else list }
+    }
+
+    val uiState: StateFlow<SmsQueueUiState> = combine(
+        combine(ref, prefs.getDeviceSettingsStream(), _filter, ::Triple),
+        combine(pending, items, ::Pair),
+        combine(_selection, _notice, _feePrompts, _permitted) { sel, notice, prompts, permitted -> Quad(sel, notice, prompts.firstOrNull(), permitted) },
+    ) { (r, device, filter), (pendingItems, list), (sel, notice, prompt, permitted) ->
+        val unmapped = pendingItems.filter { it.accountId == null && it.cardLast4 != null }.map { CardRef(it.bank, it.cardLast4!!) }.distinct()
+        SmsQueueUiState(r, device, filter, pendingItems, list, unmapped, sel, notice, prompt, permitted)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SmsQueueUiState(permitted = inbox.hasPermission()))
 
     /** The queue is open: nothing is "new" any more, so the notification goes. */
     fun markSeen() = viewModelScope.launch {
@@ -112,11 +131,11 @@ class SmsQueueViewModel @Inject constructor(
     fun approve(id: String) = viewModelScope.launch {
         val item = pending.value.firstOrNull { it.id == id } ?: return@launch
         if (item.needsDetails) {
-            show(context.getString(R.string.sms_needs_details_first))
+            show(UiText.of(R.string.sms_needs_details_first))
             return@launch
         }
         when (val plan = getFeePlan(item)) {
-            FeePlan.None -> if (approveSms(id) is ApproveResult.Done) show(context.getString(R.string.sms_approved))
+            FeePlan.None -> if (approveSms(id) is ApproveResult.Done) show(UiText.of(R.string.sms_approved))
             is FeePlan.Auto -> autoFee(item, plan.amount, approveSms(id, FeeChoice(plan.amount)))
             is FeePlan.Ask -> _feePrompts.update { it + FeePrompt(listOf(item), plan) }
         }
@@ -128,15 +147,13 @@ class SmsQueueViewModel @Inject constructor(
         _feePrompts.update { it.drop(1) }
         if (choice == null) return@launch
         val approved = prompt.items.count { approveSms(it.id, choice) is ApproveResult.Done }
-        if (approved > 0) show(context.resources.getQuantityString(R.plurals.sms_n_approved, approved, approved))
+        if (approved > 0) show(UiText.plural(R.plurals.sms_n_approved, approved))
     }
 
     private fun autoFee(item: SmsItem, amount: Double, result: ApproveResult) {
         val feeId = (result as? ApproveResult.Done)?.feeId ?: return
         val text = AmountFormatter.format(amount, ref.value.accountCurrency(item.accountId))
-        _undo.value = UndoMessage(context.getString(R.string.fee_auto_added, text), context.getString(R.string.sms_undo)) {
-            viewModelScope.launch { transactions.delete(listOf(feeId)) }
-        }
+        _notice.value = QueueNotice(UiText.of(R.string.fee_auto_added, text), QueueUndo.RemoveFee(feeId))
     }
 
     fun deny(ids: Collection<String>, reason: DenyReason? = null) = viewModelScope.launch {
@@ -144,10 +161,7 @@ class SmsQueueViewModel @Inject constructor(
         _selection.value = emptySet()
         if (denied.isEmpty()) return@launch
         val restoreIds = denied.map { it.id }
-        _undo.value = UndoMessage(
-            context.resources.getQuantityString(R.plurals.sms_n_denied, denied.size, denied.size),
-            context.getString(R.string.sms_undo),
-        ) { restore(restoreIds) }
+        _notice.value = QueueNotice(UiText.plural(R.plurals.sms_n_denied, denied.size), QueueUndo.Restore(restoreIds))
     }
 
     fun restore(ids: Collection<String>) = viewModelScope.launch { sms.restore(ids) }
@@ -185,10 +199,10 @@ class SmsQueueViewModel @Inject constructor(
         _feePrompts.update { it + prompts }
         val skipped = ids.size - ready.size
         val parts = buildList {
-            if (approved > 0) add(context.resources.getQuantityString(R.plurals.sms_n_approved, approved, approved))
-            if (skipped > 0) add(context.resources.getQuantityString(R.plurals.sms_n_skipped, skipped, skipped))
+            if (approved > 0) add(UiText.plural(R.plurals.sms_n_approved, approved))
+            if (skipped > 0) add(UiText.plural(R.plurals.sms_n_skipped, skipped))
         }
-        if (parts.isNotEmpty()) show(parts.joinToString(" · "))
+        if (parts.isNotEmpty()) show(parts.joinToUiText(" · "))
     }
 
     fun assignAccount(accountId: String) = viewModelScope.launch {
@@ -202,11 +216,21 @@ class SmsQueueViewModel @Inject constructor(
     /** "Not now". The picker stays in Settings. */
     fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.core.model.SmsHistoryImport.SKIPPED) }
 
-    fun dismissUndo() {
-        _undo.value = null
+    /** Undo pressed on [notice]. */
+    fun undo(notice: QueueNotice) {
+        when (val action = notice.undo) {
+            is QueueUndo.RemoveFee -> viewModelScope.launch { transactions.delete(listOf(action.feeId)) }
+            is QueueUndo.Restore -> restore(action.ids)
+            null -> Unit
+        }
+        dismissNotice()
     }
 
-    private fun show(text: String) {
-        _undo.value = UndoMessage(text)
+    fun dismissNotice() {
+        _notice.value = null
+    }
+
+    private fun show(text: UiText) {
+        _notice.value = QueueNotice(text)
     }
 }

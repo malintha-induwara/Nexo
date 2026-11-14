@@ -29,6 +29,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +49,7 @@ import com.nexo.app.core.common.money.CatalogCurrency
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.SymbolPosition
+import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
@@ -84,7 +86,23 @@ private fun FormatRows(position: SymbolPosition, decimals: Int, symbol: String, 
 @Composable
 fun MainCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val busy = state.busy
+    val effectContext = androidx.compose.ui.platform.LocalContext.current
+    state.userMessage?.let { message ->
+        val text = message.text.asString()
+        LaunchedEffect(message.id) {
+            Toast.makeText(effectContext, text, Toast.LENGTH_LONG).show()
+            vm.onUserMessageShown(message.id)
+        }
+    }
+    LaunchedEffect(state.closed) {
+        if (state.closed) {
+            nav.back()
+            vm.onClosedHandled()
+        }
+    }
     val main = ref.mainCurrency
     var position by rememberSaveable(main.id) { mutableStateOf(main.symbolPosition) }
     var decimals by rememberSaveable(main.id) { mutableStateOf(main.decimals) }
@@ -96,7 +114,7 @@ fun MainCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
         Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
             Text(main.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp))
             FormatRows(position, decimals, main.symbol, { position = it }, { decimals = it })
-            Button(onClick = { vm.launch { vm.repo.setMainFormat(position, decimals); nav.back() } }, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text(stringResource(R.string.action_save)) }
+            Button(onClick = { vm.setMainFormat(position, decimals) }, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text(stringResource(R.string.action_save)) }
         }
     }
 }
@@ -105,8 +123,23 @@ fun MainCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
 fun MainCurrencyPickerScreen(vm: CurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val busy by vm.busy.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val busy = state.busy
+    val effectContext = androidx.compose.ui.platform.LocalContext.current
+    state.userMessage?.let { message ->
+        val text = message.text.asString()
+        LaunchedEffect(message.id) {
+            Toast.makeText(effectContext, text, Toast.LENGTH_LONG).show()
+            vm.onUserMessageShown(message.id)
+        }
+    }
+    LaunchedEffect(state.closed) {
+        if (state.closed) {
+            nav.back()
+            vm.onClosedHandled()
+        }
+    }
     var target by remember { mutableStateOf<CatalogCurrency?>(null) }
     var askRate by remember { mutableStateOf(false) }
     var rate by remember { mutableStateOf<Double?>(null) }
@@ -149,24 +182,12 @@ fun MainCurrencyPickerScreen(vm: CurrencyViewModel = hiltViewModel()) {
     }
     rate?.let { r ->
         ConfirmDialog(stringResource(R.string.main_change_warning), onConfirm = {
-            vm.launch {
-                vm.busy.value = true
-                val ok = vm.repo.changeMainWithRate(t!!, r)
-                vm.busy.value = false
-                Toast.makeText(context, if (ok) R.string.main_changed else R.string.main_change_failed, Toast.LENGTH_LONG).show()
-                nav.back()
-            }
+            vm.changeMainWithRate(t!!, r)
         }, onDismiss = { rate = null; target = null })
     }
     if (confirmReset && t != null) {
         ConfirmDialog(stringResource(R.string.all_data_deleted_question), onConfirm = {
-            vm.launch {
-                vm.busy.value = true
-                vm.repo.changeMainWithReset(t)
-                vm.busy.value = false
-                Toast.makeText(context, R.string.main_changed, Toast.LENGTH_LONG).show()
-                nav.back()
-            }
+            vm.changeMainWithReset(t)
         }, onDismiss = { confirmReset = false; target = null })
     }
     if (busy) AlertDialog(onDismissRequest = {}, text = {
@@ -180,7 +201,23 @@ fun MainCurrencyPickerScreen(vm: CurrencyViewModel = hiltViewModel()) {
 @Composable
 fun SubCurrenciesScreen(vm: CurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val busy = state.busy
+    val effectContext = androidx.compose.ui.platform.LocalContext.current
+    state.userMessage?.let { message ->
+        val text = message.text.asString()
+        LaunchedEffect(message.id) {
+            Toast.makeText(effectContext, text, Toast.LENGTH_LONG).show()
+            vm.onUserMessageShown(message.id)
+        }
+    }
+    LaunchedEffect(state.closed) {
+        if (state.closed) {
+            nav.back()
+            vm.onClosedHandled()
+        }
+    }
     val subs = ref.activeCurrencies.drop(1)
     var hide by remember { mutableStateOf<Currency?>(null) }
     Scaffold(topBar = {
@@ -200,22 +237,38 @@ fun SubCurrenciesScreen(vm: CurrencyViewModel = hiltViewModel()) {
                         Text("$head = ${ref.mainCurrency.isoCode ?: ref.mainCurrency.symbol} ${AmountFormatter.rate(c.rate)}")
                         Text(c.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                     }
-                    IconButton(onClick = { vm.launch { vm.repo.reorder(subs.map { it.id }.toMutableList().apply { add(i - 1, removeAt(i)) }) } }, enabled = i > 0) { Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up)) }
-                    IconButton(onClick = { vm.launch { vm.repo.reorder(subs.map { it.id }.toMutableList().apply { add(i + 1, removeAt(i)) }) } }, enabled = i < subs.size - 1) { Icon(Icons.Filled.ArrowDownward, stringResource(R.string.move_down)) }
+                    IconButton(onClick = { vm.reorder(subs.map { it.id }.toMutableList().apply { add(i - 1, removeAt(i)) }) }, enabled = i > 0) { Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up)) }
+                    IconButton(onClick = { vm.reorder(subs.map { it.id }.toMutableList().apply { add(i + 1, removeAt(i)) }) }, enabled = i < subs.size - 1) { Icon(Icons.Filled.ArrowDownward, stringResource(R.string.move_down)) }
                     IconButton(onClick = { hide = c }) { Icon(Icons.Filled.RemoveCircle, stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error) }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
     }
-    hide?.let { c -> ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.launch { vm.repo.hide(c.id) } }, onDismiss = { hide = null }) }
+    hide?.let { c -> ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.hide(c.id) }, onDismiss = { hide = null }) }
 }
 
 /** Add a built-in sub-currency. */
 @Composable
 fun AddSubCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val busy = state.busy
+    val effectContext = androidx.compose.ui.platform.LocalContext.current
+    state.userMessage?.let { message ->
+        val text = message.text.asString()
+        LaunchedEffect(message.id) {
+            Toast.makeText(effectContext, text, Toast.LENGTH_LONG).show()
+            vm.onUserMessageShown(message.id)
+        }
+    }
+    LaunchedEffect(state.closed) {
+        if (state.closed) {
+            nav.back()
+            vm.onClosedHandled()
+        }
+    }
     var query by remember { mutableStateOf("") }
     val list = CurrencyCatalog.all.filter { c -> c.code != ref.mainCurrency.isoCode && ref.currencyById[c.code]?.isVisible != true }
         .filter { query.isBlank() || it.displayName().contains(query, true) }
@@ -246,7 +299,23 @@ fun AddSubCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
 @Composable
 fun SubCurrencyEditScreen(key: SubCurrencyEditKey, vm: CurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val busy = state.busy
+    val effectContext = androidx.compose.ui.platform.LocalContext.current
+    state.userMessage?.let { message ->
+        val text = message.text.asString()
+        LaunchedEffect(message.id) {
+            Toast.makeText(effectContext, text, Toast.LENGTH_LONG).show()
+            vm.onUserMessageShown(message.id)
+        }
+    }
+    LaunchedEffect(state.closed) {
+        if (state.closed) {
+            nav.back()
+            vm.onClosedHandled()
+        }
+    }
     val existing = (key.currencyId ?: key.isoCode)?.let { ref.currencyById[it] }
     val catalog = CurrencyCatalog.find(key.isoCode ?: existing?.isoCode)
     var name by rememberSaveable { mutableStateOf(existing?.name ?: "") }
@@ -272,12 +341,7 @@ fun SubCurrencyEditScreen(key: SubCurrencyEditKey, vm: CurrencyViewModel = hiltV
                 when {
                     key.custom && name.isBlank() -> error = R.string.enter_name
                     key.custom && symbol.isBlank() -> error = R.string.enter_symbol
-                    else -> vm.launch {
-                        val row = if (key.custom) vm.repo.customSub(existing?.id, name, symbol, position, decimals, rate)
-                        else vm.repo.builtinSub(catalog!!, rate, position, decimals, existing)
-                        vm.repo.saveSub(row)
-                        nav.back()
-                    }
+                    else -> vm.saveSub(if (key.custom) null else catalog!!, existing, name, symbol, position, decimals, rate)
                 }
             }, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text(stringResource(R.string.action_save)) }
         }

@@ -13,7 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import com.nexo.app.core.model.ThemeMode
 import com.nexo.app.ui.AppViewModel
 import com.nexo.app.ui.IntentRouter
-import com.nexo.app.ui.NexoRoot
+import com.nexo.app.ui.NexoApp
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.mapNotNull
@@ -27,13 +27,13 @@ class MainActivity : AppCompatActivity() {
         val splash = installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        splash.setKeepOnScreenCondition { app.device.value == null }
+        splash.setKeepOnScreenCondition { app.uiState.value.device == null }
         lifecycleScope.launch {
-            app.device.mapNotNull { it?.themeMode }.distinctUntilChanged().collect(::syncSystemNightMode)
+            app.uiState.mapNotNull { it.device?.themeMode }.distinctUntilChanged().collect(::syncSystemNightMode)
         }
         if (savedInstanceState == null) app.setPending(IntentRouter.route(intent))
         setContent {
-            NexoRoot(app = app)
+            NexoApp(app = app)
         }
     }
 

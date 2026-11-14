@@ -78,12 +78,13 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val colors = LocalNexoColors.current
-    val device by vm.device.collectAsStateWithLifecycle()
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val permitted by vm.permitted.collectAsStateWithLifecycle()
-    val pending by vm.pendingCount.collectAsStateWithLifecycle()
-    val sources by vm.sources.collectAsStateWithLifecycle()
-    val presets by vm.presets.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val device = state.device
+    val ref = state.ref
+    val permitted = state.permitted
+    val pending = state.pendingCount
+    val sources = state.sources
+    val presets = state.presets
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
     var cashSheet by remember { mutableStateOf(false) }
 
@@ -232,8 +233,9 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
 fun SmsCardsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val colors = LocalNexoColors.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val sources by vm.sources.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val sources = state.sources
     var editing by remember { mutableStateOf<SmsSource?>(null) }
     var sheetOpen by remember { mutableStateOf(false) }
 
@@ -280,8 +282,9 @@ fun SmsCardsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
 fun SmsFeesScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val colors = LocalNexoColors.current
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val presets by vm.presets.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val presets = state.presets
     var editing by remember { mutableStateOf<FeePreset?>(null) }
     var sheetOpen by remember { mutableStateOf(false) }
 
@@ -338,7 +341,8 @@ fun SmsFeesScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
 fun SmsSendersScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val colors = LocalNexoColors.current
-    val device by vm.device.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val device = state.device
     var adding by remember { mutableStateOf(false) }
     val custom = device?.smsCustomSenders.orEmpty().sorted()
 

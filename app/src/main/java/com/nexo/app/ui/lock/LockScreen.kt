@@ -40,18 +40,20 @@ import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import com.nexo.app.R
 import com.nexo.app.core.model.DeviceSettings
-import com.nexo.app.data.repository.AppLockRepository
 import com.nexo.app.data.repository.PinResult
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.TextFieldDialog
+import javax.crypto.Cipher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Lock screen shown over everything. Back sends the app to the background. */
 @Composable
 fun LockScreen(
-    lock: AppLockRepository,
     device: DeviceSettings,
+    unlockCipher: () -> Cipher?,
+    onUnlock: () -> Unit,
+    onVerifyPin: suspend (String) -> PinResult,
     onBiometricsInvalidated: () -> Unit,
     onEraseAll: () -> Unit,
 ) {
@@ -75,9 +77,9 @@ fun LockScreen(
     val biometricAvailable = device.biometricsEnabled && BiometricPrompter.isAvailable(context)
     fun promptBiometric() {
         if (activity == null) return
-        val cipher = lock.getUnlockCipher()
+        val cipher = unlockCipher()
         if (cipher != null) {
-            BiometricPrompter.prompt(activity, promptTitle, usePin, cipher, onSuccess = { lock.unlock() })
+            BiometricPrompter.prompt(activity, promptTitle, usePin, cipher, onSuccess = onUnlock)
         } else {
             onBiometricsInvalidated()
             message = invalidated
@@ -93,7 +95,7 @@ fun LockScreen(
     }
 
     fun submit(value: String) = scope.launch {
-        when (val r = lock.verifyPin(value)) {
+        when (val r = onVerifyPin(value)) {
             PinResult.Success -> Unit
             is PinResult.Wrong -> {
                 shake++

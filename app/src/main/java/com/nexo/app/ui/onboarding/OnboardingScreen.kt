@@ -1,6 +1,7 @@
 package com.nexo.app.ui.onboarding
 
 import android.Manifest
+import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -68,7 +69,7 @@ import com.nexo.app.ui.designsystem.theme.nexo
 @Composable
 fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
     val onFinished: () -> Unit = { vm.complete() }
-    val state by vm.state.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
     var askPermission by rememberSaveable { mutableStateOf(false) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { onFinished() }
     LaunchedEffect(state.done) {
@@ -81,7 +82,7 @@ fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
         when (state.step) {
             0 -> Welcome(onStart = vm::next)
-            else -> StartingData(state, vm)
+            else -> StartingData(state, onStartFresh = vm::startFresh, onRestore = vm::restore, onPickCurrency = vm::setCurrency)
         }
         if (state.busy) {
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.25f)), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -152,10 +153,10 @@ private enum class StartChoice { FRESH, RESTORE }
  * the bottom says what happens next (Continue, or Choose backup file) so the way forward is always on screen.
  */
 @Composable
-private fun StartingData(state: OnboardingState, vm: OnboardingViewModel) {
+private fun StartingData(state: OnboardingUiState, onStartFresh: () -> Unit, onRestore: (Uri) -> Unit, onPickCurrency: (CatalogCurrency) -> Unit) {
     var pickCurrency by rememberSaveable { mutableStateOf(false) }
     var choice by rememberSaveable { mutableStateOf(StartChoice.FRESH) }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::restore) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(onRestore) }
     Column(Modifier.fillMaxSize().padding(24.dp)) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(stringResource(R.string.starting_data_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
@@ -191,14 +192,14 @@ private fun StartingData(state: OnboardingState, vm: OnboardingViewModel) {
         }
         Spacer(Modifier.height(16.dp))
         Button(
-            onClick = { if (choice == StartChoice.FRESH) vm.startFresh() else picker.launch(arrayOf("*/*")) },
+            onClick = { if (choice == StartChoice.FRESH) onStartFresh() else picker.launch(arrayOf("*/*")) },
             enabled = !state.busy,
             modifier = Modifier.fillMaxWidth().height(52.dp),
         ) {
             Text(stringResource(if (choice == StartChoice.FRESH) R.string.action_continue else R.string.choose_backup_file))
         }
     }
-    if (pickCurrency) CurrencyPickerDialog(onPick = { vm.setCurrency(it); pickCurrency = false }, onDismiss = { pickCurrency = false })
+    if (pickCurrency) CurrencyPickerDialog(onPick = { onPickCurrency(it); pickCurrency = false }, onDismiss = { pickCurrency = false })
 }
 
 @Composable

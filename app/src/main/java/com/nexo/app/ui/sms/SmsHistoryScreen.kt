@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -46,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.data.sms.ledgerAmount
+import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.DateRangeChips
 import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.InlineBottomSheet
@@ -65,26 +67,30 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
     val vm = hiltViewModel<SmsHistoryViewModel, SmsHistoryViewModel.Factory>(creationCallback = { it.create(key) })
     val nav = LocalNavigator.current
     val context = LocalContext.current
+    val resources = LocalResources.current
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val range by vm.range.collectAsStateWithLifecycle()
-    val custom by vm.custom.collectAsStateWithLifecycle()
-    val rows by vm.rows.collectAsStateWithLifecycle()
-    val kind by vm.kind.collectAsStateWithLifecycle()
-    val card by vm.card.collectAsStateWithLifecycle()
-    val selection by vm.selection.collectAsStateWithLifecycle()
-    val adding by vm.adding.collectAsStateWithLifecycle()
-    val feePrompt by vm.feePrompt.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val range = state.range
+    val custom = state.custom
+    val rows = state.rows
+    val kind = state.kind
+    val card = state.card
+    val selection = state.selection
+    val adding = state.adding
+    val feePrompt = state.feePrompt
     val shownPrompt = remember { arrayOfNulls<FeePrompt>(1) }
     if (feePrompt != null) shownPrompt[0] = feePrompt
     var mapping by remember { mutableStateOf<CardRef?>(null) }
     var mappingOpen by remember { mutableStateOf(false) }
     val now = remember { System.currentTimeMillis() }
 
-    LaunchedEffect(Unit) {
-        vm.done.collect { r ->
-            vm.resultText(r).takeIf { it.isNotEmpty() }?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+    LaunchedEffect(Unit) { vm.initialize() }
+    state.result?.let { r ->
+        LaunchedEffect(r) {
+            r.message?.let { Toast.makeText(context, it.asString(resources), Toast.LENGTH_LONG).show() }
+            vm.onResultHandled()
             nav.back()
         }
     }
@@ -98,7 +104,7 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
             }
             ChipRow(
                 // Opened from the re-enable hint, the gap comes first so the chosen chip is in view.
-                options = if (vm.gap) listOf(HistoryRange.GAP) + HistoryRange.entries.filter { it != HistoryRange.GAP }
+                options = if (state.gap) listOf(HistoryRange.GAP) + HistoryRange.entries.filter { it != HistoryRange.GAP }
                 else HistoryRange.entries.filter { it != HistoryRange.GAP },
                 selected = range,
                 label = { stringResource(it.label) },
@@ -117,7 +123,7 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
                 list.isEmpty() -> EmptyState(
-                    stringResource(if (vm.permitted) R.string.sms_history_empty else R.string.sms_history_needs_permission),
+                    stringResource(if (state.permitted) R.string.sms_history_empty else R.string.sms_history_needs_permission),
                     Modifier.padding(top = Space.xxl),
                 )
                 else -> {
@@ -136,7 +142,7 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                             onSelect = { haptics.tick(); vm.setCard(it) },
                         )
                     }
-                    val visible = vm.visible(list, kind, card)
+                    val visible = state.visible
                     val unmapped = list.filter { it.item.accountId == null && it.item.cardLast4 != null && !it.cancelled }
                         .map { CardRef(it.item.bank, it.item.cardLast4!!) }.distinct()
                     LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = Space.xl)) {

@@ -64,6 +64,7 @@ import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.data.sms.needsAttention
 import com.nexo.app.data.sms.needsDetails
+import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.InlineBottomSheet
@@ -71,6 +72,7 @@ import com.nexo.app.ui.designsystem.component.RoundIconButton
 import com.nexo.app.ui.designsystem.component.SwipeAction
 import com.nexo.app.ui.designsystem.component.SwipeActionRow
 import com.nexo.app.ui.designsystem.component.UndoBar
+import com.nexo.app.ui.designsystem.component.UndoMessage
 import com.nexo.app.ui.designsystem.component.rememberHaptics
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
@@ -96,16 +98,21 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val device by vm.device.collectAsStateWithLifecycle()
-    val filter by vm.filter.collectAsStateWithLifecycle()
-    val items by vm.items.collectAsStateWithLifecycle()
-    val pending by vm.pending.collectAsStateWithLifecycle()
-    val unmapped by vm.unmappedCards.collectAsStateWithLifecycle()
-    val selection by vm.selection.collectAsStateWithLifecycle()
-    val undo by vm.undo.collectAsStateWithLifecycle()
-    val permitted by vm.permitted.collectAsStateWithLifecycle()
-    val feePrompt by vm.feePrompt.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val device = state.device
+    val filter = state.filter
+    val items = state.items
+    val pending = state.pending
+    val unmapped = state.unmappedCards
+    val selection = state.selection
+    val permitted = state.permitted
+    val feePrompt = state.feePrompt
+    val undoLabel = stringResource(R.string.sms_undo)
+    val undo = state.notice?.let { notice ->
+        val text = notice.text.asString()
+        remember(notice.id) { UndoMessage(text, undoLabel.takeIf { notice.undo != null }) { vm.undo(notice) } }
+    }
     // Keeps the last question drawn while the sheet slides away.
     val shownPrompt = remember { arrayOfNulls<FeePrompt>(1) }
     if (feePrompt != null) shownPrompt[0] = feePrompt
@@ -246,7 +253,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
             }
         }
 
-        UndoBar(undo, vm::dismissUndo, Modifier.align(Alignment.BottomCenter))
+        UndoBar(undo, vm::dismissNotice, Modifier.align(Alignment.BottomCenter))
 
         InlineBottomSheet(
             visible = sheetOpen,

@@ -29,6 +29,10 @@ sealed interface UiText {
     }
 }
 
+/** These texts shown one after another with [separator] between them, e.g. "2 approved · 1 skipped". */
+fun List<UiText>.joinToUiText(separator: String): UiText =
+    UiText.Joined(flatMapIndexed { i, part -> if (i == 0) listOf(part) else listOf(UiText.Raw(separator), part) })
+
 fun UiText.asString(resources: Resources): String = when (this) {
     is UiText.Raw -> value
     is UiText.Resource -> if (args.isEmpty()) resources.getString(id) else resources.getString(id, *resolve(args, resources))
