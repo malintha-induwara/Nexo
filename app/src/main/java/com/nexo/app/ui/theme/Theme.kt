@@ -19,8 +19,18 @@ import com.nexo.app.core.settings.ThemeMode
 @Immutable
 data class HeaderColors(val container: Color, val content: Color, val accent: Color, val lightStatusBar: Boolean)
 
+/**
+ * [income] and [expense] colour amounts as text. [incomeFill] and [expenseFill] colour filled chart
+ * marks: on a dark ground a fill needs a deeper step than text does.
+ */
 @Immutable
-data class MoneyColors(val income: Color, val expense: Color, val neutral: Color) {
+data class MoneyColors(
+    val income: Color,
+    val expense: Color,
+    val neutral: Color,
+    val incomeFill: Color = income,
+    val expenseFill: Color = expense,
+) {
     fun of(flow: CashFlow): Color = when (flow) {
         CashFlow.INCOME -> income
         CashFlow.EXPENSE -> expense
@@ -49,6 +59,8 @@ object NexoPalette {
     val IncomeBlueDark = DarkNexoColors.primaryText
     val ExpenseRed = LightNexoColors.danger
     val ExpenseRedDark = DarkNexoColors.danger
+    /** Expense bars on the dark ground. */
+    val ExpenseFillDark = Color(0xFFE5554D)
 
     val Sunday = Color(0xFFE5533D)
     val Saturday = Color(0xFF2F7DE1)
@@ -113,7 +125,9 @@ fun NexoTheme(
     val header = HeaderColors(colors.background, colors.text, colors.text, lightStatusBar = !dark)
     val blue = if (dark) NexoPalette.IncomeBlueDark else NexoPalette.IncomeBlue
     val red = if (dark) NexoPalette.ExpenseRedDark else NexoPalette.ExpenseRed
-    val money = if (colorSet == ColorSet.A) MoneyColors(blue, red, colors.text) else MoneyColors(red, blue, colors.text)
+    val blueFill = if (dark) colors.primary else blue
+    val redFill = if (dark) NexoPalette.ExpenseFillDark else red
+    val money = if (colorSet == ColorSet.A) MoneyColors(blue, red, colors.text, blueFill, redFill) else MoneyColors(red, blue, colors.text, redFill, blueFill)
     // Status / navigation bar icons follow the theme brightness.
     val view = LocalView.current
     if (!view.isInEditMode) {
