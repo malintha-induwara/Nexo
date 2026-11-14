@@ -1,5 +1,7 @@
 package com.nexo.app.ui.budgets
 
+import com.nexo.app.ui.components.NexoMenuItem
+import com.nexo.app.ui.components.NexoMenu
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Arrangement
@@ -27,8 +29,6 @@ import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -93,8 +93,8 @@ fun BudgetDetailScreen(key: BudgetDetailKey) {
                     Text(ui.name, fontWeight = FontWeight.SemiBold)
                     if (ui.siblings.isNotEmpty()) Icon(Icons.Filled.ArrowDropDown, null)
                 }
-                DropdownMenu(dropdown, { dropdown = false }) {
-                    ui.siblings.forEach { (id, name) -> DropdownMenuItem({ Text(name) }, { dropdown = false; vm.budgetId.value = id }) }
+                NexoMenu(dropdown, { dropdown = false }) {
+                    ui.siblings.forEach { (id, name) -> NexoMenuItem(name, { dropdown = false; vm.budgetId.value = id }) }
                 }
             }
         }) {

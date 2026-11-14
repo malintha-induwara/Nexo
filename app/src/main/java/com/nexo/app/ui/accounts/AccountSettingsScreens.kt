@@ -1,5 +1,10 @@
 package com.nexo.app.ui.accounts
 
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.SwapVert
+import androidx.compose.material.icons.rounded.Visibility
+import com.nexo.app.ui.components.NexoMenuItem
+import com.nexo.app.ui.components.NexoMenu
 import com.nexo.app.ui.theme.Space
 import com.nexo.app.ui.components.FlowCharts
 import androidx.compose.foundation.background
@@ -220,10 +225,10 @@ fun AccountListScreen(key: AccountListKey, vm: AccountSettingsViewModel = hiltVi
                 IconButton(onClick = { nav.navigate(AccountFormKey()) }) { Icon(Icons.Filled.Add, stringResource(R.string.action_add)) }
                 androidx.compose.foundation.layout.Box {
                 IconButton(onClick = { menu = true }) { Icon(androidx.compose.material.icons.Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more)) }
-                androidx.compose.material3.DropdownMenu(menu, { menu = false }) {
-                    androidx.compose.material3.DropdownMenuItem({ Text(stringResource(R.string.modify_orders)) }, { menu = false; mode = AccountListMode.REORDER })
-                    androidx.compose.material3.DropdownMenuItem({ Text(stringResource(R.string.show_hide)) }, { menu = false; mode = AccountListMode.VISIBILITY })
-                    androidx.compose.material3.DropdownMenuItem({ Text(stringResource(R.string.action_delete)) }, { menu = false; mode = AccountListMode.DELETE })
+                NexoMenu(menu, { menu = false }) {
+                    NexoMenuItem(stringResource(R.string.modify_orders), { menu = false; mode = AccountListMode.REORDER }, androidx.compose.material.icons.Icons.Rounded.SwapVert)
+                    NexoMenuItem(stringResource(R.string.show_hide), { menu = false; mode = AccountListMode.VISIBILITY }, androidx.compose.material.icons.Icons.Rounded.Visibility)
+                    NexoMenuItem(stringResource(R.string.action_delete), { menu = false; mode = AccountListMode.DELETE }, androidx.compose.material.icons.Icons.Rounded.DeleteOutline, danger = true)
                 }
                 }
             }

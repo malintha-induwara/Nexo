@@ -1,5 +1,11 @@
 package com.nexo.app.ui.transactions
 
+import androidx.compose.material.icons.rounded.EditNote
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.Category
+import androidx.compose.material.icons.rounded.Event
+import com.nexo.app.ui.components.NexoMenuItem
+import com.nexo.app.ui.components.NexoMenu
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,8 +20,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -93,13 +97,13 @@ fun SelectionBar(
                 IconButton(onClick = { onAction(null) }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
                 androidx.compose.foundation.layout.Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.action_more)) }
-                DropdownMenu(menu, onDismissRequest = { menu = false }) {
+                NexoMenu(menu, onDismissRequest = { menu = false }) {
                     listOf(
-                        BulkAction.DATE to R.string.edit_all_dates,
-                        BulkAction.CATEGORY to R.string.edit_all_categories,
-                        BulkAction.ACCOUNT to R.string.edit_all_assets,
-                        BulkAction.NOTE to R.string.edit_all_notes,
-                    ).forEach { (a, label) -> DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = { menu = false; onAction(a) }) }
+                        Triple(BulkAction.DATE, R.string.edit_all_dates, Icons.Rounded.Event),
+                        Triple(BulkAction.CATEGORY, R.string.edit_all_categories, Icons.Rounded.Category),
+                        Triple(BulkAction.ACCOUNT, R.string.edit_all_assets, Icons.Rounded.AccountBalanceWallet),
+                        Triple(BulkAction.NOTE, R.string.edit_all_notes, Icons.Rounded.EditNote),
+                    ).forEach { (a, label, icon) -> NexoMenuItem(stringResource(label), { menu = false; onAction(a) }, icon) }
                 }
                 }
             },

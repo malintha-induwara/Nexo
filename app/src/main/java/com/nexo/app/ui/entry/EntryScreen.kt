@@ -1,5 +1,11 @@
 package com.nexo.app.ui.entry
 
+import com.nexo.app.core.lock.expectReturn
+import androidx.compose.material.icons.rounded.DateRange
+import androidx.compose.material.icons.rounded.PhotoLibrary
+import androidx.compose.material.icons.rounded.PhotoCamera
+import com.nexo.app.ui.components.NexoMenuItem
+import com.nexo.app.ui.components.NexoMenu
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -66,8 +72,6 @@ import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -255,7 +259,7 @@ fun EntryScreen(key: EntryKey) {
 
     // Scan receipt: a photo from the camera or the gallery is read, then attached once the user confirms it.
     var cameraUri by rememberSaveable { mutableStateOf<String?>(null) }
-    val scanCamera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+    val scanCamera = rememberLauncherForActivityResult(RearCameraPicture()) { ok ->
         if (ok) cameraUri?.let { vm.scanReceipt(Uri.parse(it)) }
     }
     val scanGallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -268,6 +272,7 @@ fun EntryScreen(key: EntryKey) {
         val file = File(dir, "camera_${System.currentTimeMillis()}.jpg")
         val uri = FileProvider.getUriForFile(context, context.packageName + ".files", file)
         cameraUri = uri.toString()
+        context.expectReturn()
         scanCamera.launch(uri)
     }
 
@@ -511,13 +516,13 @@ fun EntryScreen(key: EntryKey) {
                                     else -> showRepMenu = true
                                 }
                             }
-                            DropdownMenu(showRepMenu, onDismissRequest = { showRepMenu = false }) {
+                            NexoMenu(showRepMenu, onDismissRequest = { showRepMenu = false }) {
                                 if (s.type == EntryType.EXPENSE && !s.isBalance) {
-                                    DropdownMenuItem(text = { Text(stringResource(R.string.installment)) }, onClick = { showRepMenu = false; showInstallments = true })
+                                    NexoMenuItem(stringResource(R.string.installment), { showRepMenu = false; showInstallments = true }, Icons.Rounded.DateRange)
                                 }
-                                DropdownMenuItem(text = { Text(stringResource(R.string.repeat)) }, onClick = { showRepMenu = false; showRepeatList = true })
+                                NexoMenuItem(stringResource(R.string.repeat), { showRepMenu = false; showRepeatList = true }, Icons.Rounded.Repeat)
                                 if (s.repeat != RepeatType.NONE || s.installments > 0) {
-                                    DropdownMenuItem(text = { Text(stringResource(R.string.action_cancel)) }, onClick = { showRepMenu = false; vm.clearRepInst() })
+                                    NexoMenuItem(stringResource(R.string.action_cancel), { showRepMenu = false; vm.clearRepInst() }, Icons.Rounded.Close, danger = true)
                                 }
                             }
                         }
@@ -568,14 +573,15 @@ fun EntryScreen(key: EntryKey) {
                                 vm.enterEdit()
                                 if (device?.photoNoticeShown == false) showPhotoNotice = true else showScanMenu = true
                             }
-                            DropdownMenu(showScanMenu, onDismissRequest = { showScanMenu = false }) {
+                            NexoMenu(showScanMenu, onDismissRequest = { showScanMenu = false }) {
                                 if (context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY)) {
-                                    DropdownMenuItem(text = { Text(stringResource(R.string.camera)) }, onClick = { showScanMenu = false; launchCamera() })
+                                    NexoMenuItem(stringResource(R.string.camera), { showScanMenu = false; launchCamera() }, Icons.Rounded.PhotoCamera)
                                 }
-                                DropdownMenuItem(text = { Text(stringResource(R.string.gallery)) }, onClick = {
+                                NexoMenuItem(stringResource(R.string.gallery), {
                                     showScanMenu = false
+                                    context.expectReturn()
                                     scanGallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                })
+                                }, Icons.Rounded.PhotoLibrary)
                             }
                         }
                     }
@@ -1059,4 +1065,20 @@ private fun SoftButton(text: String, onClick: () -> Unit, modifier: Modifier, co
     ) {
         Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
+}
+
+/**
+ * Takes a photo with the phone's camera app, asking it to open on the rear lens. The system has no
+ * official way to choose the lens for another app, so these extras are hints: many camera apps
+ * follow them, and one that does not simply opens on whichever lens it used last.
+ */
+private class RearCameraPicture : ActivityResultContracts.TakePicture() {
+    override fun createIntent(context: android.content.Context, input: Uri): android.content.Intent =
+        super.createIntent(context, input).apply {
+            putExtra("android.intent.extras.CAMERA_FACING", 0)
+            putExtra("android.intent.extras.LENS_FACING_BACK", 1)
+            putExtra("android.intent.extra.USE_FRONT_CAMERA", false)
+            putExtra("camerafacing", "rear")
+            putExtra("default_camera", "0")
+        }
 }

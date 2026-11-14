@@ -1,5 +1,11 @@
 package com.nexo.app.ui.accounts
 
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.SwapVert
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.Add
+import com.nexo.app.ui.components.NexoMenuItem
+import com.nexo.app.ui.components.NexoMenu
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,8 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -116,11 +120,11 @@ fun AccountsTab(todaySignal: Int, vm: AccountsViewModel = hiltViewModel()) {
             RoundIconButton(Icons.Rounded.BarChart, stringResource(R.string.total_stats), { nav.navigate(TotalStatsKey) }, tint = colors.textSecondary, container = Color.Transparent)
             Box {
                 RoundIconButton(Icons.Rounded.MoreVert, stringResource(R.string.action_more), { menu = true }, tint = colors.textSecondary, container = Color.Transparent)
-                DropdownMenu(menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.action_add)) }, onClick = { menu = false; nav.navigate(AccountFormKey()) })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.show_hide)) }, onClick = { menu = false; nav.navigate(AccountListKey(AccountListMode.VISIBILITY)) })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.modify_orders)) }, onClick = { menu = false; nav.navigate(AccountListKey(AccountListMode.REORDER)) })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.action_delete)) }, onClick = { menu = false; nav.navigate(AccountListKey(AccountListMode.DELETE)) })
+                NexoMenu(menu, onDismissRequest = { menu = false }) {
+                    NexoMenuItem(stringResource(R.string.action_add), { menu = false; nav.navigate(AccountFormKey()) }, Icons.Rounded.Add)
+                    NexoMenuItem(stringResource(R.string.show_hide), { menu = false; nav.navigate(AccountListKey(AccountListMode.VISIBILITY)) }, Icons.Rounded.Visibility)
+                    NexoMenuItem(stringResource(R.string.modify_orders), { menu = false; nav.navigate(AccountListKey(AccountListMode.REORDER)) }, Icons.Rounded.SwapVert)
+                    NexoMenuItem(stringResource(R.string.action_delete), { menu = false; nav.navigate(AccountListKey(AccountListMode.DELETE)) }, Icons.Rounded.DeleteOutline, danger = true)
                 }
             }
         }
