@@ -12,22 +12,9 @@ interface UserPreferencesRepository {
 
     suspend fun getDeviceSettings(): DeviceSettings
 
-    /** Display mode of one home-screen widget. */
-    fun getWidgetModeStream(widgetId: Int): Flow<Int>
-
-    suspend fun getWidgetMode(widgetId: Int): Int
-
-    suspend fun setWidgetMode(widgetId: Int, mode: Int)
-
-    suspend fun clearWidgetMode(widgetId: Int)
-
     suspend fun setSetupDone(v: Boolean)
 
     suspend fun setThemeMode(v: ThemeMode)
-
-    suspend fun setWidgetTheme(v: ThemeMode)
-
-    suspend fun setWidgetOpacity(v: Float)
 
     suspend fun setNumberPadDescending(v: Boolean)
 

@@ -55,9 +55,6 @@
     <string name="number_pad_order">Number-pad order</string>
     <string name="pad_ascending">Ascending (1-2-3 on top)</string>
     <string name="pad_descending">Descending (7-8-9 on top)</string>
-    <string name="widget_settings">Widget Settings</string>
-    <string name="widget_background">Background Color</string>
-    <string name="widget_opacity">Background Opacity %1$d%%</string>
     <string name="language_setting">Language Setting</string>
     <string name="language_system">System default</string>
     <string name="language_english">English</string>

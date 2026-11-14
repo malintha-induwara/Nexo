@@ -26,7 +26,7 @@ data class AppUiState(
     val device: DeviceSettings? = null,
     val book: BookSettings = BookSettings(),
     val locked: Boolean = false,
-    /** Screens to open once the app is unlocked (widgets, shortcuts, notifications). */
+    /** Screens to open once the app is unlocked (shortcuts, notifications). */
     val pending: List<NavKey> = emptyList(),
 )
 

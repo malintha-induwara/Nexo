@@ -74,9 +74,6 @@ class DefaultTransactionsRepository @Inject constructor(
 
     override fun getChangeStampStream(): Flow<Long> = dao.observeStamp()
 
-    override fun getChangesStream(): Flow<Unit> =
-        db.invalidationTracker.createFlow("transactions", "transaction_tags", "photos", emitInitialState = false).map { }
-
     override fun getAggregatesUpToStream(end: String): Flow<List<TxAggregate>> = dao.observeAggregatesUpTo(end)
 
     override suspend fun getTransaction(id: String): Transaction? = dao.getById(id)?.asExternalModel()

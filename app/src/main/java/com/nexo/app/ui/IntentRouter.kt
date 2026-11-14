@@ -2,23 +2,20 @@ package com.nexo.app.ui
 
 import android.content.Intent
 import androidx.navigation3.runtime.NavKey
-import com.nexo.app.core.common.NexoIntents.ACTION_ACCOUNT
 import com.nexo.app.core.common.NexoIntents.ACTION_ADD
 import com.nexo.app.core.common.NexoIntents.ACTION_BOOKMARKS
 import com.nexo.app.core.common.NexoIntents.ACTION_REVIEW
 import com.nexo.app.core.common.NexoIntents.ACTION_SEARCH
-import com.nexo.app.core.common.NexoIntents.EXTRA_ACCOUNT
 import com.nexo.app.core.common.NexoIntents.EXTRA_TYPE
 import com.nexo.app.core.common.NexoIntents.SCHEME
 import com.nexo.app.core.model.EntryType
-import com.nexo.app.ui.navigation.AccountDetailKey
 import com.nexo.app.ui.navigation.BookmarksKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.RestoreFileKey
 import com.nexo.app.ui.navigation.SearchKey
 import com.nexo.app.ui.navigation.SmsQueueKey
 
-/** Maps launch intents (widgets, shortcuts, notifications, deep link) to screens. */
+/** Maps launch intents (shortcuts, notifications, deep link, opened files) to screens. */
 object IntentRouter {
     fun route(intent: Intent?): List<NavKey> {
         intent ?: return emptyList()
@@ -35,7 +32,6 @@ object IntentRouter {
             )
             ACTION_SEARCH -> listOf(SearchKey(fromNotification = true))
             ACTION_BOOKMARKS -> listOf(BookmarksKey())
-            ACTION_ACCOUNT -> intent.getStringExtra(EXTRA_ACCOUNT)?.let { listOf(AccountDetailKey(it)) }.orEmpty()
             ACTION_REVIEW -> listOf(SmsQueueKey)
             else -> emptyList()
         }

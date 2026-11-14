@@ -111,43 +111,6 @@ fun StyleScreen(vm: SettingsViewModel = hiltViewModel()) {
     }
 }
 
-@Composable
-fun WidgetSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
-    val nav = LocalNavigator.current
-    val state by vm.uiState.collectAsStateWithLifecycle()
-    val device = state.device
-    val d = device ?: return
-    var opacity by remember(d.widgetOpacity) { mutableFloatStateOf(d.widgetOpacity) }
-    LaunchedEffect(opacity) {
-        delay(500)
-        if (opacity != d.widgetOpacity) vm.setWidgetOpacity(opacity)
-    }
-    Scaffold(topBar = { NexoTopBar(stringResource(R.string.widget_settings), onBack = { nav.back() }) }) { p ->
-        Column(Modifier.padding(p).padding(16.dp)) {
-            val bg = when (d.widgetTheme) {
-                ThemeMode.DARK -> Color(0xFF222222)
-                ThemeMode.LIGHT -> Color.White
-                ThemeMode.SYSTEM -> if (LocalIsDark.current) Color(0xFF222222) else Color.White
-            }
-            Surface(Modifier.fillMaxWidth().padding(bottom = 16.dp), color = bg.copy(alpha = opacity), shape = RoundedCornerShape(16.dp), tonalElevation = 2.dp) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(stringResource(R.string.this_month), color = if (bg == Color.White) Color.Black else Color.White)
-                    Text(stringResource(R.string.expenses), style = MaterialTheme.typography.headlineSmall, color = if (bg == Color.White) Color.Black else Color.White, fontWeight = FontWeight.SemiBold)
-                }
-            }
-            Text(stringResource(R.string.widget_background), style = MaterialTheme.typography.titleSmall)
-            listOf(ThemeMode.LIGHT, ThemeMode.DARK, ThemeMode.SYSTEM).forEach { m ->
-                Row(Modifier.fillMaxWidth().clickable { vm.setWidgetTheme(m) }, verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(d.widgetTheme == m, onClick = null, modifier = Modifier.padding(8.dp))
-                    Text(themeModeLabel(m))
-                }
-            }
-            Text(stringResource(R.string.widget_opacity, (opacity * 100).toInt()), style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp))
-            Slider(opacity, { opacity = it }, valueRange = 0f..1f)
-        }
-    }
-}
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReminderScreen(vm: SettingsViewModel = hiltViewModel()) {

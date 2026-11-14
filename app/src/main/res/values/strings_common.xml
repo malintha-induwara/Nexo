@@ -111,4 +111,6 @@
     <string name="biometric_prompt_title">Unlock %1$s</string>
     <string name="use_pin">Use PIN</string>
     <string name="biometric_invalidated">Biometric unlock was turned off because this phone\'s biometric settings changed. Unlock with your PIN and turn it on again in Lock settings.</string>
+    <string name="quick_add_notification_text">Tap to add a transaction</string>
+    <string name="whats_new_text">Thanks for updating Nexo. See More › Feedback › Information on Updates for the full release notes.</string>
 </resources>

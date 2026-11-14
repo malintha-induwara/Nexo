@@ -15,32 +15,12 @@ class DefaultUserPreferencesRepository @Inject constructor(
 
     override suspend fun getDeviceSettings(): DeviceSettings = source.current()
 
-    override fun getWidgetModeStream(widgetId: Int): Flow<Int> = source.widgetMode(widgetId)
-
-    override suspend fun getWidgetMode(widgetId: Int): Int = source.widgetModeNow(widgetId)
-
-    override suspend fun setWidgetMode(widgetId: Int, mode: Int) {
-        source.setWidgetMode(widgetId, mode)
-    }
-
-    override suspend fun clearWidgetMode(widgetId: Int) {
-        source.clearWidgetMode(widgetId)
-    }
-
     override suspend fun setSetupDone(v: Boolean) {
         source.setSetupDone(v)
     }
 
     override suspend fun setThemeMode(v: ThemeMode) {
         source.setThemeMode(v)
-    }
-
-    override suspend fun setWidgetTheme(v: ThemeMode) {
-        source.setWidgetTheme(v)
-    }
-
-    override suspend fun setWidgetOpacity(v: Float) {
-        source.setWidgetOpacity(v)
     }
 
     override suspend fun setNumberPadDescending(v: Boolean) {

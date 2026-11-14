@@ -42,9 +42,7 @@ class SettingsViewModel @Inject constructor(
 
     fun setThemeMode(mode: ThemeMode) = viewModelScope.launch { prefs.setThemeMode(mode) }
 
-    fun setWidgetTheme(mode: ThemeMode) = viewModelScope.launch { prefs.setWidgetTheme(mode) }
 
-    fun setWidgetOpacity(opacity: Float) = viewModelScope.launch { prefs.setWidgetOpacity(opacity) }
 
     fun setNumberPadDescending(descending: Boolean) = viewModelScope.launch { prefs.setNumberPadDescending(descending) }
 

@@ -27,9 +27,6 @@ interface TransactionsRepository {
     /** Changes whenever a row is added, removed or updated; for screens that recompute from one-shot reads. */
     fun getChangeStampStream(): Flow<Long>
 
-    /** Emits once per write to the ledger tables (rows, tag links, photos). */
-    fun getChangesStream(): Flow<Unit>
-
     fun getAggregatesUpToStream(end: String): Flow<List<TxAggregate>>
 
     // One-shot reads

@@ -20,7 +20,6 @@ import com.nexo.app.core.common.NexoIntents
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
-import com.nexo.app.widget.WidgetRefresher
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -36,7 +35,6 @@ import kotlinx.coroutines.launch
 interface NotificationsEntryPoint {
     fun prefs(): UserPreferencesRepository
     fun refs(): ReferenceDataRepository
-    fun widgets(): WidgetRefresher
 
     @ApplicationScope
     fun appScope(): CoroutineScope
@@ -212,7 +210,7 @@ class QuickAddRepostReceiver : BroadcastReceiver() {
     }
 }
 
-/** After a reboot: re-post quick add, refresh widgets and re-schedule the reminder. */
+/** After a reboot: re-post quick add and re-schedule the reminder. */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_MY_PACKAGE_REPLACED &&
@@ -223,10 +221,7 @@ class BootReceiver : BroadcastReceiver() {
             try {
                 val e = context.entry()
                 val s = e.prefs().getDeviceSettings()
-                if (s.setupDone) {
-                    Notifications.updateQuickAdd(context, e.refs().getRefData().settings.quickAddNotification)
-                    e.widgets().refresh()
-                }
+                if (s.setupDone) Notifications.updateQuickAdd(context, e.refs().getRefData().settings.quickAddNotification)
                 ReminderScheduler.schedule(context, s.reminderEnabled, s.reminderHour, s.reminderMinute)
             } finally {
                 pending.finish()

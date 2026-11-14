@@ -27,7 +27,7 @@ data class EntryKey(
     val reviewUnassigned: Boolean = false,
     val sourceText: String? = null,
     val repeat: com.nexo.app.core.model.RepeatType? = null,
-    /** When true the form opens on top of the main screen from a widget / shortcut. */
+    /** When true the form opens on top of the main screen from a shortcut or notification. */
     val external: Boolean = false,
     /** Opened from an add button: the form is shown as a drawer over the current screen. */
     val fromAdd: Boolean = false,
@@ -149,9 +149,6 @@ data class SubCurrencyEditKey(val currencyId: String? = null, val isoCode: Strin
 
 @Serializable
 data object StyleKey : NavKey
-
-@Serializable
-data object WidgetSettingsKey : NavKey
 
 @Serializable
 data object ReminderKey : NavKey

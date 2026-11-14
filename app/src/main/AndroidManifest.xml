@@ -80,51 +80,6 @@
                 tools:node="remove" />
         </provider>
 
-        <receiver
-            android:name=".widget.TransactionsWidgetReceiver"
-            android:exported="true"
-            android:label="@string/widget_transactions">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_transactions" />
-        </receiver>
-        <receiver
-            android:name=".widget.TransactionsWideWidgetReceiver"
-            android:exported="true"
-            android:label="@string/widget_transactions_wide">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_transactions_wide" />
-        </receiver>
-        <receiver
-            android:name=".widget.CardWidgetReceiver"
-            android:exported="true"
-            android:label="@string/widget_card">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_card" />
-        </receiver>
-        <receiver
-            android:name=".widget.QuickAddWidgetReceiver"
-            android:exported="true"
-            android:label="@string/widget_quick_add">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_add" />
-        </receiver>
-        <receiver
-            android:name=".widget.QuickTxWidgetReceiver"
-            android:exported="true"
-            android:label="@string/widget_quick_tx">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_tx" />
-        </receiver>
         <receiver android:name=".core.notifications.ReminderReceiver" android:exported="false" />
         <receiver android:name=".core.notifications.QuickAddRepostReceiver" android:exported="false" />
         <receiver

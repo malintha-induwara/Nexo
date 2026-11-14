@@ -14,8 +14,6 @@ data class DeviceSettings(
     val setupDone: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val themeColor: ThemeColor = ThemeColor.WHITE,
-    val widgetTheme: ThemeMode = ThemeMode.SYSTEM,
-    val widgetOpacity: Float = 1f,
     val numberPadDescending: Boolean = false,
     val reminderEnabled: Boolean = false,
     val reminderHour: Int = 21,

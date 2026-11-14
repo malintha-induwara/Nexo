@@ -11,7 +11,6 @@ import com.nexo.app.data.repository.AppLockRepository
 import com.nexo.app.data.repository.RepeatRulesRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.data.work.AutoBackupWorker
-import com.nexo.app.widget.WidgetRefresher
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -26,14 +25,12 @@ class NexoApplication : Application(), Configuration.Provider {
     @Inject @ApplicationScope lateinit var scope: CoroutineScope
     @Inject lateinit var refs: com.nexo.app.data.repository.ReferenceDataRepository
     @Inject lateinit var smsInbox: com.nexo.app.data.repository.SmsInboxRepository
-    @Inject lateinit var widgets: WidgetRefresher
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
 
     override fun onCreate() {
         super.onCreate()
-        widgets.start()
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 lock.onForeground()

@@ -46,7 +46,6 @@ import com.nexo.app.ui.settings.ReminderScreen
 import com.nexo.app.ui.settings.StyleScreen
 import com.nexo.app.ui.settings.SubCurrenciesScreen
 import com.nexo.app.ui.settings.SubCurrencyEditScreen
-import com.nexo.app.ui.settings.WidgetSettingsScreen
 import com.nexo.app.ui.shell.MainShell
 import com.nexo.app.ui.sms.SmsCardsScreen
 import com.nexo.app.ui.sms.SmsQueueScreen
@@ -96,7 +95,6 @@ fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<AddSubCurrencyKey> { AddSubCurrencyScreen() }
     entry<SubCurrencyEditKey> { SubCurrencyEditScreen(it) }
     entry<StyleKey> { StyleScreen() }
-    entry<WidgetSettingsKey> { WidgetSettingsScreen() }
     entry<ReminderKey> { ReminderScreen() }
     entry<LockSettingsKey> { LockSettingsScreen() }
     entry<BackupKey> { BackupScreen() }

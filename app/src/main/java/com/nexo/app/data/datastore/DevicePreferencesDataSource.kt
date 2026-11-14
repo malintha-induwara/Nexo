@@ -32,8 +32,6 @@ class DevicePreferencesDataSource @Inject constructor(@ApplicationContext privat
         val setupDone = booleanPreferencesKey("setup_done")
         val themeMode = stringPreferencesKey("theme_mode")
         val themeColor = stringPreferencesKey("theme_color")
-        val widgetTheme = stringPreferencesKey("widget_theme")
-        val widgetOpacity = floatPreferencesKey("widget_opacity")
         val numberPadDescending = booleanPreferencesKey("number_pad_descending")
         val reminderEnabled = booleanPreferencesKey("reminder_enabled")
         val reminderHour = intPreferencesKey("reminder_hour")
@@ -68,15 +66,12 @@ class DevicePreferencesDataSource @Inject constructor(@ApplicationContext privat
         val fxFetchedAt = longPreferencesKey("fx_fetched_at")
     }
 
-    private fun widgetModeKey(id: Int) = intPreferencesKey("widget_mode_$id")
 
     val deviceSettings: Flow<DeviceSettings> = context.dataStore.data.map { p ->
         DeviceSettings(
             setupDone = p[K.setupDone] ?: false,
             themeMode = p[K.themeMode]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
             themeColor = p[K.themeColor]?.let { runCatching { ThemeColor.valueOf(it) }.getOrNull() } ?: ThemeColor.WHITE,
-            widgetTheme = p[K.widgetTheme]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
-            widgetOpacity = p[K.widgetOpacity] ?: 1f,
             numberPadDescending = p[K.numberPadDescending] ?: false,
             reminderEnabled = p[K.reminderEnabled] ?: false,
             reminderHour = p[K.reminderHour] ?: 21,
@@ -114,15 +109,9 @@ class DevicePreferencesDataSource @Inject constructor(@ApplicationContext privat
 
     suspend fun current(): DeviceSettings = deviceSettings.first()
 
-    fun widgetMode(id: Int): Flow<Int> = context.dataStore.data.map { it[widgetModeKey(id)] ?: 0 }
-    suspend fun widgetModeNow(id: Int): Int = context.dataStore.data.first()[widgetModeKey(id)] ?: 0
-    suspend fun setWidgetMode(id: Int, mode: Int) = context.dataStore.edit { it[widgetModeKey(id)] = mode }
-    suspend fun clearWidgetMode(id: Int) = context.dataStore.edit { it.remove(widgetModeKey(id)) }
 
     suspend fun setSetupDone(v: Boolean) = context.dataStore.edit { it[K.setupDone] = v }
     suspend fun setThemeMode(v: ThemeMode) = context.dataStore.edit { it[K.themeMode] = v.name }
-    suspend fun setWidgetTheme(v: ThemeMode) = context.dataStore.edit { it[K.widgetTheme] = v.name }
-    suspend fun setWidgetOpacity(v: Float) = context.dataStore.edit { it[K.widgetOpacity] = v }
     suspend fun setNumberPadDescending(v: Boolean) = context.dataStore.edit { it[K.numberPadDescending] = v }
     suspend fun setReminder(enabled: Boolean, hour: Int, minute: Int, days: Set<Int>) = context.dataStore.edit {
         it[K.reminderEnabled] = enabled

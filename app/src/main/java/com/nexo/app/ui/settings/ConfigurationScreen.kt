@@ -58,7 +58,6 @@ import com.nexo.app.ui.navigation.StyleKey
 import com.nexo.app.ui.navigation.SubCurrenciesKey
 import com.nexo.app.ui.navigation.TagSettingsKey
 import com.nexo.app.ui.navigation.TransferExpenseKey
-import com.nexo.app.ui.navigation.WidgetSettingsKey
 import java.time.DayOfWeek
 
 @Composable
@@ -125,7 +124,6 @@ fun ConfigurationScreen(vm: SettingsViewModel = hiltViewModel()) {
             SettingRow(stringResource(R.string.quick_add), onOff(s.quickAddNotification), onClick = { dialog = "quick" })
             SettingRow(stringResource(R.string.number_pad_order), stringResource(if (device?.numberPadDescending == true) R.string.pad_descending else R.string.pad_ascending), onClick = { dialog = "pad" })
             SettingRow(stringResource(R.string.style), onClick = { nav.navigate(StyleKey) })
-            SettingRow(stringResource(R.string.widget_settings), onClick = { nav.navigate(WidgetSettingsKey) })
             SettingRow(stringResource(R.string.language_setting), currentLanguageLabel(), onClick = { dialog = "lang" })
             HorizontalDivider()
         }
