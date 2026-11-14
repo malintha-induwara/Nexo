@@ -10,8 +10,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TriStateCheckbox
@@ -28,6 +26,7 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
+import com.nexo.app.ui.components.IncomeExpensePill
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.domain.RefData
 import com.nexo.app.ui.transactions.FilterCriteria
@@ -104,10 +103,7 @@ fun CategoryCriteriaDialog(ref: RefData, initial: FilterCriteria, onConfirm: (Fi
         title = { Text(stringResource(R.string.category)) },
         text = {
             Column {
-                PrimaryTabRow(selectedTabIndex = tab) {
-                    Tab(tab == 0, onClick = { tab = 0 }, text = { Text(stringResource(R.string.income)) })
-                    Tab(tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.expenses)) })
-                }
+                IncomeExpensePill(tab, onSelect = { tab = it }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
                 val kind = if (tab == 0) CategoryKind.INCOME else CategoryKind.EXPENSE
                 val allOn = if (kind == CategoryKind.INCOME) f.incomeAll else f.expenseAll
                 Row(Modifier.fillMaxWidth().clickable { f = if (kind == CategoryKind.INCOME) f.copy(incomeAll = !f.incomeAll) else f.copy(expenseAll = !f.expenseAll) }, verticalAlignment = Alignment.CenterVertically) {

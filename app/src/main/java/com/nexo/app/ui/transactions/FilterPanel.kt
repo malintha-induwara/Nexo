@@ -15,14 +15,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TriStateCheckbox
@@ -45,6 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
+import com.nexo.app.ui.components.SegmentedPill
+import com.nexo.app.ui.theme.Space
 import com.nexo.app.core.database.entity.TransactionEntity
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.CategoryKind
@@ -107,18 +105,24 @@ fun FilterPanel(
                     Text(AmountFormatter.format(shown.total, ref.mainCurrency), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                 }
             }
-            PrimaryTabRow(selectedTabIndex = tab) {
-                val dots = listOf(
-                    criteria.incomeAll || criteria.noneIncome || criteria.modifiedIncome || criteria.teIncome.isNotEmpty() || criteria.categories.any { ref.categoryById[it]?.kind == CategoryKind.INCOME },
-                    criteria.expenseAll || criteria.noneExpense || criteria.modifiedExpense || criteria.teExpense.isNotEmpty() || criteria.categories.any { ref.categoryById[it]?.kind == CategoryKind.EXPENSE } || criteria.otherOf.isNotEmpty(),
-                    criteria.accounts.isNotEmpty(),
-                )
-                listOf(R.string.income, R.string.expenses, R.string.account).forEachIndexed { i, label ->
-                    Tab(tab == i, onClick = { tab = i }, text = {
-                        BadgedBox(badge = { if (dots[i]) Badge() }) { Text(stringResource(label)) }
-                    })
-                }
-            }
+            val dots = listOf(
+                criteria.incomeAll || criteria.noneIncome || criteria.modifiedIncome || criteria.teIncome.isNotEmpty() || criteria.categories.any { ref.categoryById[it]?.kind == CategoryKind.INCOME },
+                criteria.expenseAll || criteria.noneExpense || criteria.modifiedExpense || criteria.teExpense.isNotEmpty() || criteria.categories.any { ref.categoryById[it]?.kind == CategoryKind.EXPENSE } || criteria.otherOf.isNotEmpty(),
+                criteria.accounts.isNotEmpty(),
+            )
+            val labels = listOf(R.string.income, R.string.expenses, R.string.account)
+            SegmentedPill(
+                options = listOf(0, 1, 2),
+                selected = tab,
+                onSelect = { tab = it },
+                label = { stringResource(labels[it]) },
+                accent = { i -> when (i) { 0 -> money.income; 1 -> money.expense; else -> null } },
+                dot = { dots[it] },
+                // The panel is itself a surface, so the track steps up to raised to stay visible.
+                track = MaterialTheme.colorScheme.surfaceVariant,
+                textStyle = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Space.l, vertical = Space.s),
+            )
             when (tab) {
                 0, 1 -> CategoryFilterList(ref, rows, c, if (tab == 0) CategoryKind.INCOME else CategoryKind.EXPENSE, criteria, expanded, { expanded = it }, onChange)
                 else -> AccountFilterList(ref, rows, criteria, onChange)

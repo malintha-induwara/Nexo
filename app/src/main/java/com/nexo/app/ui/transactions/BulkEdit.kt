@@ -20,9 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -42,6 +40,7 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
+import com.nexo.app.ui.components.IncomeExpensePill
 import com.nexo.app.core.database.entity.CurrencyEntity
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.CategoryKind
@@ -177,10 +176,7 @@ fun CategoryPickerDialog(ref: RefData, onPick: (String) -> Unit, onDismiss: () -
         text = {
             Column {
                 if (kinds.size > 1) {
-                    PrimaryTabRow(selectedTabIndex = tab) {
-                        Tab(tab == 0, onClick = { tab = 0 }, text = { Text(stringResource(R.string.income)) })
-                        Tab(tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.expenses)) })
-                    }
+                    IncomeExpensePill(tab, onSelect = { tab = it }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
                 }
                 val kind = if (kinds.size == 1) kinds[0] else if (tab == 0) CategoryKind.INCOME else CategoryKind.EXPENSE
                 LazyColumn(Modifier.height(380.dp)) {

@@ -23,8 +23,6 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,6 +43,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
+import com.nexo.app.ui.components.SegmentedPill
+import com.nexo.app.ui.theme.LocalMoneyColors
+import com.nexo.app.ui.theme.Space
 import com.nexo.app.core.model.SwipeMode
 import com.nexo.app.core.money.AmountFormatter
 import com.nexo.app.ui.components.ChoiceDialog
@@ -105,14 +106,19 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
             Spacer(Modifier.weight(1f))
             AssistChip(onClick = { scopePicker = true }, label = { Text(scopeLabel(q.scope), color = header.content) }, trailingIcon = { Icon(Icons.Filled.ExpandMore, null, tint = header.content) }, modifier = Modifier.padding(end = 8.dp))
         }
-        PrimaryTabRow(selectedTabIndex = if (income) 0 else 1) {
-            Tab(income, onClick = { vm.setIncome(true); selectedSlice = -1 }, text = {
-                Text(stringResource(R.string.income) + if (data.income.isNotEmpty()) "  " + AmountFormatter.format(data.incomeTotal, main) else "", maxLines = 1)
-            })
-            Tab(!income, onClick = { vm.setIncome(false); selectedSlice = -1 }, text = {
-                Text(stringResource(R.string.expenses) + if (data.expense.isNotEmpty()) "  " + AmountFormatter.format(data.expenseTotal, main) else "", maxLines = 1)
-            })
-        }
+        val money = LocalMoneyColors.current
+        SegmentedPill(
+            options = listOf(true, false),
+            selected = income,
+            onSelect = { vm.setIncome(it); selectedSlice = -1 },
+            label = { isIncome ->
+                if (isIncome) stringResource(R.string.income) + if (data.income.isNotEmpty()) "  " + AmountFormatter.format(data.incomeTotal, main) else ""
+                else stringResource(R.string.expenses) + if (data.expense.isNotEmpty()) "  " + AmountFormatter.format(data.expenseTotal, main) else ""
+            },
+            accent = { isIncome -> if (isIncome) money.income else money.expense },
+            textStyle = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Space.l, vertical = Space.s),
+        )
         val threshold = with(LocalDensity.current) { 90.dp.toPx() }
         val swipe = ref.settings.swipeMode
         val swipeModifier = if (swipe == SwipeMode.NONE || q.scope == StatsScope.PERIOD) Modifier else Modifier.pointerInput(swipe, income) {
@@ -124,7 +130,8 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
             })
         }
         LazyColumn(Modifier.fillMaxSize().then(swipeModifier), contentPadding = PaddingValues(bottom = 24.dp)) {
-            item {
+            // An empty period shows the list's empty state alone, not the chart's "No data" as well.
+            if (rows.isNotEmpty()) item {
                 PieChart(
                     rows.map { PieSlice(it.name, it.percent, NexoPalette.Stats[it.colorIndex]) },
                     onSlice = { selectedSlice = it }, selected = selectedSlice.takeIf { it >= 0 },

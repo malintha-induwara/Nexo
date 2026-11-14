@@ -30,9 +30,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
+import com.nexo.app.ui.components.SegmentedPill
+import com.nexo.app.ui.theme.Space
 import com.nexo.app.core.database.entity.CurrencyEntity
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.money.AmountFormatter
@@ -113,13 +113,14 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                             if (tab == DetailTab.DAILY) ({ monthPicker = true }) else null,
                             modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurface,
                         )
-                        PrimaryTabRow(selectedTabIndex = tab.ordinal) {
-                            DetailTab.entries.forEach { t ->
-                                Tab(tab == t, onClick = { vm.setTab(t) }, text = {
-                                    Text(stringResource(when (t) { DetailTab.DAILY -> R.string.daily; DetailTab.MONTHLY -> R.string.monthly; DetailTab.ANNUALLY -> R.string.annually }))
-                                })
-                            }
-                        }
+                        SegmentedPill(
+                            options = DetailTab.entries,
+                            selected = tab,
+                            onSelect = vm::setTab,
+                            label = { t -> stringResource(when (t) { DetailTab.DAILY -> R.string.daily; DetailTab.MONTHLY -> R.string.monthly; DetailTab.ANNUALLY -> R.string.annually }) },
+                            textStyle = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = Space.l, vertical = Space.s),
+                        )
                     }
                 }
             }

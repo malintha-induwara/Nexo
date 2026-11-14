@@ -5,14 +5,18 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,6 +33,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.TextStyle
@@ -36,6 +41,8 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.nexo.app.R
+import com.nexo.app.ui.theme.LocalMoneyColors
 import com.nexo.app.ui.theme.LocalNexoColors
 import com.nexo.app.ui.theme.NexoMotion
 import com.nexo.app.ui.theme.NexoTypography
@@ -62,6 +69,8 @@ fun <T> SegmentedPill(
     segmentPadding: Dp = 14.dp,
     /** False shows every option unselected (e.g. a balance adjustment that has no type yet). */
     showSelection: Boolean = true,
+    /** A small dot after the label, e.g. a filter tab that has something set. */
+    dot: (T) -> Boolean = { false },
 ) {
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
@@ -131,7 +140,13 @@ fun <T> SegmentedPill(
                             .padding(horizontal = segmentPadding),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(label(option), style = textStyle, color = textColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(label(option), style = textStyle, color = textColor, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                            if (dot(option)) {
+                                Spacer(Modifier.width(5.dp))
+                                Box(Modifier.size(6.dp).clip(CircleShape).background(colors.primary))
+                            }
+                        }
                     }
                 }
             },
@@ -155,4 +170,19 @@ fun <T> SegmentedPill(
             }
         }
     }
+}
+
+/** Income / Expenses by index (0 and 1), in the money colours: the switch for category pickers that cover both kinds. */
+@Composable
+fun IncomeExpensePill(selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val money = LocalMoneyColors.current
+    SegmentedPill(
+        options = listOf(0, 1),
+        selected = selected,
+        onSelect = onSelect,
+        label = { stringResource(if (it == 0) R.string.income else R.string.expenses) },
+        accent = { if (it == 0) money.income else money.expense },
+        textStyle = MaterialTheme.typography.labelMedium,
+        modifier = modifier,
+    )
 }
