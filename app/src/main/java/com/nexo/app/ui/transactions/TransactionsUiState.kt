@@ -8,6 +8,7 @@ import com.nexo.app.core.model.MemoColor
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
+import com.nexo.app.domain.BudgetBlockData
 import com.nexo.app.domain.Classifier
 import com.nexo.app.domain.InOut
 import java.time.LocalDate
@@ -113,3 +114,22 @@ data class FilterCriteria(
         return false
     }
 }
+
+data class TransactionsUiState(
+    val ref: RefData = RefData(),
+    /** Null until the reference data says which sub-tab the book starts on. */
+    val tab: SubTab? = null,
+    val data: HomeData = HomeData(),
+    val selectedDate: LocalDate = LocalDate.now(),
+    val filter: FilterCriteria = FilterCriteria(),
+    val filterOpen: Boolean = false,
+    val selection: Set<String> = emptySet(),
+    /** Day the Daily list scrolls to once; cleared with [TransactionsViewModel.onFocusHandled]. */
+    val focusDate: LocalDate? = null,
+    /** Row the entry form just saved, for its highlight. */
+    val lastSaved: String? = null,
+    /** Memo the editor just saved, for its highlight. */
+    val savedMemo: String? = null,
+    /** Budgets for the Total page's period. */
+    val budgetBlock: BudgetBlockData? = null,
+)

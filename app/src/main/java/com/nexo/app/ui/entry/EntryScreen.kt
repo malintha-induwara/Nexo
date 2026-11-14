@@ -136,6 +136,7 @@ import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.core.model.TxKind
+import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.CalculatorDialog
@@ -181,11 +182,14 @@ import java.util.Locale
 @Composable
 fun EntryScreen(key: EntryKey) {
     val vm = hiltViewModel<EntryViewModel, EntryViewModel.Factory>(creationCallback = { it.create(key) })
-    val s by vm.ui.collectAsStateWithLifecycle()
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val device by vm.device.collectAsStateWithLifecycle()
-    val suggestions by vm.suggestions.collectAsStateWithLifecycle()
-    val tags by vm.tagRepo.getTagsStream().collectAsStateWithLifecycle(emptyList())
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val s = state.form
+    val ref = state.ref
+    val device = state.device
+    val suggestions = state.suggestions
+    val tags = state.tags
+    val paymentNote = stringResource(R.string.payment)
+    LaunchedEffect(Unit) { vm.initialize(EntryTexts(paymentNote = paymentNote)) }
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val resources = androidx.compose.ui.platform.LocalResources.current
@@ -213,25 +217,21 @@ fun EntryScreen(key: EntryKey) {
     var noteFocused by remember { mutableStateOf(false) }
     var shake by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(Unit) {
-        vm.events.collect { e ->
-            when (e) {
-                is EntryEvent.Message -> {
-                    haptics.reject()
-                    Toast.makeText(
-                        context,
-                        if (e.arg != null) resources.getString(e.text, e.arg) else resources.getString(e.text),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                }
-                is EntryEvent.Close -> {
-                    e.date?.let(vm::focus)
-                    nav.back()
-                }
-                is EntryEvent.Open -> if (e.replace) nav.replace(e.key) else nav.navigate(e.key)
-                EntryEvent.FocusNote -> noteFocus.requestFocus()
-            }
+    state.userMessage?.let { message ->
+        val text = message.text.asString()
+        LaunchedEffect(message.id) {
+            haptics.reject()
+            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+            vm.onUserMessageShown(message.id)
         }
+    }
+    LaunchedEffect(state.navigation) {
+        when (val target = state.navigation) {
+            EntryNavigation.Close -> nav.back()
+            is EntryNavigation.Open -> if (target.replace) nav.replace(target.key) else nav.navigate(target.key)
+            null -> return@LaunchedEffect
+        }
+        vm.onNavigationHandled()
     }
     LaunchedEffect(s.noteFocusRequest) {
         if (s.noteFocusRequest > 0) {
@@ -275,7 +275,7 @@ fun EntryScreen(key: EntryKey) {
     }
     val scanGallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
-            if (vm.photoStore.isSupported(uri)) vm.scanReceipt(uri) else Toast.makeText(context, R.string.unsupported_file_format, Toast.LENGTH_SHORT).show()
+            if (vm.isPhotoSupported(uri)) vm.scanReceipt(uri) else Toast.makeText(context, R.string.unsupported_file_format, Toast.LENGTH_SHORT).show()
         }
     }
     fun launchScanner() {
@@ -468,7 +468,7 @@ fun EntryScreen(key: EntryKey) {
                             Field.ACCOUNT, Field.FROM, Field.TO -> {
                                 val id = if (f == Field.TO) s.toAccountId else s.accountId
                                 val label = stringResource(if (f == Field.ACCOUNT) R.string.account else if (f == Field.FROM) R.string.from else R.string.to)
-                                val panel = EntryUi.panelFor(f)
+                                val panel = EntryForm.panelFor(f)
                                 FieldPill(
                                     text = id?.let { ref.accountById[it]?.name } ?: label,
                                     label = label,
@@ -612,7 +612,7 @@ fun EntryScreen(key: EntryKey) {
                 }
                 if (photosAllowed && s.photos.isNotEmpty()) {
                     Box(Modifier.padding(horizontal = Space.gutter, vertical = Space.m)) {
-                        PhotoThumbs(s.photos, vm.photoStore, removable = !s.viewing, onOpen = { viewerIndex = it }, onRemove = vm::removePhoto, onLongPress = vm::enterEdit)
+                        PhotoThumbs(s.photos, vm::photoFile, removable = !s.viewing, onOpen = { viewerIndex = it }, onRemove = vm::removePhoto, onLongPress = vm::enterEdit)
                     }
                 }
                 TextField(
@@ -624,7 +624,12 @@ fun EntryScreen(key: EntryKey) {
                     colors = quietFieldColors(),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = Space.s, vertical = Space.xs).onFocusChanged { if (it.isFocused) { vm.closePanel(); vm.enterEdit() } },
                 )
-                s.fxNote?.let { note ->
+                val fxText = s.fxNote?.let { fx ->
+                    com.nexo.app.ui.sms.fxEstimateNote(context, fx.item, ref)?.let { note ->
+                        if (fx.editHint) note + "\n" + stringResource(R.string.fx_edit_hint) else note
+                    }
+                }
+                fxText?.let { note ->
                     Column(Modifier.padding(horizontal = Space.gutter, vertical = Space.s)) {
                         Text(note, style = NexoType.Meta, color = colors.textSecondary)
                         if (s.fxFromApi) {
@@ -781,8 +786,11 @@ fun EntryScreen(key: EntryKey) {
             )
         }
     }
-    if (showTags) TagSelectSheet(tags, s.tagIds, vm.tagRepo, onDone = vm::setTags, onDismiss = { showTags = false })
-    if (viewerIndex >= 0) PhotoViewer(s.photos, viewerIndex, vm.photoStore, onDismiss = { viewerIndex = -1 })
+    if (showTags) {
+        val tagActions = remember(vm) { TagActions(vm::addTag, vm::renameTag, vm::tagUsageCount, vm::deleteTag, vm::reorderTags) }
+        TagSelectSheet(tags, s.tagIds, tagActions, onDone = vm::setTags, onDismiss = { showTags = false })
+    }
+    if (viewerIndex >= 0) PhotoViewer(s.photos, viewerIndex, vm::photoFile, vm::exportPhoto, onDismiss = { viewerIndex = -1 })
     if (showPhotoNotice) {
         AlertDialog(
             onDismissRequest = { showPhotoNotice = false },
@@ -849,7 +857,7 @@ private enum class BottomKind { PAD, ACCOUNT, CATEGORY, ACTIONS }
 private fun pluralStringResourceText(resources: android.content.res.Resources, n: Int): String =
     resources.getQuantityString(R.plurals.n_months, n, n)
 
-private fun categoryText(ref: RefData, s: EntryUi): String {
+private fun categoryText(ref: RefData, s: EntryForm): String {
     if (s.isBalance || (s.isBalanceAdjustment && s.categoryId == null)) return "—"
     val id = s.categoryId ?: return ""
     val main = ref.mainCategoryId(id)?.let { ref.categoryName(it) } ?: return ""
@@ -882,7 +890,7 @@ private fun placeholderParts(currency: Currency): AmountParts {
  * shakes it. While the keypad is open a short bar under it breathes in the entry's colour.
  */
 @Composable
-private fun AmountDisplay(s: EntryUi, currency: Currency, color: Color, shake: Int, onClick: () -> Unit) {
+private fun AmountDisplay(s: EntryForm, currency: Currency, color: Color, shake: Int, onClick: () -> Unit) {
     val colors = LocalNexoColors.current
     val typing = s.panel == Panel.AMOUNT && s.pad.buffer.isNotEmpty()
     val parts = when {
@@ -1026,7 +1034,7 @@ private fun quietFieldColors() = LocalNexoColors.current.let { c ->
 
 @Composable
 private fun BottomButtons(
-    s: EntryUi,
+    s: EntryForm,
     onSave: () -> Unit,
     onContinue: () -> Unit,
     onDelete: () -> Unit,

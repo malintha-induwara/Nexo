@@ -92,7 +92,7 @@ fun DaySheet(
 
     InlineBottomSheet(visible = date != null, onDismiss = onDismiss) {
         val shown = last[0] ?: return@InlineBottomSheet
-        val factory = remember(ref) { RowFactory(context, ref) }
+        val factory = remember(ref) { TransactionRowMapper(ref) }
         fun groupOf(d: LocalDate): DayGroup? {
             val rows = data.gridRows.filter { it.date == d.toString() }
             val carry = if (data.period?.start == d && data.carryOver != 0.0) d to data.carryOver else null

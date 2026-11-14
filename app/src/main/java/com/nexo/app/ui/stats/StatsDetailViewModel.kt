@@ -20,8 +20,10 @@ import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.navigation.StatsDetailKey
 import com.nexo.app.ui.navigation.StatsDetailKind
 import com.nexo.app.ui.navigation.StatsScope
+import com.nexo.app.ui.transactions.BulkEditActions
 import com.nexo.app.ui.transactions.DayGroup
-import com.nexo.app.ui.transactions.RowFactory
+import com.nexo.app.ui.transactions.TransactionRowMapper
+import com.nexo.app.ui.transactions.bulkEditActions
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -69,6 +71,7 @@ class StatsDetailViewModel @AssistedInject constructor(
     val query = MutableStateFlow(StatsQuery(key.scope, LocalDate.parse(key.end), LocalDate.parse(key.start), LocalDate.parse(key.end)))
     val selected = MutableStateFlow("all")
     val selection = MutableStateFlow<Set<String>>(emptySet())
+    val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, selection)
 
     private val isTransfer = key.kind == StatsDetailKind.TRANSFER_EXPENSE_GROUP || key.kind == StatsDetailKind.TRANSFER_INCOME_GROUP
 
@@ -143,7 +146,7 @@ class StatsDetailViewModel @AssistedInject constructor(
         return StatsDetailUi(
             title = title, range = range, total = listRows.sumOf { it.amountMain }, breakdown = visibleBreakdown,
             trendLabels = buckets.map { it.first }, trend = trend, color = color,
-            days = RowFactory(context, r).dayGroups(listRows, l, memos = memos.filter { LocalDate.parse(it.date) in range }.groupBy { LocalDate.parse(it.date) }),
+            days = TransactionRowMapper(r).dayGroups(listRows, l, memos = memos.filter { LocalDate.parse(it.date) in range }.groupBy { LocalDate.parse(it.date) }),
         )
     }
 

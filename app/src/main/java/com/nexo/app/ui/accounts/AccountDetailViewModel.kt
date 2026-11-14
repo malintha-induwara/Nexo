@@ -19,8 +19,10 @@ import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.domain.CardFigures
 import com.nexo.app.domain.CardStatement
 import com.nexo.app.ui.navigation.AccountDetailKey
+import com.nexo.app.ui.transactions.BulkEditActions
 import com.nexo.app.ui.transactions.DayGroup
-import com.nexo.app.ui.transactions.RowFactory
+import com.nexo.app.ui.transactions.TransactionRowMapper
+import com.nexo.app.ui.transactions.bulkEditActions
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -87,6 +89,7 @@ class AccountDetailViewModel @AssistedInject constructor(
     val charts = _charts.asStateFlow()
     private val _selection = MutableStateFlow<Set<String>>(emptySet())
     val selection = _selection.asStateFlow()
+    val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, _selection)
 
     val ui: StateFlow<AccountDetailUi> = combine(ref, _tab, _anchor, _charts, transactions.getChangeStampStream()) { r, t, a, c, _ -> Quad(r, t, a, c) }
         .mapLatest { compute(it.r, it.t, it.a, it.c) }
@@ -99,7 +102,7 @@ class AccountDetailViewModel @AssistedInject constructor(
 
     private suspend fun compute(r: RefData, tab: DetailTab, anchor: LocalDate, charts: Boolean): AccountDetailUi {
         val account = key.accountId?.let { r.accountById[it] }
-        val factory = RowFactory(context, r)
+        val factory = TransactionRowMapper(r)
         if (account == null) {
             // "None" pseudo-account: all unassigned rows, no balances.
             val rows = transactions.getWithoutAccount()
@@ -132,7 +135,7 @@ class AccountDetailViewModel @AssistedInject constructor(
                 val runningMap = HashMap<String, Double>()
                 // Chronological order inside the display order of the day.
                 rows.groupBy { it.date }.toSortedMap().forEach { (_, day) ->
-                    val ordered = RowFactory.sortDay(day, r.settings.timeDisplay).let { if (r.settings.timeDisplay.descending) it.reversed() else it }
+                    val ordered = TransactionRowMapper.sortDay(day, r.settings.timeDisplay).let { if (r.settings.timeDisplay.descending) it.reversed() else it }
                     ordered.forEach { t ->
                         running += BigDecimal.valueOf(signed(t))
                         runningMap[t.id] = running.toDouble()
@@ -148,7 +151,7 @@ class AccountDetailViewModel @AssistedInject constructor(
                         else -> t.amountAccount
                     }
                     val flow = if (t.kind.isInflow) com.nexo.app.core.model.CashFlow.INCOME else com.nexo.app.core.model.CashFlow.EXPENSE
-                    val title = if (t.kind == TxKind.TRANSFER_IN) "${factory.accountName(t.counterpartAccountId)} → ${factory.accountName(t.accountId)}" else row.title
+                    val title = if (t.kind == TxKind.TRANSFER_IN) factory.transferText(t.counterpartAccountId, t.accountId) else row.title
                     row.copy(amountText = AmountFormatter.format(shown, cur), flow = flow, amountMain = shown, title = if (row.titleIsNote) row.title else title, accountText = if (t.kind == TxKind.TRANSFER_IN) title else row.accountText)
                 }
                 val endBalance = if (isDebit) net(rows) else net(upTo(range.end))

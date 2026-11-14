@@ -15,7 +15,7 @@ import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.ui.navigation.BudgetDetailKey
 import com.nexo.app.ui.transactions.DayGroup
-import com.nexo.app.ui.transactions.RowFactory
+import com.nexo.app.ui.transactions.TransactionRowMapper
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -96,7 +96,7 @@ class BudgetDetailViewModel @AssistedInject constructor(
         }
         val selected = months.indexOfFirst { it.period.label == inp.m }.coerceAtLeast(0)
         val sel = months.getOrNull(selected)
-        val factory = RowFactory(context, r)
+        val factory = TransactionRowMapper(r)
         val dayRows = expense.filter { sel != null && LocalDate.parse(it.date) in sel.period.range && matches(it) }
         val parentId = if (isSub) cat?.parentId else categoryId
         val siblings = if (r.settings.subcategories && parentId != null) {

@@ -33,7 +33,7 @@ class BudgetSettingsViewModel @Inject constructor(
     val currentKey: Int get() = ref.value.settings.periods.monthPeriodContaining(LocalDate.now()).key
 
     val list: StateFlow<BudgetBlockData?> = combine(ref, repo.getBudgetsStream(), repo.getBudgetAmountsStream()) { r, b, a ->
-        BudgetCalc.compute(r, b, a, emptyList(), r.settings.periods.monthPeriodContaining(LocalDate.now()).key, context.getString(R.string.total_budget), forSettings = true)
+        BudgetCalc.compute(r, b, a, emptyList(), r.settings.periods.monthPeriodContaining(LocalDate.now()).key, forSettings = true)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     fun add(categoryId: String?, amount: Double, onDone: () -> Unit) = viewModelScope.launch {

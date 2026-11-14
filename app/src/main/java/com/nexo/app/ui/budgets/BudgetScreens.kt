@@ -192,7 +192,7 @@ fun BudgetSettingsScreen(vm: BudgetSettingsViewModel = hiltViewModel()) {
 @Composable
 private fun SettingsBudgetRow(row: BudgetRow, main: com.nexo.app.core.model.Currency, onClick: () -> Unit, onDelete: (() -> Unit)?, onEdit: (() -> Unit)? = null, virtual: Boolean = false) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(row.name + if (row.children.isNotEmpty()) "  ▾" else "", Modifier.weight(1f).padding(vertical = 14.dp), fontWeight = if (row.isTotal) FontWeight.SemiBold else FontWeight.Normal)
+        Text((if (row.isTotal) stringResource(R.string.total_budget) else row.name) + if (row.children.isNotEmpty()) "  ▾" else "", Modifier.weight(1f).padding(vertical = 14.dp), fontWeight = if (row.isTotal) FontWeight.SemiBold else FontWeight.Normal)
         if (!virtual) Text(AmountFormatter.format(row.amount, main), style = MaterialTheme.typography.bodyMedium)
         if (onEdit != null) IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit)) }
         if (onDelete != null) IconButton(onClick = onDelete) { Icon(Icons.Filled.RemoveCircle, stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error) }

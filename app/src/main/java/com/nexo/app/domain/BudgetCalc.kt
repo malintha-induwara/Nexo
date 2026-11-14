@@ -47,7 +47,6 @@ object BudgetCalc {
         amounts: List<BudgetAmount>,
         expenseRows: List<Transaction>,
         key: Int,
-        totalLabel: String,
         forSettings: Boolean = false,
     ): BudgetBlockData {
         val (usedMain, usedSub) = usedByCategory(ref, expenseRows)
@@ -81,10 +80,10 @@ object BudgetCalc {
         val totalAmount = total?.let { amountOf(it) } ?: 0.0
         val totalRow = when {
             total != null && (totalAmount != 0.0 || forSettings) ->
-                BudgetRow(total.id, null, totalLabel, totalAmount, usedMain.values.sum(), isTotal = true)
+                BudgetRow(total.id, null, "", totalAmount, usedMain.values.sum(), isTotal = true)
             forSettings -> null
             rows.isEmpty() -> null
-            else -> BudgetRow(null, null, totalLabel, rows.sumOf { it.amount }, rows.sumOf { it.used }, isTotal = true)
+            else -> BudgetRow(null, null, "", rows.sumOf { it.amount }, rows.sumOf { it.used }, isTotal = true)
         }
         return BudgetBlockData(totalRow, rows)
     }

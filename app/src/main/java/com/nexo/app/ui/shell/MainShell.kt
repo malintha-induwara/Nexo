@@ -155,7 +155,7 @@ fun MainShell() {
                 // Every tab draws under the floating bar; its list pads its end by [ShellController.bottomInset].
                 Box(Modifier.fillMaxSize()) {
                     when (t) {
-                        MainTab.TRANSACTIONS -> TransactionsTab(todaySignal)
+                        MainTab.TRANSACTIONS -> TransactionsTab(todaySignal, queue)
                         MainTab.STATS -> StatsTab(todaySignal)
                         MainTab.ACCOUNTS -> AccountsTab(todaySignal)
                         MainTab.MORE -> SettingsTab()

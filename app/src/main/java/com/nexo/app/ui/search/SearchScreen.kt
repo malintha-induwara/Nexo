@@ -79,11 +79,12 @@ import com.nexo.app.ui.transactions.selectedNet
 
 @Composable
 fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
-    val c by vm.criteria.collectAsStateWithLifecycle()
-    val r by vm.result.collectAsStateWithLifecycle()
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val selection by vm.selection.collectAsStateWithLifecycle()
-    val suggestions by vm.suggestions.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val c = state.criteria
+    val r = state.result
+    val ref = state.ref
+    val selection = state.selection
+    val suggestions = state.suggestions
     val nav = LocalNavigator.current
     val money = LocalMoneyColors.current
     val focus = LocalFocusManager.current
@@ -205,7 +206,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
             }
         }
     }
-    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.transactions, selection, onDone = { vm.setSelection(emptySet()) }, onDismiss = { bulkOpen = false })
+    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.bulkActions, onDismiss = { bulkOpen = false })
     when (dialog) {
         "period" -> ChoiceDialog(
             title = stringResource(R.string.period), options = SearchPeriod.entries, selected = c.period, label = { stringResource(periodLabel(it)) },

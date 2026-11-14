@@ -1,6 +1,8 @@
 package com.nexo.app.ui.entry
 
 import android.net.Uri
+import androidx.annotation.MainThread
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
@@ -20,9 +22,12 @@ import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxDraft
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.repository.FavoritesRepository
+import com.nexo.app.data.repository.PhotosRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.RepeatRulesRepository
 import com.nexo.app.data.repository.SmsRepository
+import com.nexo.app.data.repository.TagResult
+import com.nexo.app.data.repository.TagsRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.data.sms.noteFor
@@ -30,6 +35,8 @@ import com.nexo.app.domain.CardStatement
 import com.nexo.app.domain.sms.GetSmsFeePlanUseCase
 import com.nexo.app.domain.sms.GetSmsLedgerAmountUseCase
 import com.nexo.app.ui.HomeState
+import com.nexo.app.ui.designsystem.UiText
+import com.nexo.app.ui.designsystem.UserMessage
 import com.nexo.app.ui.designsystem.component.PadInput
 import com.nexo.app.ui.designsystem.component.PadKey
 import com.nexo.app.ui.navigation.EntryKey
@@ -39,6 +46,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.File
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
@@ -46,20 +54,18 @@ import java.time.LocalTime
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @HiltViewModel(assistedFactory = EntryViewModel.Factory::class)
 class EntryViewModel @AssistedInject constructor(
-    @Assisted val key: EntryKey,
-    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
+    @Assisted private val key: EntryKey,
     private val refs: ReferenceDataRepository,
     private val smsRepository: SmsRepository,
     private val transactions: TransactionsRepository,
@@ -67,8 +73,8 @@ class EntryViewModel @AssistedInject constructor(
     private val repeats: RepeatRulesRepository,
     private val prefs: UserPreferencesRepository,
     private val home: HomeState,
-    val photoStore: com.nexo.app.data.repository.PhotosRepository,
-    val tagRepo: com.nexo.app.data.repository.TagsRepository,
+    private val photos: PhotosRepository,
+    private val tags: TagsRepository,
     private val importer: com.nexo.app.data.repository.TransactionImportRepository,
     private val getSmsLedgerAmount: GetSmsLedgerAmountUseCase,
     private val getSmsFeePlan: GetSmsFeePlanUseCase,
@@ -79,26 +85,41 @@ class EntryViewModel @AssistedInject constructor(
         fun create(key: EntryKey): EntryViewModel
     }
 
-    private val _ui = MutableStateFlow(EntryUi())
-    val ui: StateFlow<EntryUi> = _ui.asStateFlow()
+    private val _ui = MutableStateFlow(EntryForm())
 
-    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    val device = prefs.getDeviceSettingsStream().stateIn(viewModelScope, SharingStarted.Eagerly, null)
-
-    private val _events = Channel<EntryEvent>(Channel.BUFFERED)
-    val events = _events.receiveAsFlow()
+    /** Kept for event handlers that need the reference data synchronously. */
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
 
     private val _suggestions = MutableStateFlow<List<NoteSuggestion>>(emptyList())
-    val suggestions: StateFlow<List<NoteSuggestion>> = _suggestions.asStateFlow()
 
-    private var originalState: EntryUi? = null
+    private val _userMessage = MutableStateFlow<UserMessage?>(null)
+    private val _navigation = MutableStateFlow<EntryNavigation?>(null)
+
+    val uiState: StateFlow<EntryUiState> = combine(
+        combine(_ui, ref, prefs.getDeviceSettingsStream(), ::Triple),
+        combine(_suggestions, tags.getTagsStream(), ::Pair),
+        combine(_userMessage, _navigation, ::Pair),
+    ) { (form, r, device), (suggestions, tagList), (message, navigation) ->
+        EntryUiState(form, r, device, suggestions, tagList, message, navigation)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EntryUiState())
+
+    private var texts = EntryTexts(paymentNote = "")
+    private var initialized = false
+
+    private var originalState: EntryForm? = null
     private var original: Transaction? = null
     private var originalRule: RepeatRule? = null
 
-    init {
+    /** Loads the form once; safe to call again. [texts] are the strings the form needs as data. */
+    @MainThread
+    fun initialize(texts: EntryTexts) {
+        if (initialized) return
+        initialized = true
+        this.texts = texts
+        home.pickedFavoriteConsumed()
         viewModelScope.launch {
             val r = refs.getRefData()
-            val base = EntryUi(inputOrder = r.settings.inputOrder, currencyId = r.mainCurrency.id, feeCurrencyId = r.mainCurrency.id)
+            val base = EntryForm(inputOrder = r.settings.inputOrder, currencyId = r.mainCurrency.id, feeCurrencyId = r.mainCurrency.id)
             val loaded = when (key.mode) {
                 EntryMode.EDIT -> loadExisting(r, base, copy = false).let { s -> key.txId?.let { withFxNote(s, it, r) } ?: s }
                 EntryMode.COPY -> loadExisting(r, base, copy = true)
@@ -117,9 +138,50 @@ class EntryViewModel @AssistedInject constructor(
             loadSuggestions(r)
         }
         viewModelScope.launch {
-            home.pickedFavorite.collect { id -> refs.getRefData().let { r -> _ui.value = applyFavorite(r, _ui.value, id, keepDate = true) } }
+            home.pickedFavorite.filterNotNull().collect { id ->
+                home.pickedFavoriteConsumed()
+                _ui.value = applyFavorite(refs.getRefData(), _ui.value, id, keepDate = true)
+            }
         }
     }
+
+    fun onUserMessageShown(id: Long) {
+        _userMessage.update { if (it?.id == id) null else it }
+    }
+
+    fun onNavigationHandled() {
+        _navigation.value = null
+    }
+
+    private fun showMessage(@StringRes text: Int, arg: Int? = null) {
+        _userMessage.value = UserMessage(UiText.Resource(text, listOfNotNull(arg)))
+    }
+
+    /** Leaves the form; with [focusDate] the Transactions tab scrolls there. */
+    private fun close(focusDate: LocalDate?) {
+        focusDate?.let(home::focusOn)
+        _navigation.value = EntryNavigation.Close
+    }
+
+    private fun open(key: EntryKey, replace: Boolean = true) {
+        _navigation.value = EntryNavigation.Open(key, replace)
+    }
+
+    fun isPhotoSupported(uri: Uri): Boolean = photos.isSupported(uri)
+
+    fun photoFile(fileName: String): File = photos.getPhotoFile(fileName)
+
+    suspend fun exportPhoto(fileName: String): Boolean = photos.exportToGallery(fileName)
+
+    suspend fun addTag(raw: String): TagResult = tags.add(raw)
+
+    suspend fun renameTag(id: String, raw: String): TagResult = tags.rename(id, raw)
+
+    suspend fun tagUsageCount(id: String): Int = tags.usageCount(id)
+
+    suspend fun deleteTag(id: String) = tags.delete(id)
+
+    suspend fun reorderTags(ids: List<String>) = tags.reorder(ids)
 
     private suspend fun loadSuggestions(r: RefData) {
         if (!r.settings.autocomplete) return
@@ -128,7 +190,7 @@ class EntryViewModel @AssistedInject constructor(
         _suggestions.value = transactions.getNoteUsage(cutDate, cutoff).map { NoteSuggestion(it.note, it.count, it.lastDate) }
     }
 
-    private fun newEntry(r: RefData, base: EntryUi): EntryUi {
+    private fun newEntry(r: RefData, base: EntryForm): EntryForm {
         val date = key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now()
         var s = base.copy(mode = key.mode, date = date, type = key.type ?: EntryType.EXPENSE, sourceText = key.sourceText)
         if (key.accountId != null && r.accountById.containsKey(key.accountId)) {
@@ -145,7 +207,7 @@ class EntryViewModel @AssistedInject constructor(
         return s
     }
 
-    private suspend fun loadExisting(r: RefData, base: EntryUi, copy: Boolean): EntryUi {
+    private suspend fun loadExisting(r: RefData, base: EntryForm, copy: Boolean): EntryForm {
         var tx = key.txId?.let { transactions.getTransaction(it) } ?: return newEntry(r, base)
         if (tx.kind == TxKind.TRANSFER_IN) {
             val out = tx.transferGroupId?.let { g -> transactions.getTransferLegs(g).firstOrNull { it.kind == TxKind.TRANSFER_OUT } }
@@ -201,7 +263,7 @@ class EntryViewModel @AssistedInject constructor(
         )
     }
 
-    private suspend fun applyFavorite(r: RefData, base: EntryUi, favoriteId: String?, keepDate: Boolean = false): EntryUi {
+    private suspend fun applyFavorite(r: RefData, base: EntryForm, favoriteId: String?, keepDate: Boolean = false): EntryForm {
         val fav = favoriteId?.let { favorites.getFavorite(it) } ?: return base
         val transfer = fav.kind.isTransfer
         val from = if (fav.kind == TxKind.TRANSFER_IN) fav.toAccountId else fav.accountId
@@ -232,7 +294,7 @@ class EntryViewModel @AssistedInject constructor(
         return s
     }
 
-    private suspend fun loadRule(r: RefData, base: EntryUi): EntryUi {
+    private suspend fun loadRule(r: RefData, base: EntryForm): EntryForm {
         val rule = key.repeatRuleId?.let { repeats.getRule(it) } ?: return newEntry(r, base)
         originalRule = rule
         return base.copy(
@@ -255,7 +317,7 @@ class EntryViewModel @AssistedInject constructor(
         )
     }
 
-    private suspend fun loadPayCard(r: RefData, base: EntryUi): EntryUi {
+    private suspend fun loadPayCard(r: RefData, base: EntryForm): EntryForm {
         val card = key.accountId?.let { r.accountById[it] } ?: return newEntry(r, base)
         val ids = listOf(card.id) + r.linkedDebitCards(card.id).map { it.id }
         val figures = CardStatement.compute(r, card, transactions.getAllForAccounts(ids), LocalDate.now())
@@ -268,7 +330,7 @@ class EntryViewModel @AssistedInject constructor(
             currencyId = card.currencyId,
             feeCurrencyId = card.currencyId,
             amount = figures.payAmount,
-            note = context.getString(R.string.payment),
+            note = texts.paymentNote,
         )
     }
 
@@ -276,7 +338,7 @@ class EntryViewModel @AssistedInject constructor(
     private var smsItem: com.nexo.app.core.model.SmsItem? = null
 
     /** The form opens with everything the SMS gave; saving approves the item. */
-    private suspend fun loadSmsItem(r: RefData, base: EntryUi): EntryUi {
+    private suspend fun loadSmsItem(r: RefData, base: EntryForm): EntryForm {
         val item = key.smsItemId?.let { smsRepository.getItem(it) } ?: return newEntry(r, base)
         smsItem = item
         val (currency, amount) = getSmsLedgerAmount(item, r)
@@ -294,7 +356,7 @@ class EntryViewModel @AssistedInject constructor(
         val estimated = item.certainty == com.nexo.app.core.model.Certainty.ESTIMATED
         return base.copy(
             mode = EntryMode.SMS,
-            fxNote = if (estimated) com.nexo.app.ui.sms.fxEstimateNote(context, item, r) else null,
+            fxNote = if (estimated) FxNote(item, editHint = false) else null,
             fxFromApi = estimated && item.rateFromApi,
             feeExpanded = presetFee != null,
             feeAmount = presetFee,
@@ -328,21 +390,21 @@ class EntryViewModel @AssistedInject constructor(
     /** An approved SMS transaction still booked at an FX estimate: editing its amount records the actual one. */
     private var linkedEstimate: com.nexo.app.core.model.SmsItem? = null
 
-    private suspend fun withFxNote(s: EntryUi, txId: String, r: RefData): EntryUi {
+    private suspend fun withFxNote(s: EntryForm, txId: String, r: RefData): EntryForm {
         val item = smsRepository.getItemForTransaction(txId)?.takeIf { it.awaitingActual } ?: return s
         linkedEstimate = item
-        val note = com.nexo.app.ui.sms.fxEstimateNote(context, item, r) ?: return s
-        return s.copy(fxNote = note + "\n" + context.getString(R.string.fx_edit_hint), fxFromApi = item.rateFromApi)
+        if (item.estimatedAmount == null) return s
+        return s.copy(fxNote = FxNote(item, editHint = true), fxFromApi = item.rateFromApi)
     }
 
     /** Deny from the form. Nothing is written to the ledger. */
     fun denySms() = viewModelScope.launch {
         key.smsItemId?.let { smsRepository.deny(listOf(it)) }
-        _events.send(EntryEvent.Close(null))
+        close(null)
     }
 
     /** Pre-fill from a spreadsheet import row. */
-    private suspend fun loadImportRow(r: RefData, base: EntryUi): EntryUi {
+    private suspend fun loadImportRow(r: RefData, base: EntryForm): EntryForm {
         val file = key.importFile ?: return newEntry(r, base)
         val order = key.importOrder?.let { runCatching { com.nexo.app.core.model.DateOrder.valueOf(it) }.getOrNull() }
         val row = importer.load(file, order).rows.getOrNull(key.importLine)?.parsed ?: return newEntry(r, base).copy(mode = EntryMode.IMPORT_FIX)
@@ -372,7 +434,7 @@ class EntryViewModel @AssistedInject constructor(
 
     // ---- Field changes -------------------------------------------------------------------------------------------------
 
-    private fun edit(transform: (EntryUi) -> EntryUi) {
+    private fun edit(transform: (EntryForm) -> EntryForm) {
         _ui.update { s -> transform(if (s.viewing) s.copy(viewing = false) else s) }
     }
 
@@ -452,7 +514,7 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     /** Pre-fill the fee of the most recent transfer between the same accounts. */
-    private suspend fun loadLastFee(s: EntryUi): EntryUi {
+    private suspend fun loadLastFee(s: EntryForm): EntryForm {
         val from = s.accountId ?: return s
         val to = s.toAccountId ?: return s
         val last = transactions.getLastTransferWithFee(from, to) ?: return s.copy(feeLoaded = true)
@@ -547,7 +609,7 @@ class EntryViewModel @AssistedInject constructor(
             }
             if (read == null) {
                 _ui.update { it.copy(scan = null) }
-                _events.send(EntryEvent.Message(R.string.receipt_unreadable))
+                showMessage(R.string.receipt_unreadable)
             } else {
                 _ui.update { s -> if (s.scan?.uri == uri) s.copy(scan = ScanUi.Done(uri, read)) else s }
             }
@@ -619,7 +681,7 @@ class EntryViewModel @AssistedInject constructor(
                 _ui.update { it.copy(panel = Panel.NONE) }
                 return
             }
-            openPanel(EntryUi.panelFor(next))
+            openPanel(EntryForm.panelFor(next))
         } else {
             val focus = !s.filledOnce && s.note.isEmpty()
             _ui.update { it.copy(panel = Panel.NONE, filledOnce = true, noteFocusRequest = if (focus) it.noteFocusRequest + 1 else it.noteFocusRequest) }
@@ -628,10 +690,10 @@ class EntryViewModel @AssistedInject constructor(
 
     // ---- Save ----------------------------------------------------------------------------------------------------------
 
-    private fun validate(s: EntryUi): Boolean {
+    private fun validate(s: EntryForm): Boolean {
         val r = ref.value
         fun fail(msg: Int, panel: Panel): Boolean {
-            _events.trySend(EntryEvent.Message(msg))
+            showMessage(msg)
             openPanel(panel)
             return false
         }
@@ -645,11 +707,11 @@ class EntryViewModel @AssistedInject constructor(
         if (accountFirst || s.isTransfer) { checks += accountCheck; checks += secondCheck } else { checks += secondCheck; checks += accountCheck }
         if (!checks.all { it() }) return false
         if (s.isTransfer && s.accountId == s.toAccountId) {
-            _events.trySend(EntryEvent.Message(R.string.same_account_transfer))
+            showMessage(R.string.same_account_transfer)
             return false
         }
         if (s.repeat != RepeatType.NONE && s.date.isBefore(RepeatSchedule.oldestAllowed(s.repeat, LocalDate.now()))) {
-            _events.trySend(EntryEvent.Message(R.string.repeat_too_old))
+            showMessage(R.string.repeat_too_old)
             return false
         }
         return true
@@ -692,7 +754,7 @@ class EntryViewModel @AssistedInject constructor(
                 }
                 .onFailure {
                     _ui.update { st -> st.copy(saving = false) }
-                    _events.trySend(EntryEvent.Message(R.string.save_failed))
+                    showMessage(R.string.save_failed)
                 }
         }
     }
@@ -705,7 +767,7 @@ class EntryViewModel @AssistedInject constructor(
     private fun saveRule() {
         val s = _ui.value
         if (s.repeatMode && s.repeat == RepeatType.NONE) {
-            _events.trySend(EntryEvent.Close(null))
+            close(null)
             return
         }
         val r = ref.value
@@ -735,11 +797,11 @@ class EntryViewModel @AssistedInject constructor(
                 updatedAt = now,
             )
             repeats.save(rule)
-            _events.send(EntryEvent.Close(s.date))
+            close(s.date)
         }
     }
 
-    private fun draft(s: EntryUi) = TxDraft(
+    private fun draft(s: EntryForm) = TxDraft(
         editingId = s.originalId,
         type = s.type,
         balanceKind = s.balanceKind,
@@ -769,7 +831,7 @@ class EntryViewModel @AssistedInject constructor(
                 val same = transactions.getUnassigned("9999-12-31").filter { it.id != orig.id && it.note == s.note && it.categoryId == null && !it.kind.isTransfer }
                 if (same.isNotEmpty()) {
                     transactions.setCategory(same.map { it.id }, s.categoryId)
-                    _events.send(EntryEvent.Message(R.string.bulk_assigned, same.size))
+                    showMessage(R.string.bulk_assigned, same.size)
                 }
             }
             openNextUnassigned()
@@ -780,21 +842,21 @@ class EntryViewModel @AssistedInject constructor(
         }
         if (continueAfter) {
             val r = refs.getRefData()
-            val fresh = newEntry(r, EntryUi(inputOrder = r.settings.inputOrder, currencyId = r.mainCurrency.id, feeCurrencyId = r.mainCurrency.id))
+            val fresh = newEntry(r, EntryForm(inputOrder = r.settings.inputOrder, currencyId = r.mainCurrency.id, feeCurrencyId = r.mainCurrency.id))
                 .copy(type = s.type, date = s.date, time = s.time, loaded = true)
             _ui.value = fresh
             advance()
-            _events.send(EntryEvent.Message(R.string.saved))
+            showMessage(R.string.saved)
         } else {
-            _events.send(EntryEvent.Close(s.date))
+            close(s.date)
         }
     }
 
     private suspend fun openNextUnassigned() {
         val s = _ui.value
         val next = transactions.getUnassigned(s.date.toIsoText()).firstOrNull { it.id != s.originalId }
-        if (next == null) _events.send(EntryEvent.Close(s.date))
-        else _events.send(EntryEvent.Open(EntryKey(mode = EntryMode.EDIT, txId = next.id, reviewUnassigned = true)))
+        if (next == null) close(s.date)
+        else open(EntryKey(mode = EntryMode.EDIT, txId = next.id, reviewUnassigned = true))
     }
 
     fun skip() = viewModelScope.launch { openNextUnassigned() }
@@ -803,7 +865,7 @@ class EntryViewModel @AssistedInject constructor(
         val id = _ui.value.originalId ?: return
         viewModelScope.launch {
             transactions.delete(listOf(id), wholeGroup)
-            if (key.reviewUnassigned) openNextUnassigned() else _events.send(EntryEvent.Close(_ui.value.date))
+            if (key.reviewUnassigned) openNextUnassigned() else close(_ui.value.date)
         }
     }
 
@@ -811,8 +873,8 @@ class EntryViewModel @AssistedInject constructor(
         val tx = original ?: return
         viewModelScope.launch {
             favorites.addFromTransaction(tx)
-            _events.send(EntryEvent.Message(R.string.bookmark_registered))
-            _events.send(EntryEvent.Close(null))
+            showMessage(R.string.bookmark_registered)
+            close(null)
         }
     }
 
@@ -820,11 +882,10 @@ class EntryViewModel @AssistedInject constructor(
         val id = _ui.value.originalId ?: return
         viewModelScope.launch {
             prefs.setCopyWithToday(withToday)
-            _events.send(EntryEvent.Open(EntryKey(mode = EntryMode.COPY, txId = id, copyWithToday = withToday)))
+            open(EntryKey(mode = EntryMode.COPY, txId = id, copyWithToday = withToday))
         }
     }
 
-    fun focus(date: LocalDate) = home.focusOn(date)
 
     fun markTransferGuideShown() = viewModelScope.launch { prefs.setTransferGuideShown() }
     fun markPhotoNoticeShown() = viewModelScope.launch { prefs.setPhotoNoticeShown() }

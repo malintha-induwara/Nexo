@@ -1,13 +1,17 @@
 package com.nexo.app.ui.entry
 
 import android.net.Uri
-import androidx.annotation.StringRes
+import com.nexo.app.core.model.DeviceSettings
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.InputOrder
 import com.nexo.app.core.model.PhotoItem
 import com.nexo.app.core.model.ReceiptRead
+import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.RepeatType
+import com.nexo.app.core.model.SmsItem
+import com.nexo.app.core.model.Tag
 import com.nexo.app.core.model.TxKind
+import com.nexo.app.ui.designsystem.UserMessage
 import com.nexo.app.ui.designsystem.component.PadInput
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
@@ -23,7 +27,8 @@ data class InstallmentInfo(val index: Int, val count: Int, val balance: Double, 
 
 data class NoteSuggestion(val note: String, val count: Int, val lastDate: String)
 
-data class EntryUi(
+/** The entry form being edited. */
+data class EntryForm(
     val loaded: Boolean = false,
     val mode: EntryMode = EntryMode.NEW,
     val viewing: Boolean = false,
@@ -65,7 +70,8 @@ data class EntryUi(
     val presetAccountId: String? = null,
     val presetCategoryId: String? = null,
     /** The foreign amount and rate behind an estimated amount; [fxFromApi] adds the attribution link. */
-    val fxNote: String? = null,
+    /** An SMS item booked at an FX estimate; the screen shows its rate note. */
+    val fxNote: FxNote? = null,
     val fxFromApi: Boolean = false,
     val scan: ScanUi? = null,
 ) {
@@ -119,9 +125,27 @@ sealed interface ScanUi {
     data class Done(override val uri: Uri, val read: ReceiptRead) : ScanUi
 }
 
-sealed interface EntryEvent {
-    data class Message(@StringRes val text: Int, val arg: Int? = null) : EntryEvent
-    data class Close(val date: LocalDate?) : EntryEvent
-    data class Open(val key: EntryKey, val replace: Boolean = true) : EntryEvent
-    data object FocusNote : EntryEvent
+/** The FX estimate behind an SMS amount; [editHint] adds "edit the amount to record the actual one". */
+data class FxNote(val item: SmsItem, val editHint: Boolean)
+
+/** Where the form goes once it is done. */
+sealed interface EntryNavigation {
+    data object Close : EntryNavigation
+
+    data class Open(val key: EntryKey, val replace: Boolean = true) : EntryNavigation
 }
+
+/** Strings the form needs as data; the screen resolves them, since ViewModels hold no Context. */
+data class EntryTexts(val paymentNote: String)
+
+data class EntryUiState(
+    val form: EntryForm = EntryForm(),
+    val ref: RefData = RefData(),
+    val device: DeviceSettings? = null,
+    val suggestions: List<NoteSuggestion> = emptyList(),
+    val tags: List<Tag> = emptyList(),
+    /** Shown once, then cleared with [EntryViewModel.onUserMessageShown]. */
+    val userMessage: UserMessage? = null,
+    /** Handled once, then cleared with [EntryViewModel.onNavigationHandled]. */
+    val navigation: EntryNavigation? = null,
+)

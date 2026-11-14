@@ -54,13 +54,13 @@ import com.nexo.app.R
 import com.nexo.app.core.model.PhotoItem
 import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.Tag
-import com.nexo.app.data.repository.PhotosRepository
 import com.nexo.app.data.repository.TagResult
 import com.nexo.app.data.repository.TagsRepository
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.MessageDialog
 import com.nexo.app.ui.designsystem.component.TextFieldDialog
 import com.nexo.app.ui.designsystem.theme.nexo
+import java.io.File
 import kotlinx.coroutines.launch
 
 @Composable
@@ -89,7 +89,7 @@ fun repeatLabel(t: RepeatType): String = stringResource(
 fun TagSelectSheet(
     tags: List<Tag>,
     initial: List<String>,
-    repo: TagsRepository,
+    actions: TagActions,
     onDone: (List<String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -123,10 +123,10 @@ fun TagSelectSheet(
                         Text(tag.name, modifier = Modifier.weight(1f).padding(vertical = 14.dp, horizontal = 8.dp))
                         if (!editMode && tag.id in selected) Text("${selected.indexOf(tag.id) + 1}", color = MaterialTheme.nexo.primaryText, modifier = Modifier.padding(end = 12.dp))
                         if (editMode) {
-                            IconButton(onClick = { scope.launch { repo.reorder(live.map { it.id }.toMutableList().apply { if (index > 0) add(index - 1, removeAt(index)) }) } }, enabled = index > 0) {
+                            IconButton(onClick = { scope.launch { actions.reorder(live.map { it.id }.toMutableList().apply { if (index > 0) add(index - 1, removeAt(index)) }) } }, enabled = index > 0) {
                                 Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up))
                             }
-                            IconButton(onClick = { scope.launch { repo.reorder(live.map { it.id }.toMutableList().apply { if (index < size - 1) add(index + 1, removeAt(index)) }) } }, enabled = index < live.size - 1) {
+                            IconButton(onClick = { scope.launch { actions.reorder(live.map { it.id }.toMutableList().apply { if (index < size - 1) add(index + 1, removeAt(index)) }) } }, enabled = index < live.size - 1) {
                                 Icon(Icons.Filled.ArrowDownward, stringResource(R.string.move_down))
                             }
                             IconButton(onClick = { deleting = tag }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
@@ -146,7 +146,7 @@ fun TagSelectSheet(
             filter = TagsRepository::filter,
             onConfirm = { name ->
                 scope.launch {
-                    when (val r = repo.add(name)) {
+                    when (val r = actions.add(name)) {
                         is TagResult.Ok -> { adding = false; error = null; selected = selected + r.id }
                         TagResult.Exists -> error = exists
                         TagResult.Empty -> adding = false
@@ -162,7 +162,7 @@ fun TagSelectSheet(
             filter = TagsRepository::filter,
             onConfirm = { name ->
                 scope.launch {
-                    when (repo.rename(tag.id, name)) {
+                    when (actions.rename(tag.id, name)) {
                         is TagResult.Ok -> { renaming = null; error = null }
                         TagResult.Exists -> error = exists
                         TagResult.Empty -> renaming = null
@@ -174,17 +174,17 @@ fun TagSelectSheet(
     }
     deleting?.let { tag ->
         var used by remember(tag.id) { mutableStateOf<Int?>(null) }
-        androidx.compose.runtime.LaunchedEffect(tag.id) { used = repo.usageCount(tag.id) }
+        androidx.compose.runtime.LaunchedEffect(tag.id) { used = actions.usageCount(tag.id) }
         when (used) {
             null -> Unit
             0 -> androidx.compose.runtime.LaunchedEffect(Unit) {
-                repo.delete(tag.id)
+                actions.delete(tag.id)
                 selected = selected - tag.id
                 deleting = null
             }
             else -> ConfirmDialog(
                 message = stringResource(R.string.tag_in_use_delete),
-                onConfirm = { scope.launch { repo.delete(tag.id); selected = selected - tag.id } },
+                onConfirm = { scope.launch { actions.delete(tag.id); selected = selected - tag.id } },
                 onDismiss = { deleting = null },
                 confirmText = stringResource(R.string.action_ok),
                 dismissText = stringResource(R.string.action_cancel),
@@ -197,7 +197,7 @@ fun TagSelectSheet(
 @Composable
 fun PhotoThumbs(
     photos: List<PhotoItem>,
-    store: PhotosRepository,
+    photoFile: (String) -> File,
     removable: Boolean,
     onOpen: (Int) -> Unit,
     onRemove: (Int) -> Unit,
@@ -208,7 +208,7 @@ fun PhotoThumbs(
             Box(Modifier.size(72.dp)) {
                 AsyncImage(
                     model = when (p) {
-                        is PhotoItem.Stored -> store.getPhotoFile(p.fileName)
+                        is PhotoItem.Stored -> photoFile(p.fileName)
                         is PhotoItem.Picked -> p.uri
                     },
                     contentDescription = null,
@@ -229,7 +229,7 @@ fun PhotoThumbs(
 
 /** Full-screen photo pager with export for saved photos. */
 @Composable
-fun PhotoViewer(photos: List<PhotoItem>, start: Int, store: PhotosRepository, onDismiss: () -> Unit) {
+fun PhotoViewer(photos: List<PhotoItem>, start: Int, photoFile: (String) -> File, onExport: suspend (String) -> Boolean, onDismiss: () -> Unit) {
     val pager = rememberPagerState(initialPage = start) { photos.size }
     val scope = rememberCoroutineScope()
     var savedMessage by remember { mutableStateOf<Boolean?>(null) }
@@ -240,7 +240,7 @@ fun PhotoViewer(photos: List<PhotoItem>, start: Int, store: PhotosRepository, on
                 val p = photos[page]
                 AsyncImage(
                     model = when (p) {
-                        is PhotoItem.Stored -> store.getPhotoFile(p.fileName)
+                        is PhotoItem.Stored -> photoFile(p.fileName)
                         is PhotoItem.Picked -> p.uri
                     },
                     contentDescription = null,
@@ -251,7 +251,7 @@ fun PhotoViewer(photos: List<PhotoItem>, start: Int, store: PhotosRepository, on
             Row(Modifier.align(Alignment.TopEnd)) {
                 val current = photos.getOrNull(pager.currentPage)
                 if (current is PhotoItem.Stored) {
-                    IconButton(onClick = { scope.launch { savedMessage = store.exportToGallery(current.fileName) } }) {
+                    IconButton(onClick = { scope.launch { savedMessage = onExport(current.fileName) } }) {
                         Icon(Icons.Outlined.Download, stringResource(R.string.save_to_gallery), tint = Color.White)
                     }
                 }

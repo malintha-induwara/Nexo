@@ -37,10 +37,9 @@ import com.nexo.app.ui.navigation.SmsQueueKey
 
 /** The Review Queue's way in from the Transactions header. Shown only while something waits. */
 @Composable
-fun SmsInboxAction(vm: SmsBadgeViewModel = hiltViewModel()) {
+fun SmsInboxAction(badge: QueueBadge) {
     val nav = LocalNavigator.current
     val colors = LocalNexoColors.current
-    val badge by vm.badge.collectAsStateWithLifecycle()
     AnimatedVisibility(badge.count > 0, enter = fadeIn(NexoMotion.enter()) + scaleIn(NexoMotion.snappy(), 0.6f), exit = fadeOut(NexoMotion.exit()) + scaleOut(NexoMotion.exit(), 0.6f)) {
         Box {
             RoundIconButton(

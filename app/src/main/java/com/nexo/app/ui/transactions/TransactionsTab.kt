@@ -100,7 +100,9 @@ import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.Memo
+import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SwipeMode
+import com.nexo.app.domain.BudgetBlockData
 import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.MonthPickerDialog
 import com.nexo.app.ui.designsystem.component.NavMotion
@@ -131,21 +133,23 @@ import com.nexo.app.ui.navigation.MemoEditorKey
 import com.nexo.app.ui.navigation.RepeatListKey
 import com.nexo.app.ui.navigation.SearchKey
 import com.nexo.app.ui.shell.LocalShell
+import com.nexo.app.ui.sms.QueueBadge
 import java.time.LocalDate
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.sign
 
 @Composable
-fun TransactionsTab(todaySignal: Int, vm: TransactionsViewModel = hiltViewModel()) {
-    val ref by vm.ref.collectAsStateWithLifecycle()
-    val data by vm.data.collectAsStateWithLifecycle()
-    val tab by vm.tab.collectAsStateWithLifecycle()
-    val filter by vm.filter.collectAsStateWithLifecycle()
-    val filterOpen by vm.filterOpen.collectAsStateWithLifecycle()
-    val selection by vm.selection.collectAsStateWithLifecycle()
-    val selectedDate by vm.selectedDate.collectAsStateWithLifecycle()
-    val lastSaved by vm.lastSaved.collectAsStateWithLifecycle()
+fun TransactionsTab(todaySignal: Int, smsBadge: QueueBadge, vm: TransactionsViewModel = hiltViewModel()) {
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val ref = state.ref
+    val data = state.data
+    val tab = state.tab
+    val filter = state.filter
+    val filterOpen = state.filterOpen
+    val selection = state.selection
+    val selectedDate = state.selectedDate
+    val lastSaved = state.lastSaved
     val nav = LocalNavigator.current
     val shell = LocalShell.current
     val money = LocalMoneyColors.current
@@ -160,12 +164,9 @@ fun TransactionsTab(todaySignal: Int, vm: TransactionsViewModel = hiltViewModel(
     var bulkOpen by remember { mutableStateOf(false) }
     var bulkAction by remember { mutableStateOf<BulkAction?>(null) }
     var filterCollapsed by rememberSaveable { mutableStateOf(false) }
-    // A date the Daily list should scroll to once its data contains that day (after a save or "today").
-    var focusDate by remember { mutableStateOf<LocalDate?>(null) }
     val header = rememberCollapsingHeaderState()
 
     LaunchedEffect(todaySignal) { if (todaySignal > 0) vm.goToday() }
-    LaunchedEffect(Unit) { vm.focusEvents.collect { focusDate = it } }
     LaunchedEffect(currentTab, data.period?.key) { header.expand() }
     // The highlight plays once; clear it so scrolling the row away and back does not replay it.
     LaunchedEffect(lastSaved) {
@@ -243,7 +244,7 @@ fun TransactionsTab(todaySignal: Int, vm: TransactionsViewModel = hiltViewModel(
                         Spacer(Modifier.weight(1f))
                         AnimatedVisibility(!filterOpen, enter = fadeIn(NexoMotion.enter()) + expandHorizontally(NexoMotion.snappy()), exit = fadeOut(NexoMotion.exit()) + shrinkHorizontally(NexoMotion.snappy())) {
                             Row {
-                                com.nexo.app.ui.sms.SmsInboxAction()
+                                com.nexo.app.ui.sms.SmsInboxAction(smsBadge)
                                 HeaderAction(Icons.Rounded.StarOutline, stringResource(R.string.bookmarks)) { nav.navigate(BookmarksKey()) }
                                 HeaderAction(Icons.Rounded.Search, stringResource(R.string.search)) { nav.navigate(SearchKey()) }
                             }
@@ -315,11 +316,11 @@ fun TransactionsTab(todaySignal: Int, vm: TransactionsViewModel = hiltViewModel(
                     label = "homeContent",
                 ) { d ->
                     when (d.tab) {
-                        SubTab.DAILY -> DailyContent(d, main, selection, vm, focusDate, { focusDate = null }, lastSaved, bottom, onMemoStrip = { day -> daySheet = day.toString(); daySheetMemos = true })
+                        SubTab.DAILY -> DailyContent(d, main, selection, vm::toggleSelect, state.focusDate, vm::onFocusHandled, lastSaved, bottom, onMemoStrip = { day -> daySheet = day.toString(); daySheetMemos = true })
                         SubTab.CALENDAR -> CalendarContent(d, main, ref.settings.periods.weekStartDay, bottom) { day -> daySheet = day.toString(); daySheetMemos = false }
                         SubTab.MONTHLY -> MonthlyContent(d, main, selectedDate, bottom) { vm.openMonth(it) }
-                        SubTab.TOTAL -> TotalContent(d, main, bottom)
-                        SubTab.NOTE -> NoteContent(d.memos, vm, bottom)
+                        SubTab.TOTAL -> TotalContent(d, main, state.budgetBlock, ref, bottom)
+                        SubTab.NOTE -> NoteContent(d.memos, state.savedMemo, vm::consumeSavedMemo, bottom)
                     }
                 }
                 val memoButton = !selecting && !filterOpen && ref.settings.memoButton && (currentTab == SubTab.DAILY || currentTab == SubTab.CALENDAR)
@@ -363,7 +364,7 @@ fun TransactionsTab(todaySignal: Int, vm: TransactionsViewModel = hiltViewModel(
     }
 
     if (monthPicker) data.period?.let { p -> MonthPickerDialog(p.label, onPick = vm::pickMonth, onDismiss = { monthPicker = false }) }
-    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.transactions, selection, onDone = vm::clearSelection, onDismiss = { bulkOpen = false })
+    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.bulkActions, onDismiss = { bulkOpen = false })
 }
 
 /** A 40dp header action; [active] fills it to show a mode is on (the filter). */
@@ -408,7 +409,7 @@ private fun DailyContent(
     data: HomeData,
     main: Currency,
     selection: Set<String>,
-    vm: TransactionsViewModel,
+    onToggleSelect: (String) -> Unit,
     focusDate: LocalDate?,
     onFocused: () -> Unit,
     highlightId: String?,
@@ -436,9 +437,9 @@ private fun DailyContent(
         selection = selection,
         state = state,
         onRowClick = { row ->
-            if (selection.isNotEmpty()) { haptics.tick(); vm.toggleSelect(row.id) } else nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
+            if (selection.isNotEmpty()) { haptics.tick(); onToggleSelect(row.id) } else nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
         },
-        onRowLongClick = { row -> haptics.longPress(); vm.toggleSelect(row.id) },
+        onRowLongClick = { row -> haptics.longPress(); onToggleSelect(row.id) },
         onDayClick = { d -> if (selection.isEmpty()) nav.navigate(EntryKey(date = d.toString(), fromAdd = true)) },
         onMemoClick = onMemoStrip,
         header = data.repeatPreview?.let { p -> { item(key = "repeat_preview") { RepeatPreviewRow(p, main, { nav.navigate(RepeatListKey) }, Modifier.animateItem()) } } },
@@ -642,9 +643,8 @@ private fun WeekLine(week: WeekRow, main: Currency, onClick: () -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun NoteContent(memos: List<Memo>, vm: TransactionsViewModel, bottom: Dp) {
+private fun NoteContent(memos: List<Memo>, saved: String?, onSavedShown: () -> Unit, bottom: Dp) {
     val nav = LocalNavigator.current
-    val saved by vm.savedMemo.collectAsStateWithLifecycle()
     val dark = LocalIsDark.current
     if (memos.isEmpty()) {
         com.nexo.app.ui.designsystem.component.EmptyState(stringResource(R.string.no_memos))
@@ -666,7 +666,7 @@ private fun NoteContent(memos: List<Memo>, vm: TransactionsViewModel, bottom: Dp
                     if (saved == m.id) {
                         flash.animateTo(1f)
                         flash.animateTo(0f)
-                        vm.consumeSavedMemo()
+                        onSavedShown()
                     }
                 }
                 Card(
@@ -688,10 +688,10 @@ private fun NoteContent(memos: List<Memo>, vm: TransactionsViewModel, bottom: Dp
 }
 
 @Composable
-private fun TotalContent(data: HomeData, main: Currency, bottom: Dp) {
+private fun TotalContent(data: HomeData, main: Currency, budgetBlock: BudgetBlockData?, ref: RefData, bottom: Dp) {
     val nav = LocalNavigator.current
     LazyColumn(contentPadding = PaddingValues(12.dp, 12.dp, 12.dp, bottom), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { data.period?.let { com.nexo.app.ui.budgets.BudgetBlock(it) } }
+        item { data.period?.let { com.nexo.app.ui.budgets.BudgetBlock(it, budgetBlock, ref) } }
         item {
             val s = data.summary ?: return@item
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {

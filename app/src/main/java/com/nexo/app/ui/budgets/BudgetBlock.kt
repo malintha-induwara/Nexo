@@ -44,6 +44,8 @@ import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.common.period.MonthPeriod
 import com.nexo.app.core.model.Currency
+import com.nexo.app.core.model.RefData
+import com.nexo.app.domain.BudgetBlockData
 import com.nexo.app.domain.BudgetRow
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
@@ -66,10 +68,7 @@ fun todayFraction(period: MonthPeriod, now: LocalDateTime = LocalDateTime.now())
 }
 
 @Composable
-fun BudgetBlock(period: MonthPeriod, vm: BudgetBlockViewModel = hiltViewModel(key = "budget_block")) {
-    LaunchedEffect(period) { vm.setPeriod(period) }
-    val data by vm.data.collectAsStateWithLifecycle()
-    val ref by vm.ref.collectAsStateWithLifecycle()
+fun BudgetBlock(period: MonthPeriod, data: BudgetBlockData?, ref: RefData) {
     val nav = LocalNavigator.current
     var expandedAll by rememberSaveable { mutableStateOf(false) }
     var expanded by rememberSaveable { mutableStateOf(setOf<String>()) }
@@ -134,7 +133,7 @@ fun BudgetRowView(
     val usedColor = if (over) money.expense else money.income
     Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = if (small) 16.dp else 0.dp, top = 10.dp, bottom = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(row.name, style = if (small) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge, fontWeight = if (row.isTotal) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(if (row.isTotal) stringResource(R.string.total_budget) else row.name, style = if (small) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge, fontWeight = if (row.isTotal) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(AmountFormatter.format(row.amount, main), style = MaterialTheme.typography.bodySmall)
             if (expandable) Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, null, Modifier.clickable(onClick = onExpand).padding(start = 4.dp))
         }

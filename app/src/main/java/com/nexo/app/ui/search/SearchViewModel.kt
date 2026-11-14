@@ -1,6 +1,5 @@
 package com.nexo.app.ui.search
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.period.DateRange
@@ -14,24 +13,25 @@ import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.domain.Classifier
 import com.nexo.app.ui.entry.NoteSuggestion
+import com.nexo.app.ui.transactions.BulkEditActions
 import com.nexo.app.ui.transactions.FilterCriteria
-import com.nexo.app.ui.transactions.RowFactory
+import com.nexo.app.ui.transactions.TransactionRowMapper
 import com.nexo.app.ui.transactions.TxRowUi
+import com.nexo.app.ui.transactions.bulkEditActions
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.math.BigDecimal
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 enum class SearchPeriod { TOTAL, WEEKLY, MONTHLY, ANNUALLY, PERIOD }
 
@@ -58,35 +58,45 @@ data class SearchResult(
     val range: DateRange = DateRange.ALL,
 )
 
+data class SearchUiState(
+    val ref: RefData = RefData(),
+    val criteria: SearchCriteria = SearchCriteria(),
+    val result: SearchResult = SearchResult(),
+    val selection: Set<String> = emptySet(),
+    val suggestions: List<NoteSuggestion> = emptyList(),
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val memos: MemosRepository,
-    refs: ReferenceDataRepository,
-    val transactions: TransactionsRepository,
+    private val refs: ReferenceDataRepository,
+    private val transactions: TransactionsRepository,
 ) : ViewModel() {
-    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    /** Kept for event handlers that need the reference data synchronously. */
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     private val _criteria = MutableStateFlow(SearchCriteria())
-    val criteria = _criteria.asStateFlow()
     private val _executed = MutableStateFlow(SearchCriteria())
     private val _selection = MutableStateFlow<Set<String>>(emptySet())
-    val selection = _selection.asStateFlow()
-    private val _suggestions = MutableStateFlow<List<NoteSuggestion>>(emptyList())
-    val suggestions = _suggestions.asStateFlow()
 
-    val result: StateFlow<SearchResult> = combine(ref, _executed, transactions.getChangeStampStream()) { r, c, _ -> r to c }
+    val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, _selection)
+
+    private val result: Flow<SearchResult> = combine(ref, _executed, transactions.getChangeStampStream()) { r, c, _ -> r to c }
         .mapLatest { (r, c) -> run(r, c) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SearchResult())
 
-    init {
-        viewModelScope.launch {
-            val r = refs.getRefData()
-            if (!r.settings.autocomplete) return@launch
-            val cutoff = maxOf(System.currentTimeMillis() - 456L * 24 * 3600 * 1000, r.settings.autocompleteResetAt)
-            val cutDate = java.time.Instant.ofEpochMilli(cutoff).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toIsoText()
-            _suggestions.value = transactions.getNoteUsage(cutDate, cutoff).map { NoteSuggestion(it.note, it.count, it.lastDate) }
-        }
+    /** Note autocomplete, read once the screen starts collecting. */
+    private val suggestions: Flow<List<NoteSuggestion>> = flow { emit(loadSuggestions()) }
+
+    val uiState: StateFlow<SearchUiState> = combine(ref, _criteria, result, _selection, suggestions) { r, c, res, selection, notes ->
+        SearchUiState(r, c, res, selection, notes)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
+
+    private suspend fun loadSuggestions(): List<NoteSuggestion> {
+        val r = refs.getRefData()
+        if (!r.settings.autocomplete) return emptyList()
+        val cutoff = maxOf(System.currentTimeMillis() - 456L * 24 * 3600 * 1000, r.settings.autocompleteResetAt)
+        val cutDate = java.time.Instant.ofEpochMilli(cutoff).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toIsoText()
+        return transactions.getNoteUsage(cutDate, cutoff).map { NoteSuggestion(it.note, it.count, it.lastDate) }
     }
 
     fun range(r: RefData, c: SearchCriteria): DateRange {
@@ -119,9 +129,9 @@ class SearchViewModel @Inject constructor(
                 (lo == null || t.amountMain >= lo) && (hi == null || t.amountMain <= hi)
         }
         val ledger = transactions.getLedgerFor(filtered)
-        val factory = RowFactory(context, r)
+        val factory = TransactionRowMapper(r)
         val sorted = filtered.groupBy { it.date }.toSortedMap(compareByDescending { it }).flatMap { (_, day) ->
-            RowFactory.sortDay(day, r.settings.timeDisplay)
+            TransactionRowMapper.sortDay(day, r.settings.timeDisplay)
         }
         var inc = BigDecimal.ZERO
         var exp = BigDecimal.ZERO

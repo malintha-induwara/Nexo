@@ -59,6 +59,7 @@ import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.MemoColor
+import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.CategoryTile
 import com.nexo.app.ui.designsystem.component.EmptyState
@@ -168,17 +169,19 @@ fun TxRow(
             flash.animateTo(0f, androidx.compose.animation.core.tween(900, delayMillis = 350))
         }
     }
+    val category = row.category.asString()
+    val accountText = row.accountText.asString()
     val title = when {
-        row.isCarryOver || row.titleIsNote -> row.title
-        else -> row.subCategory ?: row.category
+        row.isCarryOver || row.titleIsNote -> row.title.asString()
+        else -> row.subCategory ?: category
     }
     val meta = buildList {
         if (!row.isCarryOver) {
             when {
-                row.titleIsNote -> add(row.subCategory?.let { "${row.category} › $it" } ?: row.category)
-                row.subCategory != null -> add(row.category)
+                row.titleIsNote -> add(row.subCategory?.let { "$category › $it" } ?: category)
+                row.subCategory != null -> add(category)
             }
-            if (row.accountText.isNotEmpty()) add(row.accountText)
+            if (accountText.isNotEmpty()) add(accountText)
         }
         row.time?.let { add(it) }
         row.tags?.let { t -> add(t.split(", ").joinToString(" ") { "#$it" }) }

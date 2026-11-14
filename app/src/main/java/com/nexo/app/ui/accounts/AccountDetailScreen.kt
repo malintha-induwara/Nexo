@@ -184,7 +184,7 @@ fun AccountDetailScreen(key: AccountDetailKey) {
         MonthPickerDialog(e.monthPeriodContaining(anchor).label, onPick = { vm.setAnchor(e.monthPeriodFor(it).end) }, onDismiss = { monthPicker = false })
     }
     if (restore) ConfirmDialog(stringResource(R.string.restore_question), onConfirm = { vm.restore { nav.back() } }, onDismiss = { restore = false })
-    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.transactions, selection, onDone = { vm.setSelection(emptySet()) }, onDismiss = { bulkOpen = false })
+    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.bulkActions, onDismiss = { bulkOpen = false })
 }
 
 /** The statement for the period on screen: the balance on one line, with money in, out and the net beneath. */

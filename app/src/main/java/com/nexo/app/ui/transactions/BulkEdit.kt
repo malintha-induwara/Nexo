@@ -48,7 +48,6 @@ import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.RefData
-import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.IncomeExpensePill
 import com.nexo.app.ui.designsystem.component.MessageDialog
@@ -131,18 +130,12 @@ fun BulkDialogs(
     open: Boolean,
     count: Int,
     ref: RefData,
-    transactions: TransactionsRepository,
-    ids: Set<String>,
-    onDone: () -> Unit,
+    actions: BulkEditActions,
     onDismiss: () -> Unit,
 ) {
     if (!open) return
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
-    fun run(block: suspend () -> Unit) {
-        scope.launch {
-            block()
-            onDone()
-        }
+    fun run(edit: () -> Unit) {
+        edit()
         onDismiss()
     }
     if (count == 0) {
@@ -152,19 +145,19 @@ fun BulkDialogs(
     when (action) {
         null -> ConfirmDialog(
             message = stringResource(R.string.want_to_delete_n, count),
-            onConfirm = { run { transactions.delete(ids) } },
+            onConfirm = { run(actions.delete) },
             onDismiss = onDismiss,
         )
-        BulkAction.DATE -> NexoDatePickerDialog(LocalDate.now(), onPick = { d -> run { transactions.setDate(ids, d) } }, onDismiss = onDismiss)
+        BulkAction.DATE -> NexoDatePickerDialog(LocalDate.now(), onPick = { d -> run { actions.setDate(d) } }, onDismiss = onDismiss)
         BulkAction.NOTE -> TextFieldDialog(
             title = stringResource(R.string.edit_all_notes), initial = "", label = stringResource(R.string.note),
-            onConfirm = { n -> run { transactions.setNote(ids, n) } }, onDismiss = onDismiss,
+            onConfirm = { n -> run { actions.setNote(n) } }, onDismiss = onDismiss,
         )
-        BulkAction.CATEGORY -> CategoryPickerDialog(ref, onPick = { id -> run { transactions.setCategory(ids, id) } }, onDismiss = onDismiss)
+        BulkAction.CATEGORY -> CategoryPickerDialog(ref, onPick = { id -> run { actions.setCategory(id) } }, onDismiss = onDismiss)
         BulkAction.ACCOUNT -> AccountPickerDialog(
             ref,
-            onAccount = { id -> run { transactions.setAccount(ids, id) } },
-            onTransfer = { from, to -> run { transactions.setTransfer(ids, from, to) } },
+            onAccount = { id -> run { actions.setAccount(id) } },
+            onTransfer = { from, to -> run { actions.setTransfer(from, to) } },
             onDismiss = onDismiss,
         )
     }

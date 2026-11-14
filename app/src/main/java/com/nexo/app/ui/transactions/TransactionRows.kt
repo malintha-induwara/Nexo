@@ -1,6 +1,5 @@
 package com.nexo.app.ui.transactions
 
-import android.content.Context
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.common.money.Money
@@ -17,6 +16,7 @@ import com.nexo.app.core.model.TxKind
 import com.nexo.app.core.model.categoryLabel
 import com.nexo.app.core.model.sortedForDay
 import com.nexo.app.domain.Classifier
+import com.nexo.app.ui.designsystem.UiText
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -27,11 +27,11 @@ import java.time.format.FormatStyle
 data class TxRowUi(
     val id: String,
     val tx: Transaction?,
-    val category: String,
+    val category: UiText,
     val subCategory: String?,
-    val title: String,
+    val title: UiText,
     val titleIsNote: Boolean,
-    val accountText: String,
+    val accountText: UiText,
     val time: String?,
     val tags: String?,
     val descriptionLine: String?,
@@ -55,33 +55,30 @@ data class DayGroup(
     val memos: List<Memo> = emptyList(),
 )
 
-/** Builds display rows from transactions. */
-class RowFactory(private val context: Context, private val ref: RefData) {
+/** Builds display rows from transactions. Labels stay [UiText] so the screen resolves them. */
+class TransactionRowMapper(private val ref: RefData) {
     private val classifier = Classifier(ref)
     private val zone = ZoneId.systemDefault()
     private val timeFormat = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-    private val transferLabel = context.getString(R.string.transfer)
-    private val noneLabel = context.getString(R.string.none)
-    private val modifiedLabel = context.getString(R.string.modified_balance)
 
-    fun accountName(id: String?): String = id?.let { ref.accountById[it]?.name } ?: noneLabel
+    fun accountName(id: String?): UiText = id?.let { ref.accountById[it]?.name }?.let(UiText::Raw) ?: NONE
 
-    fun categoryLabels(tx: Transaction): Pair<String, String?> = when (val label = ref.categoryLabel(tx)) {
-        CategoryLabel.Transfer -> transferLabel to null
-        CategoryLabel.ModifiedBalance -> modifiedLabel to null
-        is CategoryLabel.Category -> (label.main ?: noneLabel) to label.sub
+    fun categoryLabels(tx: Transaction): Pair<UiText, String?> = when (val label = ref.categoryLabel(tx)) {
+        CategoryLabel.Transfer -> UiText.of(R.string.transfer) to null
+        CategoryLabel.ModifiedBalance -> UiText.of(R.string.modified_balance) to null
+        is CategoryLabel.Category -> (label.main?.let(UiText::Raw) ?: NONE) to label.sub
     }
 
     fun flow(tx: Transaction): CashFlow = classifier.classify(tx.kind, tx.accountId, tx.counterpartAccountId)
 
     fun row(tx: Transaction, ledger: Ledger): TxRowUi {
         val (cat, sub) = categoryLabels(tx)
-        var accountText = if (tx.kind == TxKind.TRANSFER_OUT) "${accountName(tx.accountId)} → ${accountName(tx.counterpartAccountId)}"
+        var accountText = if (tx.kind == TxKind.TRANSFER_OUT) transferText(tx.accountId, tx.counterpartAccountId)
         else accountName(tx.accountId)
         var note = tx.note
         if (tx.installmentGroupId != null && tx.installmentCount > 0) {
             note = "$note (${tx.installmentIndex}/${tx.installmentCount})".trim()
-            accountText += " (" + context.resources.getQuantityString(R.plurals.n_months, tx.installmentCount, tx.installmentCount) + ")"
+            accountText = UiText.join(accountText, UiText.Raw(" ("), UiText.plural(R.plurals.n_months, tx.installmentCount), UiText.Raw(")"))
         }
         val titleIsNote = note.isNotBlank()
         val dt = Instant.ofEpochMilli(tx.dateTime).atZone(zone).toLocalTime()
@@ -93,7 +90,7 @@ class RowFactory(private val context: Context, private val ref: RefData) {
             tx = tx,
             category = cat,
             subCategory = sub,
-            title = if (titleIsNote) note else accountText,
+            title = if (titleIsNote) UiText.Raw(note) else accountText,
             titleIsNote = titleIsNote,
             accountText = accountText,
             time = time,
@@ -115,9 +112,9 @@ class RowFactory(private val context: Context, private val ref: RefData) {
             amount < 0 -> CashFlow.EXPENSE
             else -> CashFlow.NEUTRAL
         }
-        val label = context.getString(R.string.carry_over)
+        val label = UiText.of(R.string.carry_over)
         return TxRowUi(
-            id = "carry_over", tx = null, category = label, subCategory = null, title = label, titleIsNote = true, accountText = "",
+            id = "carry_over", tx = null, category = label, subCategory = null, title = label, titleIsNote = true, accountText = UiText.Empty,
             time = null, tags = null, descriptionLine = null, hasPhoto = false, flow = flow, amount = kotlin.math.abs(amount),
             amountText = AmountFormatter.format(kotlin.math.abs(amount), ref.mainCurrency), amountMain = kotlin.math.abs(amount), isCarryOver = true,
             currency = ref.mainCurrency,
@@ -156,7 +153,12 @@ class RowFactory(private val context: Context, private val ref: RefData) {
         }
     }
 
+    /** "From → To" for a transfer. */
+    fun transferText(fromId: String?, toId: String?): UiText = UiText.join(accountName(fromId), UiText.Raw(" → "), accountName(toId))
+
     companion object {
+        private val NONE = UiText.of(R.string.none)
+
         fun sortDay(rows: List<Transaction>, order: TimeDisplay): List<Transaction> = rows.sortedForDay(order)
     }
 }

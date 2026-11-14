@@ -1,6 +1,5 @@
 package com.nexo.app.ui.transactions
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.money.Money
@@ -15,77 +14,96 @@ import com.nexo.app.core.model.RepeatSchedule
 import com.nexo.app.core.model.StartScreen
 import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
+import com.nexo.app.data.repository.BudgetsRepository
 import com.nexo.app.data.repository.MemosRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.RepeatRulesRepository
 import com.nexo.app.data.repository.TransactionsRepository
+import com.nexo.app.domain.BudgetBlockData
+import com.nexo.app.domain.BudgetCalc
 import com.nexo.app.domain.Classifier
 import com.nexo.app.domain.InOut
 import com.nexo.app.domain.Totals
 import com.nexo.app.ui.HomeState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 private data class Params(val ref: RefData, val date: LocalDate, val tab: SubTab, val filter: FilterCriteria)
 
+private data class Quad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class TransactionsViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val refs: ReferenceDataRepository,
     private val memos: MemosRepository,
     private val repeats: RepeatRulesRepository,
-    val transactions: TransactionsRepository,
+    private val transactions: TransactionsRepository,
+    private val budgets: BudgetsRepository,
     private val home: HomeState,
 ) : ViewModel() {
-    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    val selectedDate = home.selectedDate
-    val focusEvents = home.focus
-    val savedMemo = home.savedMemo
-    val lastSaved = home.lastSaved
+    /** Kept for event handlers that need the reference data synchronously. */
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
 
-    fun clearLastSaved() = home.saved(null)
-
+    /** The sub-tab the user picked; null means the book's start screen. */
     private val _tab = MutableStateFlow<SubTab?>(null)
-    val tab: StateFlow<SubTab?> = _tab.asStateFlow()
+
+    /** Waits for the real reference data, so the start screen never flashes the wrong sub-tab. */
+    private val tab: Flow<SubTab> = combine(_tab, refs.getRefDataStream()) { t, r -> t ?: startTab(r) }.distinctUntilChanged()
 
     private val _filter = MutableStateFlow(FilterCriteria())
-    val filter: StateFlow<FilterCriteria> = _filter.asStateFlow()
-
     private val _filterOpen = MutableStateFlow(false)
-    val filterOpen = _filterOpen.asStateFlow()
-
     private val _selection = MutableStateFlow<Set<String>>(emptySet())
-    val selection = _selection.asStateFlow()
 
-    init {
-        viewModelScope.launch {
-            val r = refs.getRefData()
-            if (_tab.value == null) _tab.value = if (r.settings.startScreen == StartScreen.CALENDAR) SubTab.CALENDAR else SubTab.DAILY
-        }
-    }
+    val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, _selection)
 
-    val data: StateFlow<HomeData> = combine(ref, home.selectedDate, _tab.filterNotNull(), _filter) { r, d, t, f -> Params(r, d, t, f) }
+    private val data: StateFlow<HomeData> = combine(ref, home.selectedDate, tab, _filter) { r, d, t, f -> Params(r, d, t, f) }
         .distinctUntilChanged()
         .flatMapLatest { p -> load(p) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeData())
+
+    private val budgetBlock: Flow<BudgetBlockData?> = data
+        .map { d -> d.period.takeIf { d.tab == SubTab.TOTAL } }
+        .distinctUntilChanged()
+        .flatMapLatest { period ->
+            if (period == null) flowOf(null)
+            else combine(ref, budgets.getBudgetsStream(), budgets.getBudgetAmountsStream(), transactions.getLedgerStream(period.range)) { r, b, a, l ->
+                BudgetCalc.compute(r, b, a, l.rows, period.key)
+            }
+        }
+
+    val uiState: StateFlow<TransactionsUiState> = combine(
+        combine(ref, tab, data, home.selectedDate, ::Quad),
+        combine(_filter, _filterOpen, _selection, ::Triple),
+        combine(home.focus, home.lastSaved, home.savedMemo, ::Triple),
+        budgetBlock,
+    ) { (r, t, d, date), (filter, filterOpen, selection), (focus, lastSaved, savedMemo), budget ->
+        TransactionsUiState(r, t, d, date, filter, filterOpen, selection, focus, lastSaved, savedMemo, budget)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TransactionsUiState())
+
+    private fun startTab(r: RefData) = if (r.settings.startScreen == StartScreen.CALENDAR) SubTab.CALENDAR else SubTab.DAILY
+
+    private fun currentTab(): SubTab = _tab.value ?: startTab(ref.value)
+
+    fun clearLastSaved() = home.saved(null)
+
+    fun onFocusHandled() = home.focusConsumed()
 
     private fun load(p: Params): kotlinx.coroutines.flow.Flow<HomeData> {
         val engine = p.ref.settings.periods
@@ -131,7 +149,7 @@ class TransactionsViewModel @Inject constructor(
     ): HomeData {
         val ref = p.ref
         val c = Classifier(ref)
-        val factory = RowFactory(context, ref)
+        val factory = TransactionRowMapper(ref)
         val filtered = l.rows.filter { !p.filter.active || p.filter.matches(it, ref, c) }
         val inPeriod = filtered.filter { LocalDate.parse(it.date) in period.range }
         val memoByDay = memos.filter { !it.pinned || LocalDate.parse(it.date) in period.range }
@@ -333,12 +351,9 @@ class TransactionsViewModel @Inject constructor(
 
     fun consumeSavedMemo() = home.memoSaved(null)
 
-    fun rowFactory(r: RefData) = RowFactory(context, r)
-
     fun goToday() {
         viewModelScope.launch {
-            val r = refs.getRefData()
-            _tab.value = if (r.settings.startScreen == StartScreen.CALENDAR) SubTab.CALENDAR else SubTab.DAILY
+            _tab.value = startTab(refs.getRefData())
             home.focusOn(LocalDate.now())
         }
     }
@@ -347,7 +362,7 @@ class TransactionsViewModel @Inject constructor(
         val r = ref.value
         val engine = r.settings.periods
         val d = data.value
-        if (_tab.value == SubTab.MONTHLY) {
+        if (currentTab() == SubTab.MONTHLY) {
             val y = d.year + if (forward) 1 else -1
             home.select(engine.yearRange(y).start)
         } else {
@@ -373,8 +388,8 @@ class TransactionsViewModel @Inject constructor(
     fun setFilterOpen(open: Boolean) {
         _filterOpen.value = open
         if (!open) _filter.value = FilterCriteria()
-        if (open && (_tab.value == SubTab.TOTAL || _tab.value == SubTab.NOTE)) {
-            _tab.value = if (ref.value.settings.startScreen == StartScreen.CALENDAR) SubTab.CALENDAR else SubTab.DAILY
+        if (open && (currentTab() == SubTab.TOTAL || currentTab() == SubTab.NOTE)) {
+            _tab.value = startTab(ref.value)
         }
     }
 
@@ -394,22 +409,6 @@ class TransactionsViewModel @Inject constructor(
 
     fun clearSelection() {
         _selection.value = emptySet()
-    }
-
-    fun deleteSelected() = bulk { transactions.delete(it) }
-    fun setDateSelected(d: LocalDate) = bulk { transactions.setDate(it, d) }
-    fun setCategorySelected(id: String) = bulk { transactions.setCategory(it, id) }
-    fun setAccountSelected(id: String) = bulk { transactions.setAccount(it, id) }
-    fun setTransferSelected(from: String, to: String) = bulk { transactions.setTransfer(it, from, to) }
-    fun setNoteSelected(note: String) = bulk { transactions.setNote(it, note) }
-
-    private fun bulk(action: suspend (Set<String>) -> Unit) {
-        val ids = _selection.value
-        if (ids.isEmpty()) return
-        viewModelScope.launch {
-            action(ids)
-            _selection.value = emptySet()
-        }
     }
 
     companion object {
