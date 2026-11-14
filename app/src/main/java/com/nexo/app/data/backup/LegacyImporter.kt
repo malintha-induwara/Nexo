@@ -43,7 +43,6 @@ import com.nexo.app.data.database.entity.SettingEntity
 import com.nexo.app.data.database.entity.TagEntity
 import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.data.database.entity.TransactionTagEntity
-import com.nexo.app.data.repository.BackupRepository
 import com.nexo.app.data.repository.DefaultBackupRepository
 import java.io.File
 import java.time.Clock

@@ -19,8 +19,6 @@ import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.database.entity.asEntity
 import com.nexo.app.data.database.entity.asExternalModel
-import com.nexo.app.data.datastore.DevicePreferencesDataSource
-import com.nexo.app.data.repository.DefaultUserPreferencesRepository
 import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.testing.referenceDataRepository

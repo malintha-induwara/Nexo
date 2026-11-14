@@ -88,7 +88,6 @@ import com.nexo.app.ui.navigation.DeletedGroupsKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.TransferExpenseKey
 import java.time.YearMonth
-import kotlinx.coroutines.launch
 
 @Composable
 fun cardAccountingLabel(c: CardAccounting) = stringResource(

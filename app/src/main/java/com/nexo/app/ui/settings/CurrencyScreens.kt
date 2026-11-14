@@ -64,7 +64,6 @@ import com.nexo.app.ui.navigation.AddSubCurrencyKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MainCurrencyPickerKey
 import com.nexo.app.ui.navigation.SubCurrencyEditKey
-import kotlinx.coroutines.launch
 
 private val DECIMALS = listOf(0, 1, 2, 3, 4, 5, 8)
 

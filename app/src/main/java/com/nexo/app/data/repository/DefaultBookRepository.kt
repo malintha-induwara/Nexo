@@ -3,7 +3,6 @@ package com.nexo.app.data.repository
 import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.core.common.money.CatalogCurrency
-import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.data.database.BookSeeder
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.file.AppDirs

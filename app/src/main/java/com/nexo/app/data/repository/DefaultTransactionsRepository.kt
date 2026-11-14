@@ -29,7 +29,6 @@ import com.nexo.app.data.database.entity.CategoryEntity
 import com.nexo.app.data.database.entity.PhotoEntity
 import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.data.database.entity.TransactionTagEntity
-import com.nexo.app.data.database.entity.asEntity
 import com.nexo.app.data.database.entity.asExternalModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Clock

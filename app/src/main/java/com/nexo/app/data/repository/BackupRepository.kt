@@ -3,7 +3,6 @@ package com.nexo.app.data.repository
 import android.net.Uri
 import com.nexo.app.core.model.RestoreResult
 import java.io.File
-import java.time.LocalDateTime
 
 /** Backups of the whole book (the database file), automatic daily copies, and restoring Nexo or legacy backups. */
 interface BackupRepository {

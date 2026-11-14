@@ -1,7 +1,6 @@
 package com.nexo.app.data.repository
 
 import com.nexo.app.core.model.RepeatRule
-import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 
 /** Repeat rules and the transactions they generate. */

@@ -19,9 +19,7 @@ import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.data.database.entity.SmsMerchantRuleEntity
 import com.nexo.app.data.database.entity.SmsSourceEntity
 import com.nexo.app.data.database.entity.asExternalModel
-import com.nexo.app.data.datastore.DevicePreferencesDataSource
 import com.nexo.app.data.repository.DefaultSmsRepository
-import com.nexo.app.data.repository.DefaultUserPreferencesRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.sms.parser.SmsMessage
 import com.nexo.app.testing.fixedClock

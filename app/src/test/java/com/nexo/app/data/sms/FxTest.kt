@@ -16,9 +16,7 @@ import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.data.database.BookSeeder
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.CurrencyEntity
-import com.nexo.app.data.datastore.DevicePreferencesDataSource
 import com.nexo.app.data.network.FxRatesNetworkDataSource
-import com.nexo.app.data.repository.DefaultUserPreferencesRepository
 import com.nexo.app.data.repository.FxRatesRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.testing.fxRatesRepository

@@ -71,7 +71,6 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.util.Locale
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
 
 @Composable
 fun StatsDetailRoute(key: StatsDetailKey) {

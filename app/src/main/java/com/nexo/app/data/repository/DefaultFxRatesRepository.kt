@@ -17,7 +17,6 @@ import com.nexo.app.data.sms.RateChooser
 import com.nexo.app.data.sms.parser.BodyDate
 import java.time.Clock
 import java.time.Instant
-import java.time.LocalDate
 import javax.inject.Inject
 
 class DefaultFxRatesRepository @Inject constructor(

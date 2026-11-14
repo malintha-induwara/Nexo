@@ -91,7 +91,6 @@ import com.nexo.app.ui.navigation.CategoryListKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SubcategoryListKey
 import java.text.BreakIterator
-import kotlinx.coroutines.launch
 
 /** Curated picks for the category form; anything else can be typed. */
 private val EMOJI_CHOICES = listOf(
