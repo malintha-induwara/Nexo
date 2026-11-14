@@ -1,5 +1,9 @@
 package com.nexo.app.ui.entry
 
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
+import androidx.activity.result.IntentSenderRequest
 import com.nexo.app.core.lock.expectReturn
 import androidx.compose.material.icons.rounded.DateRange
 import androidx.compose.material.icons.rounded.PhotoLibrary
@@ -257,7 +261,14 @@ fun EntryScreen(key: EntryKey) {
         else -> null
     }
 
-    // Scan receipt: a photo from the camera or the gallery is read, then attached once the user confirms it.
+    // Scan receipt: the document scanner (rear camera, edges found and cropped, or a photo from the gallery) hands back
+    // one page, which is read and then attached once the user confirms it. Where the scanner cannot start (no Google Play
+    // services, or a phone it does not support) the plain camera and gallery choices take its place.
+    val scanDocument = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            GmsDocumentScanningResult.fromActivityResultIntent(result.data)?.pages?.firstOrNull()?.imageUri?.let(vm::scanReceipt)
+        }
+    }
     var cameraUri by rememberSaveable { mutableStateOf<String?>(null) }
     val scanCamera = rememberLauncherForActivityResult(RearCameraPicture()) { ok ->
         if (ok) cameraUri?.let { vm.scanReceipt(Uri.parse(it)) }
@@ -266,6 +277,19 @@ fun EntryScreen(key: EntryKey) {
         if (uri != null) {
             if (vm.photoStore.isSupported(uri)) vm.scanReceipt(uri) else Toast.makeText(context, R.string.unsupported_file_format, Toast.LENGTH_SHORT).show()
         }
+    }
+    fun launchScanner() {
+        val activity = context.findActivity()
+        if (activity == null) {
+            showScanMenu = true
+            return
+        }
+        receiptScanner().getStartScanIntent(activity)
+            .addOnSuccessListener { sender ->
+                context.expectReturn()
+                runCatching { scanDocument.launch(IntentSenderRequest.Builder(sender).build()) }.onFailure { showScanMenu = true }
+            }
+            .addOnFailureListener { showScanMenu = true }
     }
     fun launchCamera() {
         val dir = File(context.cacheDir, "temp").apply { mkdirs() }
@@ -571,7 +595,7 @@ fun EntryScreen(key: EntryKey) {
                         Box {
                             FieldPill(text = stringResource(R.string.receipt_scan), label = stringResource(R.string.receipt_scan), placeholder = true, icon = Icons.Outlined.DocumentScanner, accent = typeColor) {
                                 vm.enterEdit()
-                                if (device?.photoNoticeShown == false) showPhotoNotice = true else showScanMenu = true
+                                if (device?.photoNoticeShown == false) showPhotoNotice = true else launchScanner()
                             }
                             NexoMenu(showScanMenu, onDismissRequest = { showScanMenu = false }) {
                                 if (context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY)) {
@@ -763,7 +787,7 @@ fun EntryScreen(key: EntryKey) {
         AlertDialog(
             onDismissRequest = { showPhotoNotice = false },
             text = { Text(stringResource(R.string.photo_notice)) },
-            confirmButton = { TextButton(onClick = { showPhotoNotice = false; vm.markPhotoNoticeShown(); showScanMenu = true }) { Text(stringResource(R.string.action_ok)) } },
+            confirmButton = { TextButton(onClick = { showPhotoNotice = false; vm.markPhotoNoticeShown(); launchScanner() }) { Text(stringResource(R.string.action_ok)) } },
         )
     }
     if (showTransferGuide) {
@@ -1081,4 +1105,20 @@ private class RearCameraPicture : ActivityResultContracts.TakePicture() {
             putExtra("camerafacing", "rear")
             putExtra("default_camera", "0")
         }
+}
+
+/** One page, straightened and cropped, from the rear camera or the gallery. */
+private fun receiptScanner() = GmsDocumentScanning.getClient(
+    GmsDocumentScannerOptions.Builder()
+        .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+        .setGalleryImportAllowed(true)
+        .setPageLimit(1)
+        .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
+        .build(),
+)
+
+private tailrec fun android.content.Context.findActivity(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is android.content.ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
