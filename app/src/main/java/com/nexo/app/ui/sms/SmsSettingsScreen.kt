@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +44,8 @@ import com.nexo.app.domain.RefData
 import com.nexo.app.sms.approve.SmsApprover
 import com.nexo.app.sms.capture.SmsCapture
 import com.nexo.app.sms.capture.SmsPermissions
+import com.nexo.app.sms.FeeMode
+import com.nexo.app.sms.data.FeePresetEntity
 import com.nexo.app.sms.data.SmsSourceEntity
 import com.nexo.app.sms.parse.Banks
 import com.nexo.app.sms.smsCashAccount
@@ -57,6 +60,7 @@ import com.nexo.app.ui.components.SettingRow
 import com.nexo.app.ui.components.SwitchRow
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SmsCardsKey
+import com.nexo.app.ui.navigation.SmsFeesKey
 import com.nexo.app.ui.navigation.SmsQueueKey
 import com.nexo.app.ui.theme.LocalNexoColors
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -83,6 +87,7 @@ class SmsSettingsViewModel @Inject constructor(
     val device = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val pendingCount = dao.observePendingCount().stateIn(viewModelScope, SharingStarted.Eagerly, 0)
     val sources = dao.observeSources().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val presets = dao.observeFeePresets().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _permitted = MutableStateFlow(capture.hasPermission())
     val permitted: StateFlow<Boolean> = _permitted.asStateFlow()
@@ -102,6 +107,7 @@ class SmsSettingsViewModel @Inject constructor(
     fun setCashAccount(id: String) = viewModelScope.launch { refs.updateSettings { it.copy(smsCashAccountId = id) } }
     fun mapSource(source: SmsSourceEntity, accountId: String) = viewModelScope.launch { approver.mapCard(source.bank, source.last4, accountId) }
     fun removeSource(source: SmsSourceEntity) = viewModelScope.launch { approver.unmapCard(source.bank, source.last4) }
+    fun setFeeMode(preset: FeePresetEntity, mode: FeeMode) = viewModelScope.launch { approver.setFeeMode(preset.accountId, preset.route, mode) }
 }
 
 private fun Context.findActivity(): Activity? {
@@ -127,6 +133,7 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     val permitted by vm.permitted.collectAsStateWithLifecycle()
     val pending by vm.pendingCount.collectAsStateWithLifecycle()
     val sources by vm.sources.collectAsStateWithLifecycle()
+    val presets by vm.presets.collectAsStateWithLifecycle()
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
     var cashSheet by remember { mutableStateOf(false) }
 
@@ -178,6 +185,11 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                     stringResource(R.string.sms_cards),
                     if (sources.isNotEmpty()) pluralStringResource(R.plurals.sms_cards_sub, sources.size, sources.size) else null,
                     onClick = { nav.navigate(SmsCardsKey) },
+                )
+                SettingRow(
+                    stringResource(R.string.fee_presets_title),
+                    if (presets.isNotEmpty()) pluralStringResource(R.plurals.sms_cards_sub, presets.size, presets.size) else stringResource(R.string.sms_fees_sub_none),
+                    onClick = { nav.navigate(SmsFeesKey) },
                 )
                 SettingRow(
                     stringResource(R.string.sms_cash_account),
@@ -274,6 +286,64 @@ fun SmsCardsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                 AccountPickList(ref, s.accountId) { id ->
                     vm.mapSource(s, id)
                     sheetOpen = false
+                }
+            }
+        }
+    }
+}
+
+/** Settings → Bank SMS → Bank fees: the remembered answers per account and route, each resettable to "ask" (NQ-020). */
+@Composable
+fun SmsFeesScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
+    val nav = LocalNavigator.current
+    val colors = LocalNexoColors.current
+    val ref by vm.ref.collectAsStateWithLifecycle()
+    val presets by vm.presets.collectAsStateWithLifecycle()
+    var editing by remember { mutableStateOf<FeePresetEntity?>(null) }
+    var sheetOpen by remember { mutableStateOf(false) }
+
+    @Composable
+    fun modeText(p: FeePresetEntity): String {
+        val last = p.lastFee?.let { com.nexo.app.core.money.AmountFormatter.format(it, ref.accountCurrency(p.accountId)) }
+        return when {
+            p.mode == FeeMode.NEVER -> stringResource(R.string.fee_mode_never)
+            p.mode == FeeMode.AUTO && last != null -> stringResource(R.string.fee_mode_auto, last)
+            last != null -> stringResource(R.string.fee_mode_ask_last, last)
+            else -> stringResource(R.string.fee_mode_ask)
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(topBar = { NexoTopBar(stringResource(R.string.fee_presets_title), onBack = { nav.back() }) }, containerColor = colors.background) { p ->
+            Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
+                if (presets.isEmpty()) EmptyState(stringResource(R.string.fee_presets_empty))
+                presets.groupBy { it.accountId }.forEach { (accountId, rows) ->
+                    SectionHeader(ref.accountById[accountId]?.name ?: accountId)
+                    rows.forEach { preset ->
+                        SettingRow(stringResource(feeRouteLabel(preset.route)), modeText(preset), onClick = {
+                            editing = preset
+                            sheetOpen = true
+                        })
+                    }
+                }
+            }
+        }
+        InlineBottomSheet(sheetOpen, onDismiss = { sheetOpen = false }, heightFraction = 0.42f) {
+            val preset = editing
+            if (preset != null) {
+                SheetTitle(stringResource(feeRouteLabel(preset.route)), ref.accountById[preset.accountId]?.name)
+                val last = preset.lastFee?.let { com.nexo.app.core.money.AmountFormatter.format(it, ref.accountCurrency(preset.accountId)) }
+                listOfNotNull(
+                    FeeMode.ASK to stringResource(R.string.fee_mode_ask),
+                    last?.let { FeeMode.AUTO to stringResource(R.string.fee_mode_auto, it) },
+                    FeeMode.NEVER to stringResource(R.string.fee_mode_never),
+                ).forEach { (mode, label) ->
+                    SettingRow(label, onClick = {
+                        vm.setFeeMode(preset, mode)
+                        sheetOpen = false
+                    }, showChevron = false, trailing = if (preset.mode == mode) ({
+                        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Check, null, tint = colors.text)
+                    }) else null)
                 }
             }
         }

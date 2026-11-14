@@ -536,8 +536,8 @@ fun EntryScreen(key: EntryKey) {
                             onClear = if (s.repeatEnd != null) ({ vm.setRepeatEnd(null) }) else null,
                         ) { showRepeatEnd = true }
                     }
-                    // Transfer fee (TX-011)
-                    if (s.isTransfer && s.feeExpanded) {
+                    // Transfer fee (TX-011), or a bank fee on an SMS expense.
+                    if (s.feeAllowed && s.feeExpanded) {
                         val feeCur = ref.currency(s.feeCurrencyId)
                         val text = if (s.panel == Panel.FEE && s.pad.buffer.isNotEmpty()) bufferParts(s.pad.buffer, feeCur).text
                         else s.feeAmount?.let { AmountFormatter.format(it, feeCur) } ?: ""
@@ -548,7 +548,7 @@ fun EntryScreen(key: EntryKey) {
                             accent = typeColor,
                             onClear = { vm.setFeeExpanded(false) },
                         ) { vm.openPanel(Panel.FEE) }
-                    } else if (s.isTransfer && s.repeat == RepeatType.NONE) {
+                    } else if (s.feeAllowed && s.repeat == RepeatType.NONE) {
                         FieldPill(text = stringResource(R.string.fees), label = stringResource(R.string.fees), placeholder = true, icon = Icons.Rounded.Add, accent = typeColor) { vm.setFeeExpanded(true) }
                     }
                 }

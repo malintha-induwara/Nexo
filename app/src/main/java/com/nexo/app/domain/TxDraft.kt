@@ -10,7 +10,7 @@ sealed interface PhotoItem {
     data class Picked(val uri: Uri) : PhotoItem
 }
 
-data class FeeDraft(val amount: Double, val currencyId: String, val rate: Double? = null)
+data class FeeDraft(val amount: Double, val currencyId: String, val rate: Double? = null, val categoryId: String? = null)
 
 /** Everything the entry form saves (TX-022). */
 data class TxDraft(

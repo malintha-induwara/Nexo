@@ -9,11 +9,15 @@ import com.nexo.app.domain.FeeDraft
 import com.nexo.app.domain.RefData
 import com.nexo.app.domain.TxDraft
 import com.nexo.app.sms.Certainty
+import com.nexo.app.core.money.Money
 import com.nexo.app.sms.DenyReason
+import com.nexo.app.sms.FeeMode
+import com.nexo.app.sms.FeeRoute
 import com.nexo.app.sms.Missing
 import com.nexo.app.sms.SmsKind
 import com.nexo.app.sms.SmsStatus
 import com.nexo.app.sms.capture.SmsSuggester
+import com.nexo.app.sms.data.FeePresetEntity
 import com.nexo.app.sms.data.SmsItemEntity
 import com.nexo.app.sms.data.SmsMerchantRuleEntity
 import com.nexo.app.sms.data.SmsSourceEntity
@@ -28,12 +32,27 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 sealed interface ApproveResult {
-    data class Done(val transactionId: String) : ApproveResult
+    /** [feeId] is the bank fee row written with it, if any (for Undo of an automatic fee). */
+    data class Done(val transactionId: String, val feeId: String? = null) : ApproveResult
     data class Incomplete(val missing: Set<Missing>) : ApproveResult
 
     /** Already decided elsewhere (another screen, or the item expired). */
     data object Gone : ApproveResult
 }
+
+/** What approving an item means for its bank fee (NQ-020). */
+sealed interface FeePlan {
+    data object None : FeePlan
+
+    /** The preset says "always add": no question, an Undo afterwards. */
+    data class Auto(val route: FeeRoute, val amount: Double) : FeePlan
+
+    /** Ask, pre-filled with the last fee on this route — or, for [fxDifference], with actual − estimate (NQ-012). */
+    data class Ask(val route: FeeRoute, val prefill: Double?, val fxDifference: Boolean = false) : FeePlan
+}
+
+/** The answer to a fee prompt. A null or zero [amount] is "No fee". */
+data class FeeChoice(val amount: Double?, val remember: Boolean = false, val includeInPurchase: Boolean = false)
 
 /** Approve / Deny / Edit (NQ-003), card mapping (NQ-032) and learning (LKSMS-018). The only code that turns items into ledger rows. */
 @Singleton
@@ -46,8 +65,8 @@ class SmsApprover @Inject constructor(
     private val dao get() = db.smsDao()
     private fun now() = System.currentTimeMillis()
 
-    /** What approving [item] as it stands would save. Null while it still needs details. */
-    fun draft(item: SmsItemEntity, ref: RefData, fee: Double? = null): TxDraft? {
+    /** What approving [item] as it stands would save, without any fee. Null while it still needs details. */
+    fun draft(item: SmsItemEntity, ref: RefData): TxDraft? {
         if (item.missing().isNotEmpty()) return null
         val (currency, amount) = amountIn(item, ref)
         val asTransfer = item.kind.isTransfer && item.toAccountId != null
@@ -66,7 +85,6 @@ class SmsApprover @Inject constructor(
             currencyId = currency.id,
             note = noteFor(item),
             description = item.note,
-            fee = if (asTransfer && fee != null && fee > 0) FeeDraft(fee, ref.accountCurrency(from).id) else null,
             sourceText = item.text,
         )
     }
@@ -82,13 +100,81 @@ class SmsApprover @Inject constructor(
         return (match ?: account) to item.amount
     }
 
-    suspend fun approve(itemId: String, fee: Double? = null): ApproveResult {
+    /** NQ-020: whether approving [item] should add, ask about, or skip a bank fee. */
+    suspend fun feePlan(item: SmsItemEntity): FeePlan {
+        val route = item.feeRoute ?: return FeePlan.None
+        val account = item.accountId ?: return FeePlan.None
+        val preset = dao.feePreset(account, route)
+        val mode = preset?.mode ?: route.defaultMode
+        if (route == FeeRoute.FX_CARD_PURCHASE) {
+            // NQ-012: only when the real amount came out more than 0.5 % above the estimate.
+            val estimate = item.estimatedAmount ?: return FeePlan.None
+            val actual = item.actualAmount ?: return FeePlan.None
+            if (actual <= estimate * (1 + FX_TOLERANCE)) return FeePlan.None
+            val difference = Money.round(actual - estimate, refs.snapshot().accountCurrency(account).decimals)
+            return when (mode) {
+                FeeMode.NEVER -> FeePlan.None
+                FeeMode.AUTO -> FeePlan.Auto(route, difference)
+                FeeMode.ASK -> FeePlan.Ask(route, difference, fxDifference = true)
+            }
+        }
+        val last = preset?.lastFee?.takeIf { it > 0 }
+        return when {
+            mode == FeeMode.NEVER -> FeePlan.None
+            mode == FeeMode.AUTO && last != null -> FeePlan.Auto(route, last)
+            else -> FeePlan.Ask(route, last)
+        }
+    }
+
+    /**
+     * Writes the item to the ledger. With a [fee], the fee becomes its own Bank fee expense from the source account,
+     * linked to the transfer or the purchase (BR-Q5). For an FX difference recorded as a fee, the purchase stays at the
+     * estimate; "include in purchase" books the actual amount with no fee row.
+     */
+    suspend fun approve(itemId: String, fee: FeeChoice? = null): ApproveResult {
         val item = dao.item(itemId)?.takeIf { it.status == SmsStatus.PENDING } ?: return ApproveResult.Gone
         val ref = refs.snapshot()
-        val draft = draft(item, ref, fee) ?: return ApproveResult.Incomplete(item.missing())
+        var draft = draft(item, ref) ?: return ApproveResult.Incomplete(item.missing())
+        val feeAmount = fee?.takeIf { !it.includeInPurchase }?.amount?.takeIf { it > 0 }
+        val estimate = item.estimatedAmount
+        if (feeAmount != null && item.feeRoute == FeeRoute.FX_CARD_PURCHASE && estimate != null) draft = draft.copy(amount = estimate)
+        val transfer = draft.type == EntryType.TRANSFER
+        if (transfer && feeAmount != null) {
+            draft = draft.copy(fee = FeeDraft(feeAmount, ref.accountCurrency(draft.accountId).id, categoryId = writer.bankFeeCategory()))
+        }
         val txId = writer.save(draft)
+        val feeId = when {
+            feeAmount == null -> null
+            transfer -> db.transactionDao().getById(txId)?.feeGroupId?.let { db.transactionDao().getFeeRow(it)?.id }
+            else -> writer.addFee(txId, feeAmount)
+        }
         markApproved(item, txId, item.accountId, draft.categoryId)
-        return ApproveResult.Done(txId)
+        if (fee != null) recordFee(item, item.accountId, fee)
+        return ApproveResult.Done(txId, feeId)
+    }
+
+    /** Removes an automatically added fee (its Undo). */
+    suspend fun removeFee(feeId: String) = writer.delete(listOf(feeId))
+
+    /** NQ fee preset: the last fee on this route from this account, and "Remember" turning it into always / never. */
+    suspend fun recordFee(item: SmsItemEntity, accountId: String?, choice: FeeChoice) {
+        val route = item.feeRoute ?: return
+        val account = accountId ?: return
+        val existing = dao.feePreset(account, route)
+        val amount = choice.amount?.takeIf { it > 0 && !choice.includeInPurchase }
+        val mode = when {
+            choice.remember && amount != null -> FeeMode.AUTO
+            choice.remember -> FeeMode.NEVER
+            else -> existing?.mode ?: route.defaultMode
+        }
+        // An FX difference isn't a tariff, so it never becomes the "last fee".
+        val last = if (route == FeeRoute.FX_CARD_PURCHASE) existing?.lastFee else amount ?: existing?.lastFee
+        dao.upsertFeePreset(FeePresetEntity(account, route, last, mode, now()))
+    }
+
+    suspend fun setFeeMode(accountId: String, route: FeeRoute, mode: FeeMode) {
+        val existing = dao.feePreset(accountId, route)
+        dao.upsertFeePreset(FeePresetEntity(accountId, route, existing?.lastFee, mode, now()))
     }
 
     /**
@@ -111,8 +197,8 @@ class SmsApprover @Inject constructor(
         learn(item, bankAccountId, categoryId)
     }
 
-    /** Approves every complete item; incomplete ones stay in the queue (NQ-003 bulk approve). */
-    suspend fun approveAll(ids: Collection<String>): Int = ids.count { approve(it) is ApproveResult.Done }
+    /** Approves every complete item with [fee]; incomplete ones stay in the queue (NQ-003 bulk approve). */
+    suspend fun approveAll(ids: Collection<String>, fee: FeeChoice? = null): Int = ids.count { approve(it, fee) is ApproveResult.Done }
 
     /** Returns the items as they were, for Undo. */
     suspend fun deny(ids: Collection<String>, reason: DenyReason? = null): List<SmsItemEntity> {
@@ -190,7 +276,13 @@ class SmsApprover @Inject constructor(
     }
 
     companion object {
+        /** NQ-012: an actual amount within 0.5 % of the estimate is just rounding. */
+        const val FX_TOLERANCE = 0.005
+
         fun localDateTime(ms: Long): LocalDateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(ms), ZoneId.systemDefault())
+
+        /** The amount as it would reach the ledger, in the account's currency for foreign items. */
+        fun ledgerAmount(item: SmsItemEntity): Double = item.actualAmount ?: item.estimatedAmount ?: item.amount
 
         fun bankName(item: SmsItemEntity): String = Banks.byName(item.bank)?.displayName ?: Bank.OTHER.displayName
 

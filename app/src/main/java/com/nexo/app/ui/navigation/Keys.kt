@@ -198,3 +198,6 @@ data object SmsSettingsKey : NavKey
 
 @Serializable
 data object SmsCardsKey : NavKey
+
+@Serializable
+data object SmsFeesKey : NavKey

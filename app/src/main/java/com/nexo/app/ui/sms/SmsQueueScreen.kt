@@ -103,6 +103,10 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
     val selection by vm.selection.collectAsStateWithLifecycle()
     val undo by vm.undo.collectAsStateWithLifecycle()
     val permitted by vm.permitted.collectAsStateWithLifecycle()
+    val feePrompt by vm.feePrompt.collectAsStateWithLifecycle()
+    // Keeps the last question drawn while the sheet slides away.
+    val shownPrompt = remember { arrayOfNulls<FeePrompt>(1) }
+    if (feePrompt != null) shownPrompt[0] = feePrompt
 
     var sheet by remember { mutableStateOf<QueueSheet?>(null) }
     var sheetOpen by remember { mutableStateOf(false) }
@@ -241,6 +245,10 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                 }
                 null -> Unit
             }
+        }
+
+        InlineBottomSheet(visible = feePrompt != null, onDismiss = { vm.answerFee(null) }, heightFraction = 0.6f) {
+            shownPrompt[0]?.let { p -> FeePromptContent(p, ref) { vm.answerFee(it) } }
         }
     }
 

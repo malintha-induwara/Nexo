@@ -67,6 +67,10 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE feeGroupId = :feeGroupId AND kind = 'EXPENSE' LIMIT 1")
     suspend fun getFeeRow(feeGroupId: String): TransactionEntity?
 
+    /** Bank fees charged on these (non-transfer) rows (spec-money-master-sl 02, `feeParentId`). */
+    @Query("SELECT * FROM transactions WHERE feeParentId IN (:parentIds)")
+    suspend fun feeChildren(parentIds: List<String>): List<TransactionEntity>
+
     /** Most recent transfer between two accounts that carried a fee (TX-011 prefill). */
     @Query(
         "SELECT * FROM transactions WHERE kind = 'TRANSFER_OUT' AND accountId = :from AND counterpartAccountId = :to " +

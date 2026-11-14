@@ -276,8 +276,17 @@ class EntryViewModel @AssistedInject constructor(
         val transfer = kind.isTransfer && (kind != com.nexo.app.sms.SmsKind.TRANSFER_OUT || item.toAccountId != null)
         val (from, to) = if (kind == com.nexo.app.sms.SmsKind.TRANSFER_IN) item.toAccountId to item.accountId else item.accountId to item.toAccountId
         val dt = com.nexo.app.sms.approve.SmsApprover.localDateTime(item.occurredAt)
+        // NQ-020 in the form: the fee field starts filled when the route's preset knows the fee.
+        val presetFee = when (val plan = sms.feePlan(item)) {
+            is com.nexo.app.sms.approve.FeePlan.Auto -> plan.amount
+            is com.nexo.app.sms.approve.FeePlan.Ask -> plan.prefill.takeIf { !plan.fxDifference }
+            com.nexo.app.sms.approve.FeePlan.None -> null
+        }
         return base.copy(
             mode = EntryMode.SMS,
+            feeExpanded = presetFee != null,
+            feeAmount = presetFee,
+            feeLoaded = true,
             type = when {
                 transfer -> EntryType.TRANSFER
                 kind.isInflow -> EntryType.INCOME
@@ -295,6 +304,13 @@ class EntryViewModel @AssistedInject constructor(
             description = item.note,
             sourceText = item.text,
         )
+    }
+
+    /** An SMS transfer's fee goes to the system Bank fee category (spec-money-master-sl 02 improvement 1). */
+    private suspend fun withBankFeeCategory(d: com.nexo.app.domain.TxDraft): com.nexo.app.domain.TxDraft {
+        val fee = d.fee ?: return d
+        if (key.mode != EntryMode.SMS) return d
+        return d.copy(fee = fee.copy(categoryId = writer.bankFeeCategory()))
     }
 
     /** NQ-003 Deny from the form. Nothing is written to the ledger. */
@@ -354,7 +370,7 @@ class EntryViewModel @AssistedInject constructor(
                 categoryId = null,
                 toAccountId = null,
                 installments = 0,
-                feeExpanded = if (t == EntryType.TRANSFER) s.feeExpanded else false,
+                feeExpanded = if (t == EntryType.TRANSFER || (s.mode == EntryMode.SMS && t == EntryType.EXPENSE)) s.feeExpanded else false,
             )
         }
         advance()
@@ -577,13 +593,16 @@ class EntryViewModel @AssistedInject constructor(
         }
         _ui.update { it.copy(saving = true) }
         viewModelScope.launch {
-            runCatching { writer.save(draft(_ui.value)) }
+            runCatching { writer.save(withBankFeeCategory(draft(_ui.value))) }
                 .onSuccess { id ->
                     home.saved(id)
                     if (key.mode == EntryMode.SMS && key.smsItemId != null) {
                         val s = _ui.value
                         val bankAccount = if (smsItem?.kind == com.nexo.app.sms.SmsKind.TRANSFER_IN) s.toAccountId else s.accountId
+                        val fee = s.feeAmount?.takeIf { s.feeExpanded && it > 0 }
+                        if (fee != null && !s.isTransfer) writer.addFee(id, fee)
                         sms.markApproved(key.smsItemId, id, bankAccount, if (s.isTransfer) null else s.categoryId)
+                        smsItem?.let { item -> if (fee != null) sms.recordFee(item, bankAccount, com.nexo.app.sms.approve.FeeChoice(fee)) }
                     }
                     afterSave(continueAfter)
                 }

@@ -64,6 +64,9 @@ data class EntryUi(
     val presetCategoryId: String? = null,
 ) {
     val isTransfer: Boolean get() = type == EntryType.TRANSFER
+
+    /** Transfers carry a fee (TX-011); so does an SMS expense, as a linked Bank fee row (spec-money-master-sl 02). */
+    val feeAllowed: Boolean get() = isTransfer || (mode == EntryMode.SMS && type == EntryType.EXPENSE)
     val isBalance: Boolean get() = balanceKind != null
     val isEdit: Boolean get() = originalId != null && mode == EntryMode.EDIT
     val repeatMode: Boolean get() = mode == EntryMode.REPEAT_NEW || mode == EntryMode.REPEAT_EDIT
@@ -74,7 +77,7 @@ data class EntryUi(
     val fields: List<Field>
         get() {
             val pair = if (isTransfer) listOf(Field.FROM, Field.TO) else listOf(Field.ACCOUNT, Field.CATEGORY)
-            val amount = if (isTransfer && feeExpanded) listOf(Field.AMOUNT, Field.FEE) else listOf(Field.AMOUNT)
+            val amount = if (feeAllowed && feeExpanded) listOf(Field.AMOUNT, Field.FEE) else listOf(Field.AMOUNT)
             return if (inputOrder == InputOrder.ACCOUNT_FIRST) pair + amount
             else if (isTransfer) amount + pair else amount + listOf(Field.CATEGORY, Field.ACCOUNT)
         }

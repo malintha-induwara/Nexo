@@ -213,7 +213,7 @@ class TransactionWriter @Inject constructor(
                 id = existingFee?.id ?: uuid(),
                 kind = TxKind.EXPENSE,
                 accountId = from,
-                categoryId = existingFee?.categoryId ?: feeCategory(ref)?.id,
+                categoryId = existingFee?.categoryId ?: fee.categoryId ?: feeCategory(ref)?.id,
                 dateTime = millis(feeDateTime),
                 date = feeDateTime.toLocalDate().toIsoText(),
                 amount = fa.amount, amountMain = fa.main, amountAccount = fa.account, currencyId = feeCur.id,
@@ -265,14 +265,66 @@ class TransactionWriter @Inject constructor(
         return Money.divide(original.amountAccount, original.amount)
     }
 
-    /** Fee category: "Fees", else "Other", else the last expense category (TX-011). */
+    /** Fee category: the system Bank fee category once it exists, else "Fees", else "Other", else the last expense category (TX-011). */
     fun feeCategory(ref: RefData): CategoryEntity? {
         val expense = ref.categories.filter { it.kind == CategoryKind.EXPENSE && !it.isDeleted }
+        ref.settings.bankFeeCategoryId.takeIf { it.isNotEmpty() }?.let { id -> expense.firstOrNull { it.id == id } }?.let { return it }
         val fees = context.getString(R.string.cat_fees)
         val other = context.getString(R.string.cat_other)
         return expense.firstOrNull { it.name.equals(fees, true) }
             ?: expense.firstOrNull { it.name.equals(other, true) }
             ?: expense.lastOrNull { it.parentId == null }
+    }
+
+    /**
+     * The system "Bank fee" category (spec-money-master-sl 02 improvement 1), created on first use and remembered by id,
+     * so renaming it never breaks the link.
+     */
+    suspend fun bankFeeCategory(): String {
+        val ref = refs.snapshot()
+        ref.settings.bankFeeCategoryId.takeIf { it.isNotEmpty() }
+            ?.let { id -> ref.categoryById[id]?.takeIf { !it.isDeleted && it.kind == CategoryKind.EXPENSE }?.id }
+            ?.let { return it }
+        val now = now()
+        val id = uuid()
+        db.categoryDao().upsert(
+            listOf(
+                CategoryEntity(
+                    id, context.getString(R.string.cat_bank_fee), CategoryKind.EXPENSE, null, db.categoryDao().maxOrder() + 1,
+                    createdAt = now, updatedAt = now, emoji = "🏦",
+                ),
+            ),
+        )
+        refs.updateSettings { it.copy(bankFeeCategoryId = id) }
+        return id
+    }
+
+    /**
+     * BR-Q5: a bank fee on a non-transfer row is its own expense from the same account, linked through `feeParentId`,
+     * a millisecond after its parent. Returns the fee row's id.
+     */
+    suspend fun addFee(parentId: String, amount: Double, note: String = context.getString(R.string.cat_bank_fee)): String? {
+        if (amount <= 0) return null
+        val categoryId = bankFeeCategory()
+        val ref = refs.snapshot()
+        val id = db.withTransaction {
+            val parent = dao.getById(parentId) ?: return@withTransaction null
+            val cur = ref.accountCurrency(parent.accountId)
+            val a = Conversion.compute(amount, cur, cur, ref.mainCurrency)
+            val parentAt = localDateTime(parent.dateTime)
+            val at = parentAt.plusNanos(1_000_000).let { if (it.toLocalDate() == parentAt.toLocalDate()) it else parentAt }
+            val now = now()
+            val row = TransactionEntity(
+                id = uuid(), kind = TxKind.EXPENSE, accountId = parent.accountId, categoryId = categoryId,
+                dateTime = millis(at), date = at.toLocalDate().toIsoText(),
+                amount = a.amount, amountMain = a.main, amountAccount = a.account, currencyId = cur.id,
+                note = note, feeParentId = parent.id, createdAt = now + 1, updatedAt = now + 1,
+            )
+            dao.insertAll(listOf(row))
+            row.id
+        }
+        widgets.refresh()
+        return id
     }
 
     suspend fun setTags(txIds: List<String>, tagIds: List<String>) {
@@ -313,6 +365,8 @@ class TransactionWriter @Inject constructor(
             if (r.kind.isTransfer) r.feeGroupId?.let { f -> dao.getFeeRow(f)?.let { ids += it.id } }
             if (wholeInstallment) r.installmentGroupId?.let { g -> dao.getByInstallmentGroup(g).forEach { ids += it.id } }
         }
+        // Bank fees go with the row they were charged on.
+        if (ids.isNotEmpty()) dao.feeChildren(ids.toList()).forEach { ids += it.id }
         return ids
     }
 

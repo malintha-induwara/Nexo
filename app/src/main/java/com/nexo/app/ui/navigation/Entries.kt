@@ -60,6 +60,7 @@ fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<SmsQueueKey> { SmsQueueScreen() }
     entry<SmsSettingsKey> { SmsSettingsScreen() }
     entry<SmsCardsKey> { SmsCardsScreen() }
+    entry<SmsFeesKey> { com.nexo.app.ui.sms.SmsFeesScreen() }
     entry<EntryKey>(metadata = { key -> if (key.fromAdd) SheetSceneStrategy.sheet(key) else emptyMap() }) { EntryScreen(it) }
     entry<BookmarksKey> { BookmarksScreen(it) }
     entry<RepeatListKey> { RepeatListScreen() }

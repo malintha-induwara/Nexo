@@ -83,6 +83,44 @@
     <string name="sms_actual_amount_sub">As shown in your bank app or statement</string>
     <string name="sms_privacy_line">Everything runs on this phone. Messages are never uploaded.</string>
 
+    <!-- Fee prompts (NQ-020) -->
+    <string name="cat_bank_fee">Bank fee</string>
+    <string name="fee_route_interbank">Transfers to other banks</string>
+    <string name="fee_route_other_atm">Other banks\' ATMs</string>
+    <string name="fee_route_fx">Foreign currency card payments</string>
+    <string name="fee_route_own">Transfers within the bank</string>
+    <string name="fee_route_cc">Credit card payments</string>
+    <string name="fee_route_interbank_inline">transfers to other banks</string>
+    <string name="fee_route_other_atm_inline">other banks\' ATMs</string>
+    <string name="fee_route_fx_inline">foreign currency card payments</string>
+    <string name="fee_route_own_inline">transfers within the bank</string>
+    <string name="fee_route_cc_inline">credit card payments</string>
+    <string name="fee_ask_title">Did %s charge a fee?</string>
+    <string name="fee_ask_interbank">For this transfer to another bank</string>
+    <string name="fee_ask_other_atm">For using another bank\'s ATM</string>
+    <string name="fee_ask_own">For this transfer within the bank</string>
+    <string name="fee_ask_cc">For this card payment</string>
+    <string name="fee_ask_fx_title">The bank took %s more than the estimate</string>
+    <string name="fee_ask_fx_sub">Card networks use their own rate, and banks add a fee for foreign payments.</string>
+    <string name="fee_amount">Fee</string>
+    <string name="fee_remember">Remember for %1$s from %2$s</string>
+    <string name="fee_add">Add fee</string>
+    <string name="fee_none">No fee</string>
+    <string name="fee_record_difference">Record as bank fee</string>
+    <string name="fee_include">Include in purchase</string>
+    <string name="fee_too_large">That\'s more than the transaction itself. Tap again to add it anyway.</string>
+    <plurals name="fee_batch">
+        <item quantity="one">Applies to %d transaction</item>
+        <item quantity="other">Applies to each of %d transactions</item>
+    </plurals>
+    <string name="fee_auto_added">Added %s bank fee</string>
+    <string name="fee_presets_title">Bank fees</string>
+    <string name="fee_presets_empty">When you tick Remember on a fee question, Nexo keeps the answer here.</string>
+    <string name="fee_mode_ask">Ask each time</string>
+    <string name="fee_mode_ask_last">Ask each time · last %s</string>
+    <string name="fee_mode_auto">Always add %s</string>
+    <string name="fee_mode_never">Never ask</string>
+
     <!-- Settings -->
     <string name="sms_settings_title">Bank SMS</string>
     <string name="sms_capture_title">Auto-capture bank SMS</string>
@@ -111,6 +149,7 @@
     <string name="sms_remove">Remove</string>
     <string name="sms_cash_account">Cash withdrawals go to</string>
     <string name="sms_section_privacy">Privacy</string>
+    <string name="sms_fees_sub_none">Nothing remembered yet</string>
     <string name="sms_full_text">Store full SMS text</string>
     <string name="sms_full_text_sub_off">Account numbers, card digits and phone numbers are hidden before a message is saved</string>
     <string name="sms_full_text_sub_on">Messages are saved as received. Approval codes are always removed</string>

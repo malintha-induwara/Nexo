@@ -8,9 +8,13 @@ import com.nexo.app.core.database.NexoDatabase
 import com.nexo.app.core.settings.DevicePrefs
 import com.nexo.app.data.RefRepository
 import com.nexo.app.domain.RefData
+import com.nexo.app.core.money.AmountFormatter
 import com.nexo.app.sms.DenyReason
+import com.nexo.app.sms.FeeRoute
 import com.nexo.app.sms.SmsStatus
 import com.nexo.app.sms.approve.ApproveResult
+import com.nexo.app.sms.approve.FeeChoice
+import com.nexo.app.sms.approve.FeePlan
 import com.nexo.app.sms.approve.SmsApprover
 import com.nexo.app.sms.capture.SmsCapture
 import com.nexo.app.sms.data.SmsItemEntity
@@ -40,6 +44,9 @@ enum class QueueFilter(val label: Int, val status: SmsStatus) {
     EXPIRED(R.string.sms_filter_expired, SmsStatus.EXPIRED),
     CANCELLED(R.string.sms_filter_cancelled, SmsStatus.CANCELLED),
 }
+
+/** One fee question, for a single item or a bulk-approved batch on the same route (NQ-003). */
+data class FeePrompt(val items: List<SmsItemEntity>, val plan: FeePlan.Ask)
 
 /** A bank card that pending items mention but no account is set for (NQ-032 "Which account is the card ending 1111?"). */
 data class CardRef(val bank: String, val last4: String)
@@ -80,6 +87,11 @@ class SmsQueueViewModel @Inject constructor(
     private val _undo = MutableStateFlow<UndoMessage?>(null)
     val undo: StateFlow<UndoMessage?> = _undo.asStateFlow()
 
+    private val _feePrompts = MutableStateFlow<List<FeePrompt>>(emptyList())
+
+    /** The fee question on screen; the rest wait their turn. */
+    val feePrompt: StateFlow<FeePrompt?> = _feePrompts.map { it.firstOrNull() }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     private val _permitted = MutableStateFlow(capture.hasPermission())
     val permitted: StateFlow<Boolean> = _permitted.asStateFlow()
 
@@ -95,11 +107,34 @@ class SmsQueueViewModel @Inject constructor(
         _selection.value = emptySet()
     }
 
+    /** NQ-003 Approve. An item on a fee route asks first (NQ-020), unless its preset says always or never. */
     fun approve(id: String) = viewModelScope.launch {
-        when (approver.approve(id)) {
-            is ApproveResult.Done -> show(context.getString(R.string.sms_approved))
-            is ApproveResult.Incomplete -> show(context.getString(R.string.sms_needs_details_first))
-            ApproveResult.Gone -> Unit
+        val item = pending.value.firstOrNull { it.id == id } ?: return@launch
+        if (item.needsDetails) {
+            show(context.getString(R.string.sms_needs_details_first))
+            return@launch
+        }
+        when (val plan = approver.feePlan(item)) {
+            FeePlan.None -> if (approver.approve(id) is ApproveResult.Done) show(context.getString(R.string.sms_approved))
+            is FeePlan.Auto -> autoFee(item, plan.amount, approver.approve(id, FeeChoice(plan.amount)))
+            is FeePlan.Ask -> _feePrompts.update { it + FeePrompt(listOf(item), plan) }
+        }
+    }
+
+    /** The answer to the fee question on screen; null is Cancel, which leaves the items in the queue. */
+    fun answerFee(choice: FeeChoice?) = viewModelScope.launch {
+        val prompt = _feePrompts.value.firstOrNull() ?: return@launch
+        _feePrompts.update { it.drop(1) }
+        if (choice == null) return@launch
+        val approved = prompt.items.count { approver.approve(it.id, choice) is ApproveResult.Done }
+        if (approved > 0) show(context.resources.getQuantityString(R.plurals.sms_n_approved, approved, approved))
+    }
+
+    private fun autoFee(item: SmsItemEntity, amount: Double, result: ApproveResult) {
+        val feeId = (result as? ApproveResult.Done)?.feeId ?: return
+        val text = AmountFormatter.format(amount, ref.value.accountCurrency(item.accountId))
+        _undo.value = UndoMessage(context.getString(R.string.fee_auto_added, text), context.getString(R.string.sms_undo)) {
+            viewModelScope.launch { approver.removeFee(feeId) }
         }
     }
 
@@ -126,12 +161,28 @@ class SmsQueueViewModel @Inject constructor(
         _selection.value = emptySet()
     }
 
+    /**
+     * NQ-003 bulk approve: "always" and "never" presets apply silently; routes still on "ask" get one question each for
+     * the whole batch. Items that need details stay in the queue.
+     */
     fun approveSelected() = viewModelScope.launch {
         val ids = _selection.value
-        val ready = pending.value.filter { it.id in ids && !it.needsDetails }.map { it.id }
-        val approved = approver.approveAll(ready)
-        val skipped = ids.size - approved
+        val ready = pending.value.filter { it.id in ids && !it.needsDetails }
         _selection.value = emptySet()
+        var approved = 0
+        val asks = LinkedHashMap<FeeRoute, MutableList<Pair<SmsItemEntity, FeePlan.Ask>>>()
+        val prompts = ArrayList<FeePrompt>()
+        for (item in ready) {
+            when (val plan = approver.feePlan(item)) {
+                FeePlan.None -> if (approver.approve(item.id) is ApproveResult.Done) approved++
+                is FeePlan.Auto -> if (approver.approve(item.id, FeeChoice(plan.amount)) is ApproveResult.Done) approved++
+                // Each FX difference is its own amount, so those are asked one by one.
+                is FeePlan.Ask -> if (plan.fxDifference) prompts += FeePrompt(listOf(item), plan) else asks.getOrPut(plan.route) { ArrayList() } += item to plan
+            }
+        }
+        asks.values.forEach { group -> prompts += FeePrompt(group.map { it.first }, group.first().second) }
+        _feePrompts.update { it + prompts }
+        val skipped = ids.size - ready.size
         val parts = buildList {
             if (approved > 0) add(context.resources.getQuantityString(R.plurals.sms_n_approved, approved, approved))
             if (skipped > 0) add(context.resources.getQuantityString(R.plurals.sms_n_skipped, skipped, skipped))

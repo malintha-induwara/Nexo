@@ -12,6 +12,8 @@ import com.nexo.app.core.money.CurrencyCatalog
 import com.nexo.app.data.RefRepository
 import com.nexo.app.data.TransactionWriter
 import com.nexo.app.sms.approve.ApproveResult
+import com.nexo.app.sms.approve.FeeChoice
+import com.nexo.app.sms.approve.FeePlan
 import com.nexo.app.sms.approve.SmsApprover
 import com.nexo.app.sms.capture.SmsSuggester
 import com.nexo.app.sms.data.SmsItemEntity
@@ -37,6 +39,7 @@ import java.util.UUID
 class SmsApproverTest {
     private lateinit var db: NexoDatabase
     private lateinit var approver: SmsApprover
+    private lateinit var writer: TransactionWriter
     private val at = 1_793_700_000_000L
 
     @Before
@@ -46,7 +49,7 @@ class SmsApproverTest {
         Seeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val refs = RefRepository(db, scope)
-        val writer = TransactionWriter(context, db, refs, PhotoStore(context, AppDirs(context), db), WidgetRefresher(context, scope))
+        writer = TransactionWriter(context, db, refs, PhotoStore(context, AppDirs(context), db), WidgetRefresher(context, scope))
         approver = SmsApprover(db, refs, writer, SmsSuggester(db, refs))
     }
 
@@ -64,13 +67,15 @@ class SmsApproverTest {
         card: String? = "4321",
         merchant: String = "Green Leaf Cafe",
         payee: String? = null,
+        feeRoute: FeeRoute? = null,
+        estimated: Double? = null,
     ): SmsItemEntity {
         val e = SmsItemEntity(
             id = UUID.randomUUID().toString(), certainty = certainty, kind = kind, bank = "COMBANK", sender = "COMBANK",
             template = "purchase", amount = amount, currency = currency, merchant = merchant,
             merchantKey = merchant.lowercase(), cardLast4 = card, payee = payee, occurredAt = at, smsAt = at, capturedAt = at,
             dedupeKey = UUID.randomUUID().toString(), text = "Purchase at GREEN LEAF CAFE", accountId = accountId,
-            toAccountId = toAccountId, categoryId = categoryId, updatedAt = at,
+            toAccountId = toAccountId, categoryId = categoryId, feeRoute = feeRoute, estimatedAmount = estimated, updatedAt = at,
         )
         db.smsDao().insert(e)
         return e
@@ -119,7 +124,7 @@ class SmsApproverTest {
     @Test
     fun transferFeeIsWrittenWithTheTransfer() = runBlocking {
         val i = item(kind = SmsKind.TRANSFER_TO_CASH, amount = 5000.0, toAccountId = "11", categoryId = null)
-        approver.approve(i.id, fee = 30.0) as ApproveResult.Done
+        approver.approve(i.id, FeeChoice(30.0)) as ApproveResult.Done
         val fee = db.transactionDao().getAll().single { it.kind == TxKind.EXPENSE }
         assertEquals(30.0, fee.amount, 0.0)
         assertEquals("1", fee.accountId)
@@ -196,5 +201,94 @@ class SmsApproverTest {
         assertEquals("1", db.smsDao().item(b.id)!!.accountId)
         assertNull(db.smsDao().item(c.id)!!.accountId)
         assertEquals("1", db.smsDao().source("COMBANK", "1111")!!.accountId)
+    }
+
+    @Test
+    fun feeOnAnExpenseIsALinkedBankFeeRowThatGoesWithItsParent() = runBlocking {
+        val i = item(kind = SmsKind.TRANSFER_OUT, amount = 3600.0, categoryId = "7", card = null, merchant = "", payee = "J Silva", feeRoute = FeeRoute.INTERBANK_TRANSFER)
+        val r = approver.approve(i.id, FeeChoice(30.0)) as ApproveResult.Done
+        val fee = db.transactionDao().getById(r.feeId!!)!!
+        assertEquals(TxKind.EXPENSE, fee.kind)
+        assertEquals(r.transactionId, fee.feeParentId)
+        assertEquals("1", fee.accountId)
+        assertEquals(30.0, fee.amount, 0.0)
+        val bankFee = db.categoryDao().getById(fee.categoryId!!)!!
+        assertEquals("Bank fee", bankFee.name)
+        // The category is created once and found again by id, even after a rename.
+        db.categoryDao().upsert(listOf(bankFee.copy(name = "Charges")))
+        assertEquals(bankFee.id, writer.bankFeeCategory())
+
+        writer.delete(listOf(r.transactionId))
+        assertEquals(0, db.transactionDao().count())
+    }
+
+    @Test
+    fun deletingOnlyTheFeeKeepsTheParent() = runBlocking {
+        val i = item(feeRoute = FeeRoute.INTERBANK_TRANSFER)
+        val r = approver.approve(i.id, FeeChoice(25.0)) as ApproveResult.Done
+        approver.removeFee(r.feeId!!)
+        assertEquals(1, db.transactionDao().count())
+        assertTrue(db.transactionDao().getById(r.transactionId) != null)
+    }
+
+    @Test
+    fun transferFeeUsesTheBankFeeCategory() = runBlocking {
+        val i = item(kind = SmsKind.TRANSFER_TO_CASH, amount = 5000.0, toAccountId = "11", categoryId = null, feeRoute = FeeRoute.OTHER_BANK_ATM)
+        val r = approver.approve(i.id, FeeChoice(30.0)) as ApproveResult.Done
+        val fee = db.transactionDao().getById(r.feeId!!)!!
+        assertEquals("Bank fee", db.categoryDao().getById(fee.categoryId!!)!!.name)
+    }
+
+    @Test
+    fun feePlansFollowThePreset() = runBlocking {
+        val first = item(feeRoute = FeeRoute.INTERBANK_TRANSFER)
+        assertEquals(FeePlan.Ask(FeeRoute.INTERBANK_TRANSFER, null), approver.feePlan(first))
+        // Within the bank defaults to never asking.
+        assertEquals(FeePlan.None, approver.feePlan(item(feeRoute = FeeRoute.OWN_BANK_TRANSFER)))
+
+        approver.approve(first.id, FeeChoice(30.0))
+        assertEquals(FeePlan.Ask(FeeRoute.INTERBANK_TRANSFER, 30.0), approver.feePlan(item(feeRoute = FeeRoute.INTERBANK_TRANSFER)))
+
+        val remembered = item(feeRoute = FeeRoute.INTERBANK_TRANSFER)
+        approver.approve(remembered.id, FeeChoice(35.0, remember = true))
+        assertEquals(FeePlan.Auto(FeeRoute.INTERBANK_TRANSFER, 35.0), approver.feePlan(item(feeRoute = FeeRoute.INTERBANK_TRANSFER)))
+
+        val never = item(feeRoute = FeeRoute.INTERBANK_TRANSFER)
+        approver.approve(never.id, FeeChoice(null, remember = true))
+        assertEquals(FeePlan.None, approver.feePlan(item(feeRoute = FeeRoute.INTERBANK_TRANSFER)))
+        assertEquals(35.0, db.smsDao().feePreset("1", FeeRoute.INTERBANK_TRANSFER)!!.lastFee!!, 0.0)
+    }
+
+    @Test
+    fun fxDifferenceIsAskedOnlyAboveTheTolerance() = runBlocking {
+        val close = item(amount = 20.0, currency = "USD", certainty = Certainty.ESTIMATED, feeRoute = FeeRoute.FX_CARD_PURCHASE, estimated = 6730.0)
+        assertEquals(FeePlan.None, approver.feePlan(close))
+        approver.setAmount(close.id, 6760.0)
+        assertEquals(FeePlan.None, approver.feePlan(db.smsDao().item(close.id)!!))
+        approver.setAmount(close.id, 6912.4)
+        val plan = approver.feePlan(db.smsDao().item(close.id)!!) as FeePlan.Ask
+        assertTrue(plan.fxDifference)
+        assertEquals(182.4, plan.prefill!!, 0.001)
+    }
+
+    @Test
+    fun fxDifferenceRecordedAsAFeeKeepsThePurchaseAtTheEstimate() = runBlocking {
+        val i = item(amount = 20.0, currency = "USD", certainty = Certainty.ESTIMATED, feeRoute = FeeRoute.FX_CARD_PURCHASE, estimated = 6730.0)
+        approver.setAmount(i.id, 6912.4)
+        val r = approver.approve(i.id, FeeChoice(182.4)) as ApproveResult.Done
+        assertEquals(6730.0, db.transactionDao().getById(r.transactionId)!!.amount, 0.0)
+        assertEquals(182.4, db.transactionDao().getById(r.feeId!!)!!.amount, 0.001)
+        // A difference never becomes the route's "last fee".
+        assertNull(db.smsDao().feePreset("1", FeeRoute.FX_CARD_PURCHASE)!!.lastFee)
+    }
+
+    @Test
+    fun fxDifferenceIncludedInThePurchaseHasNoFeeRow() = runBlocking {
+        val i = item(amount = 20.0, currency = "USD", certainty = Certainty.ESTIMATED, feeRoute = FeeRoute.FX_CARD_PURCHASE, estimated = 6730.0)
+        approver.setAmount(i.id, 6912.4)
+        val r = approver.approve(i.id, FeeChoice(182.4, includeInPurchase = true)) as ApproveResult.Done
+        assertNull(r.feeId)
+        assertEquals(6912.4, db.transactionDao().getById(r.transactionId)!!.amount, 0.0)
+        assertEquals(1, db.transactionDao().count())
     }
 }
