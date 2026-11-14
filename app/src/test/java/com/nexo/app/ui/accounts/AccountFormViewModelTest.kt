@@ -18,6 +18,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
@@ -122,5 +123,7 @@ class AccountFormViewModelTest {
         val restored = SavedStateHandle(mapOf("accountForm" to saved.get<String>("accountForm")))
         val again = openForm(saved = restored).uiState.first { it.name == "Travel card" }
         assertEquals("For the trip", again.description)
+        // The group was already offered before the process died; it is not asked again.
+        assertFalse(again.pickGroup)
     }
 }

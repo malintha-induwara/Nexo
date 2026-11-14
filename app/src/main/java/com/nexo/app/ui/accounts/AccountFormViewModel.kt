@@ -93,6 +93,8 @@ private data class SavedAccountForm(
         paymentDay = paymentDay,
         includeInTotals = includeInTotals,
         hidden = hidden,
+        // The group was offered before the process died; asking again would hide the input.
+        pickGroup = false,
     )
 
     companion object {
