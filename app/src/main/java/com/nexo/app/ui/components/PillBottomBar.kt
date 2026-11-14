@@ -1,11 +1,11 @@
 package com.nexo.app.ui.components
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -80,6 +80,9 @@ fun PillBottomBar(
     onAdd: () -> Unit,
     addLabel: String,
     modifier: Modifier = Modifier,
+    /** Holding the add button; [addLongPressLabel] names it for accessibility services. */
+    onAddLongPress: (() -> Unit)? = null,
+    addLongPressLabel: String? = null,
 ) {
     require(items.size == 4) { "PillBottomBar takes two tabs either side of the add button" }
     val colors = LocalNexoColors.current
@@ -140,7 +143,7 @@ fun PillBottomBar(
                 modifier = Modifier.fillMaxSize().selectableGroup(),
                 content = {
                     items.forEachIndexed { i, item ->
-                        if (i == 2) AddButton(onAdd, addLabel, Modifier)
+                        if (i == 2) AddButton(onAdd, addLabel, Modifier, onAddLongPress, addLongPressLabel)
                         BarTab(
                             item = item,
                             selected = i == selected,
@@ -252,8 +255,9 @@ private fun BarTab(item: BarItem, selected: Boolean, onClick: () -> Unit, modifi
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun AddButton(onAdd: () -> Unit, label: String, modifier: Modifier) {
+private fun AddButton(onAdd: () -> Unit, label: String, modifier: Modifier, onLongPress: (() -> Unit)?, longPressLabel: String?) {
     val colors = LocalNexoColors.current
     val interactions = remember { MutableInteractionSource() }
     Box(modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
@@ -263,7 +267,7 @@ private fun AddButton(onAdd: () -> Unit, label: String, modifier: Modifier) {
                 .size(48.dp)
                 .clip(CircleShape)
                 .background(colors.primary)
-                .clickable(interactionSource = interactions, indication = null, role = Role.Button, onClick = onAdd)
+                .combinedClickable(interactionSource = interactions, indication = null, role = Role.Button, onClick = onAdd, onLongClick = onLongPress, onLongClickLabel = longPressLabel)
                 .semantics { contentDescription = label },
             contentAlignment = Alignment.Center,
         ) {

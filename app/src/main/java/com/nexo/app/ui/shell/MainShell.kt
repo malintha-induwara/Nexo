@@ -1,5 +1,33 @@
 package com.nexo.app.ui.shell
 
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.animation.scaleOut
+import com.nexo.app.ui.components.rememberHaptics
+import com.nexo.app.ui.theme.Space
+import com.nexo.app.ui.theme.NexoShapes
+import com.nexo.app.ui.sms.SmsBadgeViewModel
+import com.nexo.app.ui.navigation.SmsQueueKey
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.rounded.Inbox
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.clickable
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -92,9 +120,16 @@ fun MainShell() {
     val context = LocalContext.current
     val colors = LocalNexoColors.current
     var lastBack by remember { mutableLongStateOf(0L) }
+    val queue by hiltViewModel<SmsBadgeViewModel>().badge.collectAsStateWithLifecycle()
+    var addMenu by remember { mutableStateOf(false) }
+    val haptics = rememberHaptics()
     val pressAgain = stringResource(R.string.press_back_again)
 
     BackHandler {
+        if (addMenu) {
+            addMenu = false
+            return@BackHandler
+        }
         val now = System.currentTimeMillis()
         if (now - lastBack < 5_000) {
             (context as? android.app.Activity)?.finish()
@@ -127,6 +162,24 @@ fun MainShell() {
                     }
                 }
             }
+            // Holding the add button: the add action, and the way into the Review Queue whether or not anything waits.
+            AnimatedVisibility(addMenu, enter = fadeIn(NexoMotion.enter()), exit = fadeOut(NexoMotion.exit())) {
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.28f)).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { addMenu = false })
+            }
+            AnimatedVisibility(
+                visible = addMenu,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = controller.bottomInset + 4.dp),
+                enter = fadeIn(NexoMotion.enter()) + scaleIn(NexoMotion.snappy(), initialScale = 0.9f, transformOrigin = TransformOrigin(0.5f, 1f)),
+                exit = fadeOut(NexoMotion.exit()) + scaleOut(NexoMotion.exit(), targetScale = 0.95f, transformOrigin = TransformOrigin(0.5f, 1f)),
+            ) {
+                Column(Modifier.width(264.dp).clip(NexoShapes.panel).background(if (colors.isDark) colors.raised else colors.background).padding(Space.s)) {
+                    AddMenuRow(Icons.Rounded.Add, stringResource(controller.addLabelOverride ?: R.string.add_transaction), 0) {
+                        addMenu = false
+                        controller.addOverride?.invoke() ?: nav.navigate(EntryKey(fromAdd = true))
+                    }
+                    AddMenuRow(Icons.Rounded.Inbox, stringResource(R.string.sms_queue_row), queue.count) { addMenu = false; nav.navigate(SmsQueueKey) }
+                }
+            }
             AnimatedVisibility(
                 visible = barVisible,
                 modifier = Modifier.align(Alignment.BottomCenter),
@@ -135,6 +188,8 @@ fun MainShell() {
             ) {
                 PillBottomBar(
                     items = MainTab.entries.map { BarItem(stringResource(it.label), it.icon, it.selectedIcon) },
+                    onAddLongPress = { haptics.longPress(); addMenu = true },
+                    addLongPressLabel = stringResource(R.string.sms_queue_row),
                     selected = tab.ordinal,
                     onSelect = { i ->
                         val t = MainTab.entries[i]
@@ -144,6 +199,27 @@ fun MainShell() {
                     addLabel = stringResource(controller.addLabelOverride ?: R.string.add_transaction),
                 )
             }
+        }
+    }
+}
+
+/** A row of the add button's long-press menu; [count] shows as a badge when something waits. */
+@Composable
+private fun AddMenuRow(icon: ImageVector, label: String, count: Int, onClick: () -> Unit) {
+    val colors = LocalNexoColors.current
+    Row(
+        Modifier.fillMaxWidth().clip(NexoShapes.control).clickable(onClick = onClick).padding(horizontal = Space.m, vertical = Space.m),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, tint = colors.textSecondary, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(Space.m))
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = colors.text, modifier = Modifier.weight(1f))
+        if (count > 0) {
+            Text(
+                count.toString(),
+                Modifier.defaultMinSize(minWidth = 20.dp).clip(CircleShape).background(colors.primary).padding(horizontal = 6.dp, vertical = 2.dp),
+                style = MaterialTheme.typography.labelSmall, color = colors.onPrimary, textAlign = TextAlign.Center,
+            )
         }
     }
 }
