@@ -81,7 +81,7 @@ import com.nexo.app.ui.designsystem.theme.Space
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SmsQueueKey
-import com.nexo.app.ui.settings.SettingsTab
+import com.nexo.app.ui.settings.SettingsTabRoute
 import com.nexo.app.ui.stats.StatsTabRoute
 import com.nexo.app.ui.transactions.TransactionsTab
 
@@ -173,7 +173,7 @@ fun MainShell(vm: MainShellViewModel = hiltViewModel()) {
                         MainTab.TRANSACTIONS -> TransactionsTab(todaySignal, queue)
                         MainTab.STATS -> StatsTabRoute(todaySignal)
                         MainTab.ACCOUNTS -> AccountsTabRoute(todaySignal)
-                        MainTab.MORE -> SettingsTab()
+                        MainTab.MORE -> SettingsTabRoute()
                     }
                 }
             }

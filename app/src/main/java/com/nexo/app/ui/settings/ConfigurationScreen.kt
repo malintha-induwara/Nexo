@@ -1,6 +1,5 @@
 package com.nexo.app.ui.settings
 
-import android.content.Context
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.Column
@@ -18,17 +17,20 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
+import com.nexo.app.core.model.BookSettings
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.ColorSet
 import com.nexo.app.core.model.InputOrder
@@ -45,6 +47,8 @@ import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.component.SectionHeader
 import com.nexo.app.ui.designsystem.component.SettingRow
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.navigation.AccountGroupsKey
 import com.nexo.app.ui.navigation.AccountListKey
 import com.nexo.app.ui.navigation.BudgetSettingsKey
@@ -78,36 +82,107 @@ fun timeDisplayLabel(t: TimeDisplay) = stringResource(
     },
 )
 
+/** What the configuration screen can do; each action defaults to nothing. */
+class ConfigurationActions(
+    val onBack: () -> Unit = {},
+    val onAccountGroups: () -> Unit = {},
+    val onAccounts: () -> Unit = {},
+    val onDeletedGroups: () -> Unit = {},
+    val onDeletedAccounts: () -> Unit = {},
+    val onTransferExpense: () -> Unit = {},
+    val onCategories: (CategoryKind) -> Unit = {},
+    val onBudgets: () -> Unit = {},
+    val onTags: () -> Unit = {},
+    val onRepeats: () -> Unit = {},
+    val onMainCurrency: () -> Unit = {},
+    val onSubCurrencies: () -> Unit = {},
+    val onMonthStart: () -> Unit = {},
+    val onLockSettings: () -> Unit = {},
+    val onReminder: () -> Unit = {},
+    val onStyle: () -> Unit = {},
+    val onUpdate: ((BookSettings) -> BookSettings) -> Unit = {},
+    val onSetQuickAddNotification: (Boolean) -> Unit = {},
+    val onSetNumberPadDescending: (Boolean) -> Unit = {},
+    val onResetAutocomplete: () -> Unit = {},
+    val onSetLanguage: (tag: String) -> Unit = {},
+)
+
 @Composable
-fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
+fun ConfigurationRoute(vm: ConfigurationViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
+    val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val actions = remember(vm, nav, context) {
+        ConfigurationActions(
+            onBack = nav::back,
+            onAccountGroups = { nav.navigate(AccountGroupsKey) },
+            onAccounts = { nav.navigate(AccountListKey()) },
+            onDeletedGroups = { nav.navigate(DeletedGroupsKey) },
+            onDeletedAccounts = { nav.navigate(DeletedAccountsKey) },
+            onTransferExpense = { nav.navigate(TransferExpenseKey) },
+            onCategories = { nav.navigate(CategoryListKey(it)) },
+            onBudgets = { nav.navigate(BudgetSettingsKey) },
+            onTags = { nav.navigate(TagSettingsKey) },
+            onRepeats = { nav.navigate(RepeatListKey) },
+            onMainCurrency = { nav.navigate(MainCurrencyKey) },
+            onSubCurrencies = { nav.navigate(SubCurrenciesKey) },
+            onMonthStart = { nav.navigate(MonthStartKey) },
+            onLockSettings = { nav.navigate(LockSettingsKey) },
+            onReminder = { nav.navigate(ReminderKey) },
+            onStyle = { nav.navigate(StyleKey) },
+            onUpdate = vm::update,
+            onSetQuickAddNotification = vm::setQuickAddNotification,
+            onSetNumberPadDescending = vm::setNumberPadDescending,
+            onResetAutocomplete = {
+                vm.resetAutocomplete()
+                Toast.makeText(context, R.string.reset_complete, Toast.LENGTH_SHORT).show()
+            },
+            onSetLanguage = { tag ->
+                AppCompatDelegate.setApplicationLocales(
+                    if (tag.isEmpty()) {
+                        LocaleListCompat.getEmptyLocaleList()
+                    } else {
+                        LocaleListCompat.forLanguageTags(tag)
+                    },
+                )
+            },
+        )
+    }
+    ConfigurationScreen(
+        state = state,
+        languageTag = AppCompatDelegate.getApplicationLocales().toLanguageTags(),
+        actions = actions,
+    )
+}
+
+/** [languageTag] is the in-app language, empty when the app follows the system. */
+@Composable
+internal fun ConfigurationScreen(
+    state: ConfigurationUiState,
+    languageTag: String,
+    actions: ConfigurationActions,
+) {
     val ref = state.ref
     val device = state.device
-    val context = LocalContext.current
     val s = ref.settings
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingSwipe by rememberSaveable { mutableStateOf<SwipeMode?>(null) }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.configuration), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.configuration), onBack = actions.onBack)
     }) { p ->
         Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
             SectionHeader(stringResource(R.string.tab_accounts))
-            SettingRow(stringResource(R.string.account_group), onClick = {
-                nav.navigate(AccountGroupsKey)
-            })
-            SettingRow(stringResource(R.string.accounts_setting), onClick = {
-                nav.navigate(AccountListKey())
-            })
-            SettingRow(stringResource(R.string.deleted_groups), onClick = {
-                nav.navigate(DeletedGroupsKey)
-            })
-            SettingRow(stringResource(R.string.deleted_accounts), onClick = {
-                nav.navigate(DeletedAccountsKey)
-            })
-            SettingRow(stringResource(R.string.transfer_expense_setting), onClick = {
-                nav.navigate(TransferExpenseKey)
-            })
+            SettingRow(stringResource(R.string.account_group), onClick = actions.onAccountGroups)
+            SettingRow(stringResource(R.string.accounts_setting), onClick = actions.onAccounts)
+            SettingRow(stringResource(R.string.deleted_groups), onClick = actions.onDeletedGroups)
+            SettingRow(
+                stringResource(R.string.deleted_accounts),
+                onClick = actions.onDeletedAccounts,
+            )
+            SettingRow(
+                stringResource(R.string.transfer_expense_setting),
+                onClick = actions.onTransferExpense,
+            )
             SettingRow(
                 stringResource(R.string.card_expense_config),
                 cardAccountingLabel(s.cardAccounting),
@@ -118,38 +193,30 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
 
             SectionHeader(stringResource(R.string.category_repeat))
             SettingRow(stringResource(R.string.income_category_setting), onClick = {
-                nav.navigate(CategoryListKey(CategoryKind.INCOME))
+                actions.onCategories(CategoryKind.INCOME)
             })
             SettingRow(stringResource(R.string.expenses_category_setting), onClick = {
-                nav.navigate(CategoryListKey(CategoryKind.EXPENSE))
+                actions.onCategories(CategoryKind.EXPENSE)
             })
             SettingRow(stringResource(R.string.subcategory), onOff(s.subcategories), onClick = {
                 dialog = "sub"
             })
-            SettingRow(stringResource(R.string.budget_setting), onClick = {
-                nav.navigate(BudgetSettingsKey)
-            })
-            SettingRow(stringResource(R.string.tag_settings), onClick = {
-                nav.navigate(TagSettingsKey)
-            })
-            SettingRow(stringResource(R.string.repeat_setting), onClick = {
-                nav.navigate(RepeatListKey)
-            })
+            SettingRow(stringResource(R.string.budget_setting), onClick = actions.onBudgets)
+            SettingRow(stringResource(R.string.tag_settings), onClick = actions.onTags)
+            SettingRow(stringResource(R.string.repeat_setting), onClick = actions.onRepeats)
 
             SectionHeader(stringResource(R.string.configuration))
             SettingRow(
                 stringResource(R.string.main_currency_setting),
                 "${ref.mainCurrency.isoCode ?: ""} (${ref.mainCurrency.symbol})",
-                onClick = {
-                    nav.navigate(MainCurrencyKey)
-                },
+                onClick = actions.onMainCurrency,
             )
             SettingRow(
                 stringResource(R.string.sub_currency_setting),
                 ref.activeCurrencies.drop(1).joinToString(", ") {
                     it.symbol
                 },
-                onClick = { nav.navigate(SubCurrenciesKey) },
+                onClick = actions.onSubCurrencies,
             )
             SettingRow(
                 stringResource(R.string.start_screen),
@@ -167,9 +234,7 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
             SettingRow(
                 stringResource(R.string.monthly_start_date),
                 stringResource(R.string.every_n, s.monthStartDay),
-                onClick = {
-                    nav.navigate(MonthStartKey)
-                },
+                onClick = actions.onMonthStart,
             )
             SettingRow(
                 stringResource(R.string.weekly_start_day),
@@ -236,15 +301,11 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
             )
 
             SectionHeader(stringResource(R.string.other))
-            SettingRow(stringResource(R.string.lock_settings), onClick = {
-                nav.navigate(LockSettingsKey)
-            })
+            SettingRow(stringResource(R.string.lock_settings), onClick = actions.onLockSettings)
             SettingRow(
                 stringResource(R.string.alarm_setting),
                 onOff(device?.reminderEnabled == true),
-                onClick = {
-                    nav.navigate(ReminderKey)
-                },
+                onClick = actions.onReminder,
             )
             SettingRow(
                 stringResource(R.string.quick_add),
@@ -266,10 +327,10 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
                     dialog = "pad"
                 },
             )
-            SettingRow(stringResource(R.string.style), onClick = { nav.navigate(StyleKey) })
+            SettingRow(stringResource(R.string.style), onClick = actions.onStyle)
             SettingRow(
                 stringResource(R.string.language_setting),
-                currentLanguageLabel(),
+                languageLabel(languageTag),
                 onClick = {
                     dialog = "lang"
                 },
@@ -280,7 +341,7 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
     val close = { dialog = null }
     when (dialog) {
         "card" -> CardTimingDialog(s.cardAccounting, onSelect = { c ->
-            vm.update { it.copy(cardAccounting = c) }
+            actions.onUpdate { it.copy(cardAccounting = c) }
         }, onDismiss = close)
 
         "sub" -> ChoiceDialog(
@@ -291,7 +352,7 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
                 onOff(it)
             },
             onSelect = { v ->
-                vm.update { it.copy(subcategories = v) }
+                actions.onUpdate { it.copy(subcategories = v) }
             },
             onDismiss = close,
             description = stringResource(R.string.subcategory_text),
@@ -310,7 +371,7 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
                     },
                 )
             },
-            onSelect = { v -> vm.update { it.copy(startScreen = v) } },
+            onSelect = { v -> actions.onUpdate { it.copy(startScreen = v) } },
             onDismiss = close,
         )
 
@@ -323,7 +384,7 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
             {
                 Formats.weekdayFull(it)
             },
-            onSelect = { v -> vm.update { it.copy(weekStartDay = v) } },
+            onSelect = { v -> actions.onUpdate { it.copy(weekStartDay = v) } },
             onDismiss = close,
         )
 
@@ -335,7 +396,7 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
                 onOff(it)
             },
             onSelect = { v ->
-                vm.update { it.copy(carryOver = v) }
+                actions.onUpdate { it.copy(carryOver = v) }
             },
             onDismiss = close,
             description = stringResource(R.string.carry_over_text),
@@ -360,7 +421,7 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
                     },
                 )
             },
-            onSelect = { v -> vm.update { it.copy(colorSet = v) } },
+            onSelect = { v -> actions.onUpdate { it.copy(colorSet = v) } },
             onDismiss = close,
         )
 
@@ -378,7 +439,7 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
             {
                 timeDisplayLabel(it)
             },
-            onSelect = { v -> vm.update { it.copy(timeDisplay = v) } },
+            onSelect = { v -> actions.onUpdate { it.copy(timeDisplay = v) } },
             onDismiss = close,
         )
 
@@ -389,7 +450,7 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
             {
                 onOff(it)
             },
-            onSelect = { v -> vm.update { it.copy(showDescription = v) } },
+            onSelect = { v -> actions.onUpdate { it.copy(showDescription = v) } },
             onDismiss = close,
         )
 
@@ -400,12 +461,11 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
             {
                 onOff(it)
             },
-            onSelect = { v -> vm.update { it.copy(autocomplete = v) } },
+            onSelect = { v -> actions.onUpdate { it.copy(autocomplete = v) } },
             onDismiss = close,
             extraButton = {
                 TextButton(onClick = {
-                    vm.resetAutocomplete()
-                    Toast.makeText(context, R.string.reset_complete, Toast.LENGTH_SHORT).show()
+                    actions.onResetAutocomplete()
                     close()
                 }) { Text(stringResource(R.string.action_reset)) }
             },
@@ -424,7 +484,7 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
                     },
                 )
             },
-            onSelect = { v -> vm.update { it.copy(inputOrder = v) } },
+            onSelect = { v -> actions.onUpdate { it.copy(inputOrder = v) } },
             onDismiss = close,
         )
 
@@ -436,7 +496,7 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
                 onOff(it)
             },
             onSelect = { v ->
-                vm.update { it.copy(memoButton = v) }
+                actions.onUpdate { it.copy(memoButton = v) }
             },
             onDismiss = close,
             description = stringResource(R.string.memo_button_text),
@@ -449,7 +509,7 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
             {
                 onOff(it)
             },
-            onSelect = vm::setQuickAddNotification,
+            onSelect = actions.onSetQuickAddNotification,
             onDismiss = close,
             description = stringResource(R.string.quick_add_text),
         )
@@ -461,17 +521,17 @@ fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
             {
                 stringResource(if (it) R.string.pad_descending else R.string.pad_ascending)
             },
-            onSelect = { v -> vm.setNumberPadDescending(v) },
+            onSelect = { v -> actions.onSetNumberPadDescending(v) },
             onDismiss = close,
         )
 
-        "lang" -> LanguageDialog(onDismiss = close)
+        "lang" -> LanguageDialog(languageTag, onSelect = actions.onSetLanguage, onDismiss = close)
     }
     pendingSwipe?.let { m ->
         ConfirmDialog(
-            stringResource(R.string.swipe_confirm, swipeLabelText(context, m)),
+            stringResource(R.string.swipe_confirm, swipeLabel(m)),
             onConfirm = {
-                vm.update { it.copy(swipeMode = m) }
+                actions.onUpdate { it.copy(swipeMode = m) }
             },
             onDismiss = {
                 pendingSwipe = null
@@ -489,30 +549,22 @@ fun swipeLabel(m: SwipeMode) = stringResource(
     },
 )
 
-private fun swipeLabelText(context: Context, m: SwipeMode) = context.getString(
-    when (m) {
-        SwipeMode.CHANGE_TAB -> R.string.swipe_tab
-        SwipeMode.CHANGE_DATE -> R.string.swipe_date
-        SwipeMode.NONE -> R.string.none
-    },
-)
-
 private val LANGUAGES = listOf("" to R.string.language_system, "en" to R.string.language_english)
 
 @Composable
-private fun currentLanguageLabel(): String {
-    val tag = AppCompatDelegate.getApplicationLocales().toLanguageTags()
-    return stringResource(
-        LANGUAGES.firstOrNull {
-            it.first == tag
-        }?.second ?: R.string.language_system,
-    )
-}
+private fun languageLabel(tag: String): String = stringResource(
+    LANGUAGES.firstOrNull {
+        it.first == tag
+    }?.second ?: R.string.language_system,
+)
 
 /** In-app language via per-app locales. Only bundled translations are listed. */
 @Composable
-private fun LanguageDialog(onDismiss: () -> Unit) {
-    val current = AppCompatDelegate.getApplicationLocales().toLanguageTags()
+private fun LanguageDialog(
+    current: String,
+    onSelect: (tag: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
     ChoiceDialog(
         stringResource(R.string.language_setting),
         LANGUAGES.map { it.first },
@@ -525,28 +577,29 @@ private fun LanguageDialog(onDismiss: () -> Unit) {
                 }.second,
             )
         },
-        onSelect = { tag ->
-            AppCompatDelegate.setApplicationLocales(
-                if (tag.isEmpty()) {
-                    LocaleListCompat.getEmptyLocaleList()
-                } else {
-                    LocaleListCompat.forLanguageTags(tag)
-                },
-            )
-        },
+        onSelect = onSelect,
         onDismiss = onDismiss,
     )
 }
 
 @Composable
-fun MonthStartScreen(vm: ConfigurationViewModel = hiltViewModel()) {
+fun MonthStartRoute(vm: ConfigurationViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    MonthStartScreen(state = state, onBack = nav::back, onUpdate = vm::update)
+}
+
+@Composable
+internal fun MonthStartScreen(
+    state: ConfigurationUiState,
+    onBack: () -> Unit,
+    onUpdate: ((BookSettings) -> BookSettings) -> Unit,
+) {
     val ref = state.ref
     var pad by rememberSaveable { mutableStateOf(false) }
     val s = ref.settings
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.monthly_start_date), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.monthly_start_date), onBack = onBack)
     }) { p ->
         Column(Modifier.padding(p)) {
             SettingRow(
@@ -567,7 +620,7 @@ fun MonthStartScreen(vm: ConfigurationViewModel = hiltViewModel()) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RadioButton(s.weekendRule == rule, onClick = {
-                        vm.update { it.copy(weekendRule = rule) }
+                        onUpdate { it.copy(weekendRule = rule) }
                     })
                     Text(stringResource(label))
                 }
@@ -596,11 +649,32 @@ fun MonthStartScreen(vm: ConfigurationViewModel = hiltViewModel()) {
                         1
                     }
                 }
-                vm.update { it.copy(monthStartDay = d) }
+                onUpdate { it.copy(monthStartDay = d) }
             },
             onDismiss = {
                 pad = false
             },
         )
     }
+}
+
+private val previewConfiguration = ConfigurationUiState(
+    ref = PreviewData.ref,
+    device = PreviewData.device.copy(reminderEnabled = true),
+)
+
+@Preview
+@Composable
+private fun ConfigurationScreenPreview() = NexoPreview {
+    ConfigurationScreen(
+        state = previewConfiguration,
+        languageTag = "",
+        actions = ConfigurationActions(),
+    )
+}
+
+@Preview
+@Composable
+private fun MonthStartScreenPreview() = NexoPreview {
+    MonthStartScreen(state = previewConfiguration, onBack = {}, onUpdate = {})
 }

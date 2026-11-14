@@ -51,12 +51,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
 import com.nexo.app.BuildConfig
 import com.nexo.app.R
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalHeaderColors
 import com.nexo.app.ui.designsystem.theme.nexo
 import com.nexo.app.ui.navigation.AccountSettingsMenuKey
@@ -88,13 +91,28 @@ fun feedbackIntent(context: Context, subjectRes: Int = R.string.feedback_subject
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun SettingsTab(vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsTabRoute(vm: SettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val header = LocalHeaderColors.current
     val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    SettingsTab(
+        state = state,
+        onOpen = nav::navigate,
+        onLockNow = vm::lockNow,
+        onSendFeedback = { runCatching { context.startActivity(feedbackIntent(context)) } },
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun SettingsTab(
+    state: SettingsUiState,
+    onOpen: (NavKey) -> Unit,
+    onLockNow: () -> Unit,
+    onSendFeedback: () -> Unit,
+) {
+    val header = LocalHeaderColors.current
     val device = state.device
     val items = listOf(
         HubItem(R.string.configuration, Icons.Outlined.Settings, ConfigurationKey),
@@ -124,13 +142,11 @@ fun SettingsTab(vm: SettingsViewModel = hiltViewModel()) {
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.outline,
             modifier = Modifier.padding(start = 16.dp, top = 12.dp).combinedClickable(onClick = {
-            }, onLongClick = {
-                runCatching { context.startActivity(feedbackIntent(context)) }
-            }),
+            }, onLongClick = onSendFeedback),
         )
         Card(
             Modifier.fillMaxWidth().padding(12.dp).clickable {
-                nav.navigate(LockSettingsKey)
+                onOpen(LockSettingsKey)
             },
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         ) {
@@ -164,7 +180,7 @@ fun SettingsTab(vm: SettingsViewModel = hiltViewModel()) {
                     )
                 }
                 if (device?.lockEnabled == true) {
-                    IconButton(onClick = vm::lockNow) {
+                    IconButton(onClick = onLockNow) {
                         Icon(Icons.Outlined.Lock, stringResource(R.string.lock_now))
                     }
                 }
@@ -183,7 +199,7 @@ fun SettingsTab(vm: SettingsViewModel = hiltViewModel()) {
                         MaterialTheme.colorScheme.surface,
                         RoundedCornerShape(12.dp),
                     ).clickable {
-                        nav.navigate(item.key)
+                        onOpen(item.key)
                     }.padding(vertical = 18.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
@@ -203,4 +219,15 @@ fun SettingsTab(vm: SettingsViewModel = hiltViewModel()) {
             }
         }
     }
+}
+
+@Preview
+@Composable
+private fun SettingsTabPreview() = NexoPreview {
+    SettingsTab(
+        state = SettingsUiState(PreviewData.device.copy(pinHash = "preview")),
+        onOpen = {},
+        onLockNow = {},
+        onSendFeedback = {},
+    )
 }

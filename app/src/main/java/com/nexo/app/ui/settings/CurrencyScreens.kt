@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,6 +57,8 @@ import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.component.SettingRow
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.nexo
 import com.nexo.app.ui.navigation.AddSubCurrencyKey
 import com.nexo.app.ui.navigation.LocalNavigator
@@ -125,12 +128,10 @@ private fun FormatRows(
     }
 }
 
+/** The message toast and the way back once a main-currency change is written. */
 @Composable
-fun MainCurrencyScreen(vm: MainCurrencyViewModel = hiltViewModel()) {
+private fun MainCurrencyEffects(state: MainCurrencyUiState, vm: MainCurrencyViewModel) {
     val nav = LocalNavigator.current
-    val state by vm.uiState.collectAsStateWithLifecycle()
-    val ref = state.ref
-    val busy = state.busy
     val effectContext = LocalContext.current
     state.userMessage?.let { message ->
         val text = message.text.asString()
@@ -145,14 +146,35 @@ fun MainCurrencyScreen(vm: MainCurrencyViewModel = hiltViewModel()) {
             vm.onClosedHandled()
         }
     }
+}
+
+@Composable
+fun MainCurrencyRoute(vm: MainCurrencyViewModel = hiltViewModel()) {
+    val nav = LocalNavigator.current
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    MainCurrencyEffects(state, vm)
+    MainCurrencyScreen(
+        state = state,
+        onBack = nav::back,
+        onChange = { nav.navigate(MainCurrencyPickerKey) },
+        onSave = vm::setMainFormat,
+    )
+}
+
+@Composable
+internal fun MainCurrencyScreen(
+    state: MainCurrencyUiState,
+    onBack: () -> Unit,
+    onChange: () -> Unit,
+    onSave: (SymbolPosition, decimals: Int) -> Unit,
+) {
+    val ref = state.ref
     val main = ref.mainCurrency
     var position by rememberSaveable(main.id) { mutableStateOf(main.symbolPosition) }
     var decimals by rememberSaveable(main.id) { mutableStateOf(main.decimals) }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.main_currency_setting), onBack = { nav.back() }) {
-            TextButton(onClick = {
-                nav.navigate(MainCurrencyPickerKey)
-            }) { Text(stringResource(R.string.action_change)) }
+        NexoTopBar(stringResource(R.string.main_currency_setting), onBack = onBack) {
+            TextButton(onClick = onChange) { Text(stringResource(R.string.action_change)) }
         }
     }) { p ->
         Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
@@ -163,7 +185,7 @@ fun MainCurrencyScreen(vm: MainCurrencyViewModel = hiltViewModel()) {
             )
             FormatRows(position, decimals, main.symbol, { position = it }, { decimals = it })
             Button(onClick = {
-                vm.setMainFormat(position, decimals)
+                onSave(position, decimals)
             }, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Text(stringResource(R.string.action_save))
             }
@@ -172,32 +194,37 @@ fun MainCurrencyScreen(vm: MainCurrencyViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun MainCurrencyPickerScreen(vm: MainCurrencyViewModel = hiltViewModel()) {
+fun MainCurrencyPickerRoute(vm: MainCurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    MainCurrencyEffects(state, vm)
+    MainCurrencyPickerScreen(
+        state = state,
+        onBack = nav::back,
+        onChangeWithRate = vm::changeMainWithRate,
+        onChangeWithReset = vm::changeMainWithReset,
+    )
+}
+
+/**
+ * Picking a new main currency: [onChangeWithRate] keeps the data and converts it,
+ * [onChangeWithReset] starts the book over.
+ */
+@Composable
+internal fun MainCurrencyPickerScreen(
+    state: MainCurrencyUiState,
+    onBack: () -> Unit,
+    onChangeWithRate: (CatalogCurrency, rate: Double) -> Unit,
+    onChangeWithReset: (CatalogCurrency) -> Unit,
+) {
     val ref = state.ref
     val busy = state.busy
-    val effectContext = LocalContext.current
-    state.userMessage?.let { message ->
-        val text = message.text.asString()
-        LaunchedEffect(message.id) {
-            Toast.makeText(effectContext, text, Toast.LENGTH_LONG).show()
-            vm.onUserMessageShown(message.id)
-        }
-    }
-    LaunchedEffect(state.closed) {
-        if (state.closed) {
-            nav.back()
-            vm.onClosedHandled()
-        }
-    }
     var target by remember { mutableStateOf<CatalogCurrency?>(null) }
     var askRate by remember { mutableStateOf(false) }
     var rate by remember { mutableStateOf<Double?>(null) }
     var confirmReset by remember { mutableStateOf(false) }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.main_currency_setting), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.main_currency_setting), onBack = onBack)
     }) { p ->
         LazyColumn(Modifier.padding(p)) {
             items(CurrencyCatalog.all, key = { it.code }) { c ->
@@ -254,7 +281,7 @@ fun MainCurrencyPickerScreen(vm: MainCurrencyViewModel = hiltViewModel()) {
     }
     rate?.let { r ->
         ConfirmDialog(stringResource(R.string.main_change_warning), onConfirm = {
-            vm.changeMainWithRate(t!!, r)
+            onChangeWithRate(t!!, r)
         }, onDismiss = {
             rate = null
             target = null
@@ -262,7 +289,7 @@ fun MainCurrencyPickerScreen(vm: MainCurrencyViewModel = hiltViewModel()) {
     }
     if (confirmReset && t != null) {
         ConfirmDialog(stringResource(R.string.all_data_deleted_question), onConfirm = {
-            vm.changeMainWithReset(t)
+            onChangeWithReset(t)
         }, onDismiss = {
             confirmReset = false
             target = null
@@ -279,17 +306,36 @@ fun MainCurrencyPickerScreen(vm: MainCurrencyViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun SubCurrenciesScreen(vm: SubCurrencyViewModel = hiltViewModel()) {
+fun SubCurrenciesRoute(vm: SubCurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    SubCurrenciesScreen(
+        state = state,
+        onBack = nav::back,
+        onAdd = { nav.navigate(AddSubCurrencyKey) },
+        onEdit = { c -> nav.navigate(SubCurrencyEditKey(currencyId = c.id, custom = c.isCustom)) },
+        onReorder = vm::reorder,
+        onHide = vm::hide,
+    )
+}
+
+@Composable
+internal fun SubCurrenciesScreen(
+    state: SubCurrencyUiState,
+    onBack: () -> Unit,
+    onAdd: () -> Unit,
+    onEdit: (Currency) -> Unit,
+    onReorder: (ids: List<String>) -> Unit,
+    onHide: (id: String) -> Unit,
+) {
     val ref = state.ref
     val subs = ref.activeCurrencies.drop(1)
     var hide by remember { mutableStateOf<Currency?>(null) }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.sub_currency_setting), onBack = { nav.back() }) {
-            IconButton(onClick = {
-                nav.navigate(AddSubCurrencyKey)
-            }) { Icon(Icons.Filled.Add, stringResource(R.string.action_add)) }
+        NexoTopBar(stringResource(R.string.sub_currency_setting), onBack = onBack) {
+            IconButton(onClick = onAdd) {
+                Icon(Icons.Filled.Add, stringResource(R.string.action_add))
+            }
         }
     }) { p ->
         if (subs.isEmpty()) {
@@ -300,7 +346,7 @@ fun SubCurrenciesScreen(vm: SubCurrencyViewModel = hiltViewModel()) {
             itemsIndexed(subs, key = { _, c -> c.id }) { i, c ->
                 Row(
                     Modifier.fillMaxWidth().clickable {
-                        nav.navigate(SubCurrencyEditKey(currencyId = c.id, custom = c.isCustom))
+                        onEdit(c)
                     }.padding(start = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -319,7 +365,7 @@ fun SubCurrenciesScreen(vm: SubCurrencyViewModel = hiltViewModel()) {
                         )
                     }
                     IconButton(onClick = {
-                        vm.reorder(
+                        onReorder(
                             subs.map {
                                 it.id
                             }.toMutableList().apply { add(i - 1, removeAt(i)) },
@@ -328,7 +374,7 @@ fun SubCurrenciesScreen(vm: SubCurrencyViewModel = hiltViewModel()) {
                         Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up))
                     }
                     IconButton(onClick = {
-                        vm.reorder(
+                        onReorder(
                             subs.map {
                                 it.id
                             }.toMutableList().apply { add(i + 1, removeAt(i)) },
@@ -352,18 +398,33 @@ fun SubCurrenciesScreen(vm: SubCurrencyViewModel = hiltViewModel()) {
     }
     hide?.let { c ->
         ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
-            vm.hide(c.id)
+            onHide(c.id)
         }, onDismiss = {
             hide = null
         })
     }
 }
 
-/** Add a built-in sub-currency. */
 @Composable
-fun AddSubCurrencyScreen(vm: SubCurrencyViewModel = hiltViewModel()) {
+fun AddSubCurrencyRoute(vm: SubCurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    AddSubCurrencyScreen(
+        state = state,
+        onBack = nav::back,
+        onAddCustom = { nav.navigate(SubCurrencyEditKey(custom = true)) },
+        onPick = { code -> nav.replace(SubCurrencyEditKey(isoCode = code)) },
+    )
+}
+
+/** Add a built-in sub-currency. */
+@Composable
+internal fun AddSubCurrencyScreen(
+    state: SubCurrencyUiState,
+    onBack: () -> Unit,
+    onAddCustom: () -> Unit,
+    onPick: (isoCode: String) -> Unit,
+) {
     val ref = state.ref
     var query by remember { mutableStateOf("") }
     val list = CurrencyCatalog.all.filter { c ->
@@ -372,10 +433,10 @@ fun AddSubCurrencyScreen(vm: SubCurrencyViewModel = hiltViewModel()) {
     }
         .filter { query.isBlank() || it.displayName().contains(query, true) }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.add_sub_currency), onBack = { nav.back() }) {
-            IconButton(onClick = {
-                nav.navigate(SubCurrencyEditKey(custom = true))
-            }) { Icon(Icons.Filled.Add, stringResource(R.string.custom_currency)) }
+        NexoTopBar(stringResource(R.string.add_sub_currency), onBack = onBack) {
+            IconButton(onClick = onAddCustom) {
+                Icon(Icons.Filled.Add, stringResource(R.string.custom_currency))
+            }
         }
     }) { p ->
         Column(Modifier.padding(p)) {
@@ -402,7 +463,7 @@ fun AddSubCurrencyScreen(vm: SubCurrencyViewModel = hiltViewModel()) {
                         Text(
                             "${c.displayName()} (${c.subSymbol})",
                             Modifier.fillMaxWidth().clickable {
-                                nav.replace(SubCurrencyEditKey(isoCode = c.code))
+                                onPick(c.code)
                             }.padding(16.dp),
                         )
                     }
@@ -412,18 +473,31 @@ fun AddSubCurrencyScreen(vm: SubCurrencyViewModel = hiltViewModel()) {
     }
 }
 
-/** Edit / add a sub-currency, built-in or custom. */
 @Composable
-fun SubCurrencyEditScreen(key: SubCurrencyEditKey, vm: SubCurrencyViewModel = hiltViewModel()) {
+fun SubCurrencyEditRoute(key: SubCurrencyEditKey, vm: SubCurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val ref = state.ref
     LaunchedEffect(state.closed) {
         if (state.closed) {
             nav.back()
             vm.onClosedHandled()
         }
     }
+    SubCurrencyEditScreen(key = key, state = state, onBack = nav::back, onSave = vm::saveSub)
+}
+
+/**
+ * Edit / add a sub-currency, built-in or custom. [onSave] gets the catalog entry (null for a
+ * custom one), the currency being edited if any, then the name, symbol, format and rate.
+ */
+@Composable
+internal fun SubCurrencyEditScreen(
+    key: SubCurrencyEditKey,
+    state: SubCurrencyUiState,
+    onBack: () -> Unit,
+    onSave: (CatalogCurrency?, Currency?, String, String, SymbolPosition, Int, Double) -> Unit,
+) {
+    val ref = state.ref
     val existing = (key.currencyId ?: key.isoCode)?.let { ref.currencyById[it] }
     val catalog = CurrencyCatalog.find(key.isoCode ?: existing?.isoCode)
     var name by rememberSaveable { mutableStateOf(existing?.name ?: "") }
@@ -443,9 +517,7 @@ fun SubCurrencyEditScreen(key: SubCurrencyEditKey, vm: SubCurrencyViewModel = hi
             stringResource(
                 if (key.custom) R.string.custom_currency else R.string.sub_currency_setting,
             ),
-            onBack = {
-                nav.back()
-            },
+            onBack = onBack,
         )
     }) { p ->
         Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
@@ -504,7 +576,7 @@ fun SubCurrencyEditScreen(key: SubCurrencyEditKey, vm: SubCurrencyViewModel = hi
 
                     key.custom && symbol.isBlank() -> error = R.string.enter_symbol
 
-                    else -> vm.saveSub(
+                    else -> onSave(
                         if (key.custom) null else catalog!!,
                         existing,
                         name,
@@ -527,4 +599,61 @@ fun SubCurrencyEditScreen(key: SubCurrencyEditKey, vm: SubCurrencyViewModel = hi
                 0
         }, onConfirm = { rate = it ?: 1.0 }, onDismiss = { pad = false })
     }
+}
+
+@Preview
+@Composable
+private fun MainCurrencyScreenPreview() = NexoPreview {
+    MainCurrencyScreen(
+        state = MainCurrencyUiState(ref = PreviewData.ref),
+        onBack = {},
+        onChange = {},
+        onSave = { _, _ -> },
+    )
+}
+
+@Preview
+@Composable
+private fun MainCurrencyPickerScreenPreview() = NexoPreview {
+    MainCurrencyPickerScreen(
+        state = MainCurrencyUiState(ref = PreviewData.ref),
+        onBack = {},
+        onChangeWithRate = { _, _ -> },
+        onChangeWithReset = {},
+    )
+}
+
+@Preview
+@Composable
+private fun SubCurrenciesScreenPreview() = NexoPreview {
+    SubCurrenciesScreen(
+        state = SubCurrencyUiState(ref = PreviewData.ref),
+        onBack = {},
+        onAdd = {},
+        onEdit = {},
+        onReorder = {},
+        onHide = {},
+    )
+}
+
+@Preview
+@Composable
+private fun AddSubCurrencyScreenPreview() = NexoPreview {
+    AddSubCurrencyScreen(
+        state = SubCurrencyUiState(ref = PreviewData.ref),
+        onBack = {},
+        onAddCustom = {},
+        onPick = {},
+    )
+}
+
+@Preview
+@Composable
+private fun SubCurrencyEditScreenPreview() = NexoPreview {
+    SubCurrencyEditScreen(
+        key = SubCurrencyEditKey(currencyId = "USD"),
+        state = SubCurrencyUiState(ref = PreviewData.ref),
+        onBack = {},
+        onSave = { _, _, _, _, _, _, _ -> },
+    )
 }

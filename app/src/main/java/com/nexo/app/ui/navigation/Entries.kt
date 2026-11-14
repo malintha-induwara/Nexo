@@ -33,19 +33,19 @@ import com.nexo.app.ui.entry.RepeatListScreen
 import com.nexo.app.ui.memo.MemoEditorRoute
 import com.nexo.app.ui.memo.MemoListRoute
 import com.nexo.app.ui.search.SearchRoute
-import com.nexo.app.ui.settings.AddSubCurrencyScreen
-import com.nexo.app.ui.settings.ConfigurationScreen
-import com.nexo.app.ui.settings.FeedbackScreen
-import com.nexo.app.ui.settings.HelpPageScreen
-import com.nexo.app.ui.settings.HelpScreen
-import com.nexo.app.ui.settings.LockSettingsScreen
-import com.nexo.app.ui.settings.MainCurrencyPickerScreen
-import com.nexo.app.ui.settings.MainCurrencyScreen
-import com.nexo.app.ui.settings.MonthStartScreen
-import com.nexo.app.ui.settings.ReminderScreen
-import com.nexo.app.ui.settings.StyleScreen
-import com.nexo.app.ui.settings.SubCurrenciesScreen
-import com.nexo.app.ui.settings.SubCurrencyEditScreen
+import com.nexo.app.ui.settings.AddSubCurrencyRoute
+import com.nexo.app.ui.settings.ConfigurationRoute
+import com.nexo.app.ui.settings.FeedbackRoute
+import com.nexo.app.ui.settings.HelpPageRoute
+import com.nexo.app.ui.settings.HelpRoute
+import com.nexo.app.ui.settings.LockSettingsRoute
+import com.nexo.app.ui.settings.MainCurrencyPickerRoute
+import com.nexo.app.ui.settings.MainCurrencyRoute
+import com.nexo.app.ui.settings.MonthStartRoute
+import com.nexo.app.ui.settings.ReminderRoute
+import com.nexo.app.ui.settings.StyleRoute
+import com.nexo.app.ui.settings.SubCurrenciesRoute
+import com.nexo.app.ui.settings.SubCurrencyEditRoute
 import com.nexo.app.ui.shell.MainShell
 import com.nexo.app.ui.sms.SmsCardsScreen
 import com.nexo.app.ui.sms.SmsFeesScreen
@@ -92,16 +92,16 @@ fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<SubcategoryListKey> { SubcategoryListRoute(it) }
     entry<CategoryFormKey> { CategoryFormRoute(it) }
     entry<TagSettingsKey> { TagSettingsRoute() }
-    entry<ConfigurationKey> { ConfigurationScreen() }
-    entry<MonthStartKey> { MonthStartScreen() }
-    entry<MainCurrencyKey> { MainCurrencyScreen() }
-    entry<MainCurrencyPickerKey> { MainCurrencyPickerScreen() }
-    entry<SubCurrenciesKey> { SubCurrenciesScreen() }
-    entry<AddSubCurrencyKey> { AddSubCurrencyScreen() }
-    entry<SubCurrencyEditKey> { SubCurrencyEditScreen(it) }
-    entry<StyleKey> { StyleScreen() }
-    entry<ReminderKey> { ReminderScreen() }
-    entry<LockSettingsKey> { LockSettingsScreen() }
+    entry<ConfigurationKey> { ConfigurationRoute() }
+    entry<MonthStartKey> { MonthStartRoute() }
+    entry<MainCurrencyKey> { MainCurrencyRoute() }
+    entry<MainCurrencyPickerKey> { MainCurrencyPickerRoute() }
+    entry<SubCurrenciesKey> { SubCurrenciesRoute() }
+    entry<AddSubCurrencyKey> { AddSubCurrencyRoute() }
+    entry<SubCurrencyEditKey> { SubCurrencyEditRoute(it) }
+    entry<StyleKey> { StyleRoute() }
+    entry<ReminderKey> { ReminderRoute() }
+    entry<LockSettingsKey> { LockSettingsRoute() }
     entry<BackupKey> { BackupScreen() }
     entry<BackupDeviceKey> { BackupDeviceScreen() }
     entry<AutoBackupHistoryKey> { AutoBackupHistoryScreen() }
@@ -109,7 +109,7 @@ fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<ImportPreviewKey> { ImportPreviewScreen(it) }
     entry<ExcelExportKey> { ExcelExportScreen(it) }
     entry<RestoreFileKey> { RestoreFileScreen(it) }
-    entry<HelpKey> { HelpScreen() }
-    entry<HelpPageKey> { HelpPageScreen(it) }
-    entry<FeedbackKey> { FeedbackScreen() }
+    entry<HelpKey> { HelpRoute() }
+    entry<HelpPageKey> { HelpPageRoute(it) }
+    entry<FeedbackKey> { FeedbackRoute() }
 }

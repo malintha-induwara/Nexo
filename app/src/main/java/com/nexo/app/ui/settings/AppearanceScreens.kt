@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -71,6 +72,8 @@ import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.component.SectionHeader
 import com.nexo.app.ui.designsystem.component.SettingRow
 import com.nexo.app.ui.designsystem.component.SwitchRow
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalIsDark
 import com.nexo.app.ui.lock.BiometricPrompter
 import com.nexo.app.ui.lock.PinDots
@@ -91,21 +94,29 @@ private fun themeModeLabel(m: ThemeMode) = stringResource(
 )
 
 /** Light, dark or follow the system. The colour theme was retired with the neutral redesign. */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun StyleScreen(vm: AppearanceViewModel = hiltViewModel()) {
+fun StyleRoute(vm: AppearanceViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    StyleScreen(state = state, onBack = nav::back, onThemeMode = vm::setThemeMode)
+}
+
+@Composable
+internal fun StyleScreen(
+    state: AppearanceUiState,
+    onBack: () -> Unit,
+    onThemeMode: (ThemeMode) -> Unit,
+) {
     val device = state.device
     val d = device ?: return
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.style), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.style), onBack = onBack)
     }) { p ->
         Column(Modifier.padding(p)) {
             listOf(ThemeMode.SYSTEM, ThemeMode.DARK, ThemeMode.LIGHT).forEach { m ->
                 Row(
                     Modifier.fillMaxWidth().clickable {
-                        vm.setThemeMode(m)
+                        onThemeMode(m)
                     }.padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -117,42 +128,78 @@ fun StyleScreen(vm: AppearanceViewModel = hiltViewModel()) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ReminderScreen(vm: ReminderViewModel = hiltViewModel()) {
+fun ReminderRoute(vm: ReminderViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val permission =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+            val d = state.device
+            if (ok &&
+                d != null
+            ) {
+                vm.setReminder(true, d.reminderHour, d.reminderMinute, d.reminderDays)
+            }
+        }
+    ReminderScreen(
+        state = state,
+        is24Hour = DateFormat.is24HourFormat(context),
+        canScheduleExactAlarms = vm::canScheduleExactAlarms,
+        onBack = nav::back,
+        onAlarm = { on ->
+            val d = state.device
+            if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                !vm.canPostNotifications()
+            ) {
+                permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else if (d != null) {
+                vm.setReminder(on, d.reminderHour, d.reminderMinute, d.reminderDays)
+            }
+        },
+        onSetReminder = vm::setReminder,
+        onOpenExactAlarmSettings = {
+            runCatching {
+                context.startActivity(
+                    Intent(
+                        Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                        Uri.parse("package:" + context.packageName),
+                    ),
+                )
+            }
+        },
+    )
+}
+
+/** [onAlarm] turns the reminder on or off, asking for the notification permission first if needed. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun ReminderScreen(
+    state: ReminderUiState,
+    is24Hour: Boolean,
+    canScheduleExactAlarms: () -> Boolean,
+    onBack: () -> Unit,
+    onAlarm: (on: Boolean) -> Unit,
+    onSetReminder: (enabled: Boolean, hour: Int, minute: Int, days: Set<Int>) -> Unit,
+    onOpenExactAlarmSettings: () -> Unit,
+) {
     val device = state.device
     val d = device ?: return
     var time by rememberSaveable { mutableStateOf(false) }
     var exactPrompt by rememberSaveable { mutableStateOf(false) }
-    fun apply(enabled: Boolean, h: Int, m: Int, days: Set<Int>) =
-        vm.setReminder(enabled, h, m, days)
-    val permission =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
-            if (ok) apply(true, d.reminderHour, d.reminderMinute, d.reminderDays)
-        }
-    LaunchedEffect(Unit) { if (!vm.canScheduleExactAlarms()) exactPrompt = true }
+    fun apply(enabled: Boolean, h: Int, m: Int, days: Set<Int>) = onSetReminder(enabled, h, m, days)
+    LaunchedEffect(Unit) { if (!canScheduleExactAlarms()) exactPrompt = true }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.alarm_setting), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.alarm_setting), onBack = onBack)
     }) { p ->
         Column(Modifier.padding(p)) {
-            SwitchRow(stringResource(R.string.alarm), d.reminderEnabled, { on ->
-                if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                    !vm.canPostNotifications()
-                ) {
-                    permission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                } else {
-                    apply(on, d.reminderHour, d.reminderMinute, d.reminderDays)
-                }
-            })
+            SwitchRow(stringResource(R.string.alarm), d.reminderEnabled, onAlarm)
             if (d.reminderEnabled) {
                 SettingRow(
                     stringResource(R.string.time),
                     Formats.time(
                         LocalTime.of(d.reminderHour, d.reminderMinute),
-                        DateFormat.is24HourFormat(context),
+                        is24Hour,
                     ),
                     onClick = {
                         time = true
@@ -195,37 +242,69 @@ fun ReminderScreen(vm: ReminderViewModel = hiltViewModel()) {
         })
     }
     if (exactPrompt && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        ConfirmDialog(stringResource(R.string.exact_alarm_prompt), onConfirm = {
-            runCatching {
-                context.startActivity(
-                    Intent(
-                        Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-                        Uri.parse("package:" + context.packageName),
-                    ),
-                )
-            }
-        }, onDismiss = { exactPrompt = false })
+        ConfirmDialog(
+            stringResource(R.string.exact_alarm_prompt),
+            onConfirm = onOpenExactAlarmSettings,
+            onDismiss = { exactPrompt = false },
+        )
     }
 }
 
-/** App lock: PIN, biometrics and lock timeout. */
 @Composable
-fun LockSettingsScreen(vm: LockSettingsViewModel = hiltViewModel()) {
+fun LockSettingsRoute(vm: LockSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val device = state.device
-    val d = device ?: return
-    val scope = rememberCoroutineScope()
-    var pinFlow by rememberSaveable { mutableStateOf<String?>(null) }
-    var timeout by rememberSaveable { mutableStateOf(false) }
-    var confirmRemove by rememberSaveable { mutableStateOf(false) }
-    val bioAvailable = BiometricPrompter.isAvailable(context)
     val promptTitle =
         stringResource(R.string.biometric_prompt_title, stringResource(R.string.app_name))
     val cancel = stringResource(R.string.action_cancel)
+    LockSettingsScreen(
+        state = state,
+        biometricsAvailable = BiometricPrompter.isAvailable(context),
+        onBack = nav::back,
+        onBiometrics = { on ->
+            if (!on) {
+                vm.setBiometricsEnabled(false)
+            } else {
+                val activity = context as? FragmentActivity
+                val cipher = activity?.let { vm.createBiometricKey() }
+                if (activity != null && cipher != null) {
+                    BiometricPrompter.prompt(
+                        activity,
+                        promptTitle,
+                        cancel,
+                        cipher,
+                        onSuccess = { vm.setBiometricsEnabled(true) },
+                    )
+                }
+            }
+        },
+        onLockTimeout = vm::setLockTimeout,
+        onSetPin = vm::setPin,
+        isCurrentPin = vm::isCurrentPin,
+        onLockNow = vm::lockNow,
+    )
+}
+
+/** App lock: PIN, biometrics and lock timeout. [onSetPin] with null removes the PIN. */
+@Composable
+internal fun LockSettingsScreen(
+    state: LockSettingsUiState,
+    biometricsAvailable: Boolean,
+    onBack: () -> Unit,
+    onBiometrics: (on: Boolean) -> Unit,
+    onLockTimeout: (LockTimeout) -> Unit,
+    onSetPin: (pin: String?) -> Unit,
+    isCurrentPin: suspend (pin: String) -> Boolean,
+    onLockNow: () -> Unit,
+) {
+    val device = state.device
+    val d = device ?: return
+    var pinFlow by rememberSaveable { mutableStateOf<String?>(null) }
+    var timeout by rememberSaveable { mutableStateOf(false) }
+    var confirmRemove by rememberSaveable { mutableStateOf(false) }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.lock_settings), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.lock_settings), onBack = onBack)
     }) { p ->
         Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
             Text(
@@ -253,32 +332,16 @@ fun LockSettingsScreen(vm: LockSettingsViewModel = hiltViewModel()) {
                 SettingRow(stringResource(R.string.pin_remove), onClick = { confirmRemove = true })
                 SwitchRow(
                     stringResource(R.string.biometric_unlock),
-                    d.biometricsEnabled && bioAvailable,
-                    onChange = { on ->
-                        if (!on) {
-                            vm.setBiometricsEnabled(false)
-                        } else {
-                            val activity = context as? FragmentActivity ?: return@SwitchRow
-                            val cipher = vm.createBiometricKey()
-                            if (cipher != null) {
-                                BiometricPrompter.prompt(
-                                    activity,
-                                    promptTitle,
-                                    cancel,
-                                    cipher,
-                                    onSuccess = { vm.setBiometricsEnabled(true) },
-                                )
-                            }
-                        }
-                    },
+                    d.biometricsEnabled && biometricsAvailable,
+                    onChange = onBiometrics,
                     subtitle = stringResource(
-                        if (bioAvailable) {
+                        if (biometricsAvailable) {
                             R.string.biometric_shared_warning
                         } else {
                             R.string.biometric_unavailable
                         },
                     ),
-                    enabled = bioAvailable,
+                    enabled = biometricsAvailable,
                 )
                 SettingRow(
                     stringResource(R.string.lock_after),
@@ -287,32 +350,32 @@ fun LockSettingsScreen(vm: LockSettingsViewModel = hiltViewModel()) {
                         timeout = true
                     },
                 )
-                SettingRow(stringResource(R.string.lock_now), onClick = { vm.lockNow() })
+                SettingRow(stringResource(R.string.lock_now), onClick = onLockNow)
             }
         }
     }
     if (timeout) {
         ChoiceDialog(stringResource(R.string.lock_after), LockTimeout.entries, d.lockTimeout, {
             timeoutLabel(it)
-        }, onSelect = { t -> vm.setLockTimeout(t) }, onDismiss = {
+        }, onSelect = onLockTimeout, onDismiss = {
             timeout = false
         })
     }
     if (confirmRemove) {
         PinFlowDialog(
             mode = "verify",
-            verify = vm::isCurrentPin,
+            verify = isCurrentPin,
             descending = d.numberPadDescending,
             onDone = {
-                vm.setPin(null)
+                onSetPin(null)
                 confirmRemove = false
             },
             onDismiss = { confirmRemove = false },
         )
     }
     pinFlow?.let { mode ->
-        PinFlowDialog(mode, vm::isCurrentPin, d.numberPadDescending, onDone = { pin ->
-            vm.setPin(pin)
+        PinFlowDialog(mode, isCurrentPin, d.numberPadDescending, onDone = { pin ->
+            onSetPin(pin)
             pinFlow = null
         }, onDismiss = { pinFlow = null })
     }
@@ -425,4 +488,47 @@ private fun PinFlowDialog(
             }
         }
     }
+}
+
+@Preview
+@Composable
+private fun StyleScreenPreview() = NexoPreview {
+    StyleScreen(
+        state = AppearanceUiState(PreviewData.device.copy(themeMode = ThemeMode.LIGHT)),
+        onBack = {},
+        onThemeMode = {},
+    )
+}
+
+@Preview
+@Composable
+private fun ReminderScreenPreview() = NexoPreview {
+    ReminderScreen(
+        state = ReminderUiState(
+            PreviewData.device.copy(reminderEnabled = true, reminderDays = setOf(1, 2, 3, 4, 5)),
+        ),
+        is24Hour = false,
+        canScheduleExactAlarms = { true },
+        onBack = {},
+        onAlarm = {},
+        onSetReminder = { _, _, _, _ -> },
+        onOpenExactAlarmSettings = {},
+    )
+}
+
+@Preview
+@Composable
+private fun LockSettingsScreenPreview() = NexoPreview {
+    LockSettingsScreen(
+        state = LockSettingsUiState(
+            PreviewData.device.copy(pinHash = "preview", lockTimeout = LockTimeout.ONE_MINUTE),
+        ),
+        biometricsAvailable = true,
+        onBack = {},
+        onBiometrics = {},
+        onLockTimeout = {},
+        onSetPin = {},
+        isCurrentPin = { false },
+        onLockNow = {},
+    )
 }
