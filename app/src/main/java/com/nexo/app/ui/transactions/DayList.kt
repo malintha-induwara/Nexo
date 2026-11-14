@@ -145,6 +145,7 @@ fun RowTile(row: TxRowUi) {
  * One transaction: tile, title (the note, or the category when there is none), a meta line
  * (category, account, time, tags) and the amount, signed and coloured by direction.
  * [highlight] briefly washes the row, used when it has just been saved.
+ * [runningBalance] is the account's balance after this transaction, shown in brackets under the amount.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -155,6 +156,7 @@ fun TxRow(
     onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     highlight: Boolean = false,
+    runningBalance: String? = null,
 ) {
     val money = LocalMoneyColors.current
     val colors = LocalNexoColors.current
@@ -220,10 +222,13 @@ fun TxRow(
         if (row.hasPhoto) {
             Icon(Icons.Outlined.Image, null, tint = colors.textTertiary, modifier = Modifier.padding(end = Space.s).size(16.dp))
         }
-        when (row.flow) {
-            CashFlow.INCOME -> AmountText(row.amount, row.currency, color = money.income, sign = AmountParts.Sign.ALWAYS)
-            CashFlow.EXPENSE -> AmountText(-row.amount, row.currency, color = money.expense)
-            CashFlow.NEUTRAL -> AmountText(row.amount, row.currency, color = colors.text, sign = AmountParts.Sign.NONE)
+        Column(horizontalAlignment = Alignment.End) {
+            when (row.flow) {
+                CashFlow.INCOME -> AmountText(row.amount, row.currency, color = money.income, sign = AmountParts.Sign.ALWAYS)
+                CashFlow.EXPENSE -> AmountText(-row.amount, row.currency, color = money.expense)
+                CashFlow.NEUTRAL -> AmountText(row.amount, row.currency, color = colors.text, sign = AmountParts.Sign.NONE)
+            }
+            if (runningBalance != null) Text("($runningBalance)", style = NexoType.Meta, color = colors.textTertiary, maxLines = 1)
         }
     }
 }

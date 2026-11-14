@@ -1,10 +1,15 @@
 package com.nexo.app.ui.accounts
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
+import java.util.Locale
+import com.nexo.app.ui.components.RoundIconButton
+import com.nexo.app.ui.components.AmountText
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -23,7 +28,6 @@ import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Restore
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -32,16 +36,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -176,15 +179,12 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                     onDayClick = if (key.deleted) null else ({ d -> nav.navigate(EntryKey(date = d.toString(), accountId = account?.id, fromAdd = true)) }),
                     onMemoClick = { d -> nav.navigate(com.nexo.app.ui.navigation.MemoListKey(d.toString())) },
                     rowContent = { row ->
-                        Column {
-                            TxRow(row, row.id in selection, onClick = {
-                                if (selection.isNotEmpty()) vm.toggleSelect(row.id) else nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
-                            }, onLongClick = { vm.toggleSelect(row.id) })
-                            ui.running[row.id]?.let { b ->
-                                Text("(${AmountFormatter.format(b, cur)})", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(end = 16.dp, bottom = 6.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                            }
-                        }
+                        TxRow(
+                            row, row.id in selection,
+                            onClick = { if (selection.isNotEmpty()) vm.toggleSelect(row.id) else nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id)) },
+                            onLongClick = { vm.toggleSelect(row.id) },
+                            runningBalance = ui.running[row.id]?.let { AmountFormatter.format(it, cur) },
+                        )
                     },
                 )
             } else {
@@ -205,49 +205,62 @@ fun AccountDetailScreen(key: AccountDetailKey) {
     BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.writer, selection, onDone = { vm.setSelection(emptySet()) }, onDismiss = { bulkOpen = false })
 }
 
+/** The statement for the period on screen: the balance set large, with money in, out and the net beneath. */
 @Composable
 private fun SummaryBlock(ui: AccountDetailUi, cur: CurrencyEntity, tab: DetailTab, charts: Boolean, onToggleCharts: () -> Unit, onEdit: () -> Unit, onHelp: () -> Unit) {
+    val colors = LocalNexoColors.current
     val money = LocalMoneyColors.current
-    Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
-        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+    GroupCard(Modifier.padding(horizontal = Space.l, vertical = Space.xs)) {
+        Column(Modifier.padding(start = Space.l, end = Space.m, top = Space.m, bottom = Space.l)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    stringResource(R.string.statement) + if (ui.range != com.nexo.app.core.period.DateRange.ALL) " " + Formats.rangeFull(ui.range.start, ui.range.end) else "",
-                    style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f),
+                    (stringResource(R.string.statement) + if (ui.range != com.nexo.app.core.period.DateRange.ALL) " " + Formats.rangeFull(ui.range.start, ui.range.end) else "").uppercase(Locale.getDefault()),
+                    style = NexoType.Caps, color = colors.textTertiary, maxLines = 1, modifier = Modifier.weight(1f),
                 )
-                IconButton(onClick = onToggleCharts) { Icon(if (charts) Icons.AutoMirrored.Outlined.List else Icons.Outlined.BarChart, stringResource(R.string.toggle_charts)) }
-                IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit)) }
-            }
-            Row {
-                Figure(stringResource(R.string.deposit), AmountFormatter.format(ui.deposit, cur), money.income, Modifier.weight(1f))
-                Figure(stringResource(R.string.withdrawal), AmountFormatter.format(ui.withdrawal, cur), money.expense, Modifier.weight(1f))
-                Figure(stringResource(R.string.total), AmountFormatter.format(ui.deposit - ui.withdrawal, cur), MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+                RoundIconButton(if (charts) Icons.AutoMirrored.Outlined.List else Icons.Outlined.BarChart, stringResource(R.string.toggle_charts), onToggleCharts, size = 36.dp)
+                Spacer(Modifier.width(Space.s))
+                RoundIconButton(Icons.Outlined.Edit, stringResource(R.string.action_edit), onEdit, size = 36.dp)
             }
             if (tab != DetailTab.ANNUALLY) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                    Text(stringResource(R.string.balance), style = MaterialTheme.typography.labelMedium)
-                    if (ui.showHelp) IconButton(onClick = onHelp) { Icon(Icons.AutoMirrored.Outlined.HelpOutline, null) }
-                    Spacer(Modifier.weight(1f))
-                    val b = ui.balance
-                    Text(if (b == null) "-" else AmountFormatter.format(kotlin.math.abs(b), cur), color = b?.let { money.signed(it) } ?: MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.balance), style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+                    if (ui.showHelp) {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.HelpOutline, stringResource(R.string.help), tint = colors.textTertiary,
+                            modifier = Modifier.padding(start = Space.xs).size(28.dp).clip(CircleShape).clickable(onClick = onHelp).padding(6.dp),
+                        )
+                    }
                 }
+                val b = ui.balance
+                if (b == null) Text("-", style = MaterialTheme.typography.displaySmall, color = colors.text)
+                else AmountText(b, cur, Modifier.shrinkToFit(), style = MaterialTheme.typography.displaySmall, color = if (b < 0) money.expense else colors.text)
+                Spacer(Modifier.height(Space.m))
+            } else {
+                Spacer(Modifier.height(Space.s))
+            }
+            Row(Modifier.padding(end = Space.xs), horizontalArrangement = Arrangement.spacedBy(Space.m)) {
+                Figure(stringResource(R.string.deposit), ui.deposit, cur, money.income, Modifier.weight(1f))
+                Figure(stringResource(R.string.withdrawal), ui.withdrawal, cur, money.expense, Modifier.weight(1f))
+                Figure(stringResource(R.string.total), ui.deposit - ui.withdrawal, cur, colors.text, Modifier.weight(1f))
             }
             ui.card?.let { c ->
-                Text(
-                    stringResource(R.string.balance_payable) + " " + AmountFormatter.format(kotlin.math.abs(c.payable), cur) + "   " +
-                        stringResource(R.string.outstanding_balance) + " " + AmountFormatter.format(kotlin.math.abs(c.outstanding), cur),
-                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline,
-                )
+                Spacer(Modifier.height(Space.m))
+                Row(Modifier.padding(end = Space.xs), horizontalArrangement = Arrangement.spacedBy(Space.m)) {
+                    Figure(stringResource(R.string.payable), kotlin.math.abs(c.payable), cur, money.signed(c.payable), Modifier.weight(1f))
+                    Figure(stringResource(R.string.outstanding), kotlin.math.abs(c.outstanding), cur, money.signed(c.outstanding), Modifier.weight(1f))
+                    Spacer(Modifier.weight(1f))
+                }
             }
         }
     }
 }
 
 @Composable
-private fun Figure(label: String, value: String, color: Color, modifier: Modifier) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-        Text(value, color = color, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+private fun Figure(label: String, value: Double, cur: CurrencyEntity, color: Color, modifier: Modifier) {
+    Column(modifier) {
+        Text(label.uppercase(Locale.getDefault()), style = NexoType.Caps, color = LocalNexoColors.current.textTertiary, maxLines = 1)
+        Spacer(Modifier.height(Space.xxs))
+        FlowAmount(value, cur, color, Modifier.shrinkToFit())
     }
 }
 
