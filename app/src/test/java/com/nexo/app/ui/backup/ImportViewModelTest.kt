@@ -57,7 +57,10 @@ class ImportViewModelTest {
         val vm = ImportViewModel(book.importer, book.refs)
         backgroundScope.launch { vm.uiState.collect {} }
         vm.refreshFiles()
-        assertEquals(listOf("lunch.tsv"), vm.uiState.first().imports.map { it.name })
+        assertEquals(
+            listOf("lunch.tsv"),
+            vm.uiState.first { it.imports.isNotEmpty() }.imports.map { it.name },
+        )
 
         vm.loadPreview("lunch.tsv", null).join()
         val row = vm.uiState.first { it.preview != null }.preview!!.rows.single()
@@ -67,6 +70,6 @@ class ImportViewModelTest {
         assertEquals(BackupResult.ImportSaved(0, 1), vm.uiState.first { it.result != null }.result)
 
         vm.deleteImports(listOf("lunch.tsv")).join()
-        assertTrue(vm.uiState.first { !it.busy }.imports.isEmpty())
+        vm.uiState.first { it.imports.isEmpty() && !it.busy }
     }
 }

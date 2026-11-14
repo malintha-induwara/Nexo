@@ -97,6 +97,7 @@ class AccountFormViewModelTest {
         vm.delete().join()
         assertEquals(AccountFormClose.TO_MAIN, vm.uiState.first { it.close != null }.close)
         vm.onCloseHandled()
-        assertNull(vm.uiState.value.close)
+        // The state combines with reference data emitted elsewhere, so wait rather than read at once.
+        assertNull(vm.uiState.first { it.close == null }.close)
     }
 }
