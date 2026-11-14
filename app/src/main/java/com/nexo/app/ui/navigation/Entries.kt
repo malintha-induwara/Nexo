@@ -24,9 +24,9 @@ import com.nexo.app.ui.budgets.BudgetAddScreen
 import com.nexo.app.ui.budgets.BudgetDetailScreen
 import com.nexo.app.ui.budgets.BudgetEditorScreen
 import com.nexo.app.ui.budgets.BudgetSettingsScreen
-import com.nexo.app.ui.categories.CategoryFormScreen
-import com.nexo.app.ui.categories.CategoryListScreen
-import com.nexo.app.ui.categories.SubcategoryListScreen
+import com.nexo.app.ui.categories.CategoryFormRoute
+import com.nexo.app.ui.categories.CategoryListRoute
+import com.nexo.app.ui.categories.SubcategoryListRoute
 import com.nexo.app.ui.entry.BookmarksScreen
 import com.nexo.app.ui.entry.EntryRoute
 import com.nexo.app.ui.entry.RepeatListScreen
@@ -88,9 +88,9 @@ fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<BudgetSettingsKey> { BudgetSettingsScreen() }
     entry<BudgetAddKey> { BudgetAddScreen(it) }
     entry<BudgetEditorKey> { BudgetEditorScreen(it) }
-    entry<CategoryListKey> { CategoryListScreen(it) }
-    entry<SubcategoryListKey> { SubcategoryListScreen(it) }
-    entry<CategoryFormKey> { CategoryFormScreen(it) }
+    entry<CategoryListKey> { CategoryListRoute(it) }
+    entry<SubcategoryListKey> { SubcategoryListRoute(it) }
+    entry<CategoryFormKey> { CategoryFormRoute(it) }
     entry<TagSettingsKey> { TagSettingsRoute() }
     entry<ConfigurationKey> { ConfigurationScreen() }
     entry<MonthStartKey> { MonthStartScreen() }

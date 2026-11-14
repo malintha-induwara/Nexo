@@ -57,6 +57,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -77,6 +78,8 @@ import com.nexo.app.ui.designsystem.component.SectionHeader
 import com.nexo.app.ui.designsystem.component.SettingRow
 import com.nexo.app.ui.designsystem.component.SwitchRow
 import com.nexo.app.ui.designsystem.component.rememberHaptics
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.CategoryHues
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
@@ -191,27 +194,52 @@ private fun EditableList(
 
 /** Main category list. */
 @Composable
-fun CategoryListScreen(key: CategoryListKey, vm: CategoryViewModel = hiltViewModel()) {
+fun CategoryListRoute(key: CategoryListKey, vm: CategoryViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    CategoryListScreen(
+        kind = key.kind,
+        state = state,
+        onBack = nav::back,
+        onAdd = { nav.navigate(CategoryFormKey(key.kind)) },
+        onOpenSubcategories = { nav.navigate(SubcategoryListKey(it)) },
+        onEditCategory = { nav.navigate(CategoryFormKey(key.kind, it)) },
+        onReorder = vm::reorder,
+        onDelete = vm::delete,
+        onSetSubcategories = vm::setSubcategories,
+    )
+}
+
+@Composable
+internal fun CategoryListScreen(
+    kind: CategoryKind,
+    state: CategoryUiState,
+    onBack: () -> Unit,
+    onAdd: () -> Unit,
+    onOpenSubcategories: (parentId: String) -> Unit,
+    onEditCategory: (categoryId: String) -> Unit,
+    onReorder: (ids: List<String>) -> Unit,
+    onDelete: (categoryId: String) -> Unit,
+    onSetSubcategories: (Boolean) -> Unit,
+) {
     val ref = state.ref
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
-    val mains = ref.mainCategories(key.kind)
+    val mains = ref.mainCategories(kind)
     val subsOn = ref.settings.subcategories
     Scaffold(topBar = {
         NexoTopBar(
             stringResource(
-                if (key.kind == CategoryKind.INCOME) {
+                if (kind == CategoryKind.INCOME) {
                     R.string.income_category
                 } else {
                     R.string.expenses_category
                 },
             ),
-            onBack = { nav.back() },
+            onBack = onBack,
         ) {
-            IconButton(onClick = {
-                nav.navigate(CategoryFormKey(key.kind))
-            }) { Icon(Icons.Rounded.Add, stringResource(R.string.action_add)) }
+            IconButton(onClick = onAdd) {
+                Icon(Icons.Rounded.Add, stringResource(R.string.action_add))
+            }
         }
     }) { p ->
         Box(Modifier.padding(top = p.calculateTopPadding())) {
@@ -237,15 +265,15 @@ fun CategoryListScreen(key: CategoryListKey, vm: CategoryViewModel = hiltViewMod
                 },
                 onClick = { c ->
                     if (subsOn) {
-                        nav.navigate(SubcategoryListKey(c.id))
+                        onOpenSubcategories(c.id)
                     } else {
-                        nav.navigate(CategoryFormKey(key.kind, c.id))
+                        onEditCategory(c.id)
                     }
                 },
-                onReorder = vm::reorder,
+                onReorder = onReorder,
                 onDelete = { deleting = it.id },
                 header = {
-                    SwitchRow(stringResource(R.string.subcategory), subsOn, vm::setSubcategories)
+                    SwitchRow(stringResource(R.string.subcategory), subsOn, onSetSubcategories)
                 },
                 empty = stringResource(R.string.no_data),
             )
@@ -253,7 +281,7 @@ fun CategoryListScreen(key: CategoryListKey, vm: CategoryViewModel = hiltViewMod
     }
     deleting?.let { id ->
         ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
-            vm.delete(id)
+            onDelete(id)
         }, onDismiss = {
             deleting = null
         })
@@ -261,19 +289,44 @@ fun CategoryListScreen(key: CategoryListKey, vm: CategoryViewModel = hiltViewMod
 }
 
 @Composable
-fun SubcategoryListScreen(key: SubcategoryListKey, vm: CategoryViewModel = hiltViewModel()) {
+fun SubcategoryListRoute(key: SubcategoryListKey, vm: CategoryViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    SubcategoryListScreen(
+        parentId = key.parentId,
+        state = state,
+        onBack = nav::back,
+        onEditParent = { nav.navigate(CategoryFormKey(it.kind, it.id)) },
+        onAddSubcategory = { nav.navigate(CategoryFormKey(it.kind, parentId = it.id, sub = true)) },
+        onEditSubcategory = { parent, subId ->
+            nav.navigate(CategoryFormKey(parent.kind, subId, parent.id, sub = true))
+        },
+        onReorder = vm::reorder,
+        onDelete = vm::delete,
+    )
+}
+
+@Composable
+internal fun SubcategoryListScreen(
+    parentId: String,
+    state: CategoryUiState,
+    onBack: () -> Unit,
+    onEditParent: (parent: Category) -> Unit,
+    onAddSubcategory: (parent: Category) -> Unit,
+    onEditSubcategory: (parent: Category, subId: String) -> Unit,
+    onReorder: (ids: List<String>) -> Unit,
+    onDelete: (categoryId: String) -> Unit,
+) {
     val ref = state.ref
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
-    val parent = ref.categoryById[key.parentId] ?: return
+    val parent = ref.categoryById[parentId] ?: return
     Scaffold(topBar = {
-        NexoTopBar(parent.name, onBack = { nav.back() }) {
+        NexoTopBar(parent.name, onBack = onBack) {
             IconButton(onClick = {
-                nav.navigate(CategoryFormKey(parent.kind, parent.id))
+                onEditParent(parent)
             }) { Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit)) }
             IconButton(onClick = {
-                nav.navigate(CategoryFormKey(parent.kind, parentId = parent.id, sub = true))
+                onAddSubcategory(parent)
             }) { Icon(Icons.Rounded.Add, stringResource(R.string.action_add)) }
         }
     }) { p ->
@@ -284,9 +337,9 @@ fun SubcategoryListScreen(key: SubcategoryListKey, vm: CategoryViewModel = hiltV
                 label = { it.name },
                 subtitle = { null },
                 onClick = { c ->
-                    nav.navigate(CategoryFormKey(parent.kind, c.id, parent.id, sub = true))
+                    onEditSubcategory(parent, c.id)
                 },
-                onReorder = vm::reorder,
+                onReorder = onReorder,
                 onDelete = { deleting = it.id },
                 empty = stringResource(R.string.no_subcategories),
             )
@@ -294,7 +347,7 @@ fun SubcategoryListScreen(key: SubcategoryListKey, vm: CategoryViewModel = hiltV
     }
     deleting?.let { id ->
         ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
-            vm.delete(id)
+            onDelete(id)
         }, onDismiss = {
             deleting = null
         })
@@ -319,13 +372,10 @@ private fun firstGrapheme(text: String): String? {
 }
 
 /** Add / edit main or sub category, with the main ↔ sub conversions. */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CategoryFormScreen(key: CategoryFormKey, vm: CategoryViewModel = hiltViewModel()) {
+fun CategoryFormRoute(key: CategoryFormKey, vm: CategoryViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val ref = state.ref
-    val colors = LocalNexoColors.current
     LaunchedEffect(state.navigation) {
         when (val target = state.navigation) {
             CategoryNavigation.Back -> nav.back()
@@ -339,6 +389,35 @@ fun CategoryFormScreen(key: CategoryFormKey, vm: CategoryViewModel = hiltViewMod
         }
         vm.onNavigationHandled()
     }
+    CategoryFormScreen(
+        key = key,
+        state = state,
+        onBack = nav::back,
+        onSave = vm::save,
+        onMoveUnder = vm::moveUnder,
+        onMakeMain = vm::makeMain,
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun CategoryFormScreen(
+    key: CategoryFormKey,
+    state: CategoryUiState,
+    onBack: () -> Unit,
+    onSave: (
+        kind: CategoryKind,
+        existingId: String?,
+        name: String,
+        parentId: String?,
+        emoji: String?,
+        colorIndex: Int?,
+    ) -> Unit,
+    onMoveUnder: (sourceId: String, targetId: String) -> Unit,
+    onMakeMain: (categoryId: String) -> Unit,
+) {
+    val ref = state.ref
+    val colors = LocalNexoColors.current
     val existing = key.categoryId?.let { ref.categoryById[it] }
     val isSub = key.sub || existing?.parentId != null
     var name by rememberSaveable(existing?.id) {
@@ -378,7 +457,7 @@ fun CategoryFormScreen(key: CategoryFormKey, vm: CategoryViewModel = hiltViewMod
         )
     val preview = CategoryVisuals.resolve(draft, if (isSub) parentEntity else null)
 
-    Scaffold(topBar = { NexoTopBar(stringResource(title), onBack = { nav.back() }) }) { p ->
+    Scaffold(topBar = { NexoTopBar(stringResource(title), onBack = onBack) }) { p ->
         Column(
             Modifier.padding(
                 top = p.calculateTopPadding(),
@@ -501,7 +580,7 @@ fun CategoryFormScreen(key: CategoryFormKey, vm: CategoryViewModel = hiltViewMod
 
                     isSub && parent == null -> error = R.string.select_specific_category
 
-                    else -> vm.save(
+                    else -> onSave(
                         key.kind,
                         existing?.id,
                         name,
@@ -572,13 +651,13 @@ fun CategoryFormScreen(key: CategoryFormKey, vm: CategoryViewModel = hiltViewMod
                 existing?.name ?: "",
                 ref.categoryName(target) ?: "",
             ),
-            onConfirm = { vm.moveUnder(existing!!.id, target) },
+            onConfirm = { onMoveUnder(existing!!.id, target) },
             onDismiss = { confirmTarget = null },
         )
     }
     if (confirmMain && existing != null) {
         ConfirmDialog(stringResource(R.string.to_main_confirm), onConfirm = {
-            vm.makeMain(existing.id)
+            onMakeMain(existing.id)
         }, onDismiss = {
             confirmMain = false
         })
@@ -680,4 +759,57 @@ private fun Swatch(
             )
         }
     }
+}
+
+private val previewState = CategoryUiState(
+    ref = PreviewData.ref.copy(settings = PreviewData.ref.settings.copy(subcategories = true)),
+)
+
+@Preview
+@Composable
+private fun CategoryListScreenPreview() = NexoPreview {
+    CategoryListScreen(
+        kind = CategoryKind.EXPENSE,
+        state = previewState,
+        onBack = {},
+        onAdd = {},
+        onOpenSubcategories = {},
+        onEditCategory = {},
+        onReorder = {},
+        onDelete = {},
+        onSetSubcategories = {},
+    )
+}
+
+@Preview
+@Composable
+private fun SubcategoryListScreenPreview() = NexoPreview {
+    SubcategoryListScreen(
+        parentId = "food",
+        state = previewState,
+        onBack = {},
+        onEditParent = {},
+        onAddSubcategory = {},
+        onEditSubcategory = { _, _ -> },
+        onReorder = {},
+        onDelete = {},
+    )
+}
+
+@Preview
+@Composable
+private fun CategoryFormScreenPreview() = NexoPreview {
+    CategoryFormScreen(
+        key = CategoryFormKey(
+            CategoryKind.EXPENSE,
+            categoryId = "groceries",
+            parentId = "food",
+            sub = true,
+        ),
+        state = previewState,
+        onBack = {},
+        onSave = { _, _, _, _, _, _ -> },
+        onMoveUnder = { _, _ -> },
+        onMakeMain = {},
+    )
 }
