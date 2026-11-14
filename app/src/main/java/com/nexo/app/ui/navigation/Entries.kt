@@ -28,7 +28,7 @@ import com.nexo.app.ui.categories.CategoryFormScreen
 import com.nexo.app.ui.categories.CategoryListScreen
 import com.nexo.app.ui.categories.SubcategoryListScreen
 import com.nexo.app.ui.entry.BookmarksScreen
-import com.nexo.app.ui.entry.EntryScreen
+import com.nexo.app.ui.entry.EntryRoute
 import com.nexo.app.ui.entry.RepeatListScreen
 import com.nexo.app.ui.memo.MemoEditorScreen
 import com.nexo.app.ui.memo.MemoListScreen
@@ -67,7 +67,7 @@ fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<SmsSendersKey> { SmsSendersScreen() }
     entry<EntryKey>(metadata = { key ->
         if (key.fromAdd) SheetSceneStrategy.sheet(key) else emptyMap()
-    }) { EntryScreen(it) }
+    }) { EntryRoute(it) }
     entry<BookmarksKey> { BookmarksScreen(it) }
     entry<RepeatListKey> { RepeatListScreen() }
     entry<SearchKey> { SearchScreen(it) }
