@@ -1,5 +1,6 @@
 package com.nexo.app.ui.backup
 
+import com.nexo.app.core.lock.expectReturn
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -86,7 +87,7 @@ fun ImportListScreen(vm: BackupViewModel = hiltViewModel()) {
     }) { p ->
         Column(Modifier.padding(p)) {
             Text(stringResource(R.string.import_text), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
-            Button(onClick = { picker.launch(arrayOf("text/*", "application/octet-stream", "text/tab-separated-values")) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Button(onClick = { context.expectReturn(); picker.launch(arrayOf("text/*", "application/octet-stream", "text/tab-separated-values")) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 Text(stringResource(R.string.import_excel))
             }
             if (files.isEmpty()) EmptyState()

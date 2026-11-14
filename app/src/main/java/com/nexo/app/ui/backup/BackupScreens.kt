@@ -1,5 +1,6 @@
 package com.nexo.app.ui.backup
 
+import com.nexo.app.core.lock.expectReturn
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -131,8 +132,8 @@ fun BackupScreen(vm: BackupViewModel = hiltViewModel()) {
             })
             SettingRow(stringResource(R.string.export_to_excel), onClick = { nav.navigate(ExcelExportKey()) })
             SettingRow(stringResource(R.string.import_excel), onClick = { nav.navigate(ImportListKey) })
-            SettingRow(stringResource(R.string.export_photos), stringResource(R.string.export_photos_text), onClick = { exportTree.launch(null) })
-            SettingRow(stringResource(R.string.import_photos), stringResource(R.string.import_photos_text), onClick = { importTree.launch(null) })
+            SettingRow(stringResource(R.string.export_photos), stringResource(R.string.export_photos_text), onClick = { context.expectReturn(); exportTree.launch(null) })
+            SettingRow(stringResource(R.string.import_photos), stringResource(R.string.import_photos_text), onClick = { context.expectReturn(); importTree.launch(null) })
             SettingRow(stringResource(R.string.help_backup), onClick = { nav.navigate(HelpPageKey("backup")) })
             SectionHeader(stringResource(R.string.action_reset))
             SettingRow(stringResource(R.string.complete_reset), onClick = { resetFlow = "all"; resetStep = 1; deletePhotos = false })
@@ -191,8 +192,8 @@ fun BackupDeviceScreen(vm: BackupViewModel = hiltViewModel()) {
     Scaffold(topBar = { NexoTopBar(stringResource(R.string.backup_on_device), onBack = { nav.back() }) }) { p ->
         Column(Modifier.padding(p)) {
             Text(stringResource(R.string.backup_device_text), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
-            SettingRow(stringResource(R.string.data_backup), stringResource(R.string.data_backup_text), onClick = { create.launch(vm.backups.backupFileName()) })
-            SettingRow(stringResource(R.string.data_recovery), stringResource(R.string.data_recovery_text), onClick = { open.launch(arrayOf("*/*")) })
+            SettingRow(stringResource(R.string.data_backup), stringResource(R.string.data_backup_text), onClick = { context.expectReturn(); create.launch(vm.backups.backupFileName()) })
+            SettingRow(stringResource(R.string.data_recovery), stringResource(R.string.data_recovery_text), onClick = { context.expectReturn(); open.launch(arrayOf("*/*")) })
             files.firstOrNull()?.let { newest ->
                 SettingRow(stringResource(R.string.auto_backup_history), Formats.dateTime(Instant.ofEpochMilli(newest.lastModified()).atZone(ZoneId.systemDefault()).toLocalDateTime()), onClick = { nav.navigate(AutoBackupHistoryKey) })
             }

@@ -34,19 +34,35 @@ class LockManager @Inject constructor(
     val locked: StateFlow<Boolean> = _locked.asStateFlow()
 
     private var backgroundedAt: Long? = null
+    private var handoffAt: Long? = null
+    private var awayOnHandoff = false
+
+    /**
+     * Call just before the app sends the user to another app and expects them straight back: the
+     * camera for a receipt, a file picker. That trip is not treated as leaving the app.
+     */
+    fun expectReturn() {
+        handoffAt = SystemClock.elapsedRealtime()
+    }
 
     fun onBackground() {
-        backgroundedAt = SystemClock.elapsedRealtime()
+        val now = SystemClock.elapsedRealtime()
+        backgroundedAt = now
+        // Only a background that follows the hand-off at once belongs to it.
+        awayOnHandoff = handoffAt?.let { now - it <= HANDOFF_START } == true
+        handoffAt = null
     }
 
     fun onForeground() {
         val since = backgroundedAt ?: return
         backgroundedAt = null
+        val handoff = awayOnHandoff
+        awayOnHandoff = false
         scope.launch {
             val s = prefs.current()
             if (!s.lockEnabled) return@launch
             val limit = if (s.lockTimeout == LockTimeout.IMMEDIATELY) 5_000L else s.lockTimeout.seconds * 1000L
-            if (SystemClock.elapsedRealtime() - since > limit) _locked.value = true
+            if (shouldLock(SystemClock.elapsedRealtime() - since, limit, handoff)) _locked.value = true
         }
     }
 
@@ -87,7 +103,21 @@ class LockManager @Inject constructor(
         const val FREE_TRIES = 5
         const val MAX_WAIT = 15 * 60_000L
 
+        /** How soon after [expectReturn] the app must go to the background for the trip to count as the hand-off. */
+        const val HANDOFF_START = 10_000L
+        /** How long a hand-off may last before coming back locks the app after all. */
+        const val HANDOFF_GRACE = 5 * 60_000L
+
+        /** Whether coming back after [awayMillis] locks the app. A hand-off gets [HANDOFF_GRACE] instead of the usual limit. */
+        fun shouldLock(awayMillis: Long, limitMillis: Long, handoff: Boolean): Boolean =
+            awayMillis > if (handoff) maxOf(limitMillis, HANDOFF_GRACE) else limitMillis
+
         /** From the 5th consecutive failure, 30 s doubling up to 15 min. */
         fun waitFor(failures: Int): Long = if (failures < FREE_TRIES) 0 else minOf(30_000L shl (failures - FREE_TRIES).coerceAtMost(10), MAX_WAIT)
     }
+}
+
+/** Tells the app lock the user is being sent to another app for a moment. See [LockManager.expectReturn]. */
+fun android.content.Context.expectReturn() {
+    (applicationContext as? com.nexo.app.NexoApplication)?.lock?.expectReturn()
 }
