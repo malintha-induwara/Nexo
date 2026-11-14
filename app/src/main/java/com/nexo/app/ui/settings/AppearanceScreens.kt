@@ -63,9 +63,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.model.LockTimeout
 import com.nexo.app.core.model.ThemeMode
-import com.nexo.app.core.notifications.Notifications
-import com.nexo.app.core.notifications.ReminderScheduler
-import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.Formats
@@ -96,7 +93,7 @@ private fun themeModeLabel(m: ThemeMode) = stringResource(
 /** Light, dark or follow the system. The colour theme was retired with the neutral redesign. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun StyleScreen(vm: SettingsViewModel = hiltViewModel()) {
+fun StyleScreen(vm: AppearanceViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val device = state.device
@@ -122,7 +119,7 @@ fun StyleScreen(vm: SettingsViewModel = hiltViewModel()) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ReminderScreen(vm: SettingsViewModel = hiltViewModel()) {
+fun ReminderScreen(vm: ReminderViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -130,23 +127,20 @@ fun ReminderScreen(vm: SettingsViewModel = hiltViewModel()) {
     val d = device ?: return
     var time by rememberSaveable { mutableStateOf(false) }
     var exactPrompt by rememberSaveable { mutableStateOf(false) }
-    val clock = LocalClock.current
-    fun apply(enabled: Boolean, h: Int, m: Int, days: Set<Int>) {
+    fun apply(enabled: Boolean, h: Int, m: Int, days: Set<Int>) =
         vm.setReminder(enabled, h, m, days)
-        ReminderScheduler.schedule(context, clock, enabled, h, m)
-    }
     val permission =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
             if (ok) apply(true, d.reminderHour, d.reminderMinute, d.reminderDays)
         }
-    LaunchedEffect(Unit) { if (!ReminderScheduler.canScheduleExact(context)) exactPrompt = true }
+    LaunchedEffect(Unit) { if (!vm.canScheduleExactAlarms()) exactPrompt = true }
     Scaffold(topBar = {
         NexoTopBar(stringResource(R.string.alarm_setting), onBack = { nav.back() })
     }) { p ->
         Column(Modifier.padding(p)) {
             SwitchRow(stringResource(R.string.alarm), d.reminderEnabled, { on ->
                 if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                    !Notifications.canPost(context)
+                    !vm.canPostNotifications()
                 ) {
                     permission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 } else {
@@ -216,7 +210,7 @@ fun ReminderScreen(vm: SettingsViewModel = hiltViewModel()) {
 
 /** App lock: PIN, biometrics and lock timeout. */
 @Composable
-fun LockSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
+fun LockSettingsScreen(vm: LockSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()

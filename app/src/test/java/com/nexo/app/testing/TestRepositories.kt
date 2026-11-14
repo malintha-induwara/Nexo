@@ -196,4 +196,12 @@ class FakeNotifier : Notifier {
     override fun postSmsReview(count: Int) {
         smsReviewCounts += count
     }
+
+    override fun updateQuickAdd(enabled: Boolean) = Unit
+
+    override fun scheduleReminder(enabled: Boolean, hour: Int, minute: Int) = Unit
+
+    override fun canPost(): Boolean = true
+
+    override fun canScheduleExactAlarms(): Boolean = true
 }

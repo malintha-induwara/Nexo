@@ -36,10 +36,8 @@ import com.nexo.app.core.model.StartScreen
 import com.nexo.app.core.model.SwipeMode
 import com.nexo.app.core.model.TimeDisplay
 import com.nexo.app.core.model.WeekendRule
-import com.nexo.app.core.notifications.Notifications
 import com.nexo.app.ui.accounts.CardTimingDialog
 import com.nexo.app.ui.accounts.cardAccountingLabel
-import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
@@ -81,8 +79,7 @@ fun timeDisplayLabel(t: TimeDisplay) = stringResource(
 )
 
 @Composable
-fun ConfigurationScreen(vm: SettingsViewModel = hiltViewModel()) {
-    val clock = LocalClock.current
+fun ConfigurationScreen(vm: ConfigurationViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
@@ -407,7 +404,7 @@ fun ConfigurationScreen(vm: SettingsViewModel = hiltViewModel()) {
             onDismiss = close,
             extraButton = {
                 TextButton(onClick = {
-                    vm.update { it.copy(autocompleteResetAt = clock.millis()) }
+                    vm.resetAutocomplete()
                     Toast.makeText(context, R.string.reset_complete, Toast.LENGTH_SHORT).show()
                     close()
                 }) { Text(stringResource(R.string.action_reset)) }
@@ -452,10 +449,7 @@ fun ConfigurationScreen(vm: SettingsViewModel = hiltViewModel()) {
             {
                 onOff(it)
             },
-            onSelect = { v ->
-                vm.update { it.copy(quickAddNotification = v) }
-                Notifications.updateQuickAdd(context, v)
-            },
+            onSelect = vm::setQuickAddNotification,
             onDismiss = close,
             description = stringResource(R.string.quick_add_text),
         )
@@ -545,7 +539,7 @@ private fun LanguageDialog(onDismiss: () -> Unit) {
 }
 
 @Composable
-fun MonthStartScreen(vm: SettingsViewModel = hiltViewModel()) {
+fun MonthStartScreen(vm: ConfigurationViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
