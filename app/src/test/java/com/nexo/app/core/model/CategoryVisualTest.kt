@@ -1,7 +1,6 @@
 package com.nexo.app.core.model
 
 import com.nexo.app.data.database.entity.CategoryEntity
-import com.nexo.app.core.model.CategoryKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

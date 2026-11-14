@@ -63,14 +63,14 @@ import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.component.PeriodNavigator
 import com.nexo.app.ui.designsystem.component.TotalsBar
+import com.nexo.app.ui.designsystem.theme.LocalIsDark
+import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
+import com.nexo.app.ui.designsystem.theme.NexoPalette
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MemoEditorKey
 import com.nexo.app.ui.navigation.SearchKey
-import com.nexo.app.ui.designsystem.theme.LocalIsDark
-import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
-import com.nexo.app.ui.designsystem.theme.NexoPalette
 import com.nexo.app.ui.transactions.BulkAction
 import com.nexo.app.ui.transactions.BulkDialogs
 import com.nexo.app.ui.transactions.SelectionBar
@@ -205,7 +205,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
             }
         }
     }
-    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.writer, selection, onDone = { vm.setSelection(emptySet()) }, onDismiss = { bulkOpen = false })
+    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.transactions, selection, onDone = { vm.setSelection(emptySet()) }, onDismiss = { bulkOpen = false })
     when (dialog) {
         "period" -> ChoiceDialog(
             title = stringResource(R.string.period), options = SearchPeriod.entries, selected = c.period, label = { stringResource(periodLabel(it)) },

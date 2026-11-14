@@ -3,71 +3,140 @@ package com.nexo.app.data.repository
 import android.content.Context
 import androidx.room.withTransaction
 import com.nexo.app.R
+import com.nexo.app.core.common.money.Conversion
+import com.nexo.app.core.common.money.Money
+import com.nexo.app.core.common.period.DateRange
+import com.nexo.app.core.common.period.toEpochMillis
+import com.nexo.app.core.common.period.toIsoText
+import com.nexo.app.core.common.period.toLocalDateTime
+import com.nexo.app.core.model.CategoryKind
+import com.nexo.app.core.model.EntryType
+import com.nexo.app.core.model.Installments
+import com.nexo.app.core.model.Ledger
+import com.nexo.app.core.model.PhotoItem
+import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.TxDraft
+import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
+import com.nexo.app.data.database.dao.NoteUsage
+import com.nexo.app.data.database.dao.TxAggregate
 import com.nexo.app.data.database.entity.CategoryEntity
 import com.nexo.app.data.database.entity.PhotoEntity
 import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.data.database.entity.TransactionTagEntity
-import com.nexo.app.data.file.PhotoStore
 import com.nexo.app.data.file.StoredPhoto
-import com.nexo.app.core.model.CategoryKind
-import com.nexo.app.core.model.EntryType
-import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.common.money.Money
-import com.nexo.app.core.common.period.toIsoText
-import com.nexo.app.core.common.money.Conversion
-import com.nexo.app.core.model.Installments
-import com.nexo.app.core.model.PhotoItem
-import com.nexo.app.core.model.RefData
-import com.nexo.app.core.model.TxDraft
-import com.nexo.app.widget.WidgetRefresher
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 
-/** Writes transactions while keeping their integrity rules (both transfer legs, fees, installments, tags, photos). */
 @Singleton
-class TransactionWriter @Inject constructor(
+class DefaultTransactionsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: NexoDatabase,
-    private val refs: RefRepository,
-    private val photos: PhotoStore,
-    private val widgets: WidgetRefresher,
-) {
+    private val refs: ReferenceDataRepository,
+    private val bookSettings: BookSettingsRepository,
+    private val photos: PhotosRepository,
+) : TransactionsRepository {
     private val dao get() = db.transactionDao()
     private val zone: ZoneId get() = ZoneId.systemDefault()
 
     private fun uuid() = UUID.randomUUID().toString()
     private fun now() = System.currentTimeMillis()
 
-    fun millis(dt: LocalDateTime): Long = dt.atZone(zone).toInstant().toEpochMilli()
-    fun localDateTime(ms: Long): LocalDateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(ms), zone)
+    private fun millis(dt: LocalDateTime): Long = dt.toEpochMillis(zone)
+    private fun localDateTime(ms: Long): LocalDateTime = ms.toLocalDateTime(zone)
 
-    /** Saves the draft and returns the primary row id. */
-    suspend fun save(d: TxDraft): String {
+    override fun getLedgerStream(range: DateRange): Flow<Ledger> =
+        ledger(dao.observeRange(range.startText, range.endText))
+
+    override fun getAccountsLedgerStream(accountIds: List<String>, range: DateRange): Flow<Ledger> =
+        ledger(dao.observeForAccounts(accountIds, range.startText, range.endText))
+
+    override fun getUnassignedLedgerStream(): Flow<Ledger> = ledger(dao.observeUnassigned())
+
+    private fun ledger(rows: Flow<List<TransactionEntity>>): Flow<Ledger> =
+        combine(rows, db.tagDao().observeLinks(), db.photoDao().observeAll()) { r, links, photos ->
+            Ledger(r, groupLinks(links), photos.mapTo(HashSet()) { it.transactionId })
+        }
+
+    override fun getChangeStampStream(): Flow<Long> = dao.observeStamp()
+
+    override fun getChangesStream(): Flow<Unit> =
+        db.invalidationTracker.createFlow("transactions", "transaction_tags", "photos", emitInitialState = false).map { }
+
+    override fun getAggregatesUpToStream(end: String): Flow<List<TxAggregate>> = dao.observeAggregatesUpTo(end)
+
+    override suspend fun getTransaction(id: String): TransactionEntity? = dao.getById(id)
+
+    override suspend fun getTransferLegs(transferGroupId: String): List<TransactionEntity> = dao.getByTransferGroup(transferGroupId)
+
+    override suspend fun getInstallmentGroup(installmentGroupId: String): List<TransactionEntity> = dao.getByInstallmentGroup(installmentGroupId)
+
+    override suspend fun getFeeRow(feeGroupId: String): TransactionEntity? = dao.getFeeRow(feeGroupId)
+
+    override suspend fun getTagIds(transactionId: String): List<String> =
+        db.tagDao().linksForTransaction(transactionId).sortedBy { it.position }.map { it.tagId }
+
+    override suspend fun getPhotos(transactionId: String): List<PhotoEntity> = db.photoDao().forTransaction(transactionId)
+
+    override suspend fun getLastTransferWithFee(fromAccountId: String, toAccountId: String): TransactionEntity? =
+        dao.lastTransferWithFee(fromAccountId, toAccountId)
+
+    override suspend fun getAllForAccounts(accountIds: List<String>): List<TransactionEntity> = dao.getAllForAccounts(accountIds)
+
+    override suspend fun getWithoutAccount(): List<TransactionEntity> = dao.noAccount()
+
+    override suspend fun getUnassigned(upTo: String): List<TransactionEntity> = dao.unassigned(upTo)
+
+    override suspend fun getRange(start: String, end: String): List<TransactionEntity> = dao.getRange(start, end)
+
+    override suspend fun search(start: String, end: String, pattern: String, includeSource: Boolean): List<TransactionEntity> =
+        dao.search(start, end, pattern, includeSource)
+
+    override suspend fun getNoteUsage(cutDate: String, cutMillis: Long): List<NoteUsage> = dao.noteUsage(cutDate, cutMillis)
+
+    override suspend fun getAggregatesUpTo(end: String): List<TxAggregate> = dao.aggregatesUpTo(end)
+
+    override suspend fun getAggregatesBetween(start: String, end: String): List<TxAggregate> = dao.aggregatesBetween(start, end)
+
+    override suspend fun getAggregatesBefore(before: String): List<TxAggregate> = dao.aggregatesBefore(before)
+
+    override suspend fun getLedgerFor(rows: List<TransactionEntity>): Ledger {
+        val ids = rows.map { it.id }
+        val links = ids.chunked(500).flatMap { db.tagDao().linksFor(it) }
+        val photos = ids.chunked(500).flatMap { db.photoDao().forTransactions(it) }
+        return Ledger(rows, groupLinks(links), photos.mapTo(HashSet()) { it.transactionId })
+    }
+
+    private fun groupLinks(links: List<TransactionTagEntity>): Map<String, List<String>> =
+        links.groupBy { it.transactionId }.mapValues { (_, l) -> l.sortedBy { it.position }.map { it.tagId } }
+
+    override suspend fun save(draft: TxDraft): String {
+        val d = draft
         val stored = resolvePhotos(d.photos)
         val cleanup = HashSet<String>()
         // Read the reference snapshot before the transaction: its first load needs a database connection.
-        val ref = refs.snapshot()
+        val ref = refs.getRefData()
         val id = db.withTransaction {
             val original = d.editingId?.let { dao.getById(it) }
             if (d.type == EntryType.TRANSFER) saveTransfer(ref, d, original, stored, cleanup)
             else saveSingle(ref, d, original, stored, cleanup)
         }
         photos.deleteUnreferenced(cleanup)
-        widgets.refresh()
         return id
     }
 
     private suspend fun resolvePhotos(items: List<PhotoItem>): List<StoredPhoto> = items.mapNotNull {
         when (it) {
             is PhotoItem.Stored -> StoredPhoto(it.fileName, it.size, it.checksum)
-            is PhotoItem.Picked -> photos.importUri(it.uri)
+            is PhotoItem.Picked -> photos.importPhoto(it.uri)
         }
     }
 
@@ -265,7 +334,7 @@ class TransactionWriter @Inject constructor(
     }
 
     /** Fee category: the system Bank fee category once it exists, else "Fees", else "Other", else the last expense category. */
-    fun feeCategory(ref: RefData): CategoryEntity? {
+    private fun feeCategory(ref: RefData): CategoryEntity? {
         val expense = ref.categories.filter { it.kind == CategoryKind.EXPENSE && !it.isDeleted }
         ref.settings.bankFeeCategoryId.takeIf { it.isNotEmpty() }?.let { id -> expense.firstOrNull { it.id == id } }?.let { return it }
         val fees = context.getString(R.string.cat_fees)
@@ -279,8 +348,8 @@ class TransactionWriter @Inject constructor(
      * The system "Bank fee" category, created on first use and remembered by id,
      * so renaming it never breaks the link.
      */
-    suspend fun bankFeeCategory(): String {
-        val ref = refs.snapshot()
+    override suspend fun bankFeeCategory(): String {
+        val ref = refs.getRefData()
         ref.settings.bankFeeCategoryId.takeIf { it.isNotEmpty() }
             ?.let { id -> ref.categoryById[id]?.takeIf { !it.isDeleted && it.kind == CategoryKind.EXPENSE }?.id }
             ?.let { return it }
@@ -294,7 +363,7 @@ class TransactionWriter @Inject constructor(
                 ),
             ),
         )
-        refs.updateSettings { it.copy(bankFeeCategoryId = id) }
+        bookSettings.updateBookSettings { it.copy(bankFeeCategoryId = id) }
         return id
     }
 
@@ -302,10 +371,11 @@ class TransactionWriter @Inject constructor(
      * A bank fee on a non-transfer row is its own expense from the same account, linked through `feeParentId`,
      * a millisecond after its parent. Returns the fee row's id.
      */
-    suspend fun addFee(parentId: String, amount: Double, note: String = context.getString(R.string.cat_bank_fee)): String? {
+    override suspend fun addFee(parentId: String, amount: Double, note: String?): String? {
+        val feeNote = note ?: context.getString(R.string.cat_bank_fee)
         if (amount <= 0) return null
         val categoryId = bankFeeCategory()
-        val ref = refs.snapshot()
+        val ref = refs.getRefData()
         val id = db.withTransaction {
             val parent = dao.getById(parentId) ?: return@withTransaction null
             val cur = ref.accountCurrency(parent.accountId)
@@ -317,16 +387,15 @@ class TransactionWriter @Inject constructor(
                 id = uuid(), kind = TxKind.EXPENSE, accountId = parent.accountId, categoryId = categoryId,
                 dateTime = millis(at), date = at.toLocalDate().toIsoText(),
                 amount = a.amount, amountMain = a.main, amountAccount = a.account, currencyId = cur.id,
-                note = note, feeParentId = parent.id, createdAt = now + 1, updatedAt = now + 1,
+                note = feeNote, feeParentId = parent.id, createdAt = now + 1, updatedAt = now + 1,
             )
             dao.insertAll(listOf(row))
             row.id
         }
-        widgets.refresh()
         return id
     }
 
-    suspend fun setTags(txIds: List<String>, tagIds: List<String>) {
+    private suspend fun setTags(txIds: List<String>, tagIds: List<String>) {
         db.tagDao().deleteLinksFor(txIds)
         if (tagIds.isEmpty()) return
         db.tagDao().insertLinks(txIds.flatMap { tx -> tagIds.mapIndexed { i, tag -> TransactionTagEntity(tx, tag, i + 1) } })
@@ -369,7 +438,7 @@ class TransactionWriter @Inject constructor(
         return ids
     }
 
-    suspend fun delete(ids: Collection<String>, wholeInstallmentGroup: Boolean = false) {
+    override suspend fun delete(ids: Collection<String>, wholeInstallmentGroup: Boolean) {
         val cleanup = HashSet<String>()
         db.withTransaction {
             val rows = dao.getByIds(ids.toList())
@@ -384,11 +453,10 @@ class TransactionWriter @Inject constructor(
             removeRows(all.toList(), cleanup)
         }
         photos.deleteUnreferenced(cleanup)
-        widgets.refresh()
     }
 
     /** Edit All Dates: keeps each row's time of day; partners and fees move too. */
-    suspend fun setDate(ids: Collection<String>, date: LocalDate) {
+    override suspend fun setDate(ids: Collection<String>, date: LocalDate) {
         db.withTransaction {
             val rows = dao.getByIds(ids.toList())
             val all = dao.getByIds(expand(rows, false).toList())
@@ -401,24 +469,22 @@ class TransactionWriter @Inject constructor(
                 },
             )
         }
-        widgets.refresh()
     }
 
     /** Edit All Notes. */
-    suspend fun setNote(ids: Collection<String>, note: String) {
+    override suspend fun setNote(ids: Collection<String>, note: String) {
         db.withTransaction {
             val rows = dao.getByIds(ids.toList())
             val partners = rows.flatMap { r -> r.transferGroupId?.let { dao.getByTransferGroup(it) }.orEmpty() }
             val all = (rows + partners).distinctBy { it.id }
             dao.updateAll(all.map { it.copy(note = note.trim(), updatedAt = now()) })
         }
-        widgets.refresh()
     }
 
     /** Edit All Categories: the category decides income/expense; transfers are converted (partner and fee deleted). */
-    suspend fun setCategory(ids: Collection<String>, categoryId: String) {
+    override suspend fun setCategory(ids: Collection<String>, categoryId: String) {
         val cleanup = HashSet<String>()
-        val ref = refs.snapshot()
+        val ref = refs.getRefData()
         db.withTransaction {
             val cat = ref.categoryById[categoryId] ?: return@withTransaction
             val kind = if (cat.kind == CategoryKind.INCOME) TxKind.INCOME else TxKind.EXPENSE
@@ -440,12 +506,11 @@ class TransactionWriter @Inject constructor(
             }
         }
         photos.deleteUnreferenced(cleanup)
-        widgets.refresh()
     }
 
     /** Edit All Assets with one account. */
-    suspend fun setAccount(ids: Collection<String>, accountId: String) {
-        val ref = refs.snapshot()
+    override suspend fun setAccount(ids: Collection<String>, accountId: String) {
+        val ref = refs.getRefData()
         db.withTransaction {
             val accCur = ref.accountCurrency(accountId)
             val rows = dao.getByIds(ids.toList())
@@ -461,12 +526,11 @@ class TransactionWriter @Inject constructor(
                 dao.updateAll(listOf(updated) + partners)
             }
         }
-        widgets.refresh()
     }
 
     /** Edit All Assets with a From/To pair: every row becomes a transfer between them. */
-    suspend fun setTransfer(ids: Collection<String>, from: String, to: String) {
-        val ref = refs.snapshot()
+    override suspend fun setTransfer(ids: Collection<String>, from: String, to: String) {
+        val ref = refs.getRefData()
         db.withTransaction {
             val fromCur = ref.accountCurrency(from)
             val toCur = ref.accountCurrency(to)
@@ -498,12 +562,11 @@ class TransactionWriter @Inject constructor(
                 }
             }
         }
-        widgets.refresh()
     }
 
-    suspend fun recordBalanceDifference(accountId: String, difference: Double, asIncomeExpense: Boolean, description: String) {
+    override suspend fun recordBalanceDifference(accountId: String, difference: Double, asIncomeExpense: Boolean, description: String) {
         if (difference == 0.0) return
-        val ref = refs.snapshot()
+        val ref = refs.getRefData()
         db.withTransaction {
             val cur = ref.accountCurrency(accountId)
             val amount = Money.round(kotlin.math.abs(difference), cur.decimals)
@@ -528,7 +591,6 @@ class TransactionWriter @Inject constructor(
                 ),
             )
         }
-        widgets.refresh()
     }
 
     companion object {

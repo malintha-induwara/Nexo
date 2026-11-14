@@ -7,7 +7,6 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.datastore.DevicePrefs
 import com.nexo.app.data.sms.InboxReader
 import com.nexo.app.data.sms.SmsIntake
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -30,7 +29,7 @@ object SmsPermissions {
 @Singleton
 class SmsCapture @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val prefs: DevicePrefs,
+    private val prefs: UserPreferencesRepository,
     private val db: NexoDatabase,
     private val intake: SmsIntake,
     private val inbox: InboxReader,
@@ -41,7 +40,7 @@ class SmsCapture @Inject constructor(
 
     /** Sets or clears the start point, catches up on missed messages, and expires old items. */
     suspend fun refresh(now: Long = System.currentTimeMillis()) = mutex.withLock {
-        val s = prefs.current()
+        val s = prefs.getDeviceSettings()
         if (!s.setupDone) return@withLock
         val active = s.smsCaptureEnabled && hasPermission()
         when {
@@ -59,7 +58,7 @@ class SmsCapture @Inject constructor(
 
     /** Messages missed while the process wasn't running. Never reaches back past the start point. */
     private suspend fun catchUp() {
-        val s = prefs.current()
+        val s = prefs.getDeviceSettings()
         var after = maxOf(s.smsLastProcessedAt, s.smsCaptureStartedAt - 1)
         while (true) {
             val rows = try {

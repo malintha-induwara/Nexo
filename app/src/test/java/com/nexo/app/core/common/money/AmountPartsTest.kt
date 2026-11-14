@@ -1,12 +1,12 @@
 package com.nexo.app.core.common.money
 
-import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.core.model.SymbolPosition
+import com.nexo.app.data.database.entity.CurrencyEntity
+import java.util.Locale
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
-import java.util.Locale
 
 class AmountPartsTest {
     private lateinit var saved: Locale

@@ -13,7 +13,6 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
-import com.nexo.app.data.database.NexoDatabase
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -27,12 +26,11 @@ import kotlinx.coroutines.withContext
 
 data class StoredPhoto(val fileName: String, val size: Long, val checksum: String)
 
-/** Photo files in the private photo folder. */
+/** Photo files in the private photo folder, plus the shared gallery export. Knows nothing about which rows use them. */
 @Singleton
-class PhotoStore @Inject constructor(
+class PhotoFileDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dirs: AppDirs,
-    private val db: NexoDatabase,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     fun file(fileName: String): File = File(dirs.photos, fileName)
@@ -53,16 +51,14 @@ class PhotoStore @Inject constructor(
 
     fun isSupported(uri: Uri): Boolean = extensionOf(uri)?.let { it in SUPPORTED } ?: true
 
-    /** Copies [uri] into the photo folder, reusing an identical stored file (MD5) and downscaling sources over 2 MB. */
-    suspend fun importUri(uri: Uri): StoredPhoto? = withContext(ioDispatcher) {
-        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return@withContext null
-        val checksum = md5(bytes)
-        db.photoDao().byChecksum(checksum)?.let { existing ->
-            if (file(existing.fileName).exists()) return@withContext StoredPhoto(existing.fileName, existing.fileSize, checksum)
-        }
-        val ext = extensionOf(uri)
+    suspend fun readBytes(uri: Uri): ByteArray? = withContext(ioDispatcher) {
+        context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+    }
+
+    /** Writes [bytes] as a new photo file, downscaling sources over 2 MB. [extension] is used for small files only. */
+    suspend fun write(bytes: ByteArray, extension: String?, checksum: String): StoredPhoto = withContext(ioDispatcher) {
         val large = bytes.size > MAX_BYTES
-        val name = UUID.randomUUID().toString() + "." + (if (large || ext.isNullOrEmpty()) "jpg" else ext)
+        val name = UUID.randomUUID().toString() + "." + (if (large || extension.isNullOrEmpty()) "jpg" else extension)
         val out = file(name)
         if (large) {
             val data = downscale(bytes) ?: bytes
@@ -107,11 +103,8 @@ class PhotoStore @Inject constructor(
         return result
     }
 
-    /** Removes files that no photo row references any more. */
-    suspend fun deleteUnreferenced(fileNames: Collection<String>) = withContext(ioDispatcher) {
-        for (name in fileNames.toSet()) {
-            if (db.photoDao().countByFileName(name) == 0) file(name).delete()
-        }
+    suspend fun delete(fileName: String) = withContext(ioDispatcher) {
+        file(fileName).delete()
     }
 
     /** Saves a copy into the shared Pictures/Nexo folder. */

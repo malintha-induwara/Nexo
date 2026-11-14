@@ -37,9 +37,9 @@ import androidx.compose.ui.unit.dp
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 import com.nexo.app.ui.designsystem.theme.Space
-import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 /** One side of a [SwipeActionRow]. A disabled action resists the drag and never fires. */
 data class SwipeAction(

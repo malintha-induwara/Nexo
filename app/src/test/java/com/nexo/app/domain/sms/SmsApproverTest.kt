@@ -13,17 +13,13 @@ import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.Seeder
 import com.nexo.app.data.database.entity.SmsItemEntity
-import com.nexo.app.data.file.AppDirs
-import com.nexo.app.data.file.PhotoStore
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.data.repository.TransactionWriter
+import com.nexo.app.data.datastore.DevicePreferencesDataSource
+import com.nexo.app.data.repository.DefaultUserPreferencesRepository
+import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.data.sms.Missing
 import com.nexo.app.data.sms.SmsSuggester
-import com.nexo.app.domain.sms.ApproveResult
-import com.nexo.app.domain.sms.FeeChoice
-import com.nexo.app.domain.sms.FeePlan
-import com.nexo.app.domain.sms.SmsApprover
-import com.nexo.app.widget.WidgetRefresher
+import com.nexo.app.testing.referenceDataRepository
+import com.nexo.app.testing.transactionsRepository
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,7 +41,7 @@ import org.robolectric.annotation.Config
 class SmsApproverTest {
     private lateinit var db: NexoDatabase
     private lateinit var approver: SmsApprover
-    private lateinit var writer: TransactionWriter
+    private lateinit var transactions: TransactionsRepository
     private val at = 1_793_700_000_000L
 
     @Before
@@ -54,9 +50,9 @@ class SmsApproverTest {
         db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
         Seeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-        val refs = RefRepository(db, scope)
-        writer = TransactionWriter(context, db, refs, PhotoStore(context, AppDirs(context), db, Dispatchers.IO), WidgetRefresher(context, scope))
-        approver = SmsApprover(db, refs, writer, SmsSuggester(db, refs, com.nexo.app.data.repository.FxRepository(db, refs, com.nexo.app.data.datastore.DevicePrefs(context), com.nexo.app.data.network.BankRatesClient(Dispatchers.IO))))
+        val refs = referenceDataRepository(db, scope)
+        transactions = transactionsRepository(context, db, refs)
+        approver = SmsApprover(db, refs, transactions, SmsSuggester(db, refs, com.nexo.app.data.repository.FxRepository(db, refs, DefaultUserPreferencesRepository(DevicePreferencesDataSource(context)), com.nexo.app.data.network.BankRatesClient(Dispatchers.IO))))
     }
 
     @After
@@ -222,9 +218,9 @@ class SmsApproverTest {
         assertEquals("Bank fee", bankFee.name)
         // The category is created once and found again by id, even after a rename.
         db.categoryDao().upsert(listOf(bankFee.copy(name = "Charges")))
-        assertEquals(bankFee.id, writer.bankFeeCategory())
+        assertEquals(bankFee.id, transactions.bankFeeCategory())
 
-        writer.delete(listOf(r.transactionId))
+        transactions.delete(listOf(r.transactionId))
         assertEquals(0, db.transactionDao().count())
     }
 

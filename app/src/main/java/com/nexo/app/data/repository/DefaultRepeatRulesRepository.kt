@@ -1,49 +1,57 @@
 package com.nexo.app.data.repository
 
 import androidx.room.withTransaction
+import com.nexo.app.core.common.money.Conversion
+import com.nexo.app.core.common.money.Money
+import com.nexo.app.core.common.period.toIsoText
+import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.RepeatReflect
+import com.nexo.app.core.model.RepeatSchedule
+import com.nexo.app.core.model.RepeatType
+import com.nexo.app.core.model.RepeatWindow
+import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.RepeatRuleEntity
 import com.nexo.app.data.database.entity.TransactionEntity
-import com.nexo.app.core.model.RepeatReflect
-import com.nexo.app.core.model.RepeatType
-import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.common.money.Money
-import com.nexo.app.core.common.period.toIsoText
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.core.common.money.Conversion
-import com.nexo.app.core.model.RefData
-import com.nexo.app.core.model.RepeatSchedule
-import com.nexo.app.core.model.RepeatWindow
-import com.nexo.app.widget.WidgetRefresher
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-/** Materialises repeat rules into transactions. Only one run at a time. */
+/** Repeat rules; generation materialises them into transactions, one run at a time. */
 @Singleton
-class RepeatEngine @Inject constructor(
+class DefaultRepeatRulesRepository @Inject constructor(
     private val db: NexoDatabase,
-    private val refs: RefRepository,
-    private val prefs: DevicePrefs,
-    private val widgets: WidgetRefresher,
-) {
+    private val refs: ReferenceDataRepository,
+    private val prefs: UserPreferencesRepository,
+) : RepeatRulesRepository {
     private val mutex = Mutex()
 
-    /** Runs at most once per calendar day unless [force] is set. */
-    suspend fun runIfNewDay(force: Boolean = false) {
+    override fun getRulesStream(): Flow<List<RepeatRuleEntity>> = db.repeatRuleDao().observeAll()
+
+    override suspend fun getRule(id: String): RepeatRuleEntity? = db.repeatRuleDao().getById(id)
+
+    override suspend fun save(rule: RepeatRuleEntity) {
+        db.repeatRuleDao().upsert(listOf(rule))
+        generate()
+    }
+
+    override suspend fun delete(ids: List<String>) = db.repeatRuleDao().deleteByIds(ids)
+
+    override suspend fun generateIfNewDay(force: Boolean) {
         val today = LocalDate.now().toIsoText()
-        if (!force && prefs.current().repeatDay == today) return
-        run()
+        if (!force && prefs.getDeviceSettings().repeatDay == today) return
+        generate()
         prefs.setRepeatDay(today)
     }
 
-    suspend fun run(today: LocalDate = LocalDate.now()): Int = mutex.withLock {
-        val ref = refs.snapshot()
+    override suspend fun generate(today: LocalDate): Int = mutex.withLock {
+        val ref = refs.getRefData()
         val rules = db.repeatRuleDao().getAll()
         val period = ref.settings.periods.monthPeriodContaining(today)
         val window = RepeatWindow.of(today, ref.settings.repeatReflect == RepeatReflect.FIRST_OF_PERIOD, period.end)
@@ -75,7 +83,6 @@ class RepeatEngine @Inject constructor(
                 }
             }
         }
-        if (created > 0) widgets.refresh()
         created
     }
 

@@ -58,8 +58,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.data.datastore.SmsHistoryImport
 import com.nexo.app.core.model.Certainty
+import com.nexo.app.core.model.SmsHistoryImport
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.sms.needsAttention
@@ -72,16 +72,16 @@ import com.nexo.app.ui.designsystem.component.SwipeAction
 import com.nexo.app.ui.designsystem.component.SwipeActionRow
 import com.nexo.app.ui.designsystem.component.UndoBar
 import com.nexo.app.ui.designsystem.component.rememberHaptics
-import com.nexo.app.ui.navigation.EntryKey
-import com.nexo.app.ui.navigation.EntryMode
-import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.navigation.SmsHistoryKey
-import com.nexo.app.ui.navigation.SmsSettingsKey
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 import com.nexo.app.ui.designsystem.theme.NexoShapes
 import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
+import com.nexo.app.ui.navigation.EntryKey
+import com.nexo.app.ui.navigation.EntryMode
+import com.nexo.app.ui.navigation.LocalNavigator
+import com.nexo.app.ui.navigation.SmsHistoryKey
+import com.nexo.app.ui.navigation.SmsSettingsKey
 import kotlinx.coroutines.delay
 
 private sealed interface QueueSheet {

@@ -1,51 +1,46 @@
 package com.nexo.app.data.repository
 
 import androidx.room.withTransaction
-import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.database.entity.AccountEntity
-import com.nexo.app.data.database.entity.AccountGroupEntity
+import com.nexo.app.core.common.money.Conversion
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
-import com.nexo.app.core.common.money.Conversion
-import com.nexo.app.widget.WidgetRefresher
+import com.nexo.app.data.database.NexoDatabase
+import com.nexo.app.data.database.entity.AccountEntity
+import com.nexo.app.data.database.entity.AccountGroupEntity
 import java.util.UUID
 import javax.inject.Inject
-import javax.inject.Singleton
 
 /** Accounts and account groups. */
-@Singleton
-class AccountRepository @Inject constructor(
+class DefaultAccountsRepository @Inject constructor(
     private val db: NexoDatabase,
-    private val refs: RefRepository,
-    private val widgets: WidgetRefresher,
-) {
+    private val refs: ReferenceDataRepository,
+) : AccountsRepository {
     private fun now() = System.currentTimeMillis()
 
-    suspend fun saveGroup(id: String?, name: String, type: GroupType) {
+    override suspend fun saveGroup(id: String?, name: String, type: GroupType) {
         val existing = id?.let { db.accountGroupDao().getById(it) }
         val row = existing?.copy(name = name.trim(), type = if (existing.builtinId != null && existing.builtinId in setOf(1, 2, 3, 11)) existing.type else type, updatedAt = now())
             ?: AccountGroupEntity(UUID.randomUUID().toString(), name.trim(), type, null, db.accountGroupDao().maxOrder() + 1, updatedAt = now())
         db.accountGroupDao().upsert(listOf(row))
     }
 
-    suspend fun setGroupStatus(id: String, status: GroupStatus) {
+    override suspend fun setGroupStatus(id: String, status: GroupStatus) {
         val g = db.accountGroupDao().getById(id) ?: return
         if (g.builtinId in setOf(1, 2, 3, 11) && status != GroupStatus.ACTIVE) return
         db.accountGroupDao().upsert(listOf(g.copy(status = status, updatedAt = now())))
-        widgets.refresh()
     }
 
-    suspend fun reorderGroups(ids: List<String>) = db.withTransaction {
+    override suspend fun reorderGroups(ids: List<String>) = db.withTransaction {
         val all = db.accountGroupDao().getAll().associateBy { it.id }
         db.accountGroupDao().upsert(ids.mapIndexedNotNull { i, id -> all[id]?.copy(orderSeq = i + 1, updatedAt = now()) })
     }
 
-    suspend fun nextAccountOrder(): Int = db.accountDao().maxOrder() + 1
+    override suspend fun nextAccountOrder(): Int = db.accountDao().maxOrder() + 1
 
     /** Saves an account; a currency change re-derives account amounts of its rows and linked debit cards. */
-    suspend fun saveAccount(account: AccountEntity) {
-        val ref = refs.snapshot()
+    override suspend fun saveAccount(account: AccountEntity) {
+        val ref = refs.getRefData()
         db.withTransaction {
             val old = db.accountDao().getById(account.id)
             db.accountDao().upsert(listOf(account.copy(updatedAt = now())))
@@ -62,24 +57,21 @@ class AccountRepository @Inject constructor(
                 )
             }
         }
-        widgets.refresh()
     }
 
-    suspend fun setStatus(id: String, status: AccountStatus) {
+    override suspend fun setStatus(id: String, status: AccountStatus) {
         val a = db.accountDao().getById(id) ?: return
         db.accountDao().upsert(listOf(a.copy(status = status, updatedAt = now())))
-        widgets.refresh()
     }
 
     /** Order = position in the whole list, group may change. */
-    suspend fun reorderAccounts(order: List<Pair<String, String>>) = db.withTransaction {
+    override suspend fun reorderAccounts(order: List<Pair<String, String>>) = db.withTransaction {
         val all = db.accountDao().getAll().associateBy { it.id }
         db.accountDao().upsert(order.mapIndexedNotNull { i, (id, group) -> all[id]?.copy(orderSeq = i, groupId = group, updatedAt = now()) })
     }
 
-    suspend fun setTransferExpense(id: String, flag: Boolean) {
+    override suspend fun setTransferExpense(id: String, flag: Boolean) {
         val a = db.accountDao().getById(id) ?: return
         db.accountDao().upsert(listOf(a.copy(transferExpense = flag, updatedAt = now())))
-        widgets.refresh()
     }
 }

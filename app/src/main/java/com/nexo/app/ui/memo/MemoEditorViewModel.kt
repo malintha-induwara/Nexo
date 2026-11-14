@@ -6,8 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.period.toIsoText
 import com.nexo.app.core.model.MemoColor
-import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.MemoEntity
+import com.nexo.app.data.repository.MemosRepository
 import com.nexo.app.ui.HomeState
 import com.nexo.app.ui.navigation.MemoEditorKey
 import dagger.assisted.Assisted
@@ -37,7 +37,7 @@ data class MemoUi(
 @HiltViewModel(assistedFactory = MemoEditorViewModel.Factory::class)
 class MemoEditorViewModel @AssistedInject constructor(
     @Assisted private val key: MemoEditorKey,
-    private val db: NexoDatabase,
+    private val memos: MemosRepository,
     private val home: HomeState,
 ) : ViewModel() {
     @AssistedFactory
@@ -51,7 +51,7 @@ class MemoEditorViewModel @AssistedInject constructor(
 
     init {
         viewModelScope.launch {
-            val m = key.memoId?.let { db.memoDao().getById(it) }
+            val m = key.memoId?.let { memos.getMemo(it) }
             original = m
             _ui.value = if (m != null) {
                 MemoUi(true, m.id, m.title, m.content.trimEnd('\n'), LocalDate.parse(m.date), m.color, m.pinned, m.pinnedAt)
@@ -73,7 +73,7 @@ class MemoEditorViewModel @AssistedInject constructor(
         val empty = s.title.isBlank() && s.content.isBlank()
         val o = original
         when {
-            empty && o != null -> db.memoDao().delete(o.id)
+            empty && o != null -> memos.delete(o.id)
             empty -> Unit
             else -> {
                 val now = System.currentTimeMillis()
@@ -86,11 +86,11 @@ class MemoEditorViewModel @AssistedInject constructor(
                     dateTime = s.date.atTime(time).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
                     pinned = s.pinned,
                     pinnedAt = if (s.pinned) s.pinnedAt else 0,
-                    orderSeq = o?.orderSeq ?: (db.memoDao().maxOrder() + 1),
+                    orderSeq = o?.orderSeq ?: memos.nextOrder(),
                     color = s.color,
                     updatedAt = now,
                 )
-                db.memoDao().upsert(listOf(row))
+                memos.save(row)
                 home.memoSaved(row.id)
                 home.focusOn(s.date)
             }
@@ -99,7 +99,7 @@ class MemoEditorViewModel @AssistedInject constructor(
     }
 
     fun delete(onDone: () -> Unit) = viewModelScope.launch {
-        original?.let { db.memoDao().delete(it.id) }
+        original?.let { memos.delete(it.id) }
         onDone()
     }
 }

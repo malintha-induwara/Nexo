@@ -1,14 +1,14 @@
 package com.nexo.app.ui
 
+import java.time.LocalDate
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.time.LocalDate
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /** Cross-screen UI state: the selected date of the Trans. tab and one-shot results between screens. */
 @Singleton

@@ -7,9 +7,6 @@ import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.SmsItemEntity
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.data.repository.FxRepository
-import com.nexo.app.data.repository.RefRepository
 import com.nexo.app.data.sms.InboxReader
 import com.nexo.app.data.sms.MemorySmsStore
 import com.nexo.app.data.sms.SmsCorrelator
@@ -43,8 +40,8 @@ data class HistoryRow(
 @Singleton
 class SmsHistory @Inject constructor(
     private val db: NexoDatabase,
-    private val prefs: DevicePrefs,
-    private val refs: RefRepository,
+    private val prefs: UserPreferencesRepository,
+    private val refs: ReferenceDataRepository,
     private val inbox: InboxReader,
     private val suggester: SmsSuggester,
     private val fx: FxRepository,
@@ -52,15 +49,15 @@ class SmsHistory @Inject constructor(
 ) {
     /** Live capture covers everything from the start point on, so the picker stops there. */
     suspend fun upperBound(until: Long): Long {
-        val started = prefs.current().smsCaptureStartedAt
+        val started = prefs.getDeviceSettings().smsCaptureStartedAt
         return if (started > 0) minOf(until, started) else until
     }
 
     suspend fun scan(from: Long, until: Long): List<HistoryRow> = withContext(ioDispatcher) {
-        val s = prefs.current()
+        val s = prefs.getDeviceSettings()
         val bound = upperBound(until)
         if (from >= bound) return@withContext emptyList()
-        val ref = refs.snapshot()
+        val ref = refs.getRefData()
         val parser = SmsParser(s.smsCustomSenders)
         val store = MemorySmsStore()
         val correlator = SmsCorrelator(store)

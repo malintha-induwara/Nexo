@@ -8,8 +8,8 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.unit.Dp
-import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.core.common.money.AmountParts
+import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.ui.designsystem.theme.NexoType
 import org.junit.Assert.assertEquals
 import org.junit.Rule

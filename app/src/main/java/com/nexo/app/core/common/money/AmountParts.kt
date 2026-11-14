@@ -1,7 +1,7 @@
 package com.nexo.app.core.common.money
 
-import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.core.model.SymbolPosition
+import com.nexo.app.data.database.entity.CurrencyEntity
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormatSymbols

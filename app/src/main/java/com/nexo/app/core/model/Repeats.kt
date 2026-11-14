@@ -1,6 +1,5 @@
 package com.nexo.app.core.model
 
-import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.common.period.DateRange
 import java.time.DayOfWeek
 import java.time.LocalDate

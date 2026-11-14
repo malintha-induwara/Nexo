@@ -10,23 +10,17 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.data.datastore.ThemeMode
-import com.nexo.app.data.repository.DataReset
+import com.nexo.app.core.model.ThemeMode
 import com.nexo.app.ui.AppViewModel
 import com.nexo.app.ui.IntentRouter
 import com.nexo.app.ui.NexoRoot
 import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
-    @Inject lateinit var reset: DataReset
-    @Inject lateinit var prefs: DevicePrefs
-
     private val app: AppViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,11 +33,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (savedInstanceState == null) app.setPending(IntentRouter.route(intent))
         setContent {
-            NexoRoot(
-                app = app,
-                onEraseAll = { reset.eraseAll() },
-                onBiometricsInvalidated = { prefs.setBiometrics(false) },
-            )
+            NexoRoot(app = app)
         }
     }
 

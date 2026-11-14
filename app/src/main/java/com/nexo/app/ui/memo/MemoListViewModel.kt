@@ -4,9 +4,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.data.repository.RefRepository
+import com.nexo.app.data.repository.BookSettingsRepository
+import com.nexo.app.data.repository.MemosRepository
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.ui.navigation.MemoListKey
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -26,9 +27,10 @@ import kotlinx.coroutines.launch
 @HiltViewModel(assistedFactory = MemoListViewModel.Factory::class)
 class MemoListViewModel @AssistedInject constructor(
     @Assisted key: MemoListKey,
-    private val db: NexoDatabase,
-    private val refs: RefRepository,
-    private val prefs: DevicePrefs,
+    private val memosRepository: MemosRepository,
+    private val refs: ReferenceDataRepository,
+    private val bookSettings: BookSettingsRepository,
+    private val prefs: UserPreferencesRepository,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -36,11 +38,11 @@ class MemoListViewModel @AssistedInject constructor(
     }
 
     val date = MutableStateFlow(key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now())
-    val ref = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, com.nexo.app.core.model.RefData())
-    val device = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val ref = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, com.nexo.app.core.model.RefData())
+    val device = prefs.getDeviceSettingsStream().stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val period = combine(ref, date) { r, d -> r.settings.periods.monthPeriodContaining(d) }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val memos = combine(ref, date) { r, d -> r.settings.periods.monthPeriodContaining(d) }.flatMapLatest { p ->
-        db.memoDao().observeForRange(p.startText(), p.endText()).map { list ->
+        memosRepository.getMemosStream(p.startText(), p.endText()).map { list ->
             list.filter { it.pinned }.sortedByDescending { it.pinnedAt } +
                 list.filter { !it.pinned && LocalDate.parse(it.date) in p.range }.sortedWith(compareByDescending<com.nexo.app.data.database.entity.MemoEntity> { it.date }.thenByDescending { it.dateTime })
         }
@@ -55,6 +57,6 @@ class MemoListViewModel @AssistedInject constructor(
         date.value = (if (forward) e.next(p) else e.previous(p)).end
     }
 
-    fun setMemoButton(v: Boolean) = viewModelScope.launch { refs.updateSettings { it.copy(memoButton = v) } }
+    fun setMemoButton(v: Boolean) = viewModelScope.launch { bookSettings.updateBookSettings { it.copy(memoButton = v) } }
     fun setHelpHidden(v: Boolean) = viewModelScope.launch { prefs.setMemoHelpHidden(v) }
 }

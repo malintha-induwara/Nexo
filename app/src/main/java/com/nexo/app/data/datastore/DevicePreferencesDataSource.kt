@@ -11,77 +11,23 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.nexo.app.core.model.DeviceSettings
+import com.nexo.app.core.model.LockTimeout
+import com.nexo.app.core.model.SmsHistoryImport
+import com.nexo.app.core.model.ThemeColor
+import com.nexo.app.core.model.ThemeMode
 import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
-import javax.inject.Singleton
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "nexo_device")
 
-enum class ThemeMode { LIGHT, DARK, SYSTEM }
-
-enum class ThemeColor { WHITE, RED, PINK, GREEN, BLUE, BLACK }
-
-/** First-run "Add past transactions" offer. */
-enum class SmsHistoryImport { NOT_OFFERED, OFFERED, DONE, SKIPPED }
-
-enum class LockTimeout(val seconds: Int) { IMMEDIATELY(0), ONE_MINUTE(60), FIVE_MINUTES(300), FIFTEEN_MINUTES(900), ONE_HOUR(3600) }
-
-/** Device-level preferences. Never part of a data backup. */
-data class DeviceSettings(
-    val setupDone: Boolean = false,
-    val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val themeColor: ThemeColor = ThemeColor.WHITE,
-    val widgetTheme: ThemeMode = ThemeMode.SYSTEM,
-    val widgetOpacity: Float = 1f,
-    val numberPadDescending: Boolean = false,
-    val reminderEnabled: Boolean = false,
-    val reminderHour: Int = 21,
-    val reminderMinute: Int = 0,
-    val reminderDays: Set<Int> = (1..7).toSet(),
-    val copyWithToday: Boolean? = null,
-    val groupedAccountPicker: Boolean = false,
-    val photoNoticeShown: Boolean = false,
-    val whatsNewVersion: Int = 0,
-    val collapsedGroups: Set<String> = emptySet(),
-    val lastAutoBackup: Long = 0,
-    val repeatDay: String = "",
-    val pinHash: String? = null,
-    val pinFailures: Int = 0,
-    val pinLockoutUntil: Long = 0,
-    val biometricsEnabled: Boolean = false,
-    val lockTimeout: LockTimeout = LockTimeout.IMMEDIATELY,
-    val permissionIntroShown: Boolean = false,
-    val transferGuideShown: Boolean = false,
-    val budgetHelpHidden: Boolean = false,
-    val memoHelpHidden: Boolean = false,
-    /** "Auto-capture bank SMS", on by default. */
-    val smsCaptureEnabled: Boolean = true,
-    /** Start point: when capture last became active (switch on and permission granted); 0 = not active. */
-    val smsCaptureStartedAt: Long = 0,
-    /** When capture last stopped; turns into the re-enable gap. */
-    val smsCaptureStoppedAt: Long = 0,
-    /** Catch-up watermark (inbox `date`); never earlier than the start point. */
-    val smsLastProcessedAt: Long = 0,
-    val smsHistoryImport: SmsHistoryImport = SmsHistoryImport.NOT_OFFERED,
-    /** Keep message text unredacted. */
-    val smsStoreFullText: Boolean = false,
-    val smsCustomSenders: Set<String> = emptySet(),
-    /** Last time the Review Queue was opened; the notification counts items captured after it. */
-    val smsSeenAt: Long = 0,
-    /** Re-enable hint: messages in [smsGapFrom, smsGapUntil) were not captured. 0 = no hint. */
-    val smsGapFrom: Long = 0,
-    val smsGapUntil: Long = 0,
-    /** Last successful AllRatesToday fetch (at most every 6 hours). */
-    val fxFetchedAt: Long = 0,
-) {
-    val lockEnabled: Boolean get() = pinHash != null
-}
-
+/** Device-only preferences in the `nexo_device` DataStore. Never part of a data backup. */
 @Singleton
-class DevicePrefs @Inject constructor(@ApplicationContext private val context: Context) {
+class DevicePreferencesDataSource @Inject constructor(@ApplicationContext private val context: Context) {
     private object K {
         val setupDone = booleanPreferencesKey("setup_done")
         val themeMode = stringPreferencesKey("theme_mode")
@@ -124,7 +70,7 @@ class DevicePrefs @Inject constructor(@ApplicationContext private val context: C
 
     private fun widgetModeKey(id: Int) = intPreferencesKey("widget_mode_$id")
 
-    val settings: Flow<DeviceSettings> = context.dataStore.data.map { p ->
+    val deviceSettings: Flow<DeviceSettings> = context.dataStore.data.map { p ->
         DeviceSettings(
             setupDone = p[K.setupDone] ?: false,
             themeMode = p[K.themeMode]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
@@ -166,7 +112,7 @@ class DevicePrefs @Inject constructor(@ApplicationContext private val context: C
         )
     }
 
-    suspend fun current(): DeviceSettings = settings.first()
+    suspend fun current(): DeviceSettings = deviceSettings.first()
 
     fun widgetMode(id: Int): Flow<Int> = context.dataStore.data.map { it[widgetModeKey(id)] ?: 0 }
     suspend fun widgetModeNow(id: Int): Int = context.dataStore.data.first()[widgetModeKey(id)] ?: 0
@@ -175,7 +121,6 @@ class DevicePrefs @Inject constructor(@ApplicationContext private val context: C
 
     suspend fun setSetupDone(v: Boolean) = context.dataStore.edit { it[K.setupDone] = v }
     suspend fun setThemeMode(v: ThemeMode) = context.dataStore.edit { it[K.themeMode] = v.name }
-    suspend fun setThemeColor(v: ThemeColor) = context.dataStore.edit { it[K.themeColor] = v.name }
     suspend fun setWidgetTheme(v: ThemeMode) = context.dataStore.edit { it[K.widgetTheme] = v.name }
     suspend fun setWidgetOpacity(v: Float) = context.dataStore.edit { it[K.widgetOpacity] = v }
     suspend fun setNumberPadDescending(v: Boolean) = context.dataStore.edit { it[K.numberPadDescending] = v }
@@ -206,7 +151,6 @@ class DevicePrefs @Inject constructor(@ApplicationContext private val context: C
     suspend fun setLockTimeout(v: LockTimeout) = context.dataStore.edit { it[K.lockTimeout] = v.name }
     suspend fun setPermissionIntroShown() = context.dataStore.edit { it[K.permissionIntro] = true }
     suspend fun setTransferGuideShown() = context.dataStore.edit { it[K.transferGuide] = true }
-    suspend fun setBudgetHelpHidden(v: Boolean) = context.dataStore.edit { it[K.budgetHelpHidden] = v }
     suspend fun setMemoHelpHidden(v: Boolean) = context.dataStore.edit { it[K.memoHelpHidden] = v }
 
     suspend fun setSmsCaptureEnabled(v: Boolean) = context.dataStore.edit { it[K.smsCaptureEnabled] = v }

@@ -60,10 +60,10 @@ import androidx.fragment.app.FragmentActivity
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.data.lock.BiometricHelper
+import com.nexo.app.core.model.LockTimeout
+import com.nexo.app.core.model.ThemeMode
+import com.nexo.app.core.notifications.ReminderScheduler
 import com.nexo.app.data.lock.PinHasher
-import com.nexo.app.data.datastore.LockTimeout
-import com.nexo.app.data.datastore.ThemeMode
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.Formats
@@ -72,15 +72,15 @@ import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.component.SectionHeader
 import com.nexo.app.ui.designsystem.component.SettingRow
 import com.nexo.app.ui.designsystem.component.SwitchRow
+import com.nexo.app.ui.designsystem.theme.LocalIsDark
+import com.nexo.app.ui.lock.BiometricPrompter
 import com.nexo.app.ui.lock.PinDots
 import com.nexo.app.ui.lock.PinKeypad
 import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.designsystem.theme.LocalIsDark
-import com.nexo.app.core.notifications.ReminderScheduler
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalTime
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 private fun themeModeLabel(m: ThemeMode) = stringResource(
@@ -200,7 +200,7 @@ fun LockSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     var pinFlow by rememberSaveable { mutableStateOf<String?>(null) }
     var timeout by rememberSaveable { mutableStateOf(false) }
     var confirmRemove by rememberSaveable { mutableStateOf(false) }
-    val bioAvailable = BiometricHelper.isAvailable(context)
+    val bioAvailable = BiometricPrompter.isAvailable(context)
     val promptTitle = stringResource(R.string.biometric_prompt_title, stringResource(R.string.app_name))
     val cancel = stringResource(R.string.action_cancel)
     Scaffold(topBar = { NexoTopBar(stringResource(R.string.lock_settings), onBack = { nav.back() }) }) { p ->
@@ -215,14 +215,12 @@ fun LockSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                     stringResource(R.string.biometric_unlock), d.biometricsEnabled && bioAvailable,
                     onChange = { on ->
                         if (!on) {
-                            BiometricHelper.deleteKey()
-                            vm.device { setBiometrics(false) }
+                            vm.setBiometricsEnabled(false)
                         } else {
                             val activity = context as? FragmentActivity ?: return@SwitchRow
-                            runCatching { BiometricHelper.createKey() }
-                            val c = BiometricHelper.cipher()
-                            if (c is BiometricHelper.CipherResult.Ready) {
-                                BiometricHelper.prompt(activity, promptTitle, cancel, c.cipher, onSuccess = { vm.device { setBiometrics(true) } })
+                            val cipher = vm.lock.createBiometricKey()
+                            if (cipher != null) {
+                                BiometricPrompter.prompt(activity, promptTitle, cancel, cipher, onSuccess = { vm.setBiometricsEnabled(true) })
                             }
                         }
                     },
@@ -238,7 +236,7 @@ fun LockSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     if (confirmRemove) {
         PinFlowDialog(
             mode = "verify", currentHash = d.pinHash, descending = d.numberPadDescending,
-            onDone = { scope.launch { BiometricHelper.deleteKey(); vm.lock.setPin(null) }; confirmRemove = false },
+            onDone = { scope.launch { vm.lock.setPin(null) }; confirmRemove = false },
             onDismiss = { confirmRemove = false },
         )
     }

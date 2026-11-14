@@ -51,12 +51,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import com.nexo.app.R
-import com.nexo.app.data.database.entity.TagEntity
-import com.nexo.app.data.file.PhotoStore
-import com.nexo.app.core.model.RepeatType
-import com.nexo.app.data.repository.TagRepository
-import com.nexo.app.data.repository.TagResult
 import com.nexo.app.core.model.PhotoItem
+import com.nexo.app.core.model.RepeatType
+import com.nexo.app.data.database.entity.TagEntity
+import com.nexo.app.data.repository.PhotosRepository
+import com.nexo.app.data.repository.TagResult
+import com.nexo.app.data.repository.TagsRepository
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.MessageDialog
 import com.nexo.app.ui.designsystem.component.TextFieldDialog
@@ -89,7 +89,7 @@ fun repeatLabel(t: RepeatType): String = stringResource(
 fun TagSelectSheet(
     tags: List<TagEntity>,
     initial: List<String>,
-    repo: TagRepository,
+    repo: TagsRepository,
     onDone: (List<String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -142,8 +142,8 @@ fun TagSelectSheet(
     }
     if (adding) {
         TextFieldDialog(
-            title = stringResource(R.string.add_tag), initial = "", maxLength = TagRepository.MAX_LENGTH, error = error,
-            filter = TagRepository::filter,
+            title = stringResource(R.string.add_tag), initial = "", maxLength = TagsRepository.MAX_LENGTH, error = error,
+            filter = TagsRepository::filter,
             onConfirm = { name ->
                 scope.launch {
                     when (val r = repo.add(name)) {
@@ -158,8 +158,8 @@ fun TagSelectSheet(
     }
     renaming?.let { tag ->
         TextFieldDialog(
-            title = stringResource(R.string.rename_tag), initial = tag.name, maxLength = TagRepository.MAX_LENGTH, error = error,
-            filter = TagRepository::filter,
+            title = stringResource(R.string.rename_tag), initial = tag.name, maxLength = TagsRepository.MAX_LENGTH, error = error,
+            filter = TagsRepository::filter,
             onConfirm = { name ->
                 scope.launch {
                     when (repo.rename(tag.id, name)) {
@@ -197,7 +197,7 @@ fun TagSelectSheet(
 @Composable
 fun PhotoThumbs(
     photos: List<PhotoItem>,
-    store: PhotoStore,
+    store: PhotosRepository,
     removable: Boolean,
     onOpen: (Int) -> Unit,
     onRemove: (Int) -> Unit,
@@ -208,7 +208,7 @@ fun PhotoThumbs(
             Box(Modifier.size(72.dp)) {
                 AsyncImage(
                     model = when (p) {
-                        is PhotoItem.Stored -> store.file(p.fileName)
+                        is PhotoItem.Stored -> store.getPhotoFile(p.fileName)
                         is PhotoItem.Picked -> p.uri
                     },
                     contentDescription = null,
@@ -229,7 +229,7 @@ fun PhotoThumbs(
 
 /** Full-screen photo pager with export for saved photos. */
 @Composable
-fun PhotoViewer(photos: List<PhotoItem>, start: Int, store: PhotoStore, onDismiss: () -> Unit) {
+fun PhotoViewer(photos: List<PhotoItem>, start: Int, store: PhotosRepository, onDismiss: () -> Unit) {
     val pager = rememberPagerState(initialPage = start) { photos.size }
     val scope = rememberCoroutineScope()
     var savedMessage by remember { mutableStateOf<Boolean?>(null) }
@@ -240,7 +240,7 @@ fun PhotoViewer(photos: List<PhotoItem>, start: Int, store: PhotoStore, onDismis
                 val p = photos[page]
                 AsyncImage(
                     model = when (p) {
-                        is PhotoItem.Stored -> store.file(p.fileName)
+                        is PhotoItem.Stored -> store.getPhotoFile(p.fileName)
                         is PhotoItem.Picked -> p.uri
                     },
                     contentDescription = null,

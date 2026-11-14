@@ -49,8 +49,8 @@ import androidx.compose.ui.unit.dp
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 import com.nexo.app.ui.designsystem.theme.NexoShapes
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 /**
  * A bottom sheet drawn inside the screen rather than in its own window. Because it is part of

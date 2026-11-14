@@ -4,19 +4,24 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
-import com.nexo.app.data.database.entity.TransactionEntity
-import com.nexo.app.core.model.CashFlow
-import com.nexo.app.core.model.TxKind
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.PeriodEngine
-import com.nexo.app.data.repository.LedgerRepository
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.domain.Classifier
+import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.TxKind
+import com.nexo.app.data.database.entity.TransactionEntity
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.TransactionsRepository
+import com.nexo.app.domain.Classifier
 import com.nexo.app.ui.navigation.StatsDetailKind
 import com.nexo.app.ui.navigation.StatsScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.math.BigDecimal
+import java.math.RoundingMode
+import java.time.LocalDate
+import java.time.YearMonth
+import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,11 +32,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import java.math.BigDecimal
-import java.math.RoundingMode
-import java.time.LocalDate
-import java.time.YearMonth
-import javax.inject.Inject
 
 data class StatsRow(val key: String?, val name: String, val amount: Double, val percent: Double, val colorIndex: Int, val kind: StatsDetailKind)
 
@@ -107,10 +107,10 @@ private fun r(ref: RefData, accountId: String?): String? = ref.accountById[accou
 @HiltViewModel
 class StatsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    refs: RefRepository,
-    ledgers: LedgerRepository,
+    refs: ReferenceDataRepository,
+    transactions: TransactionsRepository,
 ) : ViewModel() {
-    val ref: StateFlow<RefData> = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     private val _query = MutableStateFlow(StatsQuery())
     val query = _query.asStateFlow()
     private val _income = MutableStateFlow(false)
@@ -118,7 +118,7 @@ class StatsViewModel @Inject constructor(
 
     val data: StateFlow<StatsData> = combine(ref, _query) { r, q -> r to q }.flatMapLatest { (r, q) ->
         val range = scopeRange(r.settings.periods, q)
-        ledgers.observe(range).map { l -> StatsData(range, statsRows(context, r, l.rows, true), statsRows(context, r, l.rows, false)) }
+        transactions.getLedgerStream(range).map { l -> StatsData(range, statsRows(context, r, l.rows, true), statsRows(context, r, l.rows, false)) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StatsData())
 
     fun setIncome(v: Boolean) {

@@ -9,9 +9,8 @@ import com.nexo.app.core.model.TxDraft
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.Seeder
-import com.nexo.app.data.file.AppDirs
-import com.nexo.app.data.file.PhotoStore
-import com.nexo.app.widget.WidgetRefresher
+import com.nexo.app.testing.referenceDataRepository
+import com.nexo.app.testing.transactionsRepository
 import java.time.LocalDateTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,9 +28,9 @@ import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
-class TransactionWriterTest {
+class DefaultTransactionsRepositoryTest {
     private lateinit var db: NexoDatabase
-    private lateinit var writer: TransactionWriter
+    private lateinit var transactions: TransactionsRepository
 
     @Before
     fun setUp() = runBlocking {
@@ -39,8 +38,8 @@ class TransactionWriterTest {
         db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
         Seeder(context, db).seedFresh(com.nexo.app.core.common.money.CurrencyCatalog.find("USD")!!)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-        val refs = RefRepository(db, scope)
-        writer = TransactionWriter(context, db, refs, PhotoStore(context, AppDirs(context), db, Dispatchers.IO), WidgetRefresher(context, scope))
+        val refs = referenceDataRepository(db, scope)
+        transactions = transactionsRepository(context, db, refs)
     }
 
     @After
@@ -50,7 +49,7 @@ class TransactionWriterTest {
 
     @Test
     fun transferWithFeeIsCreatedAndDeletedTogether() = runBlocking {
-        val id = writer.save(TxDraft(type = EntryType.TRANSFER, accountId = "1", toAccountId = "11", dateTime = at, amount = 100.0, currencyId = "USD", fee = FeeDraft(1.5, "USD")))
+        val id = transactions.save(TxDraft(type = EntryType.TRANSFER, accountId = "1", toAccountId = "11", dateTime = at, amount = 100.0, currencyId = "USD", fee = FeeDraft(1.5, "USD")))
         val rows = db.transactionDao().getAll()
         assertEquals(3, rows.size)
         val out = rows.single { it.kind == TxKind.TRANSFER_OUT }
@@ -62,14 +61,14 @@ class TransactionWriterTest {
         // The fee would cross midnight, so it keeps the transfer's timestamp.
         assertEquals(out.dateTime, fee.dateTime)
         assertEquals("1", fee.accountId)
-        writer.delete(listOf(inLeg.id))
+        transactions.delete(listOf(inLeg.id))
         assertEquals(0, db.transactionDao().count())
     }
 
     @Test
     fun transferConvertedToExpenseDropsPartnerAndFee() = runBlocking {
-        val id = writer.save(TxDraft(type = EntryType.TRANSFER, accountId = "1", toAccountId = "11", dateTime = at.minusHours(2), amount = 50.0, currencyId = "USD", fee = FeeDraft(1.0, "USD")))
-        writer.save(TxDraft(editingId = id, type = EntryType.EXPENSE, accountId = "1", categoryId = "6", dateTime = at.minusHours(2), amount = 50.0, currencyId = "USD"))
+        val id = transactions.save(TxDraft(type = EntryType.TRANSFER, accountId = "1", toAccountId = "11", dateTime = at.minusHours(2), amount = 50.0, currencyId = "USD", fee = FeeDraft(1.0, "USD")))
+        transactions.save(TxDraft(editingId = id, type = EntryType.EXPENSE, accountId = "1", categoryId = "6", dateTime = at.minusHours(2), amount = 50.0, currencyId = "USD"))
         val rows = db.transactionDao().getAll()
         assertEquals(1, rows.size)
         assertEquals(TxKind.EXPENSE, rows.single().kind)
@@ -78,7 +77,7 @@ class TransactionWriterTest {
 
     @Test
     fun installmentsSplitAcrossMonths() = runBlocking {
-        writer.save(TxDraft(type = EntryType.EXPENSE, accountId = "2", categoryId = "6", dateTime = LocalDateTime.of(2024, 1, 31, 10, 0), amount = 100.0, currencyId = "USD", installments = 3))
+        transactions.save(TxDraft(type = EntryType.EXPENSE, accountId = "2", categoryId = "6", dateTime = LocalDateTime.of(2024, 1, 31, 10, 0), amount = 100.0, currencyId = "USD", installments = 3))
         val rows = db.transactionDao().getAll().sortedBy { it.date }
         assertEquals(listOf("2024-01-31", "2024-02-29", "2024-03-31"), rows.map { it.date })
         assertEquals(listOf(33.34, 33.33, 33.33), rows.map { it.amount })

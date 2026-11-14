@@ -3,19 +3,19 @@ package com.nexo.app.ui.onboarding
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nexo.app.data.repository.BackupManager
-import com.nexo.app.data.repository.RestoreResult
-import com.nexo.app.data.database.Seeder
 import com.nexo.app.core.common.money.CatalogCurrency
 import com.nexo.app.core.common.money.CurrencyCatalog
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.data.repository.RepeatEngine
+import com.nexo.app.data.database.Seeder
+import com.nexo.app.data.repository.BackupManager
+import com.nexo.app.data.repository.RepeatRulesRepository
+import com.nexo.app.data.repository.RestoreResult
+import com.nexo.app.data.repository.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class OnboardingState(
     val step: Int = 0,
@@ -29,8 +29,8 @@ data class OnboardingState(
 class OnboardingViewModel @Inject constructor(
     private val seeder: Seeder,
     private val backups: BackupManager,
-    private val prefs: DevicePrefs,
-    private val repeats: RepeatEngine,
+    private val prefs: UserPreferencesRepository,
+    private val repeats: RepeatRulesRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(OnboardingState())
     val state = _state.asStateFlow()
@@ -59,7 +59,7 @@ class OnboardingViewModel @Inject constructor(
     }
 
     private suspend fun finish() {
-        repeats.runIfNewDay(force = true)
+        repeats.generateIfNewDay(force = true)
         _state.update { it.copy(busy = false, done = true) }
     }
 

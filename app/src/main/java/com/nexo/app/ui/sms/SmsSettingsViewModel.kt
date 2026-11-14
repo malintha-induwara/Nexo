@@ -9,9 +9,10 @@ import com.nexo.app.core.model.RefData
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.FeePresetEntity
 import com.nexo.app.data.database.entity.SmsSourceEntity
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.data.repository.RefRepository
+import com.nexo.app.data.repository.BookSettingsRepository
+import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.SmsCapture
+import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.data.sms.parser.Banks
 import com.nexo.app.domain.sms.SmsApprover
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,14 +27,15 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class SmsSettingsViewModel @Inject constructor(
     db: NexoDatabase,
-    private val refs: RefRepository,
-    private val prefs: DevicePrefs,
+    private val refs: ReferenceDataRepository,
+    private val bookSettings: BookSettingsRepository,
+    private val prefs: UserPreferencesRepository,
     private val capture: SmsCapture,
     private val approver: SmsApprover,
 ) : ViewModel() {
     private val dao = db.smsDao()
-    val ref: StateFlow<RefData> = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    val device = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    val device = prefs.getDeviceSettingsStream().stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val pendingCount = dao.observePendingCount().stateIn(viewModelScope, SharingStarted.Eagerly, 0)
     val sources = dao.observeSources().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val presets = dao.observeFeePresets().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -52,19 +54,19 @@ class SmsSettingsViewModel @Inject constructor(
         _permitted.value = capture.hasPermission()
     }
 
-    fun offerHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.data.datastore.SmsHistoryImport.OFFERED) }
+    fun offerHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.core.model.SmsHistoryImport.OFFERED) }
 
-    fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.data.datastore.SmsHistoryImport.SKIPPED) }
+    fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.core.model.SmsHistoryImport.SKIPPED) }
 
     fun addSender(raw: String) = viewModelScope.launch {
         val id = com.nexo.app.data.sms.parser.Banks.normalizeSender(raw)
-        if (id.isNotEmpty()) prefs.setSmsCustomSenders(prefs.current().smsCustomSenders + id)
+        if (id.isNotEmpty()) prefs.setSmsCustomSenders(prefs.getDeviceSettings().smsCustomSenders + id)
     }
 
-    fun removeSender(id: String) = viewModelScope.launch { prefs.setSmsCustomSenders(prefs.current().smsCustomSenders - id) }
+    fun removeSender(id: String) = viewModelScope.launch { prefs.setSmsCustomSenders(prefs.getDeviceSettings().smsCustomSenders - id) }
 
     fun setFullText(on: Boolean) = viewModelScope.launch { prefs.setSmsStoreFullText(on) }
-    fun setCashAccount(id: String) = viewModelScope.launch { refs.updateSettings { it.copy(smsCashAccountId = id) } }
+    fun setCashAccount(id: String) = viewModelScope.launch { bookSettings.updateBookSettings { it.copy(smsCashAccountId = id) } }
     fun mapSource(source: SmsSourceEntity, accountId: String) = viewModelScope.launch { approver.mapCard(source.bank, source.last4, accountId) }
     fun removeSource(source: SmsSourceEntity) = viewModelScope.launch { approver.unmapCard(source.bank, source.last4) }
     fun setFeeMode(preset: FeePresetEntity, mode: FeeMode) = viewModelScope.launch { approver.setFeeMode(preset.accountId, preset.route, mode) }

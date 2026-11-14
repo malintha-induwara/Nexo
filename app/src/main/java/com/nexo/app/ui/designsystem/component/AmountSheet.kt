@@ -20,7 +20,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexo.app.core.common.money.AmountFormatter
-import com.nexo.app.ui.designsystem.component.PadInput
 import java.math.RoundingMode
 
 /**

@@ -5,8 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
-import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.RateSide
+import com.nexo.app.core.model.RefData
 import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.network.BankRatesClient
 import com.nexo.app.data.repository.FxRepository

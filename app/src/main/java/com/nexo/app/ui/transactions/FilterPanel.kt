@@ -41,17 +41,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
-import com.nexo.app.ui.designsystem.component.SegmentedPill
-import com.nexo.app.ui.designsystem.theme.Space
-import com.nexo.app.data.database.entity.TransactionEntity
+import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.CategoryKind
-import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.common.money.AmountFormatter
-import com.nexo.app.domain.Classifier
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.TxKind
+import com.nexo.app.data.database.entity.TransactionEntity
+import com.nexo.app.domain.Classifier
 import com.nexo.app.domain.Totals
+import com.nexo.app.ui.designsystem.component.SegmentedPill
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
+import com.nexo.app.ui.designsystem.theme.Space
 import com.nexo.app.ui.designsystem.theme.nexo
 
 private data class FilterItem(val key: String, val label: String, val amount: Double, val indent: Boolean = false)

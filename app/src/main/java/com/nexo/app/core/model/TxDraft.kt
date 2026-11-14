@@ -1,8 +1,6 @@
 package com.nexo.app.core.model
 
 import android.net.Uri
-import com.nexo.app.core.model.EntryType
-import com.nexo.app.core.model.TxKind
 import java.time.LocalDateTime
 
 sealed interface PhotoItem {

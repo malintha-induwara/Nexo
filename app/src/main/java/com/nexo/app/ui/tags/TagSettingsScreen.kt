@@ -30,8 +30,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.data.database.entity.TagEntity
-import com.nexo.app.data.repository.TagRepository
 import com.nexo.app.data.repository.TagResult
+import com.nexo.app.data.repository.TagsRepository
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.NexoTopBar
@@ -70,11 +70,11 @@ fun TagSettingsScreen(vm: TagSettingsViewModel = hiltViewModel()) {
             }
         }
     }
-    if (adding) TextFieldDialog(stringResource(R.string.add_tag), "", maxLength = TagRepository.MAX_LENGTH, error = error, filter = TagRepository::filter,
+    if (adding) TextFieldDialog(stringResource(R.string.add_tag), "", maxLength = TagsRepository.MAX_LENGTH, error = error, filter = TagsRepository::filter,
         onConfirm = { n -> vm.launch { when (vm.repo.add(n)) { TagResult.Exists -> error = exists; else -> { adding = false; error = null } } } },
         onDismiss = { adding = false; error = null })
     renaming?.let { t ->
-        TextFieldDialog(stringResource(R.string.rename_tag), t.name, maxLength = TagRepository.MAX_LENGTH, error = error, filter = TagRepository::filter,
+        TextFieldDialog(stringResource(R.string.rename_tag), t.name, maxLength = TagsRepository.MAX_LENGTH, error = error, filter = TagsRepository::filter,
             onConfirm = { n -> vm.launch { when (vm.repo.rename(t.id, n)) { TagResult.Exists -> error = exists; else -> { renaming = null; error = null } } } },
             onDismiss = { renaming = null; error = null })
     }

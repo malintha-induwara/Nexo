@@ -1,11 +1,10 @@
 package com.nexo.app.core.model
 
 import com.nexo.app.data.database.entity.BudgetAmountEntity
-import com.nexo.app.core.model.RepeatType
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
-import java.time.LocalDate
 
 class CalculationsTest {
     private fun d(s: String) = LocalDate.parse(s)

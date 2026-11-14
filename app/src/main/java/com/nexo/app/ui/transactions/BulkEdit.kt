@@ -1,11 +1,5 @@
 package com.nexo.app.ui.transactions
 
-import androidx.compose.material.icons.rounded.EditNote
-import androidx.compose.material.icons.rounded.AccountBalanceWallet
-import androidx.compose.material.icons.rounded.Category
-import androidx.compose.material.icons.rounded.Event
-import com.nexo.app.ui.designsystem.component.NexoMenuItem
-import com.nexo.app.ui.designsystem.component.NexoMenu
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,10 +9,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.Category
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.EditNote
+import androidx.compose.material.icons.rounded.Event
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -44,21 +42,23 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
-import com.nexo.app.ui.designsystem.component.IncomeExpensePill
-import com.nexo.app.data.database.entity.CurrencyEntity
-import com.nexo.app.core.model.CashFlow
-import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.common.money.Money
-import com.nexo.app.data.repository.TransactionWriter
+import com.nexo.app.core.model.CashFlow
+import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.RefData
+import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
+import com.nexo.app.ui.designsystem.component.IncomeExpensePill
 import com.nexo.app.ui.designsystem.component.MessageDialog
 import com.nexo.app.ui.designsystem.component.NexoDatePickerDialog
+import com.nexo.app.ui.designsystem.component.NexoMenu
+import com.nexo.app.ui.designsystem.component.NexoMenuItem
 import com.nexo.app.ui.designsystem.component.TextFieldDialog
 import com.nexo.app.ui.designsystem.theme.nexo
-import kotlinx.coroutines.launch
 import java.time.LocalDate
+import kotlinx.coroutines.launch
 
 enum class BulkAction { DATE, CATEGORY, ACCOUNT, NOTE }
 
@@ -131,7 +131,7 @@ fun BulkDialogs(
     open: Boolean,
     count: Int,
     ref: RefData,
-    writer: TransactionWriter,
+    transactions: TransactionsRepository,
     ids: Set<String>,
     onDone: () -> Unit,
     onDismiss: () -> Unit,
@@ -152,19 +152,19 @@ fun BulkDialogs(
     when (action) {
         null -> ConfirmDialog(
             message = stringResource(R.string.want_to_delete_n, count),
-            onConfirm = { run { writer.delete(ids) } },
+            onConfirm = { run { transactions.delete(ids) } },
             onDismiss = onDismiss,
         )
-        BulkAction.DATE -> NexoDatePickerDialog(LocalDate.now(), onPick = { d -> run { writer.setDate(ids, d) } }, onDismiss = onDismiss)
+        BulkAction.DATE -> NexoDatePickerDialog(LocalDate.now(), onPick = { d -> run { transactions.setDate(ids, d) } }, onDismiss = onDismiss)
         BulkAction.NOTE -> TextFieldDialog(
             title = stringResource(R.string.edit_all_notes), initial = "", label = stringResource(R.string.note),
-            onConfirm = { n -> run { writer.setNote(ids, n) } }, onDismiss = onDismiss,
+            onConfirm = { n -> run { transactions.setNote(ids, n) } }, onDismiss = onDismiss,
         )
-        BulkAction.CATEGORY -> CategoryPickerDialog(ref, onPick = { id -> run { writer.setCategory(ids, id) } }, onDismiss = onDismiss)
+        BulkAction.CATEGORY -> CategoryPickerDialog(ref, onPick = { id -> run { transactions.setCategory(ids, id) } }, onDismiss = onDismiss)
         BulkAction.ACCOUNT -> AccountPickerDialog(
             ref,
-            onAccount = { id -> run { writer.setAccount(ids, id) } },
-            onTransfer = { from, to -> run { writer.setTransfer(ids, from, to) } },
+            onAccount = { id -> run { transactions.setAccount(ids, id) } },
+            onTransfer = { from, to -> run { transactions.setTransfer(ids, from, to) } },
             onDismiss = onDismiss,
         )
     }

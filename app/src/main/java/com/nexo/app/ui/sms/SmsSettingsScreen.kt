@@ -95,7 +95,7 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
         if (result.values.all { it }) {
             vm.setEnabled(true)
             // Offered once, right after permission is granted.
-            if (device?.smsHistoryImport == com.nexo.app.data.datastore.SmsHistoryImport.NOT_OFFERED) dialog = "offer"
+            if (device?.smsHistoryImport == com.nexo.app.core.model.SmsHistoryImport.NOT_OFFERED) dialog = "offer"
         } else {
             // No rationale after a denial means Android won't ask again (or the setting is restricted): send them to App info.
             val activity = context.findActivity()

@@ -1,13 +1,5 @@
 package com.nexo.app.core.model
 
-import com.nexo.app.core.model.CardAccounting
-import com.nexo.app.core.model.ColorSet
-import com.nexo.app.core.model.InputOrder
-import com.nexo.app.core.model.RepeatReflect
-import com.nexo.app.core.model.StartScreen
-import com.nexo.app.core.model.SwipeMode
-import com.nexo.app.core.model.TimeDisplay
-import com.nexo.app.core.model.WeekendRule
 import com.nexo.app.core.common.period.PeriodEngine
 import java.time.DayOfWeek
 

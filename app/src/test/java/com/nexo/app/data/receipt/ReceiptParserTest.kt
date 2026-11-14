@@ -1,13 +1,13 @@
 package com.nexo.app.data.receipt
 
+import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.LocalTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.math.BigDecimal
-import java.time.LocalDate
-import java.time.LocalTime
 
 /** Synthetic receipts only; real bills stay out of the repository. */
 class ReceiptParserTest {

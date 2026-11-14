@@ -1,12 +1,11 @@
 package com.nexo.app.core.common.period
 
 import com.nexo.app.core.model.WeekendRule
-import com.nexo.app.core.common.period.PeriodEngine
-import org.junit.Assert.assertEquals
-import org.junit.Test
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
+import org.junit.Assert.assertEquals
+import org.junit.Test
 
 class PeriodEngineTest {
     private fun d(s: String) = LocalDate.parse(s)

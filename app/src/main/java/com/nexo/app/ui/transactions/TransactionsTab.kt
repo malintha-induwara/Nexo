@@ -1,17 +1,10 @@
 package com.nexo.app.ui.transactions
 
 import androidx.activity.compose.BackHandler
-import java.util.Locale
-import com.nexo.app.ui.designsystem.theme.NexoShapes
-import com.nexo.app.ui.designsystem.theme.MoneyColors
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -21,32 +14,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.FilterList
-import androidx.compose.material.icons.rounded.NorthEast
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.SouthWest
-import androidx.compose.material.icons.rounded.StarOutline
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.unit.Dp
-import com.nexo.app.ui.designsystem.component.NavMotion
-import com.nexo.app.ui.designsystem.component.RollingAmount
-import com.nexo.app.ui.designsystem.component.RoundIconButton
-import com.nexo.app.ui.designsystem.component.SegmentedPill
-import com.nexo.app.ui.designsystem.component.collapsingHeader
-import com.nexo.app.ui.designsystem.component.rememberCollapsingHeaderState
-import com.nexo.app.ui.designsystem.component.rememberHaptics
-import com.nexo.app.ui.designsystem.component.shrinkToFit
-import com.nexo.app.ui.designsystem.theme.LocalNexoColors
-import com.nexo.app.ui.designsystem.theme.NexoMotion
-import com.nexo.app.ui.designsystem.theme.NexoType
-import com.nexo.app.ui.designsystem.theme.Space
-import kotlin.math.sign
-import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -58,6 +25,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -66,9 +34,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.StickyNote2
@@ -80,6 +50,13 @@ import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.StarOutline
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.FilterList
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.NorthEast
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SouthWest
+import androidx.compose.material.icons.rounded.StarOutline
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -98,29 +75,54 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.model.SwipeMode
 import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.data.database.entity.MemoEntity
-import com.nexo.app.core.model.SwipeMode
-import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.MonthPickerDialog
+import com.nexo.app.ui.designsystem.component.NavMotion
 import com.nexo.app.ui.designsystem.component.PeriodNavigator
+import com.nexo.app.ui.designsystem.component.RollingAmount
+import com.nexo.app.ui.designsystem.component.RoundIconButton
+import com.nexo.app.ui.designsystem.component.SegmentedPill
 import com.nexo.app.ui.designsystem.component.TotalsBar
+import com.nexo.app.ui.designsystem.component.collapsingHeader
+import com.nexo.app.ui.designsystem.component.rememberCollapsingHeaderState
+import com.nexo.app.ui.designsystem.component.rememberHaptics
+import com.nexo.app.ui.designsystem.component.shrinkToFit
+import com.nexo.app.ui.designsystem.theme.LocalHeaderColors
+import com.nexo.app.ui.designsystem.theme.LocalIsDark
+import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.MoneyColors
+import com.nexo.app.ui.designsystem.theme.NexoMotion
+import com.nexo.app.ui.designsystem.theme.NexoPalette
+import com.nexo.app.ui.designsystem.theme.NexoShapes
+import com.nexo.app.ui.designsystem.theme.NexoType
+import com.nexo.app.ui.designsystem.theme.Space
 import com.nexo.app.ui.navigation.BookmarksKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
@@ -129,12 +131,10 @@ import com.nexo.app.ui.navigation.MemoEditorKey
 import com.nexo.app.ui.navigation.RepeatListKey
 import com.nexo.app.ui.navigation.SearchKey
 import com.nexo.app.ui.shell.LocalShell
-import com.nexo.app.ui.designsystem.theme.LocalHeaderColors
-import com.nexo.app.ui.designsystem.theme.LocalIsDark
-import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
-import com.nexo.app.ui.designsystem.theme.NexoPalette
 import java.time.LocalDate
+import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.sign
 
 @Composable
 fun TransactionsTab(todaySignal: Int, vm: TransactionsViewModel = hiltViewModel()) {
@@ -363,7 +363,7 @@ fun TransactionsTab(todaySignal: Int, vm: TransactionsViewModel = hiltViewModel(
     }
 
     if (monthPicker) data.period?.let { p -> MonthPickerDialog(p.label, onPick = vm::pickMonth, onDismiss = { monthPicker = false }) }
-    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.writer, selection, onDone = vm::clearSelection, onDismiss = { bulkOpen = false })
+    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.transactions, selection, onDone = vm::clearSelection, onDismiss = { bulkOpen = false })
 }
 
 /** A 40dp header action; [active] fills it to show a mode is on (the filter). */

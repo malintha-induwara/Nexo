@@ -4,29 +4,32 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
-import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.data.datastore.SmsHistoryImport
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.FeeRoute
+import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.SmsHistoryImport
 import com.nexo.app.core.model.SmsKind
+import com.nexo.app.data.database.NexoDatabase
+import com.nexo.app.data.database.entity.SmsItemEntity
+import com.nexo.app.data.repository.HistoryRow
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.SmsCapture
+import com.nexo.app.data.repository.SmsHistory
+import com.nexo.app.data.repository.UserPreferencesRepository
+import com.nexo.app.data.sms.SmsSuggester
+import com.nexo.app.data.sms.needsDetails
 import com.nexo.app.domain.sms.ApproveResult
 import com.nexo.app.domain.sms.FeeChoice
 import com.nexo.app.domain.sms.FeePlan
 import com.nexo.app.domain.sms.SmsApprover
-import com.nexo.app.data.repository.SmsCapture
-import com.nexo.app.data.sms.SmsSuggester
-import com.nexo.app.data.database.entity.SmsItemEntity
-import com.nexo.app.data.repository.HistoryRow
-import com.nexo.app.data.repository.SmsHistory
-import com.nexo.app.data.sms.needsDetails
 import com.nexo.app.ui.navigation.SmsHistoryKey
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.time.LocalDate
+import java.time.ZoneId
+import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,9 +40,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.ZoneId
-import javax.inject.Inject
 
 enum class HistoryRange(val label: Int, val days: Long?) {
     WEEK(R.string.sms_history_range_7, 7),
@@ -72,8 +72,8 @@ class SmsHistoryViewModel @AssistedInject constructor(
     @Assisted private val key: SmsHistoryKey,
     @ApplicationContext private val context: Context,
     db: NexoDatabase,
-    refs: RefRepository,
-    private val prefs: DevicePrefs,
+    refs: ReferenceDataRepository,
+    private val prefs: UserPreferencesRepository,
     private val history: SmsHistory,
     private val approver: SmsApprover,
     private val suggester: SmsSuggester,
@@ -88,7 +88,7 @@ class SmsHistoryViewModel @AssistedInject constructor(
     private val zone = ZoneId.systemDefault()
     val gap: Boolean = key.gapFrom > 0 && key.gapUntil > key.gapFrom
 
-    val ref: StateFlow<RefData> = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
 
     private val _range = MutableStateFlow(if (gap) HistoryRange.GAP else HistoryRange.MONTH)
     val range: StateFlow<HistoryRange> = _range.asStateFlow()

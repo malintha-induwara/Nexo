@@ -3,30 +3,33 @@ package com.nexo.app.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation3.runtime.NavKey
-import com.nexo.app.data.repository.LockManager
 import com.nexo.app.core.model.BookSettings
-import com.nexo.app.data.datastore.DeviceSettings
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.data.repository.RefRepository
+import com.nexo.app.core.model.DeviceSettings
+import com.nexo.app.data.repository.AppLockRepository
+import com.nexo.app.data.repository.DataReset
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** Activity-scoped state: device settings, book settings for colours, lock and pending deep-link targets. */
 @HiltViewModel
 class AppViewModel @Inject constructor(
-    private val prefs: DevicePrefs,
-    refs: RefRepository,
-    val lock: LockManager,
+    private val prefs: UserPreferencesRepository,
+    refs: ReferenceDataRepository,
+    val lock: AppLockRepository,
+    private val reset: DataReset,
 ) : ViewModel() {
-    val device: StateFlow<DeviceSettings?> = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
-    val book: StateFlow<BookSettings> = refs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, BookSettings())
-    val locked = lock.locked
+    val device: StateFlow<DeviceSettings?> = prefs.getDeviceSettingsStream().stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val book: StateFlow<BookSettings> = refs.getRefDataStream().map { it.settings }.stateIn(viewModelScope, SharingStarted.Eagerly, BookSettings())
+    val locked = lock.getLockedStream()
 
     private val _pending = MutableStateFlow<List<NavKey>>(emptyList())
     /** Screens to open once the app is unlocked (widgets, shortcuts, notifications). */
@@ -40,5 +43,15 @@ class AppViewModel @Inject constructor(
 
     fun markWhatsNewSeen() {
         viewModelScope.launch { prefs.setWhatsNewVersion(com.nexo.app.BuildConfig.VERSION_CODE) }
+    }
+
+    /** Forgotten PIN: erases everything on the device. */
+    fun eraseAll() {
+        viewModelScope.launch { reset.eraseAll() }
+    }
+
+    /** The biometric key was invalidated by an enrolment change. */
+    fun disableBiometrics() {
+        viewModelScope.launch { lock.setBiometricsEnabled(false) }
     }
 }

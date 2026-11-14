@@ -8,13 +8,11 @@ import com.nexo.app.core.common.period.MonthPeriod
 import com.nexo.app.core.model.BudgetMath
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.BudgetAmountEntity
 import com.nexo.app.data.database.entity.BudgetEntity
-import com.nexo.app.data.repository.BudgetRepository
-import com.nexo.app.data.repository.LedgerRepository
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.data.repository.TransactionWriter
+import com.nexo.app.data.repository.BudgetsRepository
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.ui.navigation.BudgetDetailKey
 import com.nexo.app.ui.transactions.DayGroup
 import com.nexo.app.ui.transactions.RowFactory
@@ -54,32 +52,30 @@ data class BudgetDetailUi(
 class BudgetDetailViewModel @AssistedInject constructor(
     @Assisted key: BudgetDetailKey,
     @ApplicationContext private val context: Context,
-    refs: RefRepository,
-    repo: BudgetRepository,
-    private val db: NexoDatabase,
-    private val ledgers: LedgerRepository,
-    val writer: TransactionWriter,
+    refs: ReferenceDataRepository,
+    repo: BudgetsRepository,
+    val transactions: TransactionsRepository,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
         fun create(key: BudgetDetailKey): BudgetDetailViewModel
     }
 
-    val ref: StateFlow<RefData> = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     val budgetId = MutableStateFlow(key.budgetId)
     val month = MutableStateFlow(YearMonth.parse(key.month))
 
-    val ui: StateFlow<BudgetDetailUi> = combine(ref, budgetId, month, repo.budgets, repo.amounts) { r, id, m, b, a -> Inputs(r, id, m, b, a) }
+    val ui: StateFlow<BudgetDetailUi> = combine(ref, budgetId, month, repo.getBudgetsStream(), repo.getBudgetAmountsStream()) { r, id, m, b, a -> Inputs(r, id, m, b, a) }
         .flatMapLatest { inp ->
             val e = inp.r.settings.periods
             val year = e.yearPeriods(inp.m.year)
             val range = DateRange(year.first().start, year.last().end)
-            combine(ledgers.observe(range), db.transactionDao().observeStamp()) { l, _ -> l }.map { l -> build(inp, year, l) }
+            combine(transactions.getLedgerStream(range), transactions.getChangeStampStream()) { l, _ -> l }.map { l -> build(inp, year, l) }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BudgetDetailUi())
 
     private data class Inputs(val r: RefData, val id: String, val m: YearMonth, val budgets: List<BudgetEntity>, val amounts: List<BudgetAmountEntity>)
 
-    private fun build(inp: Inputs, year: List<MonthPeriod>, l: com.nexo.app.data.repository.Ledger): BudgetDetailUi {
+    private fun build(inp: Inputs, year: List<MonthPeriod>, l: com.nexo.app.core.model.Ledger): BudgetDetailUi {
         val r = inp.r
         val budget = inp.budgets.firstOrNull { it.id == inp.id }
         val categoryId = budget?.categoryId ?: inp.id.removePrefix("virtual_").takeIf { inp.id.startsWith("virtual_") }

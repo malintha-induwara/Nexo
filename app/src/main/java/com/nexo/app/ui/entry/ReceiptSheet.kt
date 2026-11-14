@@ -45,9 +45,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
-import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.common.money.AmountParts
+import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.Formats

@@ -1,11 +1,11 @@
 package com.nexo.app.ui.designsystem.component
 
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,12 +55,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 import com.nexo.app.ui.designsystem.theme.Sizes
 import com.nexo.app.ui.designsystem.theme.Space
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 @Immutable
 data class BarItem(val label: String, val icon: ImageVector, val selectedIcon: ImageVector)

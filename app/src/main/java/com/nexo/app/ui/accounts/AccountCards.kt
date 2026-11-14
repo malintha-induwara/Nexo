@@ -37,18 +37,18 @@ import com.nexo.app.R
 import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.domain.CardFigures
 import com.nexo.app.ui.designsystem.component.AmountText
-import com.nexo.app.ui.designsystem.component.IconTile
 import com.nexo.app.ui.designsystem.component.HeroStat
 import com.nexo.app.ui.designsystem.component.HeroSummary
+import com.nexo.app.ui.designsystem.component.IconTile
 import com.nexo.app.ui.designsystem.component.pressScale
 import com.nexo.app.ui.designsystem.component.shrinkToFit
-import com.nexo.app.ui.shell.LocalShell
 import com.nexo.app.ui.designsystem.theme.CategoryHues
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoShapes
 import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
+import com.nexo.app.ui.shell.LocalShell
 import java.util.Locale
 import kotlin.math.abs
 

@@ -4,30 +4,31 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
-import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.database.entity.RepeatRuleEntity
-import com.nexo.app.data.database.entity.TransactionEntity
-import com.nexo.app.core.model.CategoryKind
-import com.nexo.app.core.model.EntryType
-import com.nexo.app.core.model.RepeatType
-import com.nexo.app.core.model.TxKind
+import com.nexo.app.core.common.money.Conversion
 import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.common.period.toIsoText
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.data.repository.FavoriteRepository
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.data.repository.RepeatRepository
-import com.nexo.app.data.repository.TransactionWriter
-import com.nexo.app.domain.CardStatement
-import com.nexo.app.core.common.money.Conversion
+import com.nexo.app.core.common.period.toLocalDateTime
+import com.nexo.app.core.model.CategoryKind
+import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.FeeDraft
-import com.nexo.app.ui.designsystem.component.PadInput
-import com.nexo.app.ui.designsystem.component.PadKey
 import com.nexo.app.core.model.PhotoItem
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.RepeatSchedule
+import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.TxDraft
+import com.nexo.app.core.model.TxKind
+import com.nexo.app.data.database.NexoDatabase
+import com.nexo.app.data.database.entity.RepeatRuleEntity
+import com.nexo.app.data.database.entity.TransactionEntity
+import com.nexo.app.data.repository.FavoritesRepository
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.RepeatRulesRepository
+import com.nexo.app.data.repository.TransactionsRepository
+import com.nexo.app.data.repository.UserPreferencesRepository
+import com.nexo.app.domain.CardStatement
 import com.nexo.app.ui.HomeState
+import com.nexo.app.ui.designsystem.component.PadInput
+import com.nexo.app.ui.designsystem.component.PadKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.sms.rateFromApi
@@ -35,6 +36,11 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.math.BigDecimal
+import java.math.RoundingMode
+import java.time.LocalDate
+import java.time.LocalTime
+import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -46,25 +52,20 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
-import java.math.RoundingMode
-import java.time.LocalDate
-import java.time.LocalTime
-import java.util.UUID
 
 @HiltViewModel(assistedFactory = EntryViewModel.Factory::class)
 class EntryViewModel @AssistedInject constructor(
     @Assisted val key: EntryKey,
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
+    private val refs: ReferenceDataRepository,
     private val db: NexoDatabase,
-    private val refs: RefRepository,
-    private val writer: TransactionWriter,
-    private val favorites: FavoriteRepository,
-    private val repeats: RepeatRepository,
-    private val prefs: DevicePrefs,
+    private val transactions: TransactionsRepository,
+    private val favorites: FavoritesRepository,
+    private val repeats: RepeatRulesRepository,
+    private val prefs: UserPreferencesRepository,
     private val home: HomeState,
-    val photoStore: com.nexo.app.data.file.PhotoStore,
-    val tagRepo: com.nexo.app.data.repository.TagRepository,
+    val photoStore: com.nexo.app.data.repository.PhotosRepository,
+    val tagRepo: com.nexo.app.data.repository.TagsRepository,
     private val importer: com.nexo.app.data.repository.TsvImporter,
     private val sms: com.nexo.app.domain.sms.SmsApprover,
     private val receipts: com.nexo.app.data.receipt.ReceiptScanner,
@@ -77,8 +78,8 @@ class EntryViewModel @AssistedInject constructor(
     private val _ui = MutableStateFlow(EntryUi())
     val ui: StateFlow<EntryUi> = _ui.asStateFlow()
 
-    val ref: StateFlow<RefData> = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    val device = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    val device = prefs.getDeviceSettingsStream().stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _events = Channel<EntryEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -92,7 +93,7 @@ class EntryViewModel @AssistedInject constructor(
 
     init {
         viewModelScope.launch {
-            val r = refs.snapshot()
+            val r = refs.getRefData()
             val base = EntryUi(inputOrder = r.settings.inputOrder, currencyId = r.mainCurrency.id, feeCurrencyId = r.mainCurrency.id)
             val loaded = when (key.mode) {
                 EntryMode.EDIT -> loadExisting(r, base, copy = false).let { s -> key.txId?.let { withFxNote(s, it, r) } ?: s }
@@ -105,14 +106,14 @@ class EntryViewModel @AssistedInject constructor(
                 EntryMode.REPEAT_NEW -> newEntry(r, base).copy(mode = EntryMode.REPEAT_NEW, repeat = key.repeat ?: RepeatType.MONTHLY)
                 else -> newEntry(r, base)
             }
-            val unassigned = if (key.reviewUnassigned) db.transactionDao().unassigned(loaded.date.toIsoText()).size else 0
+            val unassigned = if (key.reviewUnassigned) transactions.getUnassigned(loaded.date.toIsoText()).size else 0
             _ui.value = loaded.copy(loaded = true, unassignedCount = unassigned)
             originalState = _ui.value
             if (!loaded.viewing && key.mode != EntryMode.PAY_CARD) advance()
             loadSuggestions(r)
         }
         viewModelScope.launch {
-            home.pickedFavorite.collect { id -> refs.snapshot().let { r -> _ui.value = applyFavorite(r, _ui.value, id, keepDate = true) } }
+            home.pickedFavorite.collect { id -> refs.getRefData().let { r -> _ui.value = applyFavorite(r, _ui.value, id, keepDate = true) } }
         }
     }
 
@@ -120,7 +121,7 @@ class EntryViewModel @AssistedInject constructor(
         if (!r.settings.autocomplete) return
         val cutoff = maxOf(System.currentTimeMillis() - 456L * 24 * 3600 * 1000, r.settings.autocompleteResetAt)
         val cutDate = java.time.Instant.ofEpochMilli(cutoff).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toIsoText()
-        _suggestions.value = db.transactionDao().noteUsage(cutDate, cutoff).map { NoteSuggestion(it.note, it.count, it.lastDate) }
+        _suggestions.value = transactions.getNoteUsage(cutDate, cutoff).map { NoteSuggestion(it.note, it.count, it.lastDate) }
     }
 
     private fun newEntry(r: RefData, base: EntryUi): EntryUi {
@@ -141,27 +142,27 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     private suspend fun loadExisting(r: RefData, base: EntryUi, copy: Boolean): EntryUi {
-        var tx = key.txId?.let { db.transactionDao().getById(it) } ?: return newEntry(r, base)
+        var tx = key.txId?.let { transactions.getTransaction(it) } ?: return newEntry(r, base)
         if (tx.kind == TxKind.TRANSFER_IN) {
-            val out = tx.transferGroupId?.let { g -> db.transactionDao().getByTransferGroup(g).firstOrNull { it.kind == TxKind.TRANSFER_OUT } }
+            val out = tx.transferGroupId?.let { g -> transactions.getTransferLegs(g).firstOrNull { it.kind == TxKind.TRANSFER_OUT } }
             tx = out ?: tx.copy(kind = TxKind.TRANSFER_OUT, accountId = tx.counterpartAccountId, counterpartAccountId = tx.accountId)
         }
         original = if (copy) null else tx
-        val dateTime = writer.localDateTime(tx.dateTime)
+        val dateTime = tx.dateTime.toLocalDateTime()
         val storedDate = runCatching { LocalDate.parse(tx.date) }.getOrDefault(dateTime.toLocalDate())
         val type = when (tx.kind) {
             TxKind.INCOME, TxKind.BALANCE_INCREASE -> EntryType.INCOME
             TxKind.EXPENSE, TxKind.BALANCE_DECREASE -> EntryType.EXPENSE
             else -> EntryType.TRANSFER
         }
-        val fee = if (tx.kind.isTransfer) tx.feeGroupId?.let { db.transactionDao().getFeeRow(it) } else null
-        val tags = db.tagDao().linksForTransaction(tx.id).sortedBy { it.position }.map { it.tagId }
-        val photos = if (copy) emptyList() else db.photoDao().forTransaction(tx.id).map { PhotoItem.Stored(it.fileName, it.checksum, it.fileSize) }
+        val fee = if (tx.kind.isTransfer) tx.feeGroupId?.let { transactions.getFeeRow(it) } else null
+        val tags = transactions.getTagIds(tx.id)
+        val photos = if (copy) emptyList() else transactions.getPhotos(tx.id).map { PhotoItem.Stored(it.fileName, it.checksum, it.fileSize) }
         val rate = if (tx.currencyId != r.mainCurrency.id && tx.amount != 0.0) {
             BigDecimal.valueOf(tx.amountMain).divide(BigDecimal.valueOf(tx.amount), 10, RoundingMode.HALF_UP).toDouble()
         } else null
         val installment = if (!copy && tx.installmentGroupId != null) {
-            val group = db.transactionDao().getByInstallmentGroup(tx.installmentGroupId).filter { it.kind != TxKind.TRANSFER_IN }
+            val group = transactions.getInstallmentGroup(tx.installmentGroupId).filter { it.kind != TxKind.TRANSFER_IN }
             val total = Money.sum(group.map { it.amount })
             val after = group.filter { it.date > tx.date || (it.date == tx.date && it.dateTime > tx.dateTime) }
             InstallmentInfo(tx.installmentIndex, tx.installmentCount, Money.sum(after.map { it.amount }), total)
@@ -197,7 +198,7 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     private suspend fun applyFavorite(r: RefData, base: EntryUi, favoriteId: String?, keepDate: Boolean = false): EntryUi {
-        val fav = favoriteId?.let { db.favoriteDao().getById(it) } ?: return base
+        val fav = favoriteId?.let { favorites.getFavorite(it) } ?: return base
         val transfer = fav.kind.isTransfer
         val from = if (fav.kind == TxKind.TRANSFER_IN) fav.toAccountId else fav.accountId
         val to = if (fav.kind == TxKind.TRANSFER_IN) fav.accountId else fav.toAccountId
@@ -228,7 +229,7 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     private suspend fun loadRule(r: RefData, base: EntryUi): EntryUi {
-        val rule = key.repeatRuleId?.let { db.repeatRuleDao().getById(it) } ?: return newEntry(r, base)
+        val rule = key.repeatRuleId?.let { repeats.getRule(it) } ?: return newEntry(r, base)
         originalRule = rule
         return base.copy(
             mode = EntryMode.REPEAT_EDIT,
@@ -253,7 +254,7 @@ class EntryViewModel @AssistedInject constructor(
     private suspend fun loadPayCard(r: RefData, base: EntryUi): EntryUi {
         val card = key.accountId?.let { r.accountById[it] } ?: return newEntry(r, base)
         val ids = listOf(card.id) + r.linkedDebitCards(card.id).map { it.id }
-        val figures = CardStatement.compute(r, card, db.transactionDao().getAllForAccounts(ids), LocalDate.now())
+        val figures = CardStatement.compute(r, card, transactions.getAllForAccounts(ids), LocalDate.now())
         val payer = card.linkedAccountId?.takeIf { id -> r.accountById[id]?.let { r.isAccountVisible(it) } == true }
         return base.copy(
             mode = EntryMode.PAY_CARD,
@@ -317,7 +318,7 @@ class EntryViewModel @AssistedInject constructor(
     private suspend fun withBankFeeCategory(d: com.nexo.app.core.model.TxDraft): com.nexo.app.core.model.TxDraft {
         val fee = d.fee ?: return d
         if (key.mode != EntryMode.SMS) return d
-        return d.copy(fee = fee.copy(categoryId = writer.bankFeeCategory()))
+        return d.copy(fee = fee.copy(categoryId = transactions.bankFeeCategory()))
     }
 
     /** An approved SMS transaction still booked at an FX estimate: editing its amount records the actual one. */
@@ -450,8 +451,8 @@ class EntryViewModel @AssistedInject constructor(
     private suspend fun loadLastFee(s: EntryUi): EntryUi {
         val from = s.accountId ?: return s
         val to = s.toAccountId ?: return s
-        val last = db.transactionDao().lastTransferWithFee(from, to) ?: return s.copy(feeLoaded = true)
-        val fee = last.feeGroupId?.let { db.transactionDao().getFeeRow(it) } ?: return s.copy(feeLoaded = true)
+        val last = transactions.getLastTransferWithFee(from, to) ?: return s.copy(feeLoaded = true)
+        val fee = last.feeGroupId?.let { transactions.getFeeRow(it) } ?: return s.copy(feeLoaded = true)
         return s.copy(feeExpanded = true, feeAmount = fee.amount, feeCurrencyId = fee.currencyId, feeLoaded = true)
     }
 
@@ -663,7 +664,7 @@ class EntryViewModel @AssistedInject constructor(
         }
         _ui.update { it.copy(saving = true) }
         viewModelScope.launch {
-            runCatching { writer.save(withBankFeeCategory(draft(_ui.value))) }
+            runCatching { transactions.save(withBankFeeCategory(draft(_ui.value))) }
                 .onSuccess { id ->
                     home.saved(id)
                     if (key.mode == EntryMode.SMS && key.smsItemId != null) {
@@ -675,7 +676,7 @@ class EntryViewModel @AssistedInject constructor(
                         }
                         val bankAccount = if (smsItem?.kind == com.nexo.app.core.model.SmsKind.TRANSFER_IN) s.toAccountId else s.accountId
                         val fee = s.feeAmount?.takeIf { s.feeExpanded && it > 0 }
-                        if (fee != null && !s.isTransfer) writer.addFee(id, fee)
+                        if (fee != null && !s.isTransfer) transactions.addFee(id, fee)
                         sms.markApproved(key.smsItemId, id, bankAccount, if (s.isTransfer) null else s.categoryId)
                         smsItem?.let { item -> if (fee != null) sms.recordFee(item, bankAccount, com.nexo.app.domain.sms.FeeChoice(fee)) }
                     }
@@ -761,9 +762,9 @@ class EntryViewModel @AssistedInject constructor(
             // Bulk-assign other unassigned entries with the same note.
             val orig = original
             if (orig != null && orig.categoryId == null && s.categoryId != null && s.note.isNotBlank()) {
-                val same = db.transactionDao().unassigned("9999-12-31").filter { it.id != orig.id && it.note == s.note && it.categoryId == null && !it.kind.isTransfer }
+                val same = transactions.getUnassigned("9999-12-31").filter { it.id != orig.id && it.note == s.note && it.categoryId == null && !it.kind.isTransfer }
                 if (same.isNotEmpty()) {
-                    writer.setCategory(same.map { it.id }, s.categoryId)
+                    transactions.setCategory(same.map { it.id }, s.categoryId)
                     _events.send(EntryEvent.Message(R.string.bulk_assigned, same.size))
                 }
             }
@@ -774,7 +775,7 @@ class EntryViewModel @AssistedInject constructor(
             importer.removeLine(key.importFile, key.importLine)
         }
         if (continueAfter) {
-            val r = refs.snapshot()
+            val r = refs.getRefData()
             val fresh = newEntry(r, EntryUi(inputOrder = r.settings.inputOrder, currencyId = r.mainCurrency.id, feeCurrencyId = r.mainCurrency.id))
                 .copy(type = s.type, date = s.date, time = s.time, loaded = true)
             _ui.value = fresh
@@ -787,7 +788,7 @@ class EntryViewModel @AssistedInject constructor(
 
     private suspend fun openNextUnassigned() {
         val s = _ui.value
-        val next = db.transactionDao().unassigned(s.date.toIsoText()).firstOrNull { it.id != s.originalId }
+        val next = transactions.getUnassigned(s.date.toIsoText()).firstOrNull { it.id != s.originalId }
         if (next == null) _events.send(EntryEvent.Close(s.date))
         else _events.send(EntryEvent.Open(EntryKey(mode = EntryMode.EDIT, txId = next.id, reviewUnassigned = true)))
     }
@@ -797,7 +798,7 @@ class EntryViewModel @AssistedInject constructor(
     fun delete(wholeGroup: Boolean) {
         val id = _ui.value.originalId ?: return
         viewModelScope.launch {
-            writer.delete(listOf(id), wholeGroup)
+            transactions.delete(listOf(id), wholeGroup)
             if (key.reviewUnassigned) openNextUnassigned() else _events.send(EntryEvent.Close(_ui.value.date))
         }
     }

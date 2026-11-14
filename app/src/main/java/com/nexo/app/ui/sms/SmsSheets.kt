@@ -26,9 +26,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
+import com.nexo.app.core.model.DenyReason
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.RefData
-import com.nexo.app.core.model.DenyReason
 import com.nexo.app.ui.designsystem.component.SectionHeader
 import com.nexo.app.ui.designsystem.component.rememberHaptics
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors

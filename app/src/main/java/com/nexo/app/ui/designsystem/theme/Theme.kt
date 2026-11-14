@@ -13,7 +13,7 @@ import androidx.core.view.WindowCompat
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.ColorSet
 import com.nexo.app.core.model.MemoColor
-import com.nexo.app.data.datastore.ThemeMode
+import com.nexo.app.core.model.ThemeMode
 
 /** Colours of screen headers. Soft Tally headers sit on the page background. */
 @Immutable

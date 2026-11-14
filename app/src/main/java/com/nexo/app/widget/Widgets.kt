@@ -188,10 +188,10 @@ class TransactionsWidget : GlanceAppWidget() {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
         val prefs = WidgetData.entry(context).prefs()
         val initial = colorsAndMonth(context)
-        val initialMode = prefs.widgetModeNow(appWidgetId)
+        val initialMode = prefs.getWidgetMode(appWidgetId)
         provideContent {
             val (colors, figures) = live(initial) { colorsAndMonth(context) }
-            val storedMode by remember { prefs.widgetMode(appWidgetId) }.collectAsState(initialMode)
+            val storedMode by remember { prefs.getWidgetModeStream(appWidgetId) }.collectAsState(initialMode)
             val mode = if (storedMode in 0..2) storedMode else 2
             Shell(colors) { if (!figures.ready) NoData(context, colors) else TransactionsContent(context, figures, mode, colors, large = false) }
         }
@@ -204,10 +204,10 @@ class TransactionsWideWidget : GlanceAppWidget() {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
         val prefs = WidgetData.entry(context).prefs()
         val initial = colorsAndMonth(context)
-        val initialMode = prefs.widgetModeNow(appWidgetId)
+        val initialMode = prefs.getWidgetMode(appWidgetId)
         provideContent {
             val (colors, figures) = live(initial) { colorsAndMonth(context) }
-            val storedMode by remember { prefs.widgetMode(appWidgetId) }.collectAsState(initialMode)
+            val storedMode by remember { prefs.getWidgetModeStream(appWidgetId) }.collectAsState(initialMode)
             val mode = if (storedMode in 0..2) storedMode else 2
             Shell(colors) { if (!figures.ready) NoData(context, colors) else TransactionsContent(context, figures, mode, colors, large = true) }
         }

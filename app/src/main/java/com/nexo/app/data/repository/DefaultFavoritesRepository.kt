@@ -1,21 +1,21 @@
 package com.nexo.app.data.repository
 
 import androidx.room.withTransaction
+import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.FavoriteEntity
-import com.nexo.app.data.database.entity.RepeatRuleEntity
 import com.nexo.app.data.database.entity.TransactionEntity
-import com.nexo.app.core.model.TxKind
 import java.util.UUID
 import javax.inject.Inject
-import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
 
-@Singleton
-class FavoriteRepository @Inject constructor(private val db: NexoDatabase) {
-    val favorites = db.favoriteDao().observeAll()
+class DefaultFavoritesRepository @Inject constructor(private val db: NexoDatabase) : FavoritesRepository {
+    override fun getFavoritesStream(): Flow<List<FavoriteEntity>> = db.favoriteDao().observeAll()
+
+    override suspend fun getFavorite(id: String): FavoriteEntity? = db.favoriteDao().getById(id)
 
     /** Creates a bookmark, reviving an identical one instead of duplicating it. */
-    suspend fun addFromTransaction(tx: TransactionEntity) {
+    override suspend fun addFromTransaction(tx: TransactionEntity) {
         val kind = if (tx.kind == TxKind.TRANSFER_IN) TxKind.TRANSFER_OUT else tx.kind
         val account = if (tx.kind == TxKind.TRANSFER_IN) tx.counterpartAccountId else tx.accountId
         val to = when (tx.kind) {
@@ -39,25 +39,11 @@ class FavoriteRepository @Inject constructor(private val db: NexoDatabase) {
         )
     }
 
-    suspend fun reorder(ids: List<String>) = db.withTransaction {
+    override suspend fun reorder(ids: List<String>) = db.withTransaction {
         val all = db.favoriteDao().getAll().associateBy { it.id }
         db.favoriteDao().upsert(ids.mapIndexedNotNull { i, id -> all[id]?.copy(orderSeq = i) })
     }
 
-    suspend fun delete(ids: List<String>) = db.favoriteDao().deleteByIds(ids)
+    override suspend fun delete(ids: List<String>) = db.favoriteDao().deleteByIds(ids)
 }
 
-@Singleton
-class RepeatRepository @Inject constructor(
-    private val db: NexoDatabase,
-    private val engine: RepeatEngine,
-) {
-    val rules = db.repeatRuleDao().observeAll()
-
-    suspend fun save(rule: RepeatRuleEntity) {
-        db.repeatRuleDao().upsert(listOf(rule))
-        engine.run()
-    }
-
-    suspend fun delete(ids: List<String>) = db.repeatRuleDao().deleteByIds(ids)
-}

@@ -51,13 +51,13 @@ import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.InlineBottomSheet
 import com.nexo.app.ui.designsystem.component.RoundIconButton
 import com.nexo.app.ui.designsystem.component.rememberHaptics
-import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.navigation.SmsHistoryKey
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 import com.nexo.app.ui.designsystem.theme.NexoShapes
 import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
+import com.nexo.app.ui.navigation.LocalNavigator
+import com.nexo.app.ui.navigation.SmsHistoryKey
 
 /** "Add past transactions": nothing selected by default, picked rows go straight to the ledger. */
 @Composable

@@ -14,12 +14,12 @@ import com.nexo.app.data.database.Seeder
 import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.data.database.entity.FxSnapshotEntity
 import com.nexo.app.data.database.entity.SmsItemEntity
-import com.nexo.app.data.datastore.DevicePrefs
+import com.nexo.app.data.datastore.DevicePreferencesDataSource
 import com.nexo.app.data.network.BankRatesClient
+import com.nexo.app.data.repository.DefaultUserPreferencesRepository
 import com.nexo.app.data.repository.FxRepository
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.data.sms.RateChoice
-import com.nexo.app.data.sms.RateChooser
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.testing.referenceDataRepository
 import java.time.Instant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -93,12 +93,12 @@ class FxTest {
         assertEquals(4.21, RateChooser.estimate(0.0125, 336.5), 0.0)
     }
 
-    private fun repo(): Triple<NexoDatabase, FxRepository, RefRepository> = runBlocking {
+    private fun repo(): Triple<NexoDatabase, FxRepository, ReferenceDataRepository> = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
         Seeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
-        val refs = RefRepository(db, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
-        Triple(db, FxRepository(db, refs, DevicePrefs(context), BankRatesClient(Dispatchers.IO)), refs)
+        val refs = referenceDataRepository(db, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
+        Triple(db, FxRepository(db, refs, DefaultUserPreferencesRepository(DevicePreferencesDataSource(context)), BankRatesClient(Dispatchers.IO)), refs)
     }
 
     private fun usdItem(occurredAt: Long, amount: Double = 20.0) = SmsItemEntity(
@@ -139,7 +139,7 @@ class FxTest {
         val (db, fx, refs) = repo()
         assertNull(fx.estimate(usdItem(captured)).estimatedAmount)
         db.currencyDao().upsert(listOf(CurrencyEntity("USD", "USD", "US Dollar", "$", SymbolPosition.PREFIX, 2, 330.0, false, true, 1, 0)))
-        val ref = refs.ref.first { r -> r.currencies.any { it.id == "USD" } }
+        val ref = refs.getRefDataStream().first { r -> r.currencies.any { it.id == "USD" } }
         val manual = fx.estimate(usdItem(captured), ref)
         assertEquals(RateChoice.MANUAL, manual.fxSource)
         assertEquals(6600.0, manual.estimatedAmount!!, 0.0)

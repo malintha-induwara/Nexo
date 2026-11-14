@@ -1,79 +1,72 @@
 package com.nexo.app.data.repository
 
 import androidx.room.withTransaction
-import com.nexo.app.data.repository.BackupManager
-import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.database.entity.CurrencyEntity
-import com.nexo.app.data.file.AppDirs
-import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.core.common.money.CatalogCurrency
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.common.money.Money
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.widget.WidgetRefresher
+import com.nexo.app.core.model.SymbolPosition
+import com.nexo.app.data.database.NexoDatabase
+import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.data.file.AppDirs
 import java.io.File
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.UUID
 import javax.inject.Inject
-import javax.inject.Singleton
 
 /** Currencies with manually entered rates. */
-@Singleton
-class CurrencyRepository @Inject constructor(
+class DefaultCurrenciesRepository @Inject constructor(
     private val db: NexoDatabase,
-    private val refs: RefRepository,
+    private val refs: ReferenceDataRepository,
     private val reset: DataReset,
     private val backups: BackupManager,
     private val dirs: AppDirs,
-    private val prefs: DevicePrefs,
-    private val widgets: WidgetRefresher,
-) {
+    private val prefs: UserPreferencesRepository,
+) : CurrenciesRepository {
     private fun now() = System.currentTimeMillis()
 
-    suspend fun setMainFormat(position: SymbolPosition, decimals: Int) {
+    override suspend fun setMainFormat(position: SymbolPosition, decimals: Int) {
         val main = db.currencyDao().getMain() ?: return
         db.currencyDao().upsert(listOf(main.copy(symbolPosition = position, decimals = decimals, rate = 1.0, updatedAt = now())))
     }
 
-    suspend fun saveSub(c: CurrencyEntity) {
+    override suspend fun saveSub(c: CurrencyEntity) {
         val order = db.currencyDao().getById(c.id)?.orderSeq ?: (db.currencyDao().maxOrder() + 1)
         db.currencyDao().upsert(listOf(c.copy(isVisible = true, isMain = false, orderSeq = order, updatedAt = now())))
-        widgets.refresh()
     }
 
-    fun builtinSub(c: CatalogCurrency, rate: Double, position: SymbolPosition, decimals: Int, existing: CurrencyEntity?) = CurrencyEntity(
+    override fun builtinSub(c: CatalogCurrency, rate: Double, position: SymbolPosition, decimals: Int, existing: CurrencyEntity?) = CurrencyEntity(
         id = c.code, isoCode = c.code, name = c.displayName(), symbol = c.subSymbol, symbolPosition = position, decimals = decimals,
         rate = rate, isMain = false, isVisible = true, orderSeq = existing?.orderSeq ?: 0, updatedAt = now(),
     )
 
-    fun customSub(id: String?, name: String, symbol: String, position: SymbolPosition, decimals: Int, rate: Double) = CurrencyEntity(
+    override fun customSub(id: String?, name: String, symbol: String, position: SymbolPosition, decimals: Int, rate: Double) = CurrencyEntity(
         id = id ?: UUID.randomUUID().toString(), isoCode = null, name = name.trim(), symbol = symbol.trim(), symbolPosition = position,
         decimals = decimals, rate = rate, isMain = false, isVisible = true, orderSeq = 0, updatedAt = now(),
     )
 
-    suspend fun hide(id: String) {
+    override suspend fun hide(id: String) {
         val c = db.currencyDao().getById(id) ?: return
         db.currencyDao().upsert(listOf(c.copy(isVisible = false, updatedAt = now())))
     }
 
-    suspend fun reorder(ids: List<String>) = db.withTransaction {
+    override suspend fun reorder(ids: List<String>) = db.withTransaction {
         val all = db.currencyDao().getAll().associateBy { it.id }
         db.currencyDao().upsert(ids.mapIndexedNotNull { i, id -> all[id]?.copy(orderSeq = i + 1) })
     }
 
     /** "Data initialization": complete reset with the new main currency. */
-    suspend fun changeMainWithReset(target: CatalogCurrency) = reset.completeReset(deletePhotos = false, main = target)
+    override suspend fun changeMainWithReset(target: CatalogCurrency) = reset.completeReset(deletePhotos = false, main = target)
 
     /**
      * "Data retention": every main amount and budget converts with [r] (1 old main = r new main),
      * and every rate becomes old rate × r. A safety backup is taken first and restored on failure.
      */
-    suspend fun changeMainWithRate(target: CatalogCurrency, r: Double): Boolean {
+    override suspend fun changeMainWithRate(target: CatalogCurrency, r: Double): Boolean {
         val safety = File(dirs.backups, backups.backupFileName())
         if (!backups.writeBackup(safety)) return false
         prefs.setLastAutoBackup(now())
-        val ref = refs.snapshot()
+        val ref = refs.getRefData()
         return runCatching {
             db.withTransaction {
                 val existing = db.currencyDao().getAll()
@@ -107,7 +100,6 @@ class CurrencyRepository @Inject constructor(
                 db.currencyDao().deleteAll()
                 db.currencyDao().upsert(listOf(main) + rebuilt)
             }
-            widgets.refresh()
             true
         }.getOrElse {
             backups.restoreFile(safety)

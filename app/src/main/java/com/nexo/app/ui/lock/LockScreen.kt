@@ -39,10 +39,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import com.nexo.app.R
-import com.nexo.app.data.lock.BiometricHelper
-import com.nexo.app.data.repository.LockManager
+import com.nexo.app.core.model.DeviceSettings
+import com.nexo.app.data.repository.AppLockRepository
 import com.nexo.app.data.repository.PinResult
-import com.nexo.app.data.datastore.DeviceSettings
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.TextFieldDialog
 import kotlinx.coroutines.delay
@@ -51,7 +50,7 @@ import kotlinx.coroutines.launch
 /** Lock screen shown over everything. Back sends the app to the background. */
 @Composable
 fun LockScreen(
-    lock: LockManager,
+    lock: AppLockRepository,
     device: DeviceSettings,
     onBiometricsInvalidated: () -> Unit,
     onEraseAll: () -> Unit,
@@ -73,16 +72,15 @@ fun LockScreen(
 
     BackHandler { activity?.moveTaskToBack(true) }
 
-    val biometricAvailable = device.biometricsEnabled && BiometricHelper.isAvailable(context)
+    val biometricAvailable = device.biometricsEnabled && BiometricPrompter.isAvailable(context)
     fun promptBiometric() {
         if (activity == null) return
-        when (val c = BiometricHelper.cipher()) {
-            is BiometricHelper.CipherResult.Ready -> BiometricHelper.prompt(activity, promptTitle, usePin, c.cipher, onSuccess = { lock.unlock() })
-            else -> {
-                BiometricHelper.deleteKey()
-                onBiometricsInvalidated()
-                message = invalidated
-            }
+        val cipher = lock.getUnlockCipher()
+        if (cipher != null) {
+            BiometricPrompter.prompt(activity, promptTitle, usePin, cipher, onSuccess = { lock.unlock() })
+        } else {
+            onBiometricsInvalidated()
+            message = invalidated
         }
     }
     LaunchedEffect(Unit) { if (biometricAvailable) promptBiometric() }

@@ -53,16 +53,16 @@ import com.nexo.app.ui.designsystem.component.NavMotion
 import com.nexo.app.ui.designsystem.component.PeriodNavigator
 import com.nexo.app.ui.designsystem.component.RoundIconButton
 import com.nexo.app.ui.designsystem.component.pressScale
-import com.nexo.app.ui.navigation.EntryKey
-import com.nexo.app.ui.navigation.EntryMode
-import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.navigation.MemoEditorKey
 import com.nexo.app.ui.designsystem.theme.LocalIsDark
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoPalette
 import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
+import com.nexo.app.ui.navigation.EntryKey
+import com.nexo.app.ui.navigation.EntryMode
+import com.nexo.app.ui.navigation.LocalNavigator
+import com.nexo.app.ui.navigation.MemoEditorKey
 import java.time.LocalDate
 import java.util.Locale
 

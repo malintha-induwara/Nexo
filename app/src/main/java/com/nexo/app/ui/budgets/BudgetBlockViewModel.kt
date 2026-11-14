@@ -6,9 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
 import com.nexo.app.core.common.period.MonthPeriod
 import com.nexo.app.core.model.RefData
-import com.nexo.app.data.repository.BudgetRepository
-import com.nexo.app.data.repository.LedgerRepository
-import com.nexo.app.data.repository.RefRepository
+import com.nexo.app.data.repository.BudgetsRepository
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.domain.BudgetBlockData
 import com.nexo.app.domain.BudgetCalc
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,11 +28,11 @@ import kotlinx.coroutines.flow.stateIn
 @HiltViewModel
 class BudgetBlockViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    refs: RefRepository,
-    repo: BudgetRepository,
-    private val ledgers: LedgerRepository,
+    refs: ReferenceDataRepository,
+    repo: BudgetsRepository,
+    private val transactions: TransactionsRepository,
 ) : ViewModel() {
-    val ref: StateFlow<RefData> = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     private val period = MutableStateFlow<MonthPeriod?>(null)
 
     fun setPeriod(p: MonthPeriod) {
@@ -40,7 +40,7 @@ class BudgetBlockViewModel @Inject constructor(
     }
 
     val data: StateFlow<BudgetBlockData?> = period.filterNotNull().flatMapLatest { p ->
-        combine(ref, repo.budgets, repo.amounts, ledgers.observe(p.range)) { r, b, a, l ->
+        combine(ref, repo.getBudgetsStream(), repo.getBudgetAmountsStream(), transactions.getLedgerStream(p.range)) { r, b, a, l ->
             BudgetCalc.compute(r, b, a, l.rows, p.key, context.getString(R.string.total_budget))
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)

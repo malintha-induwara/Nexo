@@ -18,8 +18,8 @@ import com.nexo.app.R
 import com.nexo.app.core.common.ApplicationScope
 import com.nexo.app.core.common.NexoIntents
 import com.nexo.app.core.model.EntryType
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.data.repository.RefRepository
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.widget.WidgetRefresher
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -34,8 +34,8 @@ import kotlinx.coroutines.launch
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 interface NotificationsEntryPoint {
-    fun prefs(): DevicePrefs
-    fun refs(): RefRepository
+    fun prefs(): UserPreferencesRepository
+    fun refs(): ReferenceDataRepository
     fun widgets(): WidgetRefresher
 
     @ApplicationScope
@@ -187,7 +187,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val pending = goAsync()
         context.entry().appScope().launch {
             try {
-                val s = context.entry().prefs().current()
+                val s = context.entry().prefs().getDeviceSettings()
                 // DayOfWeek 1 = Monday … 7 = Sunday.
                 if (s.reminderEnabled && LocalDate.now().dayOfWeek.value in s.reminderDays && s.setupDone) Notifications.postReminder(context)
                 ReminderScheduler.schedule(context, s.reminderEnabled, s.reminderHour, s.reminderMinute)
@@ -204,7 +204,7 @@ class QuickAddRepostReceiver : BroadcastReceiver() {
         context.entry().appScope().launch {
             try {
                 val e = context.entry()
-                if (e.prefs().current().setupDone && e.refs().snapshot().settings.quickAddNotification) Notifications.updateQuickAdd(context, true)
+                if (e.prefs().getDeviceSettings().setupDone && e.refs().getRefData().settings.quickAddNotification) Notifications.updateQuickAdd(context, true)
             } finally {
                 pending.finish()
             }
@@ -222,9 +222,9 @@ class BootReceiver : BroadcastReceiver() {
         context.entry().appScope().launch {
             try {
                 val e = context.entry()
-                val s = e.prefs().current()
+                val s = e.prefs().getDeviceSettings()
                 if (s.setupDone) {
-                    Notifications.updateQuickAdd(context, e.refs().snapshot().settings.quickAddNotification)
+                    Notifications.updateQuickAdd(context, e.refs().getRefData().settings.quickAddNotification)
                     e.widgets().refresh()
                 }
                 ReminderScheduler.schedule(context, s.reminderEnabled, s.reminderHour, s.reminderMinute)

@@ -1,19 +1,10 @@
 package com.nexo.app.ui.entry
 
-import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
-import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
-import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
-import androidx.activity.result.IntentSenderRequest
-import com.nexo.app.data.repository.expectReturn
-import androidx.compose.material.icons.rounded.DateRange
-import androidx.compose.material.icons.rounded.PhotoLibrary
-import androidx.compose.material.icons.rounded.PhotoCamera
-import com.nexo.app.ui.designsystem.component.NexoMenuItem
-import com.nexo.app.ui.designsystem.component.NexoMenu
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -63,16 +54,19 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Notes
+import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.DocumentScanner
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DateRange
+import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.Repeat
-import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.StarOutline
-import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -127,19 +121,21 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import com.nexo.app.R
-import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.common.money.AmountParts
+import com.nexo.app.core.common.money.Conversion
+import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.EntryType
+import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.common.money.AmountFormatter
-import com.nexo.app.core.common.money.AmountParts
-import com.nexo.app.core.common.money.Money
-import com.nexo.app.core.common.money.Conversion
-import com.nexo.app.ui.designsystem.component.PadKey
-import com.nexo.app.core.model.RefData
+import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.CalculatorDialog
@@ -148,14 +144,25 @@ import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.InlineBottomSheet
 import com.nexo.app.ui.designsystem.component.NexoDatePickerDialog
+import com.nexo.app.ui.designsystem.component.NexoMenu
+import com.nexo.app.ui.designsystem.component.NexoMenuItem
 import com.nexo.app.ui.designsystem.component.NexoTimePickerDialog
 import com.nexo.app.ui.designsystem.component.NumberPad
+import com.nexo.app.ui.designsystem.component.PadKey
 import com.nexo.app.ui.designsystem.component.RoundIconButton
 import com.nexo.app.ui.designsystem.component.SegmentedPill
 import com.nexo.app.ui.designsystem.component.pressScale
 import com.nexo.app.ui.designsystem.component.rememberHaptics
 import com.nexo.app.ui.designsystem.component.shakeOn
 import com.nexo.app.ui.designsystem.component.shrinkToFit
+import com.nexo.app.ui.designsystem.theme.CategoryHues
+import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.NexoMotion
+import com.nexo.app.ui.designsystem.theme.NexoShapes
+import com.nexo.app.ui.designsystem.theme.NexoType
+import com.nexo.app.ui.designsystem.theme.Space
+import com.nexo.app.ui.lock.expectReturn
 import com.nexo.app.ui.navigation.AccountFormKey
 import com.nexo.app.ui.navigation.AccountListKey
 import com.nexo.app.ui.navigation.BookmarksKey
@@ -164,13 +171,6 @@ import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SubCurrenciesKey
-import com.nexo.app.ui.designsystem.theme.CategoryHues
-import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
-import com.nexo.app.ui.designsystem.theme.LocalNexoColors
-import com.nexo.app.ui.designsystem.theme.NexoMotion
-import com.nexo.app.ui.designsystem.theme.NexoShapes
-import com.nexo.app.ui.designsystem.theme.NexoType
-import com.nexo.app.ui.designsystem.theme.Space
 import java.io.File
 import java.text.DecimalFormatSymbols
 import java.text.NumberFormat
@@ -185,7 +185,7 @@ fun EntryScreen(key: EntryKey) {
     val ref by vm.ref.collectAsStateWithLifecycle()
     val device by vm.device.collectAsStateWithLifecycle()
     val suggestions by vm.suggestions.collectAsStateWithLifecycle()
-    val tags by vm.tagRepo.tags.collectAsStateWithLifecycle(emptyList())
+    val tags by vm.tagRepo.getTagsStream().collectAsStateWithLifecycle(emptyList())
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val resources = androidx.compose.ui.platform.LocalResources.current

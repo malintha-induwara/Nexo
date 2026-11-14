@@ -1,7 +1,6 @@
 package com.nexo.app.core.common.money
 
 import com.nexo.app.data.database.entity.CurrencyEntity
-import com.nexo.app.core.common.money.Money
 
 data class Amounts(val amount: Double, val main: Double, val account: Double)
 

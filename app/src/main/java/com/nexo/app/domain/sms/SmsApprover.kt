@@ -1,26 +1,26 @@
 package com.nexo.app.domain.sms
 
-import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.database.entity.CurrencyEntity
-import com.nexo.app.core.model.EntryType
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.data.repository.TransactionWriter
-import com.nexo.app.core.model.FeeDraft
-import com.nexo.app.core.model.RefData
-import com.nexo.app.core.model.TxDraft
-import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.common.money.Money
+import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.DenyReason
+import com.nexo.app.core.model.EntryType
+import com.nexo.app.core.model.FeeDraft
 import com.nexo.app.core.model.FeeMode
 import com.nexo.app.core.model.FeeRoute
-import com.nexo.app.data.sms.Missing
+import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.SmsStatus
-import com.nexo.app.data.sms.SmsSuggester
+import com.nexo.app.core.model.TxDraft
+import com.nexo.app.data.database.NexoDatabase
+import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.data.database.entity.FeePresetEntity
 import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.database.entity.SmsMerchantRuleEntity
 import com.nexo.app.data.database.entity.SmsSourceEntity
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.TransactionsRepository
+import com.nexo.app.data.sms.Missing
+import com.nexo.app.data.sms.SmsSuggester
 import com.nexo.app.data.sms.learningKey
 import com.nexo.app.data.sms.missing
 import com.nexo.app.data.sms.parser.Bank
@@ -58,8 +58,8 @@ data class FeeChoice(val amount: Double?, val remember: Boolean = false, val inc
 @Singleton
 class SmsApprover @Inject constructor(
     private val db: NexoDatabase,
-    private val refs: RefRepository,
-    private val writer: TransactionWriter,
+    private val refs: ReferenceDataRepository,
+    private val transactions: TransactionsRepository,
     private val suggester: SmsSuggester,
 ) {
     private val dao get() = db.smsDao()
@@ -113,7 +113,7 @@ class SmsApprover @Inject constructor(
             val estimate = item.estimatedAmount ?: return FeePlan.None
             val actual = item.actualAmount ?: return FeePlan.None
             if (actual <= estimate * (1 + FX_TOLERANCE)) return FeePlan.None
-            val difference = Money.round(actual - estimate, refs.snapshot().accountCurrency(account).decimals)
+            val difference = Money.round(actual - estimate, refs.getRefData().accountCurrency(account).decimals)
             return when (mode) {
                 FeeMode.NEVER -> FeePlan.None
                 FeeMode.AUTO -> FeePlan.Auto(route, difference)
@@ -135,20 +135,20 @@ class SmsApprover @Inject constructor(
      */
     suspend fun approve(itemId: String, fee: FeeChoice? = null): ApproveResult {
         val item = dao.item(itemId)?.takeIf { it.status == SmsStatus.PENDING } ?: return ApproveResult.Gone
-        val ref = refs.snapshot()
+        val ref = refs.getRefData()
         var draft = draft(item, ref) ?: return ApproveResult.Incomplete(item.missing())
         val feeAmount = fee?.takeIf { !it.includeInPurchase }?.amount?.takeIf { it > 0 }
         val estimate = item.estimatedAmount
         if (feeAmount != null && item.feeRoute == FeeRoute.FX_CARD_PURCHASE && estimate != null) draft = draft.copy(amount = estimate)
         val transfer = draft.type == EntryType.TRANSFER
         if (transfer && feeAmount != null) {
-            draft = draft.copy(fee = FeeDraft(feeAmount, ref.accountCurrency(draft.accountId).id, categoryId = writer.bankFeeCategory()))
+            draft = draft.copy(fee = FeeDraft(feeAmount, ref.accountCurrency(draft.accountId).id, categoryId = transactions.bankFeeCategory()))
         }
-        val txId = writer.save(draft)
+        val txId = transactions.save(draft)
         val feeId = when {
             feeAmount == null -> null
             transfer -> db.transactionDao().getById(txId)?.feeGroupId?.let { db.transactionDao().getFeeRow(it)?.id }
-            else -> writer.addFee(txId, feeAmount)
+            else -> transactions.addFee(txId, feeAmount)
         }
         markApproved(item, txId, item.accountId, draft.categoryId)
         if (fee != null) recordFee(item, item.accountId, fee)
@@ -156,7 +156,7 @@ class SmsApprover @Inject constructor(
     }
 
     /** Removes an automatically added fee (its Undo). */
-    suspend fun removeFee(feeId: String) = writer.delete(listOf(feeId))
+    suspend fun removeFee(feeId: String) = transactions.delete(listOf(feeId))
 
     /** Fee preset: the last fee on this route from this account, and "Remember" turning it into always / never. */
     suspend fun recordFee(item: SmsItemEntity, accountId: String?, choice: FeeChoice) {
@@ -244,13 +244,13 @@ class SmsApprover @Inject constructor(
     }
 
     suspend fun setAccounts(ids: Collection<String>, accountId: String) {
-        val ref = refs.snapshot()
+        val ref = refs.getRefData()
         val now = now()
         dao.updateAll(dao.items(ids.toList()).filter { it.status == SmsStatus.PENDING }.map { suggester.prepare(it.copy(accountId = accountId), ref).copy(updatedAt = now) })
     }
 
     suspend fun update(item: SmsItemEntity) {
-        val ref = refs.snapshot()
+        val ref = refs.getRefData()
         dao.update(suggester.prepare(item, ref).copy(updatedAt = now()))
     }
 
@@ -258,7 +258,7 @@ class SmsApprover @Inject constructor(
     suspend fun mapCard(bank: String, last4: String, accountId: String) {
         val now = now()
         dao.upsertSource(SmsSourceEntity(bank, last4, accountId, now))
-        val ref = refs.snapshot()
+        val ref = refs.getRefData()
         val affected = dao.pending().filter { it.bank == bank && it.cardLast4 == last4 && it.accountId == null }
         dao.updateAll(affected.map { suggester.prepare(it.copy(accountId = accountId), ref).copy(updatedAt = now) })
     }

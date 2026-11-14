@@ -3,22 +3,21 @@ package com.nexo.app.ui.accounts
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.database.entity.AccountEntity
-import com.nexo.app.data.database.entity.TransactionEntity
-import com.nexo.app.core.model.AccountStatus
-import com.nexo.app.core.model.GroupType
-import com.nexo.app.core.model.TxKind
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.PeriodEngine
-import com.nexo.app.data.repository.AccountRepository
-import com.nexo.app.data.repository.LedgerRepository
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.data.repository.TransactionWriter
+import com.nexo.app.core.model.AccountStatus
+import com.nexo.app.core.model.GroupType
+import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.TxKind
+import com.nexo.app.data.database.entity.AccountEntity
+import com.nexo.app.data.database.entity.TransactionEntity
+import com.nexo.app.data.repository.AccountsRepository
+import com.nexo.app.data.repository.MemosRepository
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.domain.CardFigures
 import com.nexo.app.domain.CardStatement
-import com.nexo.app.core.model.RefData
 import com.nexo.app.ui.navigation.AccountDetailKey
 import com.nexo.app.ui.transactions.DayGroup
 import com.nexo.app.ui.transactions.RowFactory
@@ -27,6 +26,9 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.YearMonth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,9 +39,6 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
-import java.time.LocalDate
-import java.time.YearMonth
 
 enum class DetailTab { DAILY, MONTHLY, ANNUALLY }
 
@@ -69,18 +68,17 @@ data class AccountDetailUi(
 class AccountDetailViewModel @AssistedInject constructor(
     @Assisted val key: AccountDetailKey,
     @ApplicationContext private val context: Context,
-    private val db: NexoDatabase,
-    refs: RefRepository,
-    private val ledgers: LedgerRepository,
-    val writer: TransactionWriter,
-    private val accounts: AccountRepository,
+    private val memos: MemosRepository,
+    refs: ReferenceDataRepository,
+    val transactions: TransactionsRepository,
+    private val accounts: AccountsRepository,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
         fun create(key: AccountDetailKey): AccountDetailViewModel
     }
 
-    val ref: StateFlow<RefData> = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     private val _tab = MutableStateFlow(DetailTab.DAILY)
     val tab = _tab.asStateFlow()
     private val _anchor = MutableStateFlow(key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now())
@@ -90,7 +88,7 @@ class AccountDetailViewModel @AssistedInject constructor(
     private val _selection = MutableStateFlow<Set<String>>(emptySet())
     val selection = _selection.asStateFlow()
 
-    val ui: StateFlow<AccountDetailUi> = combine(ref, _tab, _anchor, _charts, db.transactionDao().observeStamp()) { r, t, a, c, _ -> Quad(r, t, a, c) }
+    val ui: StateFlow<AccountDetailUi> = combine(ref, _tab, _anchor, _charts, transactions.getChangeStampStream()) { r, t, a, c, _ -> Quad(r, t, a, c) }
         .mapLatest { compute(it.r, it.t, it.a, it.c) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountDetailUi())
 
@@ -104,13 +102,13 @@ class AccountDetailViewModel @AssistedInject constructor(
         val factory = RowFactory(context, r)
         if (account == null) {
             // "None" pseudo-account: all unassigned rows, no balances.
-            val rows = db.transactionDao().noAccount()
-            val ledger = ledgers.ledgerFor(rows)
+            val rows = transactions.getWithoutAccount()
+            val ledger = transactions.getLedgerFor(rows)
             return AccountDetailUi(loaded = true, title = context.getString(com.nexo.app.R.string.none), days = factory.dayGroups(rows, ledger))
         }
         val type = r.groupType(account.id) ?: GroupType.NORMAL
         val ids = listOf(account.id) + r.linkedDebitCards(account.id).map { it.id }
-        val all = db.transactionDao().getAllForAccounts(ids).sortedWith(compareBy({ it.date }, { it.dateTime }, { it.createdAt }))
+        val all = transactions.getAllForAccounts(ids).sortedWith(compareBy({ it.date }, { it.dateTime }, { it.createdAt }))
         val engine = engineFor(r, account)
         val measure = { t: TransactionEntity -> com.nexo.app.domain.Balances.rowMeasure(r, t, account) }
         val signed = { t: TransactionEntity -> if (t.kind.isInflow) measure(t) else -measure(t) }
@@ -140,8 +138,8 @@ class AccountDetailViewModel @AssistedInject constructor(
                         runningMap[t.id] = running.toDouble()
                     }
                 }
-                val ledger = ledgers.ledgerFor(rows)
-                val memos = db.memoDao().getAll().filter { LocalDate.parse(it.date) in range }.groupBy { LocalDate.parse(it.date) }
+                val ledger = transactions.getLedgerFor(rows)
+                val memos = memos.getMemos().filter { LocalDate.parse(it.date) in range }.groupBy { LocalDate.parse(it.date) }
                 val days = factory.dayGroups(rows, ledger, memos = memos, includeBalance = true) { t ->
                     val row = factory.row(t, ledger)
                     val shown = when {

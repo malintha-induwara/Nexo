@@ -6,11 +6,7 @@ import com.nexo.app.core.common.money.CatalogCurrency
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.Seeder
-import com.nexo.app.data.datastore.DevicePrefs
 import com.nexo.app.data.file.AppDirs
-import com.nexo.app.data.lock.BiometricHelper
-import com.nexo.app.data.repository.LockManager
-import com.nexo.app.widget.WidgetRefresher
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
@@ -21,9 +17,8 @@ class DataReset @Inject constructor(
     private val db: NexoDatabase,
     private val seeder: Seeder,
     private val dirs: AppDirs,
-    private val prefs: DevicePrefs,
-    private val lock: LockManager,
-    private val widgets: WidgetRefresher,
+    private val prefs: UserPreferencesRepository,
+    private val lock: AppLockRepository,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     suspend fun photoFileCount(): Int = withContext(ioDispatcher) { dirs.photos.listFiles()?.size ?: 0 }
@@ -36,7 +31,6 @@ class DataReset @Inject constructor(
         prefs.setCollapsedGroups(emptySet())
         prefs.setRepeatDay("")
         if (deletePhotos) dirs.photos.listFiles()?.forEach { it.delete() }
-        widgets.refresh()
     }
 
     /** Reset contents only: transactions, photos, tag links and the SMS review queue that points at them. */
@@ -48,7 +42,6 @@ class DataReset @Inject constructor(
         db.smsDao().deleteAllHints()
         vacuum()
         if (deletePhotos) dirs.photos.listFiles()?.forEach { it.delete() }
-        widgets.refresh()
     }
 
     /** Forgotten PIN: everything on the device is erased and the app returns to the welcome screen. */
@@ -56,14 +49,12 @@ class DataReset @Inject constructor(
         db.clearAllTables()
         vacuum()
         listOf(dirs.photos, dirs.backups, dirs.imports, dirs.temp).forEach { d -> d.listFiles()?.forEach { it.deleteRecursively() } }
-        BiometricHelper.deleteKey()
         lock.setPin(null)
         prefs.setBiometrics(false)
         prefs.setSetupDone(false)
         prefs.setLastAutoBackup(0)
         prefs.setRepeatDay("")
         lock.unlock()
-        widgets.refresh()
     }
 
     private fun vacuum() {

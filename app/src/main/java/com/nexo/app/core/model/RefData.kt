@@ -5,12 +5,6 @@ import com.nexo.app.data.database.entity.AccountGroupEntity
 import com.nexo.app.data.database.entity.CategoryEntity
 import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.data.database.entity.TagEntity
-import com.nexo.app.core.model.AccountStatus
-import com.nexo.app.core.model.CategoryKind
-import com.nexo.app.core.model.GroupStatus
-import com.nexo.app.core.model.GroupType
-import com.nexo.app.core.model.SymbolPosition
-import com.nexo.app.core.model.BookSettings
 
 /** Snapshot of the reference tables and book settings, used to render and classify transactions. */
 data class RefData(

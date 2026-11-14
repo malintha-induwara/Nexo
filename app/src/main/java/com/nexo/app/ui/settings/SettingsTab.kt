@@ -7,10 +7,10 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -56,7 +56,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
 import com.nexo.app.BuildConfig
 import com.nexo.app.R
-import com.nexo.app.ui.shell.LocalShell
+import com.nexo.app.ui.designsystem.theme.LocalHeaderColors
+import com.nexo.app.ui.designsystem.theme.nexo
 import com.nexo.app.ui.navigation.AccountSettingsMenuKey
 import com.nexo.app.ui.navigation.BackupKey
 import com.nexo.app.ui.navigation.ConfigurationKey
@@ -65,8 +66,7 @@ import com.nexo.app.ui.navigation.HelpKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.LockSettingsKey
 import com.nexo.app.ui.navigation.StyleKey
-import com.nexo.app.ui.designsystem.theme.LocalHeaderColors
-import com.nexo.app.ui.designsystem.theme.nexo
+import com.nexo.app.ui.shell.LocalShell
 
 data class HubItem(val label: Int, val icon: ImageVector, val key: NavKey)
 

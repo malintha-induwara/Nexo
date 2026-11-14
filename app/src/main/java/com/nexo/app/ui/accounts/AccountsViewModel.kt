@@ -2,19 +2,21 @@ package com.nexo.app.ui.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.toIsoText
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.data.repository.AccountRepository
-import com.nexo.app.data.repository.RefRepository
+import com.nexo.app.core.model.GroupType
+import com.nexo.app.core.model.RefData
+import com.nexo.app.data.repository.AccountsRepository
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.TransactionsRepository
+import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.domain.AccountFigure
 import com.nexo.app.domain.AccountsSummary
 import com.nexo.app.domain.AccountsSummaryCalculator
 import com.nexo.app.domain.Balances
-import com.nexo.app.core.model.RefData
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDate
+import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,8 +26,6 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import javax.inject.Inject
 
 enum class AccountsMode { ALL, WEEKLY, MONTHLY, ANNUALLY, PERIOD }
 
@@ -45,19 +45,19 @@ data class AccountsData(
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AccountsViewModel @Inject constructor(
-    private val db: NexoDatabase,
-    refs: RefRepository,
-    private val prefs: DevicePrefs,
-    val repo: AccountRepository,
+    private val transactions: TransactionsRepository,
+    refs: ReferenceDataRepository,
+    private val prefs: UserPreferencesRepository,
+    val repo: AccountsRepository,
 ) : ViewModel() {
-    val ref: StateFlow<RefData> = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    val device = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    val device = prefs.getDeviceSettingsStream().stateIn(viewModelScope, SharingStarted.Eagerly, null)
     private val _query = MutableStateFlow(AccountsQuery())
     val query = _query.asStateFlowCompat()
 
     private fun <T> MutableStateFlow<T>.asStateFlowCompat(): StateFlow<T> = this
 
-    val data: StateFlow<AccountsData> = combine(ref, _query, db.transactionDao().observeStamp()) { r, q, _ -> r to q }
+    val data: StateFlow<AccountsData> = combine(ref, _query, transactions.getChangeStampStream()) { r, q, _ -> r to q }
         .mapLatest { (r, q) -> compute(r, q) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountsData())
 
@@ -73,29 +73,28 @@ class AccountsViewModel @Inject constructor(
     }
 
     private suspend fun compute(r: RefData, q: AccountsQuery): AccountsData {
-        val dao = db.transactionDao()
         val today = LocalDate.now()
         val range = range(r, q)
         if (range == null) {
-            val net = Balances.netByAccount(dao.aggregatesUpTo("9999-12-31"))
+            val net = Balances.netByAccount(transactions.getAggregatesUpTo("9999-12-31"))
             val month = r.settings.periods.monthPeriodContaining(today)
-            val debitNet = Balances.netByAccount(dao.aggregatesBetween(month.range.startText, month.range.endText))
+            val debitNet = Balances.netByAccount(transactions.getAggregatesBetween(month.range.startText, month.range.endText))
             val cards = r.accounts.filter { r.groupType(it.id) == GroupType.CREDIT_CARD }
             val cardRows = cards.associate { c ->
-                c.id to dao.getAllForAccounts(listOf(c.id) + r.linkedDebitCards(c.id).map { it.id })
+                c.id to transactions.getAllForAccounts(listOf(c.id) + r.linkedDebitCards(c.id).map { it.id })
             }
             val figures = AccountsSummaryCalculator.allModeFigures(r, net, debitNet, cardRows, today)
             val unassigned = if (net.containsKey(null)) Balances.unassigned(net) else null
             return AccountsData(true, figures, AccountsSummaryCalculator.summarize(r, figures, unassigned), unassigned = unassigned, debitMonthLabel = month.label)
         }
-        val net = Balances.netByAccount(dao.aggregatesUpTo(range.endText))
+        val net = Balances.netByAccount(transactions.getAggregatesUpTo(range.endText))
         val previousEnd = when (q.mode) {
             AccountsMode.WEEKLY -> range.start.minusDays(1)
             AccountsMode.MONTHLY -> range.start.minusDays(1)
             AccountsMode.ANNUALLY -> range.start.minusDays(1)
             else -> q.from.minusDays(1)
         }
-        val prevNet = Balances.netByAccount(dao.aggregatesUpTo(previousEnd.toIsoText()))
+        val prevNet = Balances.netByAccount(transactions.getAggregatesUpTo(previousEnd.toIsoText()))
         val figures = AccountsSummaryCalculator.periodFigures(r, net)
         val changes = figures.associate { f -> f.account.id to (f.balance - Balances.balance(r, f.account, prevNet)) }
         val unassigned = if (net.containsKey(null)) Balances.unassigned(net) else null
@@ -126,7 +125,7 @@ class AccountsViewModel @Inject constructor(
     fun goToday() = _query.update { it.copy(anchor = LocalDate.now()) }
 
     fun toggleCollapsed(groupId: String) = viewModelScope.launch {
-        val cur = prefs.current().collapsedGroups
+        val cur = prefs.getDeviceSettings().collapsedGroups
         prefs.setCollapsedGroups(if (groupId in cur) cur - groupId else cur + groupId)
     }
 }

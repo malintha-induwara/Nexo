@@ -6,9 +6,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.RepeatReflect
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.data.repository.RepeatEngine
-import com.nexo.app.data.repository.RepeatRepository
+import com.nexo.app.data.repository.BookSettingsRepository
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.RepeatRulesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,15 +17,16 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class RepeatListViewModel @Inject constructor(
-    private val repo: RepeatRepository,
-    private val refs: RefRepository,
-    private val engine: RepeatEngine,
+    private val repo: RepeatRulesRepository,
+    private val refs: ReferenceDataRepository,
+    private val bookSettings: BookSettingsRepository,
+    private val engine: RepeatRulesRepository,
 ) : ViewModel() {
-    val rules = repo.rules.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    val ref = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    val rules = repo.getRulesStream().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val ref = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     fun delete(ids: List<String>) = viewModelScope.launch { repo.delete(ids) }
     fun setReflect(r: RepeatReflect) = viewModelScope.launch {
-        refs.updateSettings { it.copy(repeatReflect = r) }
-        engine.run()
+        bookSettings.updateBookSettings { it.copy(repeatReflect = r) }
+        engine.generate()
     }
 }

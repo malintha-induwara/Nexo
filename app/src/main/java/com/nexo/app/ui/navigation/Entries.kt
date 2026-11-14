@@ -13,15 +13,6 @@ import com.nexo.app.ui.accounts.DeletedAccountsScreen
 import com.nexo.app.ui.accounts.DeletedGroupsScreen
 import com.nexo.app.ui.accounts.TotalStatsScreen
 import com.nexo.app.ui.accounts.TransferExpenseScreen
-import com.nexo.app.ui.budgets.BudgetAddScreen
-import com.nexo.app.ui.budgets.BudgetDetailScreen
-import com.nexo.app.ui.budgets.BudgetEditorScreen
-import com.nexo.app.ui.budgets.BudgetSettingsScreen
-import com.nexo.app.ui.categories.CategoryFormScreen
-import com.nexo.app.ui.categories.CategoryListScreen
-import com.nexo.app.ui.categories.SubcategoryListScreen
-import com.nexo.app.ui.stats.StatsDetailScreen
-import com.nexo.app.ui.tags.TagSettingsScreen
 import com.nexo.app.ui.backup.AutoBackupHistoryScreen
 import com.nexo.app.ui.backup.BackupDeviceScreen
 import com.nexo.app.ui.backup.BackupScreen
@@ -29,6 +20,19 @@ import com.nexo.app.ui.backup.ExcelExportScreen
 import com.nexo.app.ui.backup.ImportListScreen
 import com.nexo.app.ui.backup.ImportPreviewScreen
 import com.nexo.app.ui.backup.RestoreFileScreen
+import com.nexo.app.ui.budgets.BudgetAddScreen
+import com.nexo.app.ui.budgets.BudgetDetailScreen
+import com.nexo.app.ui.budgets.BudgetEditorScreen
+import com.nexo.app.ui.budgets.BudgetSettingsScreen
+import com.nexo.app.ui.categories.CategoryFormScreen
+import com.nexo.app.ui.categories.CategoryListScreen
+import com.nexo.app.ui.categories.SubcategoryListScreen
+import com.nexo.app.ui.entry.BookmarksScreen
+import com.nexo.app.ui.entry.EntryScreen
+import com.nexo.app.ui.entry.RepeatListScreen
+import com.nexo.app.ui.memo.MemoEditorScreen
+import com.nexo.app.ui.memo.MemoListScreen
+import com.nexo.app.ui.search.SearchScreen
 import com.nexo.app.ui.settings.AddSubCurrencyScreen
 import com.nexo.app.ui.settings.ConfigurationScreen
 import com.nexo.app.ui.settings.FeedbackScreen
@@ -43,16 +47,12 @@ import com.nexo.app.ui.settings.StyleScreen
 import com.nexo.app.ui.settings.SubCurrenciesScreen
 import com.nexo.app.ui.settings.SubCurrencyEditScreen
 import com.nexo.app.ui.settings.WidgetSettingsScreen
-import com.nexo.app.ui.entry.BookmarksScreen
-import com.nexo.app.ui.entry.EntryScreen
-import com.nexo.app.ui.entry.RepeatListScreen
-import com.nexo.app.ui.memo.MemoEditorScreen
-import com.nexo.app.ui.memo.MemoListScreen
-import com.nexo.app.ui.search.SearchScreen
 import com.nexo.app.ui.shell.MainShell
 import com.nexo.app.ui.sms.SmsCardsScreen
 import com.nexo.app.ui.sms.SmsQueueScreen
 import com.nexo.app.ui.sms.SmsSettingsScreen
+import com.nexo.app.ui.stats.StatsDetailScreen
+import com.nexo.app.ui.tags.TagSettingsScreen
 
 /** Every screen of the app. */
 fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {

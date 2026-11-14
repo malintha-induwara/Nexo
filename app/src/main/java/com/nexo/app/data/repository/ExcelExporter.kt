@@ -10,7 +10,6 @@ import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.file.AppDirs
 import com.nexo.app.data.file.XCell
 import com.nexo.app.data.file.XlsxWriter
-import com.nexo.app.data.repository.RefRepository
 import com.nexo.app.ui.transactions.RowFactory
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -31,7 +30,7 @@ import kotlinx.coroutines.withContext
 class ExcelExporter @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: NexoDatabase,
-    private val refs: RefRepository,
+    private val refs: ReferenceDataRepository,
     private val dirs: AppDirs,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -43,7 +42,7 @@ class ExcelExporter @Inject constructor(
     }
 
     suspend fun export(range: DateRange, total: Boolean): File = withContext(ioDispatcher) {
-        val ref = refs.snapshot()
+        val ref = refs.getRefData()
         val factory = RowFactory(context, ref)
         val all = db.transactionDao().getRange(range.startText, range.endText)
             .filter { it.kind == TxKind.INCOME || it.kind == TxKind.EXPENSE || it.kind == TxKind.TRANSFER_OUT }

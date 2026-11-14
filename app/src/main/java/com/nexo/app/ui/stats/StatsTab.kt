@@ -50,9 +50,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.data.database.entity.CurrencyEntity
-import com.nexo.app.core.model.SwipeMode
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.SwipeMode
+import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.ui.accounts.GroupVisuals
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.CategoryTile
@@ -75,11 +75,6 @@ import com.nexo.app.ui.designsystem.component.pressScale
 import com.nexo.app.ui.designsystem.component.rememberCollapsingHeaderState
 import com.nexo.app.ui.designsystem.component.rememberHaptics
 import com.nexo.app.ui.designsystem.component.shrinkToFit
-import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.navigation.StatsDetailKey
-import com.nexo.app.ui.navigation.StatsDetailKind
-import com.nexo.app.ui.navigation.StatsScope
-import com.nexo.app.ui.shell.LocalShell
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
@@ -87,6 +82,11 @@ import com.nexo.app.ui.designsystem.theme.NexoPalette
 import com.nexo.app.ui.designsystem.theme.NexoShapes
 import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
+import com.nexo.app.ui.navigation.LocalNavigator
+import com.nexo.app.ui.navigation.StatsDetailKey
+import com.nexo.app.ui.navigation.StatsDetailKind
+import com.nexo.app.ui.navigation.StatsScope
+import com.nexo.app.ui.shell.LocalShell
 import java.math.RoundingMode
 import kotlin.math.abs
 

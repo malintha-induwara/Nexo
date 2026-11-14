@@ -7,7 +7,7 @@ import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.file.AppDirs
-import com.nexo.app.data.file.PhotoStore
+import com.nexo.app.data.file.PhotoFileDataSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.util.Locale
@@ -57,7 +57,7 @@ class PhotoTransfer @Inject constructor(
 
     /** Copies every image file of the folder into the photo folder, overwriting same-named files. */
     suspend fun import(tree: Uri, progress: (Int, Int) -> Unit): Int = withContext(ioDispatcher) {
-        val images = children(tree).filter { (_, name, _) -> name.substringAfterLast('.', "").lowercase(Locale.ROOT) in PhotoStore.SUPPORTED }
+        val images = children(tree).filter { (_, name, _) -> name.substringAfterLast('.', "").lowercase(Locale.ROOT) in PhotoFileDataSource.SUPPORTED }
         images.forEachIndexed { i, (id, name, _) ->
             progress(i + 1, images.size)
             val uri = DocumentsContract.buildDocumentUriUsingTree(tree, id)

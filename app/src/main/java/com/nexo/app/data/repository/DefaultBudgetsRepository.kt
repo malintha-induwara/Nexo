@@ -1,23 +1,22 @@
 package com.nexo.app.data.repository
 
 import androidx.room.withTransaction
+import com.nexo.app.core.model.BudgetMath
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.BudgetAmountEntity
 import com.nexo.app.data.database.entity.BudgetEntity
-import com.nexo.app.core.model.BudgetMath
 import javax.inject.Inject
-import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
 
 /** Budgets with effective-from monthly amounts. */
-@Singleton
-class BudgetRepository @Inject constructor(private val db: NexoDatabase) {
-    val budgets = db.budgetDao().observeBudgets()
-    val amounts = db.budgetDao().observeAmounts()
+class DefaultBudgetsRepository @Inject constructor(private val db: NexoDatabase) : BudgetsRepository {
+    override fun getBudgetsStream(): Flow<List<BudgetEntity>> = db.budgetDao().observeBudgets()
+    override fun getBudgetAmountsStream(): Flow<List<BudgetAmountEntity>> = db.budgetDao().observeAmounts()
 
     private fun now() = System.currentTimeMillis()
 
     /** [currentKey] is the label key of the current month. */
-    suspend fun add(categoryId: String?, amount: Double, currentKey: Int) = db.withTransaction {
+    override suspend fun add(categoryId: String?, amount: Double, currentKey: Int) = db.withTransaction {
         val id = BudgetEntity.idFor(categoryId)
         val existing = db.budgetDao().getBudget(id)
         when {
@@ -35,12 +34,12 @@ class BudgetRepository @Inject constructor(private val db: NexoDatabase) {
         }
     }
 
-    suspend fun setMonth(budgetId: String, key: Int, amount: Double) {
+    override suspend fun setMonth(budgetId: String, key: Int, amount: Double) {
         val records = db.budgetDao().amountsFor(budgetId)
         db.budgetDao().upsertAmounts(BudgetMath.perMonthEdit(budgetId, records, key, amount, now()))
     }
 
-    suspend fun setDefault(budgetId: String, currentKey: Int, amount: Double) {
+    override suspend fun setDefault(budgetId: String, currentKey: Int, amount: Double) {
         val records = db.budgetDao().amountsFor(budgetId)
         if (records.isEmpty()) {
             db.budgetDao().upsertAmounts(listOf(BudgetAmountEntity(BudgetAmountEntity.idFor(budgetId, 0), budgetId, 0, amount, now())))
@@ -50,14 +49,9 @@ class BudgetRepository @Inject constructor(private val db: NexoDatabase) {
     }
 
     /** Soft delete; the amounts stay stored for a later revival. */
-    suspend fun delete(budgetId: String) = db.withTransaction {
+    override suspend fun delete(budgetId: String) = db.withTransaction {
         val b = db.budgetDao().getBudget(budgetId) ?: return@withTransaction
         db.budgetDao().upsertBudgets(listOf(b.copy(isDeleted = true, updatedAt = now())))
     }
 
-    /** Main-currency change with data retention multiplies every amount by R. */
-    suspend fun rescale(factor: Double, decimals: Int) {
-        val all = db.budgetDao().getAmounts()
-        db.budgetDao().upsertAmounts(all.map { it.copy(amount = com.nexo.app.core.common.money.Money.round(it.amount * factor, decimals), updatedAt = now()) })
-    }
 }

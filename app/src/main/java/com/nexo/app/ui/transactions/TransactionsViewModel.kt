@@ -3,28 +3,33 @@ package com.nexo.app.ui.transactions
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.database.entity.MemoEntity
-import com.nexo.app.data.database.entity.RepeatRuleEntity
-import com.nexo.app.data.database.entity.TransactionEntity
-import com.nexo.app.core.model.CashFlow
-import com.nexo.app.core.model.GroupType
-import com.nexo.app.core.model.StartScreen
-import com.nexo.app.core.model.TxKind
 import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.MonthPeriod
-import com.nexo.app.data.repository.LedgerRepository
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.data.repository.TransactionWriter
-import com.nexo.app.domain.Classifier
-import com.nexo.app.domain.InOut
+import com.nexo.app.core.model.CashFlow
+import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.RepeatSchedule
+import com.nexo.app.core.model.StartScreen
+import com.nexo.app.core.model.TxKind
+import com.nexo.app.data.database.entity.MemoEntity
+import com.nexo.app.data.database.entity.RepeatRuleEntity
+import com.nexo.app.data.database.entity.TransactionEntity
+import com.nexo.app.data.repository.MemosRepository
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.RepeatRulesRepository
+import com.nexo.app.data.repository.TransactionsRepository
+import com.nexo.app.domain.Classifier
+import com.nexo.app.domain.InOut
 import com.nexo.app.domain.Totals
 import com.nexo.app.ui.HomeState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.temporal.TemporalAdjusters
+import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,11 +42,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
-import java.time.LocalDate
-import java.time.YearMonth
-import java.time.temporal.TemporalAdjusters
-import javax.inject.Inject
 
 private data class Params(val ref: RefData, val date: LocalDate, val tab: SubTab, val filter: FilterCriteria)
 
@@ -49,13 +49,13 @@ private data class Params(val ref: RefData, val date: LocalDate, val tab: SubTab
 @HiltViewModel
 class TransactionsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val refs: RefRepository,
-    private val ledgers: LedgerRepository,
-    private val db: NexoDatabase,
-    val writer: TransactionWriter,
+    private val refs: ReferenceDataRepository,
+    private val memos: MemosRepository,
+    private val repeats: RepeatRulesRepository,
+    val transactions: TransactionsRepository,
     private val home: HomeState,
 ) : ViewModel() {
-    val ref: StateFlow<RefData> = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     val selectedDate = home.selectedDate
     val focusEvents = home.focus
     val savedMemo = home.savedMemo
@@ -77,7 +77,7 @@ class TransactionsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val r = refs.snapshot()
+            val r = refs.getRefData()
             if (_tab.value == null) _tab.value = if (r.settings.startScreen == StartScreen.CALENDAR) SubTab.CALENDAR else SubTab.DAILY
         }
     }
@@ -95,18 +95,18 @@ class TransactionsViewModel @Inject constructor(
             SubTab.MONTHLY -> {
                 val yr = engine.yearRange(year)
                 val range = DateRange(yr.start.minusDays(7), yr.end.plusDays(7))
-                ledgers.observe(range).map { l -> monthly(p, period, year, l.rows) }
+                transactions.getLedgerStream(range).map { l -> monthly(p, period, year, l.rows) }
             }
-            SubTab.NOTE -> ledgers.observeMemos(period.range).map { memos ->
+            SubTab.NOTE -> memos.getMemosStream(period.range.startText, period.range.endText).map { memos ->
                 HomeData(loaded = true, tab = p.tab, period = period, year = year, memos = sortMemos(memos, period.range))
             }
             SubTab.TOTAL -> {
                 val prev = engine.previous(period)
-                ledgers.observe(DateRange(prev.start, period.end)).map { l -> total(p, period, prev, l.rows) }
+                transactions.getLedgerStream(DateRange(prev.start, period.end)).map { l -> total(p, period, prev, l.rows) }
             }
             else -> {
                 val grid = gridRange(period, engine.weekStartDay)
-                combine(ledgers.observe(grid), ledgers.observeMemos(grid), db.repeatRuleDao().observeAll()) { l, memos, rules ->
+                combine(transactions.getLedgerStream(grid), memos.getMemosStream(grid.startText, grid.endText), repeats.getRulesStream()) { l, memos, rules ->
                     val carry = if (p.ref.settings.carryOver && !p.filter.active) carryOverBefore(p.ref, period.start) else 0.0
                     dailyAndCalendar(p, period, year, l, memos, rules, carry, grid)
                 }
@@ -115,7 +115,7 @@ class TransactionsViewModel @Inject constructor(
     }
 
     private suspend fun carryOverBefore(ref: RefData, start: LocalDate): Double {
-        val t = Totals.fromAggregates(ref, db.transactionDao().aggregatesBefore(start.toString()))
+        val t = Totals.fromAggregates(ref, transactions.getAggregatesBefore(start.toString()))
         return Money.subtract(t.income, t.expense)
     }
 
@@ -123,7 +123,7 @@ class TransactionsViewModel @Inject constructor(
         p: Params,
         period: MonthPeriod,
         year: Int,
-        l: com.nexo.app.data.repository.Ledger,
+        l: com.nexo.app.core.model.Ledger,
         memos: List<MemoEntity>,
         rules: List<RepeatRuleEntity>,
         carry: Double,
@@ -337,7 +337,7 @@ class TransactionsViewModel @Inject constructor(
 
     fun goToday() {
         viewModelScope.launch {
-            val r = refs.snapshot()
+            val r = refs.getRefData()
             _tab.value = if (r.settings.startScreen == StartScreen.CALENDAR) SubTab.CALENDAR else SubTab.DAILY
             home.focusOn(LocalDate.now())
         }
@@ -396,12 +396,12 @@ class TransactionsViewModel @Inject constructor(
         _selection.value = emptySet()
     }
 
-    fun deleteSelected() = bulk { writer.delete(it) }
-    fun setDateSelected(d: LocalDate) = bulk { writer.setDate(it, d) }
-    fun setCategorySelected(id: String) = bulk { writer.setCategory(it, id) }
-    fun setAccountSelected(id: String) = bulk { writer.setAccount(it, id) }
-    fun setTransferSelected(from: String, to: String) = bulk { writer.setTransfer(it, from, to) }
-    fun setNoteSelected(note: String) = bulk { writer.setNote(it, note) }
+    fun deleteSelected() = bulk { transactions.delete(it) }
+    fun setDateSelected(d: LocalDate) = bulk { transactions.setDate(it, d) }
+    fun setCategorySelected(id: String) = bulk { transactions.setCategory(it, id) }
+    fun setAccountSelected(id: String) = bulk { transactions.setAccount(it, id) }
+    fun setTransferSelected(from: String, to: String) = bulk { transactions.setTransfer(it, from, to) }
+    fun setNoteSelected(note: String) = bulk { transactions.setNote(it, note) }
 
     private fun bulk(action: suspend (Set<String>) -> Unit) {
         val ids = _selection.value

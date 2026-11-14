@@ -13,6 +13,7 @@ import com.nexo.app.data.database.dao.MemoDao
 import com.nexo.app.data.database.dao.PhotoDao
 import com.nexo.app.data.database.dao.RepeatRuleDao
 import com.nexo.app.data.database.dao.SettingDao
+import com.nexo.app.data.database.dao.SmsDao
 import com.nexo.app.data.database.dao.TagDao
 import com.nexo.app.data.database.dao.TransactionDao
 import com.nexo.app.data.database.entity.AccountEntity
@@ -22,20 +23,19 @@ import com.nexo.app.data.database.entity.BudgetEntity
 import com.nexo.app.data.database.entity.CategoryEntity
 import com.nexo.app.data.database.entity.CurrencyEntity
 import com.nexo.app.data.database.entity.FavoriteEntity
+import com.nexo.app.data.database.entity.FeePresetEntity
+import com.nexo.app.data.database.entity.FxSnapshotEntity
 import com.nexo.app.data.database.entity.MemoEntity
 import com.nexo.app.data.database.entity.PhotoEntity
 import com.nexo.app.data.database.entity.RepeatRuleEntity
 import com.nexo.app.data.database.entity.SettingEntity
-import com.nexo.app.data.database.entity.TagEntity
-import com.nexo.app.data.database.entity.TransactionEntity
-import com.nexo.app.data.database.entity.TransactionTagEntity
-import com.nexo.app.data.database.entity.FeePresetEntity
-import com.nexo.app.data.database.entity.FxSnapshotEntity
-import com.nexo.app.data.database.dao.SmsDao
 import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.database.entity.SmsMerchantRuleEntity
 import com.nexo.app.data.database.entity.SmsOtpHintEntity
 import com.nexo.app.data.database.entity.SmsSourceEntity
+import com.nexo.app.data.database.entity.TagEntity
+import com.nexo.app.data.database.entity.TransactionEntity
+import com.nexo.app.data.database.entity.TransactionTagEntity
 
 @Database(
     entities = [

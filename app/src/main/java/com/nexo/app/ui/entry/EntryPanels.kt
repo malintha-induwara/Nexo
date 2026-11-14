@@ -55,11 +55,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
-import com.nexo.app.data.database.entity.AccountEntity
-import com.nexo.app.data.database.entity.CategoryEntity
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.RefData
+import com.nexo.app.data.database.entity.AccountEntity
+import com.nexo.app.data.database.entity.CategoryEntity
 import com.nexo.app.ui.designsystem.component.CategoryTile
 import com.nexo.app.ui.designsystem.component.NavMotion
 import com.nexo.app.ui.designsystem.component.RoundIconButton

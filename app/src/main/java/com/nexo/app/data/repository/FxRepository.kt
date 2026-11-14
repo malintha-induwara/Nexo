@@ -7,9 +7,7 @@ import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.FxSnapshotEntity
 import com.nexo.app.data.database.entity.SmsItemEntity
-import com.nexo.app.data.datastore.DevicePrefs
 import com.nexo.app.data.network.BankRatesClient
-import com.nexo.app.data.repository.RefRepository
 import com.nexo.app.data.sms.RateChoice
 import com.nexo.app.data.sms.RateChooser
 import com.nexo.app.data.sms.parser.Banks
@@ -26,8 +24,8 @@ import javax.inject.Singleton
 @Singleton
 class FxRepository @Inject constructor(
     private val db: NexoDatabase,
-    private val refs: RefRepository,
-    private val prefs: DevicePrefs,
+    private val refs: ReferenceDataRepository,
+    private val prefs: UserPreferencesRepository,
     private val client: BankRatesClient,
 ) {
     private val dao get() = db.smsDao()
@@ -36,7 +34,7 @@ class FxRepository @Inject constructor(
 
     /** Fetch policy: at most every 6 hours. Returns whether a fetch succeeded. */
     suspend fun refreshIfStale(now: Long = System.currentTimeMillis()): Boolean {
-        if (!online || now - prefs.current().fxFetchedAt < REFRESH_MS) return false
+        if (!online || now - prefs.getDeviceSettings().fxFetchedAt < REFRESH_MS) return false
         val rows = client.fetch() ?: return false
         store(rows)
         prefs.setFxFetchedAt(now)
@@ -63,7 +61,7 @@ class FxRepository @Inject constructor(
      */
     suspend fun estimate(item: SmsItemEntity, ref: RefData? = null, allowNetwork: Boolean = false): SmsItemEntity {
         if (item.certainty != Certainty.ESTIMATED || item.actualAmount != null) return item
-        val r = ref ?: refs.snapshot()
+        val r = ref ?: refs.getRefData()
         val side = if (item.kind.isInflow) RateSide.BUY else RateSide.SELL
         val day = Instant.ofEpochMilli(item.occurredAt).atZone(BodyDate.ZONE).toLocalDate()
         val endOfDay = day.plusDays(1).atStartOfDay(BodyDate.ZONE).toInstant().toEpochMilli() - 1
@@ -86,7 +84,7 @@ class FxRepository @Inject constructor(
 
     /** Re-estimates pending foreign items that have no confirmed amount, e.g. after a fetch. Returns how many changed. */
     suspend fun fillPending(allowNetwork: Boolean = false): Int {
-        val ref = refs.snapshot()
+        val ref = refs.getRefData()
         var changed = 0
         for (item in dao.pending().filter { it.certainty == Certainty.ESTIMATED && it.actualAmount == null && it.status == SmsStatus.PENDING }) {
             val updated = estimate(item, ref, allowNetwork)

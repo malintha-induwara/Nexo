@@ -11,12 +11,11 @@ import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.model.RefData
-import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.AccountEntity
 import com.nexo.app.data.database.entity.TransactionEntity
-import com.nexo.app.data.repository.AccountRepository
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.data.repository.TransactionWriter
+import com.nexo.app.data.repository.AccountsRepository
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.ui.navigation.AccountFormKey
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -61,17 +60,16 @@ sealed interface AccountFormEvent {
 @HiltViewModel(assistedFactory = AccountFormViewModel.Factory::class)
 class AccountFormViewModel @AssistedInject constructor(
     @Assisted private val key: AccountFormKey,
-    private val db: NexoDatabase,
-    refs: RefRepository,
-    private val repo: AccountRepository,
-    private val writer: TransactionWriter,
+    refs: ReferenceDataRepository,
+    private val repo: AccountsRepository,
+    private val transactions: TransactionsRepository,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
         fun create(key: AccountFormKey): AccountFormViewModel
     }
 
-    val ref = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    val ref = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     private val _ui = MutableStateFlow(AccountFormUi())
     val ui = _ui.asStateFlow()
     private val _events = Channel<AccountFormEvent>(Channel.BUFFERED)
@@ -81,14 +79,14 @@ class AccountFormViewModel @AssistedInject constructor(
 
     init {
         viewModelScope.launch {
-            val r = refs.snapshot()
+            val r = refs.getRefData()
             val a = key.accountId?.let { r.accountById[it] }
             original = a
             if (a == null) {
                 val g = key.groupId ?: r.groups.firstOrNull { it.status == GroupStatus.ACTIVE }?.id
                 _ui.value = AccountFormUi(loaded = true, groupId = g, name = key.presetName ?: "", currencyId = r.mainCurrency.id, originalCurrencyId = r.mainCurrency.id, pickGroup = key.groupId == null)
             } else {
-                rows = db.transactionDao().getAllForAccounts(listOf(a.id) + r.linkedDebitCards(a.id).map { it.id })
+                rows = transactions.getAllForAccounts(listOf(a.id) + r.linkedDebitCards(a.id).map { it.id })
                 val bal = Money.round(balanceIn(r, a.currencyId, a), r.currency(a.currencyId).decimals)
                 _ui.value = AccountFormUi(
                     loaded = true, isNew = false, id = a.id, groupId = a.groupId, name = a.name, amount = bal, balance = bal,
@@ -199,7 +197,7 @@ class AccountFormViewModel @AssistedInject constructor(
         val s = _ui.value
         val diff = s.difference ?: return
         viewModelScope.launch {
-            writer.recordBalanceDifference(s.id, diff, asIncomeExpense, s.description)
+            transactions.recordBalanceDifference(s.id, diff, asIncomeExpense, s.description)
             _ui.update { it.copy(difference = null) }
             _events.send(AccountFormEvent.Close(false))
         }

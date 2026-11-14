@@ -34,8 +34,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
-import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.FeeRoute
+import com.nexo.app.core.model.RefData
 import com.nexo.app.domain.sms.FeeChoice
 import com.nexo.app.domain.sms.SmsApprover
 import com.nexo.app.ui.designsystem.component.AmountSheet

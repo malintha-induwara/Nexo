@@ -9,10 +9,10 @@ import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
-import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.data.datastore.ThemeMode
-import com.nexo.app.data.repository.RefRepository
+import com.nexo.app.core.model.ThemeMode
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.TransactionsRepository
+import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.domain.CardStatement
 import com.nexo.app.domain.Totals
 import dagger.hilt.EntryPoint
@@ -28,9 +28,9 @@ import kotlinx.coroutines.flow.update
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 interface WidgetEntryPoint {
-    fun db(): NexoDatabase
-    fun refs(): RefRepository
-    fun prefs(): DevicePrefs
+    fun transactions(): TransactionsRepository
+    fun refs(): ReferenceDataRepository
+    fun prefs(): UserPreferencesRepository
 
     @ApplicationScope
     fun appScope(): CoroutineScope
@@ -83,7 +83,7 @@ object WidgetData {
 
     /** Loop palette: graphite surface in dark, pure white in light. */
     suspend fun colors(context: Context): WidgetColors {
-        val s = entry(context).prefs().current()
+        val s = entry(context).prefs().getDeviceSettings()
         return if (isDark(context, s.widgetTheme)) WidgetColors(0xFF1C1C1C, 0xFFF5F5F5, 0xFFA8A8A8, true, s.widgetOpacity)
         else WidgetColors(0xFFFFFFFF, 0xFF111111, 0xFF5C5C5C, false, s.widgetOpacity)
     }
@@ -91,17 +91,17 @@ object WidgetData {
     /** Figures for the current month period, with the "vs. MoM" comparison. */
     suspend fun month(context: Context): MonthFigures {
         val e = entry(context)
-        if (!e.prefs().current().setupDone) return MonthFigures(false)
-        val ref = e.refs().snapshot()
-        val dao = e.db().transactionDao()
+        if (!e.prefs().getDeviceSettings().setupDone) return MonthFigures(false)
+        val ref = e.refs().getRefData()
+        val transactions = e.transactions()
         val today = LocalDate.now()
         val engine = ref.settings.periods
         val period = engine.monthPeriodContaining(today)
         val prev = engine.previous(period)
-        val now = Totals.fromAggregates(ref, dao.aggregatesBetween(period.range.startText, period.range.endText))
-        val toDate = Totals.fromAggregates(ref, dao.aggregatesBetween(period.range.startText, today.toString()))
-        val prevToDate = Totals.fromAggregates(ref, dao.aggregatesBetween(prev.range.startText, today.minusMonths(1).toString()))
-        val carry = if (ref.settings.carryOver) Totals.fromAggregates(ref, dao.aggregatesBefore(period.range.startText)).let { Money.subtract(it.income, it.expense) } else 0.0
+        val now = Totals.fromAggregates(ref, transactions.getAggregatesBetween(period.range.startText, period.range.endText))
+        val toDate = Totals.fromAggregates(ref, transactions.getAggregatesBetween(period.range.startText, today.toString()))
+        val prevToDate = Totals.fromAggregates(ref, transactions.getAggregatesBetween(prev.range.startText, today.minusMonths(1).toString()))
+        val carry = if (ref.settings.carryOver) Totals.fromAggregates(ref, transactions.getAggregatesBefore(period.range.startText)).let { Money.subtract(it.income, it.expense) } else 0.0
         val main = ref.mainCurrency
         val inc = now.income + if (carry > 0) carry else 0.0
         val exp = now.expense + if (carry < 0) -carry else 0.0
@@ -112,7 +112,7 @@ object WidgetData {
             return "$arrow ${AmountFormatter.format(kotlin.math.abs(d), main)}" + if (pct != null && pct < 500) " (${pct.toInt()}%)" else ""
         }
         val set = ref.settings.colorSet
-        val dark = isDark(context, e.prefs().current().widgetTheme)
+        val dark = isDark(context, e.prefs().getDeviceSettings().widgetTheme)
         val blue = if (dark) 0xFF64AFFD else 0xFF2462E4
         val red = if (dark) 0xFFFF6961 else 0xFFD92D20
         return MonthFigures(
@@ -138,13 +138,13 @@ object WidgetData {
     /** Credit-card rows. Null when the app isn't set up yet. */
     suspend fun cards(context: Context): List<CardLine>? {
         val e = entry(context)
-        if (!e.prefs().current().setupDone) return null
-        val ref = e.refs().snapshot()
-        val dao = e.db().transactionDao()
+        if (!e.prefs().getDeviceSettings().setupDone) return null
+        val ref = e.refs().getRefData()
+        val transactions = e.transactions()
         return ref.orderedAccounts().filter { a ->
             ref.groupType(a.id) == GroupType.CREDIT_CARD && a.status == AccountStatus.ACTIVE && ref.groupById[a.groupId]?.status == GroupStatus.ACTIVE
         }.map { a ->
-            val f = CardStatement.compute(ref, a, dao.getAllForAccounts(listOf(a.id) + ref.linkedDebitCards(a.id).map { it.id }), LocalDate.now())
+            val f = CardStatement.compute(ref, a, transactions.getAllForAccounts(listOf(a.id) + ref.linkedDebitCards(a.id).map { it.id }), LocalDate.now())
             val cur = ref.accountCurrency(a.id)
             CardLine(a.id, a.name, AmountFormatter.format(kotlin.math.abs(f.payable + f.other), cur), AmountFormatter.format(kotlin.math.abs(f.outstanding), cur), f.payable + f.other < 0, f.outstanding < 0)
         }

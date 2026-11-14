@@ -4,9 +4,10 @@ import android.os.SystemClock
 import com.nexo.app.core.common.ApplicationScope
 import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.data.datastore.LockTimeout
+import com.nexo.app.core.model.LockTimeout
+import com.nexo.app.data.lock.BiometricKeyDataSource
 import com.nexo.app.data.lock.PinHasher
+import javax.crypto.Cipher
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
@@ -18,38 +19,28 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
-sealed interface PinResult {
-    data object Success : PinResult
-    data class Wrong(val triesBeforeWait: Int) : PinResult
-    data class Waiting(val untilMillis: Long) : PinResult
-}
-
-/**
- * Single-user lock: when a PIN is set the app locks on every cold start and
- * after the background timeout. Background time is measured with the monotonic clock.
- */
+/** Background time is measured with the monotonic clock. */
 @Singleton
-class LockManager @Inject constructor(
-    private val prefs: DevicePrefs,
+class DefaultAppLockRepository @Inject constructor(
+    private val prefs: UserPreferencesRepository,
     @ApplicationScope private val scope: CoroutineScope,
+    private val biometricKey: BiometricKeyDataSource,
     @Dispatcher(NexoDispatchers.Default) private val defaultDispatcher: CoroutineDispatcher,
-) {
-    private val _locked = MutableStateFlow(runBlocking { prefs.current().lockEnabled })
-    val locked: StateFlow<Boolean> = _locked.asStateFlow()
+) : AppLockRepository {
+    private val _locked = MutableStateFlow(runBlocking { prefs.getDeviceSettings().lockEnabled })
+    private val locked: StateFlow<Boolean> = _locked.asStateFlow()
+
+    override fun getLockedStream(): StateFlow<Boolean> = locked
 
     private var backgroundedAt: Long? = null
     private var handoffAt: Long? = null
     private var awayOnHandoff = false
 
-    /**
-     * Call just before the app sends the user to another app and expects them straight back: the
-     * camera for a receipt, a file picker. That trip is not treated as leaving the app.
-     */
-    fun expectReturn() {
+    override fun expectReturn() {
         handoffAt = SystemClock.elapsedRealtime()
     }
 
-    fun onBackground() {
+    override fun onBackground() {
         val now = SystemClock.elapsedRealtime()
         backgroundedAt = now
         // Only a background that follows the hand-off at once belongs to it.
@@ -57,29 +48,29 @@ class LockManager @Inject constructor(
         handoffAt = null
     }
 
-    fun onForeground() {
+    override fun onForeground() {
         val since = backgroundedAt ?: return
         backgroundedAt = null
         val handoff = awayOnHandoff
         awayOnHandoff = false
         scope.launch {
-            val s = prefs.current()
+            val s = prefs.getDeviceSettings()
             if (!s.lockEnabled) return@launch
             val limit = if (s.lockTimeout == LockTimeout.IMMEDIATELY) 5_000L else s.lockTimeout.seconds * 1000L
             if (shouldLock(SystemClock.elapsedRealtime() - since, limit, handoff)) _locked.value = true
         }
     }
 
-    fun lockNow() {
-        scope.launch { if (prefs.current().lockEnabled) _locked.value = true }
+    override fun lockNow() {
+        scope.launch { if (prefs.getDeviceSettings().lockEnabled) _locked.value = true }
     }
 
-    fun unlock() {
+    override fun unlock() {
         _locked.value = false
     }
 
-    suspend fun verifyPin(pin: String): PinResult = withContext(defaultDispatcher) {
-        val s = prefs.current()
+    override suspend fun verifyPin(pin: String): PinResult = withContext(defaultDispatcher) {
+        val s = prefs.getDeviceSettings()
         val now = System.currentTimeMillis()
         var lockoutUntil = s.pinLockoutUntil
         // A wait far in the future means the clock moved backwards: restart it from now.
@@ -98,9 +89,22 @@ class LockManager @Inject constructor(
         }
     }
 
-    suspend fun setPin(pin: String?) {
+    override suspend fun setPin(pin: String?) {
+        if (pin == null) biometricKey.deleteKey()
         prefs.setPin(pin?.let { withContext(defaultDispatcher) { PinHasher.hash(it) } })
         if (pin == null) _locked.value = false
+    }
+
+    override fun getUnlockCipher(): Cipher? = biometricKey.cipher()
+
+    override fun createBiometricKey(): Cipher? {
+        runCatching { biometricKey.createKey() }
+        return biometricKey.cipher()
+    }
+
+    override suspend fun setBiometricsEnabled(enabled: Boolean) {
+        if (!enabled) biometricKey.deleteKey()
+        prefs.setBiometrics(enabled)
     }
 
     companion object {
@@ -119,9 +123,4 @@ class LockManager @Inject constructor(
         /** From the 5th consecutive failure, 30 s doubling up to 15 min. */
         fun waitFor(failures: Int): Long = if (failures < FREE_TRIES) 0 else minOf(30_000L shl (failures - FREE_TRIES).coerceAtMost(10), MAX_WAIT)
     }
-}
-
-/** Tells the app lock the user is being sent to another app for a moment. See [LockManager.expectReturn]. */
-fun android.content.Context.expectReturn() {
-    (applicationContext as? com.nexo.app.NexoApplication)?.lock?.expectReturn()
 }

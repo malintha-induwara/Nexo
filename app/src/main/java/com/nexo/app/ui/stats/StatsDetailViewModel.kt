@@ -12,9 +12,9 @@ import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.entity.TransactionEntity
-import com.nexo.app.data.repository.LedgerRepository
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.data.repository.TransactionWriter
+import com.nexo.app.data.repository.MemosRepository
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.domain.Classifier
 import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.navigation.StatsDetailKey
@@ -56,16 +56,16 @@ data class StatsDetailUi(
 class StatsDetailViewModel @AssistedInject constructor(
     @Assisted val key: StatsDetailKey,
     @ApplicationContext private val context: Context,
-    refs: RefRepository,
-    private val ledgers: LedgerRepository,
-    val writer: TransactionWriter,
+    refs: ReferenceDataRepository,
+    val transactions: TransactionsRepository,
+    private val memos: MemosRepository,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
         fun create(key: StatsDetailKey): StatsDetailViewModel
     }
 
-    val ref: StateFlow<RefData> = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     val query = MutableStateFlow(StatsQuery(key.scope, LocalDate.parse(key.end), LocalDate.parse(key.start), LocalDate.parse(key.end)))
     val selected = MutableStateFlow("all")
     val selection = MutableStateFlow<Set<String>>(emptySet())
@@ -89,7 +89,7 @@ class StatsDetailViewModel @AssistedInject constructor(
             }
         }
         val loadRange = DateRange(minOf(range.start, buckets.first().second.start), maxOf(range.end, buckets.last().second.end))
-        combine(ledgers.observe(loadRange), ledgers.observeMemos(range)) { l, memos -> build(r, range, buckets, l, sel, memos) }
+        combine(transactions.getLedgerStream(loadRange), memos.getMemosStream(range.startText, range.endText)) { l, memos -> build(r, range, buckets, l, sel, memos) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StatsDetailUi(color = key.colorIndex))
 
     private fun matches(r: RefData, c: Classifier, t: TransactionEntity): Boolean = when (key.kind) {
@@ -114,7 +114,7 @@ class StatsDetailViewModel @AssistedInject constructor(
         else -> r.subCategoryId(t.categoryId) ?: "other"
     }
 
-    private fun build(r: RefData, range: DateRange, buckets: List<Pair<String, DateRange>>, l: com.nexo.app.data.repository.Ledger, sel: String, memos: List<com.nexo.app.data.database.entity.MemoEntity>): StatsDetailUi {
+    private fun build(r: RefData, range: DateRange, buckets: List<Pair<String, DateRange>>, l: com.nexo.app.core.model.Ledger, sel: String, memos: List<com.nexo.app.data.database.entity.MemoEntity>): StatsDetailUi {
         val c = Classifier(r)
         val all = l.rows.filter { matches(r, c, it) }
         val inRange = all.filter { LocalDate.parse(it.date) in range }

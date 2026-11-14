@@ -26,11 +26,11 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
-import com.nexo.app.ui.designsystem.component.IncomeExpensePill
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.RefData
-import com.nexo.app.ui.transactions.FilterCriteria
+import com.nexo.app.ui.designsystem.component.IncomeExpensePill
 import com.nexo.app.ui.designsystem.theme.nexo
+import com.nexo.app.ui.transactions.FilterCriteria
 
 data class CheckItem(val id: String, val label: String, val header: Boolean = false, val indent: Boolean = false)
 

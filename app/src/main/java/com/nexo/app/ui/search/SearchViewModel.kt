@@ -3,23 +3,25 @@ package com.nexo.app.ui.search
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.database.entity.MemoEntity
-import com.nexo.app.core.model.CashFlow
-import com.nexo.app.core.model.TxKind
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.toIsoText
-import com.nexo.app.data.repository.LedgerRepository
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.data.repository.TransactionWriter
-import com.nexo.app.domain.Classifier
+import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.TxKind
+import com.nexo.app.data.database.entity.MemoEntity
+import com.nexo.app.data.repository.MemosRepository
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.TransactionsRepository
+import com.nexo.app.domain.Classifier
 import com.nexo.app.ui.entry.NoteSuggestion
 import com.nexo.app.ui.transactions.FilterCriteria
 import com.nexo.app.ui.transactions.RowFactory
 import com.nexo.app.ui.transactions.TxRowUi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.math.BigDecimal
+import java.time.LocalDate
+import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,9 +32,6 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
-import java.time.LocalDate
-import javax.inject.Inject
 
 enum class SearchPeriod { TOTAL, WEEKLY, MONTHLY, ANNUALLY, PERIOD }
 
@@ -63,12 +62,11 @@ data class SearchResult(
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val db: NexoDatabase,
-    refs: RefRepository,
-    private val ledgers: LedgerRepository,
-    val writer: TransactionWriter,
+    private val memos: MemosRepository,
+    refs: ReferenceDataRepository,
+    val transactions: TransactionsRepository,
 ) : ViewModel() {
-    val ref: StateFlow<RefData> = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     private val _criteria = MutableStateFlow(SearchCriteria())
     val criteria = _criteria.asStateFlow()
     private val _executed = MutableStateFlow(SearchCriteria())
@@ -77,17 +75,17 @@ class SearchViewModel @Inject constructor(
     private val _suggestions = MutableStateFlow<List<NoteSuggestion>>(emptyList())
     val suggestions = _suggestions.asStateFlow()
 
-    val result: StateFlow<SearchResult> = combine(ref, _executed, db.transactionDao().observeStamp()) { r, c, _ -> r to c }
+    val result: StateFlow<SearchResult> = combine(ref, _executed, transactions.getChangeStampStream()) { r, c, _ -> r to c }
         .mapLatest { (r, c) -> run(r, c) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SearchResult())
 
     init {
         viewModelScope.launch {
-            val r = refs.snapshot()
+            val r = refs.getRefData()
             if (!r.settings.autocomplete) return@launch
             val cutoff = maxOf(System.currentTimeMillis() - 456L * 24 * 3600 * 1000, r.settings.autocompleteResetAt)
             val cutDate = java.time.Instant.ofEpochMilli(cutoff).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toIsoText()
-            _suggestions.value = db.transactionDao().noteUsage(cutDate, cutoff).map { NoteSuggestion(it.note, it.count, it.lastDate) }
+            _suggestions.value = transactions.getNoteUsage(cutDate, cutoff).map { NoteSuggestion(it.note, it.count, it.lastDate) }
         }
     }
 
@@ -106,13 +104,13 @@ class SearchViewModel @Inject constructor(
         val range = range(r, c)
         val text = c.query.trim()
         val pattern = "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
-        val rows = db.transactionDao().search(range.startText, range.endText, pattern, includeSource = true)
+        val rows = transactions.search(range.startText, range.endText, pattern, includeSource = true)
         val classifier = Classifier(r)
         val min = c.min
         val max = c.max
         val lo = if (min != null && max != null) minOf(min, max) else min
         val hi = if (min != null && max != null) maxOf(min, max) else max
-        val tagLinks = if (c.tags.isEmpty()) emptyMap() else ledgers.ledgerFor(rows).tagsByTx
+        val tagLinks = if (c.tags.isEmpty()) emptyMap() else transactions.getLedgerFor(rows).tagsByTx
         val filtered = rows.filter { t ->
             !t.kind.isBalance &&
                 (!c.categories.hasCategoryPart || c.categories.matches(t, r, classifier)) &&
@@ -120,7 +118,7 @@ class SearchViewModel @Inject constructor(
                 (c.tags.isEmpty() || tagLinks[t.id].orEmpty().any { it in c.tags }) &&
                 (lo == null || t.amountMain >= lo) && (hi == null || t.amountMain <= hi)
         }
-        val ledger = ledgers.ledgerFor(filtered)
+        val ledger = transactions.getLedgerFor(filtered)
         val factory = RowFactory(context, r)
         val sorted = filtered.groupBy { it.date }.toSortedMap(compareByDescending { it }).flatMap { (_, day) ->
             RowFactory.sortDay(day, r.settings.timeDisplay)
@@ -136,7 +134,7 @@ class SearchViewModel @Inject constructor(
             }
             if (classifier.classify(t.kind, t.accountId, t.counterpartAccountId) == CashFlow.NEUTRAL) Unit
         }
-        val memos = if (text.isEmpty()) emptyList() else db.memoDao().search(range.startText, range.endText, pattern)
+        val memos = if (text.isEmpty()) emptyList() else memos.search(range.startText, range.endText, pattern)
             .sortedWith(compareByDescending<MemoEntity> { it.pinned }.thenByDescending { it.dateTime }.thenByDescending { it.orderSeq })
         return SearchResult(
             loaded = true,

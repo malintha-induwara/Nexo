@@ -40,7 +40,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
 import com.nexo.app.data.database.entity.CurrencyEntity
-import com.nexo.app.ui.designsystem.component.PadKey
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 import com.nexo.app.ui.designsystem.theme.NexoShapes

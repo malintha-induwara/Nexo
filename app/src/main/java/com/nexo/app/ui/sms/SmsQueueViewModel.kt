@@ -4,26 +4,27 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
-import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.core.model.RefData
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.model.DenyReason
 import com.nexo.app.core.model.FeeRoute
+import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsStatus
+import com.nexo.app.core.notifications.Notifications
+import com.nexo.app.data.database.NexoDatabase
+import com.nexo.app.data.database.entity.SmsItemEntity
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.SmsCapture
+import com.nexo.app.data.repository.UserPreferencesRepository
+import com.nexo.app.data.sms.needsAttention
+import com.nexo.app.data.sms.needsDetails
 import com.nexo.app.domain.sms.ApproveResult
 import com.nexo.app.domain.sms.FeeChoice
 import com.nexo.app.domain.sms.FeePlan
 import com.nexo.app.domain.sms.SmsApprover
-import com.nexo.app.data.repository.SmsCapture
-import com.nexo.app.data.database.entity.SmsItemEntity
-import com.nexo.app.data.sms.needsAttention
-import com.nexo.app.data.sms.needsDetails
 import com.nexo.app.ui.designsystem.component.UndoMessage
-import com.nexo.app.core.notifications.Notifications
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,7 +35,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** Filter chips. The first two show the queue (pending items); the rest show decided items still kept. */
 enum class QueueFilter(val label: Int, val status: SmsStatus) {
@@ -56,15 +56,15 @@ data class CardRef(val bank: String, val last4: String)
 class SmsQueueViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     db: NexoDatabase,
-    refs: RefRepository,
-    private val prefs: DevicePrefs,
+    refs: ReferenceDataRepository,
+    private val prefs: UserPreferencesRepository,
     private val approver: SmsApprover,
     private val capture: SmsCapture,
 ) : ViewModel() {
     private val dao = db.smsDao()
 
-    val ref: StateFlow<RefData> = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    val device = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    val device = prefs.getDeviceSettingsStream().stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _filter = MutableStateFlow(QueueFilter.ALL)
     val filter: StateFlow<QueueFilter> = _filter.asStateFlow()
@@ -199,7 +199,7 @@ class SmsQueueViewModel @Inject constructor(
     fun clearGap() = viewModelScope.launch { prefs.clearSmsGap() }
 
     /** "Not now". The picker stays in Settings. */
-    fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.data.datastore.SmsHistoryImport.SKIPPED) }
+    fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.core.model.SmsHistoryImport.SKIPPED) }
 
     fun dismissUndo() {
         _undo.value = null

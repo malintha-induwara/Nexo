@@ -10,9 +10,7 @@ import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.data.backup.LegacyImporter
 import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.datastore.DevicePrefs
 import com.nexo.app.data.file.AppDirs
-import com.nexo.app.widget.WidgetRefresher
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.time.LocalDateTime
@@ -39,9 +37,8 @@ class BackupManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: NexoDatabase,
     private val dirs: AppDirs,
-    private val prefs: DevicePrefs,
+    private val prefs: UserPreferencesRepository,
     private val legacy: LegacyImporter,
-    private val widgets: WidgetRefresher,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     /** "Nexo(<date>-<HHmmss>).nexobak" with a locale-dependent date part. */
@@ -115,7 +112,7 @@ class BackupManager @Inject constructor(
             BackupFormat.LEGACY_ANDROID -> legacy.import(file)
             BackupFormat.LEGACY_IPHONE -> RestoreResult.Unsupported
             BackupFormat.UNKNOWN -> RestoreResult.NotABackup
-        }.also { if (it == RestoreResult.Success) widgets.refresh() }
+        }
     }
 
     fun detect(file: File): BackupFormat = runCatching {

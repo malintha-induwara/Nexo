@@ -3,28 +3,28 @@ package com.nexo.app.ui.backup
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nexo.app.core.common.period.DateRange
+import com.nexo.app.core.model.RefData
 import com.nexo.app.data.repository.BackupManager
+import com.nexo.app.data.repository.DataReset
 import com.nexo.app.data.repository.DateOrder
 import com.nexo.app.data.repository.ExcelExporter
 import com.nexo.app.data.repository.ImportPreview
 import com.nexo.app.data.repository.PhotoTransfer
+import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.RepeatRulesRepository
 import com.nexo.app.data.repository.RestoreResult
 import com.nexo.app.data.repository.TsvImporter
-import com.nexo.app.core.common.period.DateRange
-import com.nexo.app.data.repository.DataReset
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.data.repository.RepeatEngine
-import com.nexo.app.core.model.RefData
 import com.nexo.app.ui.HomeState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.File
+import java.time.LocalDate
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.io.File
-import java.time.LocalDate
-import javax.inject.Inject
 
 data class Progress(val done: Int, val total: Int)
 
@@ -35,11 +35,11 @@ class BackupViewModel @Inject constructor(
     val importer: TsvImporter,
     val photos: PhotoTransfer,
     val reset: DataReset,
-    private val repeats: RepeatEngine,
-    refs: RefRepository,
+    private val repeats: RepeatRulesRepository,
+    refs: ReferenceDataRepository,
     private val home: HomeState,
 ) : ViewModel() {
-    val ref = refs.ref.stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    val ref = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     private val _busy = MutableStateFlow(false)
     val busy = _busy.asStateFlow()
     private val _progress = MutableStateFlow<Progress?>(null)
@@ -82,7 +82,7 @@ class BackupViewModel @Inject constructor(
 
     private suspend fun afterRestore(r: RestoreResult) {
         if (r == RestoreResult.Success) {
-            repeats.runIfNewDay(force = true)
+            repeats.generateIfNewDay(force = true)
             home.focusOn(LocalDate.now())
         }
     }

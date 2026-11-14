@@ -147,7 +147,7 @@ fun StatsDetailScreen(key: StatsDetailKey) {
         }
     }
     if (picker) MonthPickerDialog(ref.settings.periods.monthPeriodContaining(q.anchor).label, onPick = { m -> vm.query.update { it.copy(anchor = ref.settings.periods.monthPeriodFor(m).end) } }, onDismiss = { picker = false })
-    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.writer, selection, onDone = { vm.selection.value = emptySet() }, onDismiss = { bulkOpen = false })
+    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.transactions, selection, onDone = { vm.selection.value = emptySet() }, onDismiss = { bulkOpen = false })
 }
 
 /** The category's total over the recent periods; tap or drag the chart to read another period. */

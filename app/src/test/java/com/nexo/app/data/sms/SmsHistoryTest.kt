@@ -9,16 +9,14 @@ import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.Seeder
 import com.nexo.app.data.database.entity.SmsSourceEntity
 import com.nexo.app.data.database.entity.TransactionEntity
-import com.nexo.app.data.datastore.DevicePrefs
+import com.nexo.app.data.datastore.DevicePreferencesDataSource
 import com.nexo.app.data.network.BankRatesClient
+import com.nexo.app.data.repository.DefaultUserPreferencesRepository
 import com.nexo.app.data.repository.FxRepository
-import com.nexo.app.data.repository.RefRepository
 import com.nexo.app.data.repository.SmsHistory
-import com.nexo.app.data.sms.InboxReader
-import com.nexo.app.data.sms.IncomingSms
-import com.nexo.app.data.sms.SmsSuggester
 import com.nexo.app.data.sms.parser.BodyDate
 import com.nexo.app.data.sms.parser.SmsMessage
+import com.nexo.app.testing.referenceDataRepository
 import java.time.LocalDateTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,8 +51,8 @@ class SmsHistoryTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
         Seeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
-        val refs = RefRepository(db, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
-        val prefs = DevicePrefs(context)
+        val refs = referenceDataRepository(db, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
+        val prefs = DefaultUserPreferencesRepository(DevicePreferencesDataSource(context))
         val fx = FxRepository(db, refs, prefs, BankRatesClient(Dispatchers.IO))
         history = SmsHistory(db, prefs, refs, FakeInbox(context, inbox), SmsSuggester(db, refs, fx), fx, Dispatchers.IO)
         db.smsDao().upsertSource(SmsSourceEntity("COMBANK", "4321", "1", 0))

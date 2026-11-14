@@ -6,8 +6,8 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import androidx.room.Upsert
-import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.core.model.TxKind
+import com.nexo.app.data.database.entity.TransactionEntity
 import kotlinx.coroutines.flow.Flow
 
 /** Sum of amounts for one (account, counterpart, kind) combination. */

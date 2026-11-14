@@ -6,20 +6,13 @@ import com.nexo.app.data.database.entity.TagEntity
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
-import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
 
-sealed interface TagResult {
-    data class Ok(val id: String) : TagResult
-    data object Exists : TagResult
-    data object Empty : TagResult
-}
+class DefaultTagsRepository @Inject constructor(private val db: NexoDatabase) : TagsRepository {
+    override fun getTagsStream(): Flow<List<TagEntity>> = db.tagDao().observeAll()
 
-@Singleton
-class TagRepository @Inject constructor(private val db: NexoDatabase) {
-    val tags = db.tagDao().observeAll()
-
-    suspend fun add(raw: String): TagResult = db.withTransaction {
-        val name = normalize(raw)
+    override suspend fun add(raw: String): TagResult = db.withTransaction {
+        val name = TagsRepository.normalize(raw)
         if (name.isEmpty()) return@withTransaction TagResult.Empty
         val all = db.tagDao().getAll()
         val match = all.firstOrNull { it.name.lowercase(Locale.ROOT) == name.lowercase(Locale.ROOT) }
@@ -39,8 +32,8 @@ class TagRepository @Inject constructor(private val db: NexoDatabase) {
         }
     }
 
-    suspend fun rename(id: String, raw: String): TagResult = db.withTransaction {
-        val name = normalize(raw)
+    override suspend fun rename(id: String, raw: String): TagResult = db.withTransaction {
+        val name = TagsRepository.normalize(raw)
         if (name.isEmpty()) return@withTransaction TagResult.Empty
         val all = db.tagDao().getAll()
         if (all.any { it.name.equals(name, ignoreCase = true) }) return@withTransaction TagResult.Exists
@@ -49,25 +42,16 @@ class TagRepository @Inject constructor(private val db: NexoDatabase) {
         TagResult.Ok(id)
     }
 
-    suspend fun usageCount(id: String): Int = db.tagDao().usageCount(id)
+    override suspend fun usageCount(id: String): Int = db.tagDao().usageCount(id)
 
-    suspend fun delete(id: String) {
+    override suspend fun delete(id: String) {
         val tag = db.tagDao().getAll().firstOrNull { it.id == id } ?: return
         db.tagDao().upsert(listOf(tag.copy(isDeleted = true, updatedAt = System.currentTimeMillis())))
     }
 
-    suspend fun reorder(ids: List<String>) = db.withTransaction {
+    override suspend fun reorder(ids: List<String>) = db.withTransaction {
         val byId = db.tagDao().getAll().associateBy { it.id }
         db.tagDao().upsert(ids.mapIndexedNotNull { i, id -> byId[id]?.copy(orderSeq = i) })
     }
 
-    companion object {
-        const val MAX_LENGTH = 15
-        private val forbidden = setOf('{', '}', '[', ']', '(', ')', '"', '\'', '‘', '’', '“', '”', '@', '#', ',')
-
-        /** Removes forbidden characters and every kind of whitespace. */
-        fun filter(input: String): String = input.filterNot { it in forbidden || it.isWhitespace() || Character.isSpaceChar(it) }.take(MAX_LENGTH)
-
-        fun normalize(input: String): String = filter(input.trim())
-    }
 }

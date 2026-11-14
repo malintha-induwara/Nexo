@@ -1,14 +1,6 @@
 package com.nexo.app.ui.accounts
 
-import com.nexo.app.ui.designsystem.component.FlowCharts
 import androidx.activity.compose.BackHandler
-import java.util.Locale
-import com.nexo.app.ui.designsystem.component.RoundIconButton
-import com.nexo.app.ui.designsystem.component.AmountText
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,10 +9,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.List
@@ -37,47 +32,52 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.ui.designsystem.component.SegmentedPill
-import com.nexo.app.ui.designsystem.theme.Space
-import com.nexo.app.data.database.entity.CurrencyEntity
-import com.nexo.app.core.model.GroupType
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.model.GroupType
+import com.nexo.app.data.database.entity.CurrencyEntity
+import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.FlowAmount
+import com.nexo.app.ui.designsystem.component.FlowCharts
 import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.GroupCard
 import com.nexo.app.ui.designsystem.component.MessageDialog
 import com.nexo.app.ui.designsystem.component.MonthPickerDialog
 import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.component.PeriodNavigator
+import com.nexo.app.ui.designsystem.component.RoundIconButton
+import com.nexo.app.ui.designsystem.component.SegmentedPill
 import com.nexo.app.ui.designsystem.component.shrinkToFit
+import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.NexoType
+import com.nexo.app.ui.designsystem.theme.Space
 import com.nexo.app.ui.navigation.AccountDetailKey
 import com.nexo.app.ui.navigation.AccountFormKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
-import com.nexo.app.ui.designsystem.theme.LocalNexoColors
-import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.transactions.BulkAction
 import com.nexo.app.ui.transactions.BulkDialogs
 import com.nexo.app.ui.transactions.DayGroupList
 import com.nexo.app.ui.transactions.SelectionBar
 import com.nexo.app.ui.transactions.TxRow
 import com.nexo.app.ui.transactions.selectedNet
+import java.util.Locale
 
 @Composable
 fun AccountDetailScreen(key: AccountDetailKey) {
@@ -184,7 +184,7 @@ fun AccountDetailScreen(key: AccountDetailKey) {
         MonthPickerDialog(e.monthPeriodContaining(anchor).label, onPick = { vm.setAnchor(e.monthPeriodFor(it).end) }, onDismiss = { monthPicker = false })
     }
     if (restore) ConfirmDialog(stringResource(R.string.restore_question), onConfirm = { vm.restore { nav.back() } }, onDismiss = { restore = false })
-    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.writer, selection, onDone = { vm.setSelection(emptySet()) }, onDismiss = { bulkOpen = false })
+    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.transactions, selection, onDone = { vm.setSelection(emptySet()) }, onDismiss = { bulkOpen = false })
 }
 
 /** The statement for the period on screen: the balance on one line, with money in, out and the net beneath. */

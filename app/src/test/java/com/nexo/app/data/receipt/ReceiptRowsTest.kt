@@ -1,10 +1,10 @@
 package com.nexo.app.data.receipt
 
-import org.junit.Assert.assertEquals
-import org.junit.Test
 import java.time.LocalDate
 import kotlin.math.cos
 import kotlin.math.sin
+import org.junit.Assert.assertEquals
+import org.junit.Test
 
 class ReceiptRowsTest {
     @Test

@@ -15,9 +15,6 @@ import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.data.file.AppDirs
-import com.nexo.app.data.file.PhotoStore
-import com.nexo.app.data.repository.RefRepository
-import com.nexo.app.widget.WidgetRefresher
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.math.BigDecimal
@@ -67,10 +64,9 @@ data class ImportPreview(val rows: List<ImportRow>, val wide: Boolean)
 class TsvImporter @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: NexoDatabase,
-    private val refs: RefRepository,
+    private val refs: ReferenceDataRepository,
     private val dirs: AppDirs,
-    private val photos: PhotoStore,
-    private val widgets: WidgetRefresher,
+    private val photos: PhotosRepository,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     fun files(): List<File> = dirs.imports.listFiles()?.filter { it.name.endsWith(".tsv", true) || it.name.endsWith(".txt", true) }
@@ -143,7 +139,7 @@ class TsvImporter @Inject constructor(
         if (!f.exists()) return@withContext ImportPreview(emptyList(), false)
         val (header, lines) = dataLines(f)
         val wide = header.split('\t').size >= 12
-        val ref = refs.snapshot()
+        val ref = refs.getRefData()
         val o = order ?: deviceDateOrder()
         ImportPreview(lines.mapIndexed { i, line -> parse(ref, i, line, wide, o) }, wide)
     }
@@ -261,7 +257,7 @@ class TsvImporter @Inject constructor(
         val f = file(fileName)
         val preview = load(fileName, order)
         val (header, _) = dataLines(f)
-        val ref = refs.snapshot()
+        val ref = refs.getRefData()
         val zone = ZoneId.systemDefault()
         val failed = ArrayList<String>()
         val rows = ArrayList<TransactionEntity>()
@@ -312,7 +308,6 @@ class TsvImporter @Inject constructor(
         }
         db.withTransaction { rows.chunked(500).forEach { db.transactionDao().insertAll(it) } }
         write(f, header, failed)
-        widgets.refresh()
         saved to failed.size
     }
 

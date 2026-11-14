@@ -2,22 +2,21 @@ package com.nexo.app.data.sms
 
 import android.content.Context
 import android.util.Log
-import com.nexo.app.data.database.NexoDatabase
-import com.nexo.app.data.datastore.DevicePrefs
-import com.nexo.app.data.datastore.DeviceSettings
 import com.nexo.app.core.model.Certainty
-import com.nexo.app.data.sms.SmsCorrelator
-import com.nexo.app.data.work.FxSyncWorker
+import com.nexo.app.core.model.DeviceSettings
+import com.nexo.app.core.notifications.Notifications
+import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.dao.RoomSmsStore
+import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.data.sms.parser.Redactor
 import com.nexo.app.data.sms.parser.SmsMessage
 import com.nexo.app.data.sms.parser.SmsParser
-import com.nexo.app.core.notifications.Notifications
+import com.nexo.app.data.work.FxSyncWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** A message plus the moment the phone received it (inbox `date`), which is what the start point is compared with. */
 data class IncomingSms(val message: SmsMessage, val receivedAt: Long)
@@ -30,14 +29,14 @@ data class IncomingSms(val message: SmsMessage, val receivedAt: Long)
 class SmsIntake @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: NexoDatabase,
-    private val prefs: DevicePrefs,
+    private val prefs: UserPreferencesRepository,
     private val suggester: SmsSuggester,
 ) {
     private val mutex = Mutex()
     private val correlator by lazy { SmsCorrelator(RoomSmsStore(db.smsDao())) }
 
     /** Returns how many queue items were created or changed. [notify] also posts the notification and schedules rate syncs. */
-    suspend fun receive(batch: List<IncomingSms>, notify: Boolean = true): Int = receive(batch, prefs.current(), notify)
+    suspend fun receive(batch: List<IncomingSms>, notify: Boolean = true): Int = receive(batch, prefs.getDeviceSettings(), notify)
 
     internal suspend fun receive(batch: List<IncomingSms>, s: DeviceSettings, notify: Boolean): Int = mutex.withLock {
         // Only while capture is active, and never before the start point.
@@ -68,7 +67,7 @@ class SmsIntake @Inject constructor(
     }
 
     suspend fun notifyPending() {
-        val since = prefs.current().smsSeenAt
+        val since = prefs.getDeviceSettings().smsSeenAt
         Notifications.postSmsReview(context, db.smsDao().countPendingSince(since))
     }
 
