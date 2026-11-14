@@ -54,7 +54,12 @@ interface TransactionsRepository {
 
     suspend fun getRange(start: String, end: String): List<Transaction>
 
-    suspend fun search(start: String, end: String, pattern: String, includeSource: Boolean): List<Transaction>
+    suspend fun search(
+        start: String,
+        end: String,
+        pattern: String,
+        includeSource: Boolean,
+    ): List<Transaction>
 
     suspend fun getNoteUsage(cutDate: String, cutMillis: Long): List<NoteUsage>
 
@@ -68,6 +73,7 @@ interface TransactionsRepository {
     suspend fun getLedgerFor(rows: List<Transaction>): Ledger
 
     // Writes
+
     /** Saves the draft and returns the primary row id. */
     suspend fun save(draft: TxDraft): String
 
@@ -89,5 +95,10 @@ interface TransactionsRepository {
 
     suspend fun setTransfer(ids: Collection<String>, from: String, to: String)
 
-    suspend fun recordBalanceDifference(accountId: String, difference: Double, asIncomeExpense: Boolean, description: String)
+    suspend fun recordBalanceDifference(
+        accountId: String,
+        difference: Double,
+        asIncomeExpense: Boolean,
+        description: String,
+    )
 }

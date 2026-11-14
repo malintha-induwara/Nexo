@@ -43,7 +43,9 @@ fun HelpScreen() {
     val nav = LocalNavigator.current
     Scaffold(topBar = { NexoTopBar(stringResource(R.string.help), onBack = { nav.back() }) }) { p ->
         Column(Modifier.padding(p)) {
-            HELP_TOPICS.forEach { t -> SettingRow(stringResource(t.title), onClick = { nav.navigate(HelpPageKey(t.page)) }) }
+            HELP_TOPICS.forEach { t ->
+                SettingRow(stringResource(t.title), onClick = { nav.navigate(HelpPageKey(t.page)) })
+            }
             SettingRow(stringResource(R.string.faq), onClick = { nav.navigate(HelpPageKey("faq")) })
         }
     }
@@ -53,17 +55,37 @@ fun HelpScreen() {
 fun FeedbackScreen() {
     val nav = LocalNavigator.current
     val context = LocalContext.current
-    Scaffold(topBar = { NexoTopBar(stringResource(R.string.feedback), onBack = { nav.back() }) }) { p ->
+    Scaffold(topBar = {
+        NexoTopBar(stringResource(R.string.feedback), onBack = { nav.back() })
+    }) { p ->
         Column(Modifier.padding(p)) {
             SectionHeader(stringResource(R.string.faq))
             SettingRow(stringResource(R.string.faq), onClick = { nav.navigate(HelpPageKey("faq")) })
             SectionHeader(stringResource(R.string.other))
-            SettingRow(stringResource(R.string.feedback), stringResource(R.string.support_email), onClick = { runCatching { context.startActivity(feedbackIntent(context)) } })
-            SettingRow(stringResource(R.string.mistranslation), onClick = { runCatching { context.startActivity(feedbackIntent(context, R.string.mistranslation_subject)) } })
-            SettingRow(stringResource(R.string.privacy_policy), onClick = { nav.navigate(HelpPageKey("privacy")) })
-            SettingRow(stringResource(R.string.terms), onClick = { nav.navigate(HelpPageKey("terms")) })
-            SettingRow(stringResource(R.string.open_source), onClick = { nav.navigate(HelpPageKey("licenses")) })
-            SettingRow(stringResource(R.string.whats_new), onClick = { nav.navigate(HelpPageKey("whats_new")) })
+            SettingRow(
+                stringResource(R.string.feedback),
+                stringResource(R.string.support_email),
+                onClick = {
+                    runCatching { context.startActivity(feedbackIntent(context)) }
+                },
+            )
+            SettingRow(stringResource(R.string.mistranslation), onClick = {
+                runCatching {
+                    context.startActivity(feedbackIntent(context, R.string.mistranslation_subject))
+                }
+            })
+            SettingRow(stringResource(R.string.privacy_policy), onClick = {
+                nav.navigate(HelpPageKey("privacy"))
+            })
+            SettingRow(stringResource(R.string.terms), onClick = {
+                nav.navigate(HelpPageKey("terms"))
+            })
+            SettingRow(stringResource(R.string.open_source), onClick = {
+                nav.navigate(HelpPageKey("licenses"))
+            })
+            SettingRow(stringResource(R.string.whats_new), onClick = {
+                nav.navigate(HelpPageKey("whats_new"))
+            })
         }
     }
 }
@@ -74,7 +96,9 @@ fun FeedbackScreen() {
 fun HelpPageScreen(key: HelpPageKey) {
     val nav = LocalNavigator.current
     val page = key.page.filter { it.isLetterOrDigit() || it == '_' }
-    Scaffold(topBar = { NexoTopBar(stringResource(PAGE_TITLES[page] ?: R.string.help), onBack = { nav.back() }) }) { p ->
+    Scaffold(topBar = {
+        NexoTopBar(stringResource(PAGE_TITLES[page] ?: R.string.help), onBack = { nav.back() })
+    }) { p ->
         AndroidView(
             modifier = Modifier.fillMaxSize().padding(p),
             factory = { ctx ->
@@ -83,7 +107,10 @@ fun HelpPageScreen(key: HelpPageKey) {
                     settings.blockNetworkLoads = true
                     settings.allowFileAccess = false
                     webViewClient = object : WebViewClient() {
-                        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
+                        override fun shouldOverrideUrlLoading(
+                            view: WebView,
+                            request: WebResourceRequest,
+                        ): Boolean = true
                     }
                     loadUrl("file:///android_asset/help/$page.html")
                 }

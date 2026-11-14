@@ -62,7 +62,11 @@ sealed interface QueueUndo {
 }
 
 /** The message bar under the queue; a new [id] restarts its timer even with the same text. */
-data class QueueNotice(val text: UiText, val undo: QueueUndo? = null, val id: Long = System.nanoTime())
+data class QueueNotice(
+    val text: UiText,
+    val undo: QueueUndo? = null,
+    val id: Long = System.nanoTime(),
+)
 
 data class SmsQueueUiState(
     val ref: RefData = RefData(),
@@ -94,9 +98,15 @@ class SmsQueueViewModel @Inject constructor(
 ) : ViewModel() {
 
     /** Kept for event handlers that need these synchronously. */
-    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        RefData(),
+    )
     private val pending: StateFlow<List<SmsItem>> =
-        sms.getItemsStream(listOf(SmsStatus.PENDING)).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        sms.getItemsStream(
+            listOf(SmsStatus.PENDING),
+        ).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val filter = MutableStateFlow(QueueFilter.ALL)
     private val selection = MutableStateFlow<Set<String>>(emptySet())
@@ -105,17 +115,33 @@ class SmsQueueViewModel @Inject constructor(
     private val permitted = MutableStateFlow(inbox.hasPermission())
 
     private val items: Flow<List<SmsItem>?> = filter.flatMapLatest { f ->
-        sms.getItemsStream(listOf(f.status)).map { list -> if (f == QueueFilter.ATTENTION) list.filter { it.needsAttention } else list }
+        sms.getItemsStream(listOf(f.status)).map { list ->
+            if (f == QueueFilter.ATTENTION) {
+                list.filter { it.needsAttention }
+            } else {
+                list
+            }
+        }
     }
 
     val uiState: StateFlow<SmsQueueUiState> = combine(
         combine(ref, prefs.getDeviceSettingsStream(), filter, ::Triple),
         combine(pending, items, ::Pair),
-        combine(selection, notice, feePrompts, permitted) { sel, notice, prompts, permitted -> Quad(sel, notice, prompts.firstOrNull(), permitted) },
+        combine(selection, notice, feePrompts, permitted) { sel, notice, prompts, permitted ->
+            Quad(sel, notice, prompts.firstOrNull(), permitted)
+        },
     ) { (r, device, filter), (pendingItems, list), (sel, notice, prompt, permitted) ->
-        val unmapped = pendingItems.filter { it.accountId == null && it.cardLast4 != null }.map { CardRef(it.bank, it.cardLast4!!) }.distinct()
-        SmsQueueUiState(r, device, filter, pendingItems, list, unmapped, sel, notice, prompt, permitted)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SmsQueueUiState(permitted = inbox.hasPermission()))
+        val unmapped = pendingItems.filter {
+            it.accountId == null && it.cardLast4 != null
+        }.map { CardRef(it.bank, it.cardLast4!!) }.distinct()
+        SmsQueueUiState(
+            r, device, filter, pendingItems, list, unmapped, sel, notice, prompt, permitted,
+        )
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        SmsQueueUiState(permitted = inbox.hasPermission()),
+    )
 
     /** The queue is open: nothing is "new" any more, so the notification goes. */
     fun markSeen() = viewModelScope.launch {
@@ -136,8 +162,15 @@ class SmsQueueViewModel @Inject constructor(
             return@launch
         }
         when (val plan = getFeePlan(item)) {
-            FeePlan.None -> if (approveSms(id) is ApproveResult.Done) show(UiText.of(R.string.sms_approved))
+            FeePlan.None -> if (approveSms(
+                    id,
+                ) is ApproveResult.Done
+            ) {
+                show(UiText.of(R.string.sms_approved))
+            }
+
             is FeePlan.Auto -> autoFee(item, plan.amount, approveSms(id, FeeChoice(plan.amount)))
+
             is FeePlan.Ask -> feePrompts.update { it + FeePrompt(listOf(item), plan) }
         }
     }
@@ -154,7 +187,8 @@ class SmsQueueViewModel @Inject constructor(
     private fun autoFee(item: SmsItem, amount: Double, result: ApproveResult) {
         val feeId = (result as? ApproveResult.Done)?.feeId ?: return
         val text = AmountFormatter.format(amount, ref.value.accountCurrency(item.accountId))
-        notice.value = QueueNotice(UiText.of(R.string.fee_auto_added, text), QueueUndo.RemoveFee(feeId))
+        notice.value =
+            QueueNotice(UiText.of(R.string.fee_auto_added, text), QueueUndo.RemoveFee(feeId))
     }
 
     fun deny(ids: Collection<String>, reason: DenyReason? = null) = viewModelScope.launch {
@@ -162,14 +196,20 @@ class SmsQueueViewModel @Inject constructor(
         selection.value = emptySet()
         if (denied.isEmpty()) return@launch
         val restoreIds = denied.map { it.id }
-        notice.value = QueueNotice(UiText.plural(R.plurals.sms_n_denied, denied.size), QueueUndo.Restore(restoreIds))
+        notice.value =
+            QueueNotice(
+                UiText.plural(R.plurals.sms_n_denied, denied.size),
+                QueueUndo.Restore(restoreIds),
+            )
     }
 
     fun restore(ids: Collection<String>) = viewModelScope.launch { sms.restore(ids) }
 
     fun setAmount(id: String, value: Double) = viewModelScope.launch { sms.setAmount(id, value) }
 
-    fun mapCard(card: CardRef, accountId: String) = viewModelScope.launch { sms.mapCard(card.bank, card.last4, accountId) }
+    fun mapCard(card: CardRef, accountId: String) = viewModelScope.launch {
+        sms.mapCard(card.bank, card.last4, accountId)
+    }
 
     fun toggleSelect(id: String) = selection.update { if (id in it) it - id else it + id }
 
@@ -191,12 +231,28 @@ class SmsQueueViewModel @Inject constructor(
         for (item in ready) {
             when (val plan = getFeePlan(item)) {
                 FeePlan.None -> if (approveSms(item.id) is ApproveResult.Done) approved++
-                is FeePlan.Auto -> if (approveSms(item.id, FeeChoice(plan.amount)) is ApproveResult.Done) approved++
+
+                is FeePlan.Auto -> if (approveSms(
+                        item.id,
+                        FeeChoice(plan.amount),
+                    ) is ApproveResult.Done
+                ) {
+                    approved++
+                }
+
                 // Each FX difference is its own amount, so those are asked one by one.
-                is FeePlan.Ask -> if (plan.fxDifference) prompts += FeePrompt(listOf(item), plan) else asks.getOrPut(plan.route) { ArrayList() } += item to plan
+                is FeePlan.Ask -> if (plan.fxDifference) {
+                    prompts += FeePrompt(listOf(item), plan)
+                } else {
+                    asks.getOrPut(plan.route) { ArrayList() } +=
+                        item to plan
+                }
             }
         }
-        asks.values.forEach { group -> prompts += FeePrompt(group.map { it.first }, group.first().second) }
+        asks.values.forEach { group ->
+            prompts +=
+                FeePrompt(group.map { it.first }, group.first().second)
+        }
         feePrompts.update { it + prompts }
         val skipped = ids.size - ready.size
         val parts = buildList {
@@ -215,13 +271,19 @@ class SmsQueueViewModel @Inject constructor(
     fun clearGap() = viewModelScope.launch { prefs.clearSmsGap() }
 
     /** "Not now". The picker stays in Settings. */
-    fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(SmsHistoryImport.SKIPPED) }
+    fun skipHistory() = viewModelScope.launch {
+        prefs.setSmsHistoryImport(SmsHistoryImport.SKIPPED)
+    }
 
     /** Undo pressed on [notice]. */
     fun undo(notice: QueueNotice) {
         when (val action = notice.undo) {
-            is QueueUndo.RemoveFee -> viewModelScope.launch { transactions.delete(listOf(action.feeId)) }
+            is QueueUndo.RemoveFee -> viewModelScope.launch {
+                transactions.delete(listOf(action.feeId))
+            }
+
             is QueueUndo.Restore -> restore(action.ids)
+
             null -> Unit
         }
         dismissNotice()

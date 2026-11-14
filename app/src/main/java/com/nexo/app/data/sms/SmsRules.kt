@@ -13,18 +13,29 @@ import com.nexo.app.data.sms.parser.MerchantCleaner
 enum class Missing { ACCOUNT, DESTINATION, CATEGORY, AMOUNT }
 
 /** Category kind a queue item is filed under. */
-val SmsKind.categoryKind: CategoryKind get() = if (isInflow) CategoryKind.INCOME else CategoryKind.EXPENSE
+val SmsKind.categoryKind: CategoryKind
+    get() = if (isInflow) CategoryKind.INCOME else CategoryKind.EXPENSE
 
 fun SmsItem.missing(): Set<Missing> = buildSet {
     if (accountId == null) add(Missing.ACCOUNT)
     when (kind) {
-        SmsKind.TRANSFER_TO_CASH, SmsKind.CARD_PAYMENT, SmsKind.TRANSFER_IN -> if (toAccountId == null) add(Missing.DESTINATION)
+        SmsKind.TRANSFER_TO_CASH, SmsKind.CARD_PAYMENT, SmsKind.TRANSFER_IN -> if (toAccountId ==
+            null
+        ) {
+            add(Missing.DESTINATION)
+        }
+
         // To a payee outside Nexo: either an account (a transfer) or a category (an expense) will do.
-        SmsKind.TRANSFER_OUT -> if (toAccountId == null && categoryId == null) add(Missing.DESTINATION)
+        SmsKind.TRANSFER_OUT -> if (toAccountId == null && categoryId == null) {
+            add(Missing.DESTINATION)
+        }
+
         else -> if (categoryId == null) add(Missing.CATEGORY)
     }
     // "Rate pending" — no account-currency amount yet.
-    if (certainty == Certainty.ESTIMATED && estimatedAmount == null && actualAmount == null) add(Missing.AMOUNT)
+    if (certainty == Certainty.ESTIMATED && estimatedAmount == null && actualAmount == null) {
+        add(Missing.AMOUNT)
+    }
 }
 
 val SmsItem.needsDetails: Boolean get() = missing().isNotEmpty()
@@ -38,8 +49,11 @@ val SmsItem.learningKey: String
 
 /** Where withdrawals go. The chosen account, else the first visible account in the Cash group. */
 fun RefData.smsCashAccount(): String? {
-    val chosen = settings.smsCashAccountId.takeIf { it.isNotEmpty() }?.let { accountById[it] }?.takeIf { isAccountVisible(it) }
-    return chosen?.id ?: pickerAccounts.firstOrNull { groupById[it.groupId]?.builtinId == CASH_GROUP }?.id
+    val chosen = settings.smsCashAccountId.takeIf {
+        it.isNotEmpty()
+    }?.let { accountById[it] }?.takeIf { isAccountVisible(it) }
+    return chosen?.id
+        ?: pickerAccounts.firstOrNull { groupById[it.groupId]?.builtinId == CASH_GROUP }?.id
 }
 
 private const val CASH_GROUP = 11
@@ -50,7 +64,6 @@ fun ledgerAmount(item: SmsItem): Double = item.actualAmount ?: item.estimatedAmo
 fun bankName(item: SmsItem): String = Banks.byName(item.bank)?.displayName ?: Bank.OTHER.displayName
 
 /** The row title and transaction note: merchant, else payee, else "<bank> transfer <route>", else the bank. */
-fun noteFor(item: SmsItem): String =
-    item.merchant.ifEmpty { item.payee.orEmpty() }
-        .ifEmpty { item.route?.let { "${bankName(item)} transfer $it" }.orEmpty() }
-        .ifEmpty { bankName(item) }
+fun noteFor(item: SmsItem): String = item.merchant.ifEmpty { item.payee.orEmpty() }
+    .ifEmpty { item.route?.let { "${bankName(item)} transfer $it" }.orEmpty() }
+    .ifEmpty { bankName(item) }

@@ -194,7 +194,8 @@ import java.util.Locale
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EntryScreen(key: EntryKey) {
-    val vm = hiltViewModel<EntryViewModel, EntryViewModel.Factory>(creationCallback = { it.create(key) })
+    val vm =
+        hiltViewModel<EntryViewModel, EntryViewModel.Factory>(creationCallback = { it.create(key) })
     val state by vm.uiState.collectAsStateWithLifecycle()
     val s = state.form
     val ref = state.ref
@@ -241,7 +242,13 @@ fun EntryScreen(key: EntryKey) {
     LaunchedEffect(state.navigation) {
         when (val target = state.navigation) {
             EntryNavigation.Close -> nav.back()
-            is EntryNavigation.Open -> if (target.replace) nav.replace(target.key) else nav.navigate(target.key)
+
+            is EntryNavigation.Open -> if (target.replace) {
+                nav.replace(target.key)
+            } else {
+                nav.navigate(target.key)
+            }
+
             null -> return@LaunchedEffect
         }
         vm.onNavigationHandled()
@@ -277,20 +284,37 @@ fun EntryScreen(key: EntryKey) {
     // Scan receipt: the document scanner (rear camera, edges found and cropped, or a photo from the gallery) hands back
     // one page, which is read and then attached once the user confirms it. Where the scanner cannot start (no Google Play
     // services, or a phone it does not support) the plain camera and gallery choices take its place.
-    val scanDocument = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            GmsDocumentScanningResult.fromActivityResultIntent(result.data)?.pages?.firstOrNull()?.imageUri?.let(vm::scanReceipt)
+    val scanDocument =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.StartIntentSenderForResult(),
+        ) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                GmsDocumentScanningResult.fromActivityResultIntent(
+                    result.data,
+                )?.pages?.firstOrNull()?.imageUri?.let(vm::scanReceipt)
+            }
         }
-    }
     var cameraUri by rememberSaveable { mutableStateOf<String?>(null) }
     val scanCamera = rememberLauncherForActivityResult(RearCameraPicture()) { ok ->
         if (ok) cameraUri?.let { vm.scanReceipt(Uri.parse(it)) }
     }
-    val scanGallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) {
-            if (vm.isPhotoSupported(uri)) vm.scanReceipt(uri) else Toast.makeText(context, R.string.unsupported_file_format, Toast.LENGTH_SHORT).show()
+    val scanGallery =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            if (uri != null) {
+                if (vm.isPhotoSupported(
+                        uri,
+                    )
+                ) {
+                    vm.scanReceipt(uri)
+                } else {
+                    Toast.makeText(
+                        context,
+                        R.string.unsupported_file_format,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
         }
-    }
     fun launchScanner() {
         val activity = context.findActivity()
         if (activity == null) {
@@ -300,7 +324,11 @@ fun EntryScreen(key: EntryKey) {
         receiptScanner().getStartScanIntent(activity)
             .addOnSuccessListener { sender ->
                 context.expectReturn()
-                runCatching { scanDocument.launch(IntentSenderRequest.Builder(sender).build()) }.onFailure { showScanMenu = true }
+                runCatching {
+                    scanDocument.launch(IntentSenderRequest.Builder(sender).build())
+                }.onFailure {
+                    showScanMenu = true
+                }
             }
             .addOnFailureListener { showScanMenu = true }
     }
@@ -326,27 +354,54 @@ fun EntryScreen(key: EntryKey) {
     // An edited entry loads from the database a moment after the screen appears; fade it in rather than pop.
     val reveal by animateFloatAsState(if (s.loaded) 1f else 0f, tween(180), label = "entryReveal")
     // As a drawer (opened from an add button) the sheet supplies the background and already sits below the status bar.
-    Box(if (key.fromAdd) Modifier.fillMaxSize() else Modifier.fillMaxSize().background(colors.background).statusBarsPadding()) {
+    Box(
+        if (key.fromAdd) {
+            Modifier.fillMaxSize()
+        } else {
+            Modifier.fillMaxSize().background(colors.background).statusBarsPadding()
+        },
+    ) {
         if (!s.loaded) return@Box
         Column(
             Modifier.fillMaxSize().graphicsLayer { alpha = reveal }.imePadding()
                 .onPreviewKeyEvent { ev ->
-                    if (ev.type != KeyEventType.KeyDown || (s.panel != Panel.AMOUNT && s.panel != Panel.FEE)) return@onPreviewKeyEvent false
+                    if (ev.type != KeyEventType.KeyDown ||
+                        (s.panel != Panel.AMOUNT && s.panel != Panel.FEE)
+                    ) {
+                        return@onPreviewKeyEvent false
+                    }
                     val k = when (ev.key) {
                         Key.Zero, Key.NumPad0 -> PadKey.D0
+
                         Key.One, Key.NumPad1 -> PadKey.D1
+
                         Key.Two, Key.NumPad2 -> PadKey.D2
+
                         Key.Three, Key.NumPad3 -> PadKey.D3
+
                         Key.Four, Key.NumPad4 -> PadKey.D4
+
                         Key.Five, Key.NumPad5 -> PadKey.D5
+
                         Key.Six, Key.NumPad6 -> PadKey.D6
+
                         Key.Seven, Key.NumPad7 -> PadKey.D7
+
                         Key.Eight, Key.NumPad8 -> PadKey.D8
+
                         Key.Nine, Key.NumPad9 -> PadKey.D9
+
                         Key.Backspace -> PadKey.BACKSPACE
+
                         Key.Minus, Key.NumPadSubtract -> PadKey.SIGN
+
                         Key.Period, Key.Comma, Key.NumPadDot -> PadKey.DECIMAL
-                        Key.Enter, Key.NumPadEnter -> { vm.padDone(); return@onPreviewKeyEvent true }
+
+                        Key.Enter, Key.NumPadEnter -> {
+                            vm.padDone()
+                            return@onPreviewKeyEvent true
+                        }
+
                         else -> return@onPreviewKeyEvent false
                     }
                     pressKey(k)
@@ -354,14 +409,24 @@ fun EntryScreen(key: EntryKey) {
                 },
         ) {
             // Top: close, type, bookmarks / revert.
-            Row(Modifier.fillMaxWidth().height(60.dp).padding(horizontal = Space.m), verticalAlignment = Alignment.CenterVertically) {
-                RoundIconButton(Icons.Rounded.Close, stringResource(R.string.action_back), { nav.back() })
-                Box(Modifier.weight(1f).padding(horizontal = Space.s), contentAlignment = Alignment.Center) {
+            Row(
+                Modifier.fillMaxWidth().height(60.dp).padding(horizontal = Space.m),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RoundIconButton(Icons.Rounded.Close, stringResource(R.string.action_back), {
+                    nav.back()
+                })
+                Box(
+                    Modifier.weight(1f).padding(horizontal = Space.s),
+                    contentAlignment = Alignment.Center,
+                ) {
                     SegmentedPill(
                         options = listOf(EntryType.INCOME, EntryType.EXPENSE, EntryType.TRANSFER),
                         selected = s.type,
                         onSelect = { t ->
-                            if (t == EntryType.TRANSFER && device?.transferGuideShown == false) showTransferGuide = true
+                            if (t == EntryType.TRANSFER && device?.transferGuideShown == false) {
+                                showTransferGuide = true
+                            }
                             vm.setType(t)
                         },
                         label = { t ->
@@ -373,7 +438,15 @@ fun EntryScreen(key: EntryKey) {
                                 },
                             )
                         },
-                        accent = { t -> if (t == EntryType.INCOME) money.income else if (t == EntryType.EXPENSE) money.expense else null },
+                        accent = { t ->
+                            if (t == EntryType.INCOME) {
+                                money.income
+                            } else if (t == EntryType.EXPENSE) {
+                                money.expense
+                            } else {
+                                null
+                            }
+                        },
                         enabled = s.mode != EntryMode.PAY_CARD || s.isBalance,
                         showSelection = !s.isBalance,
                         segmentPadding = 12.dp,
@@ -382,16 +455,34 @@ fun EntryScreen(key: EntryKey) {
                 }
                 Box(Modifier.size(40.dp)) {
                     when {
-                        s.isEdit && !s.viewing -> RoundIconButton(Icons.AutoMirrored.Rounded.Undo, stringResource(R.string.revert), vm::revert)
-                        (s.mode == EntryMode.NEW || s.mode == EntryMode.PAY_CARD || s.mode == EntryMode.FAVORITE) && s.originalId == null ->
-                            RoundIconButton(Icons.Rounded.StarOutline, stringResource(R.string.bookmarks), { nav.navigate(BookmarksKey(pickForForm = true)) })
+                        s.isEdit && !s.viewing -> RoundIconButton(
+                            Icons.AutoMirrored.Rounded.Undo,
+                            stringResource(R.string.revert),
+                            vm::revert,
+                        )
+
+                        (
+                            s.mode == EntryMode.NEW || s.mode == EntryMode.PAY_CARD ||
+                                s.mode == EntryMode.FAVORITE
+                            ) &&
+                            s.originalId == null ->
+                            RoundIconButton(
+                                Icons.Rounded.StarOutline,
+                                stringResource(R.string.bookmarks),
+                                {
+                                    nav.navigate(BookmarksKey(pickForForm = true))
+                                },
+                            )
                     }
                 }
             }
             modeLabel?.let {
                 Text(
-                    it.uppercase(Locale.getDefault()), style = NexoType.Caps, color = typeColor,
-                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = Space.xs),
+                    it.uppercase(Locale.getDefault()),
+                    style = NexoType.Caps,
+                    color = typeColor,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = Space.xs),
                 )
             }
 
@@ -402,9 +493,14 @@ fun EntryScreen(key: EntryKey) {
                     value = s.note,
                     onValueChange = vm::setNote,
                     focused = noteFocused,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = Space.xl).focusRequester(noteFocus).onFocusChanged {
+                    modifier = Modifier.fillMaxWidth().padding(
+                        horizontal = Space.xl,
+                    ).focusRequester(noteFocus).onFocusChanged {
                         noteFocused = it.isFocused
-                        if (it.isFocused) { vm.closePanel(); vm.enterEdit() }
+                        if (it.isFocused) {
+                            vm.closePanel()
+                            vm.enterEdit()
+                        }
                     },
                     onDone = { focus.clearFocus() },
                     onClear = { vm.setNote("") },
@@ -412,22 +508,47 @@ fun EntryScreen(key: EntryKey) {
                 if (noteFocused && s.note.isNotEmpty()) {
                     val q = s.note
                     val matches = remember(q, suggestions) {
-                        suggestions.mapNotNull { sug -> sug.note.indexOf(q, ignoreCase = true).takeIf { it >= 0 && sug.note != q }?.let { sug to it } }
-                            .sortedWith(compareByDescending<Pair<NoteSuggestion, Int>> { it.first.count }.thenBy { it.second }.thenByDescending { it.first.lastDate })
+                        suggestions.mapNotNull { sug ->
+                            sug.note.indexOf(q, ignoreCase = true).takeIf {
+                                it >=
+                                    0 &&
+                                    sug.note != q
+                            }?.let { sug to it }
+                        }
+                            .sortedWith(
+                                compareByDescending<Pair<NoteSuggestion, Int>> {
+                                    it.first.count
+                                }.thenBy { it.second }.thenByDescending { it.first.lastDate },
+                            )
                             .take(6)
                     }
                     if (matches.isNotEmpty()) {
-                        Column(Modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.xs).clip(NexoShapes.control).background(colors.raised)) {
+                        Column(
+                            Modifier.fillMaxWidth().padding(
+                                horizontal = Space.gutter,
+                                vertical = Space.xs,
+                            ).clip(NexoShapes.control).background(colors.raised),
+                        ) {
                             matches.forEach { (sug, idx) ->
                                 Text(
                                     buildAnnotatedString {
                                         append(sug.note.substring(0, idx))
-                                        withStyle(SpanStyle(color = typeColor, fontWeight = FontWeight.SemiBold)) { append(sug.note.substring(idx, idx + q.length)) }
+                                        withStyle(
+                                            SpanStyle(
+                                                color = typeColor,
+                                                fontWeight = FontWeight.SemiBold,
+                                            ),
+                                        ) {
+                                            append(sug.note.substring(idx, idx + q.length))
+                                        }
                                         append(sug.note.substring(idx + q.length))
                                     },
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = colors.textSecondary,
-                                    modifier = Modifier.fillMaxWidth().clickable { vm.setNote(sug.note); focus.clearFocus() }.padding(horizontal = Space.l, vertical = Space.m),
+                                    modifier = Modifier.fillMaxWidth().clickable {
+                                        vm.setNote(sug.note)
+                                        focus.clearFocus()
+                                    }.padding(horizontal = Space.l, vertical = Space.m),
                                 )
                             }
                         }
@@ -440,32 +561,59 @@ fun EntryScreen(key: EntryKey) {
                     currency = txCurrency,
                     color = typeColor,
                     shake = shake,
-                    onClick = { haptics.tick(); vm.openPanel(Panel.AMOUNT) },
+                    onClick = {
+                        haptics.tick()
+                        vm.openPanel(Panel.AMOUNT)
+                    },
                 )
                 val amount = s.amount
-                if (txCurrency.id != ref.mainCurrency.id && amount != null && amount != 0.0 && s.repeat == RepeatType.NONE) {
+                if (txCurrency.id != ref.mainCurrency.id && amount != null && amount != 0.0 &&
+                    s.repeat == RepeatType.NONE
+                ) {
                     val rate = s.rate ?: Conversion.effectiveRate(txCurrency)
                     val main = Money.round(Money.multiply(amount, rate), ref.mainCurrency.decimals)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
                             "≈ " + AmountFormatter.format(main, ref.mainCurrency),
-                            Modifier.clip(CircleShape).clickable { rateEdit = 1 }.padding(horizontal = Space.s, vertical = Space.xs),
-                            color = colors.textSecondary, style = MaterialTheme.typography.bodyMedium,
+                            Modifier.clip(CircleShape).clickable {
+                                rateEdit = 1
+                            }.padding(horizontal = Space.s, vertical = Space.xs),
+                            color = colors.textSecondary,
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                         Text("·", color = colors.textTertiary)
                         Text(
-                            stringResource(R.string.exchange_rate_value, AmountFormatter.rate(rate)),
-                            Modifier.clip(CircleShape).clickable { rateEdit = 2 }.padding(horizontal = Space.s, vertical = Space.xs),
-                            color = colors.textSecondary, style = MaterialTheme.typography.bodySmall,
+                            stringResource(
+                                R.string.exchange_rate_value,
+                                AmountFormatter.rate(rate),
+                            ),
+                            Modifier.clip(CircleShape).clickable {
+                                rateEdit = 2
+                            }.padding(horizontal = Space.s, vertical = Space.xs),
+                            color = colors.textSecondary,
+                            style = MaterialTheme.typography.bodySmall,
                         )
                     }
                 }
                 s.installmentInfo?.let { info ->
                     Text(
                         stringResource(R.string.installment_k_n, info.index, info.count) + " · " +
-                            stringResource(R.string.installment_balance_total, AmountFormatter.format(info.balance, txCurrency), AmountFormatter.format(info.total, txCurrency)),
-                        style = NexoType.Meta, color = colors.textSecondary, textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.xs),
+                            stringResource(
+                                R.string.installment_balance_total,
+                                AmountFormatter.format(info.balance, txCurrency),
+                                AmountFormatter.format(info.total, txCurrency),
+                            ),
+                        style = NexoType.Meta,
+                        color = colors.textSecondary,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(
+                            horizontal = Space.gutter,
+                            vertical = Space.xs,
+                        ),
                     )
                 }
 
@@ -473,14 +621,25 @@ fun EntryScreen(key: EntryKey) {
                 // Field pills, in the configured input order, then when and how often.
                 FlowRow(
                     Modifier.fillMaxWidth().padding(horizontal = Space.l),
-                    horizontalArrangement = Arrangement.spacedBy(Space.s, Alignment.CenterHorizontally),
+                    horizontalArrangement = Arrangement.spacedBy(
+                        Space.s,
+                        Alignment.CenterHorizontally,
+                    ),
                     verticalArrangement = Arrangement.spacedBy(Space.s),
                 ) {
                     s.fields.filter { it != Field.AMOUNT && it != Field.FEE }.forEach { f ->
                         when (f) {
                             Field.ACCOUNT, Field.FROM, Field.TO -> {
                                 val id = if (f == Field.TO) s.toAccountId else s.accountId
-                                val label = stringResource(if (f == Field.ACCOUNT) R.string.account else if (f == Field.FROM) R.string.from else R.string.to)
+                                val label = stringResource(
+                                    if (f == Field.ACCOUNT) {
+                                        R.string.account
+                                    } else if (f == Field.FROM) {
+                                        R.string.from
+                                    } else {
+                                        R.string.to
+                                    },
+                                )
                                 val panel = EntryForm.panelFor(f)
                                 FieldPill(
                                     text = id?.let { ref.accountById[it]?.name } ?: label,
@@ -491,10 +650,24 @@ fun EntryScreen(key: EntryKey) {
                                     icon = Icons.Outlined.AccountBalanceWallet,
                                     prefix = if (s.isTransfer && id != null) label else null,
                                 ) { vm.openPanel(panel) }
-                                if (s.isTransfer && f == s.fields.firstOrNull { it == Field.FROM || it == Field.TO }) {
-                                    RoundIconButton(Icons.Rounded.SwapHoriz, stringResource(R.string.swap), { haptics.tick(); vm.swap() }, size = 40.dp, tint = colors.textSecondary)
+                                if (s.isTransfer &&
+                                    f == s.fields.firstOrNull {
+                                        it == Field.FROM || it == Field.TO
+                                    }
+                                ) {
+                                    RoundIconButton(
+                                        Icons.Rounded.SwapHoriz,
+                                        stringResource(R.string.swap),
+                                        {
+                                            haptics.tick()
+                                            vm.swap()
+                                        },
+                                        size = 40.dp,
+                                        tint = colors.textSecondary,
+                                    )
                                 }
                             }
+
                             Field.CATEGORY -> {
                                 val visual = s.categoryId?.let { ref.visual(it) }
                                 val text = categoryText(ref, s)
@@ -504,9 +677,20 @@ fun EntryScreen(key: EntryKey) {
                                     placeholder = text.isEmpty(),
                                     active = s.panel == Panel.CATEGORY,
                                     accent = typeColor,
-                                    leading = visual?.let { v -> { CategoryTile(v.emoji, v.monogram, CategoryHues.of(v.colorIndex, colors.isDark), size = 26.dp, over = colors.raised) } },
+                                    leading = visual?.let { v ->
+                                        {
+                                            CategoryTile(
+                                                v.emoji,
+                                                v.monogram,
+                                                CategoryHues.of(v.colorIndex, colors.isDark),
+                                                size = 26.dp,
+                                                over = colors.raised,
+                                            )
+                                        }
+                                    },
                                 ) { vm.openPanel(Panel.CATEGORY) }
                             }
+
                             else -> Unit
                         }
                     }
@@ -514,22 +698,35 @@ fun EntryScreen(key: EntryKey) {
                 Spacer(Modifier.height(Space.s))
                 FlowRow(
                     Modifier.fillMaxWidth().padding(horizontal = Space.l),
-                    horizontalArrangement = Arrangement.spacedBy(Space.s, Alignment.CenterHorizontally),
+                    horizontalArrangement = Arrangement.spacedBy(
+                        Space.s,
+                        Alignment.CenterHorizontally,
+                    ),
                     verticalArrangement = Arrangement.spacedBy(Space.s),
                 ) {
                     FieldPill(
-                        text = if (s.date.year == LocalDate.now().year) Formats.weekdayMonthDay(s.date) else Formats.mediumDate(s.date),
+                        text = if (s.date.year == LocalDate.now().year) {
+                            Formats.weekdayMonthDay(s.date)
+                        } else {
+                            Formats.mediumDate(s.date)
+                        },
                         label = stringResource(R.string.date),
                         icon = Icons.Outlined.CalendarToday,
                         accent = typeColor,
-                    ) { vm.enterEdit(); showDate = true }
+                    ) {
+                        vm.enterEdit()
+                        showDate = true
+                    }
                     if (ref.settings.timeDisplay.timeInput && s.showTime) {
                         FieldPill(
                             text = Formats.time(s.time, DateFormat.is24HourFormat(context)),
                             label = stringResource(R.string.date),
                             icon = Icons.Outlined.Schedule,
                             accent = typeColor,
-                        ) { vm.enterEdit(); showTime = true }
+                        ) {
+                            vm.enterEdit()
+                            showTime = true
+                        }
                     }
                     if (s.showRepInst) {
                         Box {
@@ -537,7 +734,13 @@ fun EntryScreen(key: EntryKey) {
                             FieldPill(
                                 text = when {
                                     s.repeat != RepeatType.NONE -> repeatLabel(s.repeat)
-                                    s.installments > 0 -> pluralStringResource(R.plurals.n_months, s.installments, s.installments)
+
+                                    s.installments > 0 -> pluralStringResource(
+                                        R.plurals.n_months,
+                                        s.installments,
+                                        s.installments,
+                                    )
+
                                     else -> stringResource(R.string.rep_inst)
                                 },
                                 label = stringResource(R.string.rep_inst),
@@ -555,37 +758,68 @@ fun EntryScreen(key: EntryKey) {
                             }
                             NexoMenu(showRepMenu, onDismissRequest = { showRepMenu = false }) {
                                 if (s.type == EntryType.EXPENSE && !s.isBalance) {
-                                    NexoMenuItem(stringResource(R.string.installment), { showRepMenu = false; showInstallments = true }, Icons.Rounded.DateRange)
+                                    NexoMenuItem(stringResource(R.string.installment), {
+                                        showRepMenu = false
+                                        showInstallments = true
+                                    }, Icons.Rounded.DateRange)
                                 }
-                                NexoMenuItem(stringResource(R.string.repeat), { showRepMenu = false; showRepeatList = true }, Icons.Rounded.Repeat)
+                                NexoMenuItem(stringResource(R.string.repeat), {
+                                    showRepMenu = false
+                                    showRepeatList = true
+                                }, Icons.Rounded.Repeat)
                                 if (s.repeat != RepeatType.NONE || s.installments > 0) {
-                                    NexoMenuItem(stringResource(R.string.action_cancel), { showRepMenu = false; vm.clearRepInst() }, Icons.Rounded.Close, danger = true)
+                                    NexoMenuItem(stringResource(R.string.action_cancel), {
+                                        showRepMenu = false
+                                        vm.clearRepInst()
+                                    }, Icons.Rounded.Close, danger = true)
                                 }
                             }
                         }
                     }
                     if (s.repeat != RepeatType.NONE) {
                         FieldPill(
-                            text = s.repeatEnd?.let { stringResource(R.string.repeat_end) + " " + Formats.shortDate(it) } ?: stringResource(R.string.repeat_no_end),
+                            text =
+                                s.repeatEnd?.let {
+                                    stringResource(R.string.repeat_end) + " " +
+                                        Formats.shortDate(it)
+                                }
+                                    ?: stringResource(R.string.repeat_no_end),
                             label = stringResource(R.string.repeat_end),
                             accent = typeColor,
-                            onClear = if (s.repeatEnd != null) ({ vm.setRepeatEnd(null) }) else null,
+                            onClear = if (s.repeatEnd != null) {
+                                ({ vm.setRepeatEnd(null) })
+                            } else {
+                                null
+                            },
                         ) { showRepeatEnd = true }
                     }
                     // Transfer fee, or a bank fee on an SMS expense.
                     if (s.feeAllowed && s.feeExpanded) {
                         val feeCur = ref.currency(s.feeCurrencyId)
-                        val text = if (s.panel == Panel.FEE && s.pad.buffer.isNotEmpty()) bufferParts(s.pad.buffer, feeCur).text
-                        else s.feeAmount?.let { AmountFormatter.format(it, feeCur) } ?: ""
+                        val text = if (s.panel == Panel.FEE && s.pad.buffer.isNotEmpty()) {
+                            bufferParts(s.pad.buffer, feeCur).text
+                        } else {
+                            s.feeAmount?.let { AmountFormatter.format(it, feeCur) } ?: ""
+                        }
                         FieldPill(
-                            text = stringResource(R.string.fees) + (if (text.isNotEmpty()) " · $text" else ""),
+                            text =
+                                stringResource(R.string.fees) +
+                                    (if (text.isNotEmpty()) " · $text" else ""),
                             label = stringResource(R.string.fees),
                             active = s.panel == Panel.FEE,
                             accent = typeColor,
                             onClear = { vm.setFeeExpanded(false) },
                         ) { vm.openPanel(Panel.FEE) }
                     } else if (s.feeAllowed && s.repeat == RepeatType.NONE) {
-                        FieldPill(text = stringResource(R.string.fees), label = stringResource(R.string.fees), placeholder = true, icon = Icons.Rounded.Add, accent = typeColor) { vm.setFeeExpanded(true) }
+                        FieldPill(
+                            text = stringResource(R.string.fees),
+                            label = stringResource(R.string.fees),
+                            placeholder = true,
+                            icon = Icons.Rounded.Add,
+                            accent = typeColor,
+                        ) {
+                            vm.setFeeExpanded(true)
+                        }
                     }
                 }
 
@@ -595,29 +829,73 @@ fun EntryScreen(key: EntryKey) {
                 val photosAllowed = !s.repeatMode && s.repeat == RepeatType.NONE
                 FlowRow(
                     Modifier.fillMaxWidth().padding(horizontal = Space.l),
-                    horizontalArrangement = Arrangement.spacedBy(Space.s, Alignment.CenterHorizontally),
+                    horizontalArrangement = Arrangement.spacedBy(
+                        Space.s,
+                        Alignment.CenterHorizontally,
+                    ),
                     verticalArrangement = Arrangement.spacedBy(Space.s),
                 ) {
                     if (s.repeat == RepeatType.NONE) {
-                        s.tagIds.mapNotNull { id -> ref.tagById[id]?.takeIf { !it.isDeleted } }.forEach { t ->
-                            FieldPill(text = "#" + t.name, label = stringResource(R.string.tags), accent = typeColor, onClear = { vm.removeTag(t.id) }) { vm.enterEdit(); showTags = true }
+                        s.tagIds.mapNotNull { id ->
+                            ref.tagById[id]?.takeIf { !it.isDeleted }
+                        }.forEach { t ->
+                            FieldPill(
+                                text = "#" + t.name,
+                                label = stringResource(R.string.tags),
+                                accent = typeColor,
+                                onClear = {
+                                    vm.removeTag(t.id)
+                                },
+                            ) {
+                                vm.enterEdit()
+                                showTags = true
+                            }
                         }
-                        FieldPill(text = stringResource(R.string.tags), label = stringResource(R.string.tags), placeholder = true, icon = Icons.Rounded.Add, accent = typeColor) { vm.enterEdit(); showTags = true }
+                        FieldPill(
+                            text = stringResource(R.string.tags),
+                            label = stringResource(R.string.tags),
+                            placeholder = true,
+                            icon = Icons.Rounded.Add,
+                            accent = typeColor,
+                        ) {
+                            vm.enterEdit()
+                            showTags = true
+                        }
                     }
                     if (photosAllowed && s.scanAllowed) {
                         Box {
-                            FieldPill(text = stringResource(R.string.receipt_scan), label = stringResource(R.string.receipt_scan), placeholder = true, icon = Icons.Outlined.DocumentScanner, accent = typeColor) {
+                            FieldPill(
+                                text = stringResource(R.string.receipt_scan),
+                                label = stringResource(R.string.receipt_scan),
+                                placeholder = true,
+                                icon = Icons.Outlined.DocumentScanner,
+                                accent = typeColor,
+                            ) {
                                 vm.enterEdit()
-                                if (device?.photoNoticeShown == false) showPhotoNotice = true else launchScanner()
+                                if (device?.photoNoticeShown == false) {
+                                    showPhotoNotice = true
+                                } else {
+                                    launchScanner()
+                                }
                             }
                             NexoMenu(showScanMenu, onDismissRequest = { showScanMenu = false }) {
-                                if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-                                    NexoMenuItem(stringResource(R.string.camera), { showScanMenu = false; launchCamera() }, Icons.Rounded.PhotoCamera)
+                                if (context.packageManager.hasSystemFeature(
+                                        PackageManager.FEATURE_CAMERA_ANY,
+                                    )
+                                ) {
+                                    NexoMenuItem(stringResource(R.string.camera), {
+                                        showScanMenu = false
+                                        launchCamera()
+                                    }, Icons.Rounded.PhotoCamera)
                                 }
                                 NexoMenuItem(stringResource(R.string.gallery), {
                                     showScanMenu = false
                                     context.expectReturn()
-                                    scanGallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                    scanGallery.launch(
+                                        PickVisualMediaRequest(
+                                            ActivityResultContracts.PickVisualMedia.ImageOnly,
+                                        ),
+                                    )
                                 }, Icons.Rounded.PhotoLibrary)
                             }
                         }
@@ -625,21 +903,44 @@ fun EntryScreen(key: EntryKey) {
                 }
                 if (photosAllowed && s.photos.isNotEmpty()) {
                     Box(Modifier.padding(horizontal = Space.gutter, vertical = Space.m)) {
-                        PhotoThumbs(s.photos, vm::photoFile, removable = !s.viewing, onOpen = { viewerIndex = it }, onRemove = vm::removePhoto, onLongPress = vm::enterEdit)
+                        PhotoThumbs(s.photos, vm::photoFile, removable = !s.viewing, onOpen = {
+                            viewerIndex = it
+                        }, onRemove = vm::removePhoto, onLongPress = vm::enterEdit)
                     }
                 }
                 TextField(
                     value = s.description,
                     onValueChange = vm::setDescription,
-                    placeholder = { Text(stringResource(R.string.description), color = colors.textTertiary) },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Notes, null, tint = colors.textTertiary, modifier = Modifier.size(20.dp)) },
+                    placeholder = {
+                        Text(stringResource(R.string.description), color = colors.textTertiary)
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.Notes,
+                            null,
+                            tint = colors.textTertiary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    },
                     minLines = 1,
                     colors = quietFieldColors(),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = Space.s, vertical = Space.xs).onFocusChanged { if (it.isFocused) { vm.closePanel(); vm.enterEdit() } },
+                    modifier = Modifier.fillMaxWidth().padding(
+                        horizontal = Space.s,
+                        vertical = Space.xs,
+                    ).onFocusChanged {
+                        if (it.isFocused) {
+                            vm.closePanel()
+                            vm.enterEdit()
+                        }
+                    },
                 )
                 val fxText = s.fxNote?.let { fx ->
                     fxEstimateNote(context, fx.item, ref)?.let { note ->
-                        if (fx.editHint) note + "\n" + stringResource(R.string.fx_edit_hint) else note
+                        if (fx.editHint) {
+                            note + "\n" + stringResource(R.string.fx_edit_hint)
+                        } else {
+                            note
+                        }
                     }
                 }
                 fxText?.let { note ->
@@ -648,17 +949,31 @@ fun EntryScreen(key: EntryKey) {
                         if (s.fxFromApi) {
                             Text(
                                 stringResource(R.string.fx_attribution),
-                                Modifier.clickable { openRatesAttribution(context) }.padding(top = Space.xs),
-                                style = NexoType.Meta, color = colors.textTertiary,
+                                Modifier.clickable {
+                                    openRatesAttribution(context)
+                                }.padding(top = Space.xs),
+                                style = NexoType.Meta,
+                                color = colors.textTertiary,
                             )
                         }
                     }
                 }
                 s.sourceText?.let { src ->
                     Column(Modifier.padding(horizontal = Space.gutter, vertical = Space.s)) {
-                        Text(stringResource(R.string.original_text).uppercase(Locale.getDefault()), style = NexoType.Caps, color = colors.textTertiary)
+                        Text(
+                            stringResource(R.string.original_text).uppercase(Locale.getDefault()),
+                            style = NexoType.Caps,
+                            color = colors.textTertiary,
+                        )
                         Spacer(Modifier.height(Space.xs))
-                        Text(src, Modifier.fillMaxWidth().clip(NexoShapes.control).background(colors.raised).padding(Space.m), style = NexoType.Meta, color = colors.textSecondary)
+                        Text(
+                            src,
+                            Modifier.fillMaxWidth().clip(
+                                NexoShapes.control,
+                            ).background(colors.raised).padding(Space.m),
+                            style = NexoType.Meta,
+                            color = colors.textSecondary,
+                        )
                     }
                 }
                 Spacer(Modifier.height(Space.xl))
@@ -674,34 +989,69 @@ fun EntryScreen(key: EntryKey) {
                 },
                 transitionSpec = {
                     // The old content is gone before the new one shows, so the two never overlap.
-                    (slideInVertically(NexoMotion.gentle()) { it / 5 } + fadeIn(tween(180, delayMillis = 90))) togetherWith
+                    (
+                        slideInVertically(NexoMotion.gentle()) { it / 5 } +
+                            fadeIn(tween(180, delayMillis = 90))
+                        ) togetherWith
                         (slideOutVertically(tween(140)) { it / 6 } + fadeOut(tween(90))) using
-                        SizeTransform(clip = true) { _, _ -> spring(dampingRatio = 1f, stiffness = 420f) }
+                        SizeTransform(clip = true) { _, _ ->
+                            spring(dampingRatio = 1f, stiffness = 420f)
+                        }
                 },
                 label = "entryBottom",
             ) { kind ->
                 when (kind) {
                     BottomKind.ACCOUNT -> AccountPanel(
-                        title = stringResource(if (!s.isTransfer) R.string.account else if (s.panel == Panel.TO_ACCOUNT) R.string.to else R.string.from),
+                        title = stringResource(
+                            if (!s.isTransfer) {
+                                R.string.account
+                            } else if (s.panel == Panel.TO_ACCOUNT) {
+                                R.string.to
+                            } else {
+                                R.string.from
+                            },
+                        ),
                         ref = ref,
-                        selectedId = if (s.panel == Panel.TO_ACCOUNT) s.toAccountId else s.accountId,
+                        selectedId = if (s.panel == Panel.TO_ACCOUNT) {
+                            s.toAccountId
+                        } else {
+                            s.accountId
+                        },
                         grouped = device?.groupedAccountPicker == true,
                         accent = typeColor,
-                        onToggleGrouped = { vm.setGroupedPicker(device?.groupedAccountPicker != true) },
+                        onToggleGrouped = {
+                            vm.setGroupedPicker(device?.groupedAccountPicker != true)
+                        },
                         onSelect = vm::selectAccount,
                         onEdit = { nav.navigate(AccountListKey()) },
                         onAdd = { nav.navigate(AccountFormKey()) },
                         onClose = vm::closePanel,
                     )
+
                     BottomKind.CATEGORY -> CategoryPanel(
-                        kind = if (s.type == EntryType.INCOME) CategoryKind.INCOME else CategoryKind.EXPENSE,
+                        kind = if (s.type == EntryType.INCOME) {
+                            CategoryKind.INCOME
+                        } else {
+                            CategoryKind.EXPENSE
+                        },
                         ref = ref,
                         selectedId = s.categoryId,
                         accent = typeColor,
                         onSelect = vm::selectCategory,
-                        onEdit = { nav.navigate(CategoryListKey(if (s.type == EntryType.INCOME) CategoryKind.INCOME else CategoryKind.EXPENSE)) },
+                        onEdit = {
+                            nav.navigate(
+                                CategoryListKey(
+                                    if (s.type == EntryType.INCOME) {
+                                        CategoryKind.INCOME
+                                    } else {
+                                        CategoryKind.EXPENSE
+                                    },
+                                ),
+                            )
+                        },
                         onClose = vm::closePanel,
                     )
+
                     BottomKind.PAD -> {
                         val fee = s.panel == Panel.FEE
                         val cur = ref.currency(if (fee) s.feeCurrencyId else s.currencyId)
@@ -721,13 +1071,23 @@ fun EntryScreen(key: EntryKey) {
                             modifier = Modifier.navigationBarsPadding(),
                         )
                     }
+
                     BottomKind.ACTIONS -> BottomButtons(
                         s = s,
-                        onSave = { haptics.confirm(); vm.save(false) },
-                        onContinue = { haptics.confirm(); vm.save(true) },
+                        onSave = {
+                            haptics.confirm()
+                            vm.save(false)
+                        },
+                        onContinue = {
+                            haptics.confirm()
+                            vm.save(true)
+                        },
                         onDelete = { vm.setAskDelete(true) },
                         onCopy = { showCopy = true },
-                        onBookmark = { haptics.confirm(); vm.bookmark() },
+                        onBookmark = {
+                            haptics.confirm()
+                            vm.bookmark()
+                        },
                         onSkip = vm::skip,
                         review = key.reviewUnassigned,
                         onDeny = vm::denySms,
@@ -739,18 +1099,54 @@ fun EntryScreen(key: EntryKey) {
         // Scan receipt's confirm sheet. The last reading stays drawn while the sheet slides away.
         val shownScan = remember { arrayOfNulls<ScanUi>(1) }
         if (s.scan != null) shownScan[0] = s.scan
-        InlineBottomSheet(visible = s.scan != null, onDismiss = vm::dismissScan, heightFraction = 0.62f) {
+        InlineBottomSheet(
+            visible = s.scan != null,
+            onDismiss = vm::dismissScan,
+            heightFraction = 0.62f,
+        ) {
             shownScan[0]?.let { scan ->
-                ReceiptSheetContent(scan, txCurrency, noteEmpty = s.note.isBlank(), onUse = vm::applyReceipt, onCancel = vm::dismissScan)
+                ReceiptSheetContent(
+                    scan,
+                    txCurrency,
+                    noteEmpty = s.note.isBlank(),
+                    onUse = vm::applyReceipt,
+                    onCancel = vm::dismissScan,
+                )
             }
         }
     }
 
     // Dialogs
-    if (showDate) NexoDatePickerDialog(s.date, onPick = vm::setDate, onDismiss = { showDate = false })
-    if (showTime) NexoTimePickerDialog(s.time, onPick = vm::setTime, onDismiss = { showTime = false })
-    if (showRepeatEnd) NexoDatePickerDialog(s.repeatEnd ?: s.date.plusYears(1), onPick = { vm.setRepeatEnd(if (it.isBefore(s.date)) s.date else it) }, onDismiss = { showRepeatEnd = false })
-    if (showCalc) CalculatorDialog(if (s.panel == Panel.FEE) s.feeAmount else s.amount, onResult = vm::calculatorResult, onDismiss = { showCalc = false })
+    if (showDate) {
+        NexoDatePickerDialog(s.date, onPick = vm::setDate, onDismiss = {
+            showDate = false
+        })
+    }
+    if (showTime) {
+        NexoTimePickerDialog(s.time, onPick = vm::setTime, onDismiss = {
+            showTime = false
+        })
+    }
+    if (showRepeatEnd) {
+        NexoDatePickerDialog(s.repeatEnd ?: s.date.plusYears(1), onPick = {
+            vm.setRepeatEnd(if (it.isBefore(s.date)) s.date else it)
+        }, onDismiss = {
+            showRepeatEnd = false
+        })
+    }
+    if (showCalc) {
+        CalculatorDialog(
+            if (s.panel == Panel.FEE) {
+                s.feeAmount
+            } else {
+                s.amount
+            },
+            onResult = vm::calculatorResult,
+            onDismiss = {
+                showCalc = false
+            },
+        )
+    }
     if (showRepeatList) {
         ChoiceDialog(
             title = stringResource(R.string.repeat),
@@ -800,29 +1196,65 @@ fun EntryScreen(key: EntryKey) {
         }
     }
     if (showTags) {
-        val tagActions = remember(vm) { TagActions(vm::addTag, vm::renameTag, vm::tagUsageCount, vm::deleteTag, vm::reorderTags) }
-        TagSelectSheet(tags, s.tagIds, tagActions, onDone = vm::setTags, onDismiss = { showTags = false })
+        val tagActions =
+            remember(vm) {
+                TagActions(
+                    vm::addTag,
+                    vm::renameTag,
+                    vm::tagUsageCount,
+                    vm::deleteTag,
+                    vm::reorderTags,
+                )
+            }
+        TagSelectSheet(tags, s.tagIds, tagActions, onDone = vm::setTags, onDismiss = {
+            showTags = false
+        })
     }
-    if (viewerIndex >= 0) PhotoViewer(s.photos, viewerIndex, vm::photoFile, vm::exportPhoto, onDismiss = { viewerIndex = -1 })
+    if (viewerIndex >= 0) {
+        PhotoViewer(s.photos, viewerIndex, vm::photoFile, vm::exportPhoto, onDismiss = {
+            viewerIndex = -1
+        })
+    }
     if (showPhotoNotice) {
         AlertDialog(
             onDismissRequest = { showPhotoNotice = false },
             text = { Text(stringResource(R.string.photo_notice)) },
-            confirmButton = { TextButton(onClick = { showPhotoNotice = false; vm.markPhotoNoticeShown(); launchScanner() }) { Text(stringResource(R.string.action_ok)) } },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPhotoNotice = false
+                    vm.markPhotoNoticeShown()
+                    launchScanner()
+                }) { Text(stringResource(R.string.action_ok)) }
+            },
         )
     }
     if (showTransferGuide) {
         AlertDialog(
-            onDismissRequest = { showTransferGuide = false; vm.markTransferGuideShown() },
+            onDismissRequest = {
+                showTransferGuide = false
+                vm.markTransferGuideShown()
+            },
             title = { Text(stringResource(R.string.transfer)) },
             text = { Text(stringResource(R.string.transfer_guide)) },
-            confirmButton = { TextButton(onClick = { showTransferGuide = false; vm.markTransferGuideShown() }) { Text(stringResource(R.string.action_ok)) } },
+            confirmButton = {
+                TextButton(onClick = {
+                    showTransferGuide = false
+                    vm.markTransferGuideShown()
+                }) { Text(stringResource(R.string.action_ok)) }
+            },
         )
     }
     if (s.confirmRepeat) {
         ConfirmDialog(
-            message = stringResource(if (ref.settings.repeatReflect == RepeatReflect.ON_DATE) R.string.repeat_reflect_on_date else R.string.repeat_reflect_first_day) +
-                "\n\n" + stringResource(R.string.repeat_save_question),
+            message =
+                stringResource(
+                    if (ref.settings.repeatReflect == RepeatReflect.ON_DATE) {
+                        R.string.repeat_reflect_on_date
+                    } else {
+                        R.string.repeat_reflect_first_day
+                    },
+                ) +
+                    "\n\n" + stringResource(R.string.repeat_save_question),
             onConfirm = vm::confirmRepeatSave,
             onDismiss = vm::dismissRepeatConfirm,
         )
@@ -834,14 +1266,29 @@ fun EntryScreen(key: EntryKey) {
                 text = { Text(stringResource(R.string.confirm_delete)) },
                 confirmButton = {
                     Row {
-                        TextButton(onClick = { vm.setAskDelete(false); haptics.confirm(); vm.delete(true) }) { Text(stringResource(R.string.delete_all)) }
-                        TextButton(onClick = { vm.setAskDelete(false); haptics.confirm(); vm.delete(false) }) { Text(stringResource(R.string.action_delete)) }
+                        TextButton(onClick = {
+                            vm.setAskDelete(false)
+                            haptics.confirm()
+                            vm.delete(true)
+                        }) { Text(stringResource(R.string.delete_all)) }
+                        TextButton(onClick = {
+                            vm.setAskDelete(false)
+                            haptics.confirm()
+                            vm.delete(false)
+                        }) { Text(stringResource(R.string.action_delete)) }
                     }
                 },
-                dismissButton = { TextButton(onClick = { vm.setAskDelete(false) }) { Text(stringResource(R.string.action_cancel)) } },
+                dismissButton = {
+                    TextButton(onClick = {
+                        vm.setAskDelete(false)
+                    }) { Text(stringResource(R.string.action_cancel)) }
+                },
             )
         } else {
-            ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { haptics.confirm(); vm.delete(false) }, onDismiss = { vm.setAskDelete(false) })
+            ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
+                haptics.confirm()
+                vm.delete(false)
+            }, onDismiss = { vm.setAskDelete(false) })
         }
     }
     if (showCopy) {
@@ -851,16 +1298,33 @@ fun EntryScreen(key: EntryKey) {
             title = { Text(stringResource(R.string.copy)) },
             text = {
                 Column {
-                    listOf(true to R.string.copy_today, false to R.string.copy_original).forEach { (v, label) ->
-                        Row(Modifier.fillMaxWidth().clickable { today = v }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    listOf(
+                        true to R.string.copy_today,
+                        false to R.string.copy_original,
+                    ).forEach { (v, label) ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable {
+                                today = v
+                            }.padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             RadioButton(selected = today == v, onClick = null)
                             Text(stringResource(label), Modifier.padding(start = 12.dp))
                         }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showCopy = false; vm.copy(today) }) { Text(stringResource(R.string.action_ok)) } },
-            dismissButton = { TextButton(onClick = { showCopy = false }) { Text(stringResource(R.string.action_cancel)) } },
+            confirmButton = {
+                TextButton(onClick = {
+                    showCopy = false
+                    vm.copy(today)
+                }) { Text(stringResource(R.string.action_ok)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showCopy = false
+                }) { Text(stringResource(R.string.action_cancel)) }
+            },
         )
     }
 }
@@ -884,10 +1348,18 @@ private fun bufferParts(buffer: String, currency: Currency): AmountParts {
     val negative = buffer.startsWith("-")
     val body = buffer.removePrefix("-")
     val intPart = body.substringBefore('.')
-    val grouped = intPart.toBigIntegerOrNull()?.let { NumberFormat.getIntegerInstance().format(it) } ?: intPart.ifEmpty { "0" }
+    val grouped =
+        intPart.toBigIntegerOrNull()?.let { NumberFormat.getIntegerInstance().format(it) }
+            ?: intPart.ifEmpty { "0" }
     val fraction = if (body.contains('.')) separator + body.substringAfter('.') else ""
     val prefix = currency.symbolPosition == SymbolPosition.PREFIX
-    return AmountParts(if (negative) AmountParts.MINUS else "", if (prefix) currency.symbol else "", grouped, fraction, if (prefix) "" else currency.symbol)
+    return AmountParts(
+        if (negative) AmountParts.MINUS else "",
+        if (prefix) currency.symbol else "",
+        grouped,
+        fraction,
+        if (prefix) "" else currency.symbol,
+    )
 }
 
 /** "0.00" in the currency's shape, shown dimmed before anything is typed. */
@@ -895,7 +1367,13 @@ private fun placeholderParts(currency: Currency): AmountParts {
     val separator = DecimalFormatSymbols.getInstance().decimalSeparator
     val prefix = currency.symbolPosition == SymbolPosition.PREFIX
     val fraction = if (currency.decimals > 0) separator + "0".repeat(currency.decimals) else ""
-    return AmountParts("", if (prefix) currency.symbol else "", "0", fraction, if (prefix) "" else currency.symbol)
+    return AmountParts(
+        "",
+        if (prefix) currency.symbol else "",
+        "0",
+        fraction,
+        if (prefix) "" else currency.symbol,
+    )
 }
 
 /**
@@ -903,7 +1381,13 @@ private fun placeholderParts(currency: Currency): AmountParts {
  * shakes it. While the keypad is open a short bar under it breathes in the entry's colour.
  */
 @Composable
-private fun AmountDisplay(s: EntryForm, currency: Currency, color: Color, shake: Int, onClick: () -> Unit) {
+private fun AmountDisplay(
+    s: EntryForm,
+    currency: Currency,
+    color: Color,
+    shake: Int,
+    onClick: () -> Unit,
+) {
     val colors = LocalNexoColors.current
     val typing = s.panel == Panel.AMOUNT && s.pad.buffer.isNotEmpty()
     val parts = when {
@@ -919,26 +1403,75 @@ private fun AmountDisplay(s: EntryForm, currency: Currency, color: Color, shake:
         }
     }
     val active = s.panel == Panel.AMOUNT
-    val tint by animateColorAsState(if (parts == null) colors.textTertiary else color, NexoMotion.standard(), label = "amountTint")
+    val tint by animateColorAsState(
+        if (parts == null) {
+            colors.textTertiary
+        } else {
+            color
+        },
+        NexoMotion.standard(),
+        label = "amountTint",
+    )
     Column(
-        Modifier.fillMaxWidth().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, role = Role.Button, onClick = onClick)
+        Modifier.fillMaxWidth().clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            role = Role.Button,
+            onClick = onClick,
+        )
             .padding(horizontal = Space.gutter, vertical = Space.m),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.shakeOn(shake).graphicsLayer { scaleX = punch.value; scaleY = punch.value }, contentAlignment = Alignment.Center) {
-            AmountText(parts ?: placeholderParts(currency), Modifier.shrinkToFit(), style = NexoType.Hero, color = tint, minorScale = 0.5f)
+        Box(
+            Modifier.shakeOn(shake).graphicsLayer {
+                scaleX = punch.value
+                scaleY = punch.value
+            },
+            contentAlignment = Alignment.Center,
+        ) {
+            AmountText(
+                parts ?: placeholderParts(currency),
+                Modifier.shrinkToFit(),
+                style = NexoType.Hero,
+                color = tint,
+                minorScale = 0.5f,
+            )
         }
-        AnimatedVisibility(active, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+        AnimatedVisibility(
+            active,
+            enter = fadeIn() + expandVertically(),
+            exit =
+                fadeOut() + shrinkVertically(),
+        ) {
             val pulse = rememberInfiniteTransition(label = "caret")
-            val alpha by pulse.animateFloat(0.35f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "caretAlpha")
-            Box(Modifier.padding(top = Space.s).size(width = 28.dp, height = 3.dp).clip(CircleShape).background(color.copy(alpha = alpha)))
+            val alpha by pulse.animateFloat(
+                0.35f,
+                1f,
+                infiniteRepeatable(tween(700), RepeatMode.Reverse),
+                label = "caretAlpha",
+            )
+            Box(
+                Modifier.padding(
+                    top = Space.s,
+                ).size(
+                    width = 28.dp,
+                    height = 3.dp,
+                ).clip(CircleShape).background(color.copy(alpha = alpha)),
+            )
         }
     }
 }
 
 /** The note, set as a centred title above the amount. */
 @Composable
-private fun NoteField(value: String, onValueChange: (String) -> Unit, focused: Boolean, modifier: Modifier, onDone: () -> Unit, onClear: () -> Unit) {
+private fun NoteField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    focused: Boolean,
+    modifier: Modifier,
+    onDone: () -> Unit,
+    onClear: () -> Unit,
+) {
     val colors = LocalNexoColors.current
     val style = TextStyle(
         fontFamily = MaterialTheme.typography.titleLarge.fontFamily,
@@ -954,18 +1487,34 @@ private fun NoteField(value: String, onValueChange: (String) -> Unit, focused: B
             singleLine = true,
             textStyle = style,
             cursorBrush = SolidColor(colors.text),
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Sentences,
+                imeAction = ImeAction.Done,
+            ),
             keyboardActions = KeyboardActions(onDone = { onDone() }),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 36.dp, vertical = Space.s),
             decorationBox = { inner ->
                 Box(contentAlignment = Alignment.Center) {
-                    if (value.isEmpty()) Text(stringResource(R.string.note), style = style.copy(color = colors.textTertiary), modifier = Modifier.fillMaxWidth())
+                    if (value.isEmpty()) {
+                        Text(
+                            stringResource(R.string.note),
+                            style = style.copy(color = colors.textTertiary),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                     inner()
                 }
             },
         )
         if (focused && value.isNotEmpty()) {
-            RoundIconButton(Icons.Rounded.Close, stringResource(R.string.action_clear), onClear, modifier = Modifier.align(Alignment.CenterEnd), size = 28.dp, tint = colors.textSecondary)
+            RoundIconButton(
+                Icons.Rounded.Close,
+                stringResource(R.string.action_clear),
+                onClear,
+                modifier = Modifier.align(Alignment.CenterEnd),
+                size = 28.dp,
+                tint = colors.textSecondary,
+            )
         }
     }
 }
@@ -991,8 +1540,16 @@ private fun FieldPill(
 ) {
     val colors = LocalNexoColors.current
     val interactions = remember { MutableInteractionSource() }
-    val bg by animateColorAsState(if (active) colors.tint(accent, colors.raised) else colors.raised, NexoMotion.standard(), label = "pillBg")
-    val ring by animateColorAsState(if (active) accent else Color.Transparent, NexoMotion.standard(), label = "pillRing")
+    val bg by animateColorAsState(
+        if (active) colors.tint(accent, colors.raised) else colors.raised,
+        NexoMotion.standard(),
+        label = "pillBg",
+    )
+    val ring by animateColorAsState(
+        if (active) accent else Color.Transparent,
+        NexoMotion.standard(),
+        label = "pillRing",
+    )
     Row(
         modifier
             .pressScale(interactions, 0.96f)
@@ -1000,14 +1557,42 @@ private fun FieldPill(
             .clip(CircleShape)
             .background(bg)
             .border(1.5.dp, ring, CircleShape)
-            .clickable(interactionSource = interactions, indication = null, role = Role.Button, onClick = onClick)
+            .clickable(
+                interactionSource = interactions,
+                indication = null,
+                role = Role.Button,
+                onClick = onClick,
+            )
             .semantics { contentDescription = if (placeholder) label else "$label: $text" }
-            .padding(start = if (leading != null || icon != null) Space.s else Space.m + Space.xxs, end = if (onClear != null) Space.xs else Space.m + Space.xxs),
+            .padding(
+                start = if (leading != null || icon != null) {
+                    Space.s
+                } else {
+                    Space.m + Space.xxs
+                },
+                end = if (onClear != null) {
+                    Space.xs
+                } else {
+                    Space.m + Space.xxs
+                },
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when {
-            leading != null -> { leading(); Spacer(Modifier.width(Space.s)) }
-            icon != null -> { Icon(icon, null, tint = tint ?: colors.textSecondary, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(Space.s - Space.xxs)) }
+            leading != null -> {
+                leading()
+                Spacer(Modifier.width(Space.s))
+            }
+
+            icon != null -> {
+                Icon(
+                    icon,
+                    null,
+                    tint = tint ?: colors.textSecondary,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(Space.s - Space.xxs))
+            }
         }
         if (prefix != null) {
             Text(prefix, style = MaterialTheme.typography.labelMedium, color = colors.textTertiary)
@@ -1027,7 +1612,14 @@ private fun FieldPill(
         )
         if (onClear != null) {
             Spacer(Modifier.width(Space.xxs))
-            RoundIconButton(Icons.Rounded.Close, stringResource(R.string.action_clear), onClear, size = 28.dp, tint = colors.textTertiary, container = Color.Transparent)
+            RoundIconButton(
+                Icons.Rounded.Close,
+                stringResource(R.string.action_clear),
+                onClear,
+                size = 28.dp,
+                tint = colors.textTertiary,
+                container = Color.Transparent,
+            )
         }
     }
 }
@@ -1060,26 +1652,51 @@ private fun BottomButtons(
     val colors = LocalNexoColors.current
     val sms = s.mode == EntryMode.SMS
     Row(
-        Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = Space.gutter, vertical = Space.m),
+        Modifier.fillMaxWidth().navigationBarsPadding().padding(
+            horizontal = Space.gutter,
+            vertical = Space.m,
+        ),
         horizontalArrangement = Arrangement.spacedBy(Space.s),
     ) {
         if (s.isEdit && s.viewing && !review) {
-            SoftButton(stringResource(R.string.action_delete), onDelete, Modifier.weight(1f), content = MaterialTheme.colorScheme.error)
+            SoftButton(
+                stringResource(R.string.action_delete),
+                onDelete,
+                Modifier.weight(1f),
+                content = MaterialTheme.colorScheme.error,
+            )
             SoftButton(stringResource(R.string.copy), onCopy, Modifier.weight(1f))
             SoftButton(stringResource(R.string.bookmark), onBookmark, Modifier.weight(1f))
         } else {
             if (review) {
                 SoftButton(stringResource(R.string.skip), onSkip, Modifier.weight(1f))
-                SoftButton(stringResource(R.string.action_delete), onDelete, Modifier.weight(1f), content = MaterialTheme.colorScheme.error)
+                SoftButton(
+                    stringResource(R.string.action_delete),
+                    onDelete,
+                    Modifier.weight(1f),
+                    content = MaterialTheme.colorScheme.error,
+                )
             }
-            if (sms) SoftButton(stringResource(R.string.sms_deny), onDeny, Modifier.weight(1f), enabled = !s.saving)
+            if (sms) {
+                SoftButton(
+                    stringResource(R.string.sms_deny),
+                    onDeny,
+                    Modifier.weight(1f),
+                    enabled = !s.saving,
+                )
+            }
             val interactions = remember { MutableInteractionSource() }
             Button(
                 onClick = onSave,
                 enabled = !s.saving,
                 interactionSource = interactions,
-                modifier = Modifier.weight(if (review) 1.4f else 2f).height(52.dp).pressScale(interactions, 0.97f),
-                colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
+                modifier = Modifier.weight(
+                    if (review) 1.4f else 2f,
+                ).height(52.dp).pressScale(interactions, 0.97f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.primary,
+                    contentColor = colors.onPrimary,
+                ),
             ) {
                 Text(
                     when {
@@ -1091,14 +1708,25 @@ private fun BottomButtons(
                 )
             }
             if (s.showContinue && !review) {
-                SoftButton(stringResource(R.string.action_continue), onContinue, Modifier.weight(1f), enabled = !s.saving)
+                SoftButton(
+                    stringResource(R.string.action_continue),
+                    onContinue,
+                    Modifier.weight(1f),
+                    enabled = !s.saving,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun SoftButton(text: String, onClick: () -> Unit, modifier: Modifier, content: Color = LocalNexoColors.current.text, enabled: Boolean = true) {
+private fun SoftButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    content: Color = LocalNexoColors.current.text,
+    enabled: Boolean = true,
+) {
     val colors = LocalNexoColors.current
     val interactions = remember { MutableInteractionSource() }
     Button(
@@ -1106,9 +1734,17 @@ private fun SoftButton(text: String, onClick: () -> Unit, modifier: Modifier, co
         enabled = enabled,
         interactionSource = interactions,
         modifier = modifier.height(52.dp).pressScale(interactions, 0.97f),
-        colors = ButtonDefaults.buttonColors(containerColor = colors.raised, contentColor = content),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = colors.raised,
+            contentColor = content,
+        ),
     ) {
-        Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            text,
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

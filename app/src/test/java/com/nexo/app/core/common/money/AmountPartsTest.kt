@@ -28,7 +28,10 @@ class AmountPartsTest {
         val p = AmountParts.of(48250.0, currency("Rs", SymbolPosition.PREFIX, 2))
         assertEquals(AmountParts("", "Rs", "48,250", ".00", ""), p)
         assertEquals("Rs 48,250.00", p.text)
-        assertEquals(AmountFormatter.format(48250.0, currency("Rs", SymbolPosition.PREFIX, 2)), p.text)
+        assertEquals(
+            AmountFormatter.format(48250.0, currency("Rs", SymbolPosition.PREFIX, 2)),
+            p.text,
+        )
     }
 
     @Test

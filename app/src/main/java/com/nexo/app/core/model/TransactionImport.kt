@@ -2,11 +2,39 @@ package com.nexo.app.core.model
 
 import java.time.LocalDateTime
 
-enum class DateOrder(val pattern: String) { YMD("yyyy-MM-dd"), YDM("yyyy-dd-MM"), MDY("MM-dd-yyyy"), DMY("dd-MM-yyyy"), MYD("MM-yyyy-dd"), DYM("dd-yyyy-MM") }
+enum class DateOrder(val pattern: String) {
+    YMD("yyyy-MM-dd"),
+    YDM("yyyy-dd-MM"),
+    MDY("MM-dd-yyyy"),
+    DMY("dd-MM-yyyy"),
+    MYD("MM-yyyy-dd"),
+    DYM("dd-yyyy-MM"),
+}
 
-enum class ImportErrorType { DATE, TYPE, AMOUNT, INCOME_CATEGORY, EXPENSE_CATEGORY, INCOME_SUB, EXPENSE_SUB, ACCOUNT }
+enum class ImportErrorType {
 
-data class ImportError(val type: ImportErrorType, val name: String? = null, val parent: String? = null)
+    DATE,
+
+    TYPE,
+
+    AMOUNT,
+
+    INCOME_CATEGORY,
+
+    EXPENSE_CATEGORY,
+
+    INCOME_SUB,
+
+    EXPENSE_SUB,
+
+    ACCOUNT,
+}
+
+data class ImportError(
+    val type: ImportErrorType,
+    val name: String? = null,
+    val parent: String? = null,
+)
 
 data class ParsedRow(
     val dateTime: LocalDateTime?,
@@ -23,7 +51,13 @@ data class ParsedRow(
     val tags: String,
 )
 
-data class ImportRow(val index: Int, val raw: String, val cells: List<String>, val error: ImportError?, val parsed: ParsedRow?) {
+data class ImportRow(
+    val index: Int,
+    val raw: String,
+    val cells: List<String>,
+    val error: ImportError?,
+    val parsed: ParsedRow?,
+) {
     /** Rows with fewer than 6 cells are listed but skipped on save. */
     val skippable: Boolean get() = cells.size < 6
 }

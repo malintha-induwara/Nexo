@@ -13,11 +13,26 @@ enum class Bank(
     val aliases: List<String> = emptyList(),
     val rateCode: String? = null,
 ) {
-    COMBANK("Commercial Bank", listOf("COMBANK"), listOf("COMBANK", "COM BANK", "COMMERCIAL BANK", "COMMERCIAL"), "combank"),
+    COMBANK(
+        "Commercial Bank",
+        listOf("COMBANK"),
+        listOf("COMBANK", "COM BANK", "COMMERCIAL BANK", "COMMERCIAL"),
+        "combank",
+    ),
     BOC("Bank of Ceylon", listOf("BOC"), listOf("BOC", "BANK OF CEYLON"), "boc"),
     HNB("Hatton National Bank", listOf("HNB"), listOf("HNB", "HNB BANK", "HATTON NATIONAL"), "hnb"),
-    SAMPATH("Sampath Bank", listOf("SAMPATHTXN", "SAMPCCTXN"), listOf("SAMPATH", "SAMPATH BANK"), "sampath"),
-    PEOPLES("People's Bank", listOf("PEOPLESBANK", "PEOPLESCARD"), listOf("PEOPLES", "PEOPLES BANK", "PEOPLE'S BANK", "PBANK"), "peoples"),
+    SAMPATH(
+        "Sampath Bank",
+        listOf("SAMPATHTXN", "SAMPCCTXN"),
+        listOf("SAMPATH", "SAMPATH BANK"),
+        "sampath",
+    ),
+    PEOPLES(
+        "People's Bank",
+        listOf("PEOPLESBANK", "PEOPLESCARD"),
+        listOf("PEOPLES", "PEOPLES BANK", "PEOPLE'S BANK", "PBANK"),
+        "peoples",
+    ),
     NTB("NTB Bank", listOf("NATIONSSMS"), listOf("NTB", "NATIONS TRUST"), "ntb"),
     NDB("NDB Bank", aliases = listOf("NDB"), rateCode = "ndb"),
     SEYLAN("Seylan Bank", aliases = listOf("SEYLAN", "SEYLAN BANK"), rateCode = "seylan"),
@@ -51,22 +66,33 @@ enum class Bank(
 
 object Banks {
     private val senderJunk = Regex("[^A-Z0-9+]")
-    private val bySender: Map<String, Bank> = Bank.entries.flatMap { b -> b.senders.map { it to b } }.toMap()
-    private val byAlias: Map<String, Bank> = Bank.entries.flatMap { b -> b.aliases.map { it.uppercase(Locale.ROOT) to b } }.toMap()
+    private val bySender: Map<String, Bank> = Bank.entries.flatMap { b ->
+        b.senders.map { it to b }
+    }.toMap()
+    private val byAlias: Map<String, Bank> = Bank.entries.flatMap { b ->
+        b.aliases.map {
+            it.uppercase(Locale.ROOT) to
+                b
+        }
+    }.toMap()
 
     /** Longest names first so "PEOPLES BANK" wins over "PEOPLES"; word boundaries stop "citizens" matching CITI. */
     private val vocabulary = Regex(
-        byAlias.keys.sortedByDescending { it.length }.joinToString("|", prefix = "\\b(", postfix = ")\\b") { Regex.escape(it) },
+        byAlias.keys.sortedByDescending {
+            it.length
+        }.joinToString("|", prefix = "\\b(", postfix = ")\\b") { Regex.escape(it) },
         RegexOption.IGNORE_CASE,
     )
 
     /** Upper-case, then drop everything except A-Z, 0-9 and '+'. */
-    fun normalizeSender(sender: String): String = sender.uppercase(Locale.ROOT).replace(senderJunk, "")
+    fun normalizeSender(sender: String): String =
+        sender.uppercase(Locale.ROOT).replace(senderJunk, "")
 
     fun fromSender(sender: String): Bank? = bySender[normalizeSender(sender)]
 
     /** First bank named in [text], word-bounded. */
-    fun findIn(text: String): Bank? = vocabulary.find(text)?.let { byAlias[it.value.uppercase(Locale.ROOT)] }
+    fun findIn(text: String): Bank? =
+        vocabulary.find(text)?.let { byAlias[it.value.uppercase(Locale.ROOT)] }
 
     fun byName(name: String?): Bank? = name?.let { n -> Bank.entries.firstOrNull { it.name == n } }
 }

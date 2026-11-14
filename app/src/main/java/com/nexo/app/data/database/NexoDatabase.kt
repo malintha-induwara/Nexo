@@ -89,6 +89,7 @@ abstract class NexoDatabase : RoomDatabase() {
     companion object {
         const val VERSION = 4
         const val FILE_NAME = "nexo.db"
+
         /** Room identity table name; its presence identifies a Nexo backup file. */
         const val IDENTITY_TABLE = "room_master_table"
     }

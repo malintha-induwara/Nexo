@@ -51,7 +51,10 @@ import java.time.LocalDate
 /** Standalone memo list. */
 @Composable
 fun MemoListScreen(key: MemoListKey) {
-    val vm = hiltViewModel<MemoListViewModel, MemoListViewModel.Factory>(creationCallback = { it.create(key) })
+    val vm =
+        hiltViewModel<MemoListViewModel, MemoListViewModel.Factory>(creationCallback = {
+            it.create(key)
+        })
     val state by vm.uiState.collectAsStateWithLifecycle()
     val memos = state.memos
     val period = state.period
@@ -63,41 +66,99 @@ fun MemoListScreen(key: MemoListKey) {
     Scaffold(
         topBar = {
             NexoTopBar("", onBack = { nav.back() }, titleContent = {
-                PeriodNavigator(period?.let { Formats.monthYear(it.label) } ?: "", { vm.step(false) }, { vm.step(true) }, { picker = true })
+                PeriodNavigator(
+                    period?.let {
+                        Formats.monthYear(it.label)
+                    } ?: "",
+                    { vm.step(false) },
+                    { vm.step(true) },
+                    {
+                        picker = true
+                    },
+                )
             }) {
-                IconButton(onClick = { vm.setHelpHidden(device?.memoHelpHidden != true) }) { Icon(Icons.Outlined.Settings, stringResource(R.string.memo_button_setting)) }
+                IconButton(onClick = {
+                    vm.setHelpHidden(device?.memoHelpHidden != true)
+                }) { Icon(Icons.Outlined.Settings, stringResource(R.string.memo_button_setting)) }
             }
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { nav.navigate(MemoEditorKey(date = state.date.toString())) }, containerColor = MaterialTheme.colorScheme.primary) {
-                Icon(Icons.AutoMirrored.Outlined.StickyNote2, stringResource(R.string.new_memo), tint = MaterialTheme.colorScheme.onPrimary)
+            FloatingActionButton(onClick = {
+                nav.navigate(MemoEditorKey(date = state.date.toString()))
+            }, containerColor = MaterialTheme.colorScheme.primary) {
+                Icon(
+                    Icons.AutoMirrored.Outlined.StickyNote2,
+                    stringResource(R.string.new_memo),
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                )
             }
         },
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (device?.memoHelpHidden != true) item {
-                Card(Modifier.fillMaxWidth()) {
-                    Row(Modifier.padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f).padding(vertical = 12.dp)) {
-                            Text(stringResource(R.string.memo_button_setting), fontWeight = FontWeight.SemiBold)
-                            Text(stringResource(R.string.memo_button_text), style = MaterialTheme.typography.bodySmall)
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (device?.memoHelpHidden != true) {
+                item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Row(
+                            Modifier.padding(start = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f).padding(vertical = 12.dp)) {
+                                Text(
+                                    stringResource(R.string.memo_button_setting),
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(
+                                    stringResource(R.string.memo_button_text),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            Switch(ref.settings.memoButton, vm::setMemoButton)
+                            IconButton(onClick = {
+                                vm.setHelpHidden(true)
+                            }) { Icon(Icons.Filled.Close, stringResource(R.string.action_close)) }
                         }
-                        Switch(ref.settings.memoButton, vm::setMemoButton)
-                        IconButton(onClick = { vm.setHelpHidden(true) }) { Icon(Icons.Filled.Close, stringResource(R.string.action_close)) }
                     }
                 }
             }
             if (memos.isEmpty()) item { EmptyState(stringResource(R.string.no_memos)) }
             items(memos, key = { it.id }) { m ->
-                Card(onClick = { nav.navigate(MemoEditorKey(memoId = m.id)) }, colors = CardDefaults.cardColors(containerColor = NexoPalette.memo(m.color, dark)), modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    onClick = {
+                        nav.navigate(MemoEditorKey(memoId = m.id))
+                    },
+                    colors = CardDefaults.cardColors(
+                        containerColor = NexoPalette.memo(m.color, dark),
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                     Column(Modifier.padding(14.dp)) {
-                        Text(Formats.monthDay(LocalDate.parse(m.date)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            Formats.monthDay(LocalDate.parse(m.date)),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                         if (m.title.isNotBlank()) Text(m.title, fontWeight = FontWeight.Bold)
-                        if (m.content.isNotBlank()) Text(m.content.trimEnd(), maxLines = 5, overflow = TextOverflow.Ellipsis)
+                        if (m.content.isNotBlank()) {
+                            Text(
+                                m.content.trimEnd(),
+                                maxLines = 5,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
             }
         }
     }
-    if (picker) period?.let { p -> MonthPickerDialog(p.label, onPick = vm::pickMonth, onDismiss = { picker = false }) }
+    if (picker) {
+        period?.let { p ->
+            MonthPickerDialog(p.label, onPick = vm::pickMonth, onDismiss = {
+                picker = false
+            })
+        }
+    }
 }

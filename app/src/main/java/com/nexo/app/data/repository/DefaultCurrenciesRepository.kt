@@ -29,22 +29,71 @@ class DefaultCurrenciesRepository @Inject constructor(
 
     override suspend fun setMainFormat(position: SymbolPosition, decimals: Int) {
         val main = db.currencyDao().getMain() ?: return
-        db.currencyDao().upsert(listOf(main.copy(symbolPosition = position, decimals = decimals, rate = 1.0, updatedAt = now())))
+        db.currencyDao().upsert(
+            listOf(
+                main.copy(
+                    symbolPosition = position,
+                    decimals = decimals,
+                    rate = 1.0,
+                    updatedAt = now(),
+                ),
+            ),
+        )
     }
 
     override suspend fun saveSub(c: Currency) {
         val order = db.currencyDao().getById(c.id)?.orderSeq ?: (db.currencyDao().maxOrder() + 1)
-        db.currencyDao().upsert(listOf(c.copy(isVisible = true, isMain = false, orderSeq = order, updatedAt = now()).asEntity()))
+        db.currencyDao().upsert(
+            listOf(
+                c.copy(
+                    isVisible = true,
+                    isMain = false,
+                    orderSeq = order,
+                    updatedAt = now(),
+                ).asEntity(),
+            ),
+        )
     }
 
-    override fun builtinSub(c: CatalogCurrency, rate: Double, position: SymbolPosition, decimals: Int, existing: Currency?) = Currency(
-        id = c.code, isoCode = c.code, name = c.displayName(), symbol = c.subSymbol, symbolPosition = position, decimals = decimals,
-        rate = rate, isMain = false, isVisible = true, orderSeq = existing?.orderSeq ?: 0, updatedAt = now(),
+    override fun builtinSub(
+        c: CatalogCurrency,
+        rate: Double,
+        position: SymbolPosition,
+        decimals: Int,
+        existing: Currency?,
+    ) = Currency(
+        id = c.code,
+        isoCode = c.code,
+        name = c.displayName(),
+        symbol = c.subSymbol,
+        symbolPosition = position,
+        decimals = decimals,
+        rate = rate,
+        isMain = false,
+        isVisible = true,
+        orderSeq = existing?.orderSeq ?: 0,
+        updatedAt = now(),
     )
 
-    override fun customSub(id: String?, name: String, symbol: String, position: SymbolPosition, decimals: Int, rate: Double) = Currency(
-        id = id ?: UUID.randomUUID().toString(), isoCode = null, name = name.trim(), symbol = symbol.trim(), symbolPosition = position,
-        decimals = decimals, rate = rate, isMain = false, isVisible = true, orderSeq = 0, updatedAt = now(),
+    override fun customSub(
+        id: String?,
+        name: String,
+        symbol: String,
+        position: SymbolPosition,
+        decimals: Int,
+        rate: Double,
+    ) = Currency(
+        id = id ?: UUID.randomUUID().toString(),
+        isoCode = null,
+        name = name.trim(),
+        symbol = symbol.trim(),
+        symbolPosition = position,
+        decimals = decimals,
+        rate = rate,
+        isMain = false,
+        isVisible = true,
+        orderSeq = 0,
+        updatedAt = now(),
     )
 
     override suspend fun hide(id: String) {
@@ -58,7 +107,8 @@ class DefaultCurrenciesRepository @Inject constructor(
     }
 
     /** "Data initialization": complete reset with the new main currency. */
-    override suspend fun changeMainWithReset(target: CatalogCurrency) = reset.completeReset(deletePhotos = false, main = target)
+    override suspend fun changeMainWithReset(target: CatalogCurrency) =
+        reset.completeReset(deletePhotos = false, main = target)
 
     /**
      * "Data retention": every main amount and budget converts with [r] (1 old main = r new main),
@@ -79,26 +129,64 @@ class DefaultCurrenciesRepository @Inject constructor(
                 val rows = db.transactionDao().getAll()
                 db.transactionDao().updateAll(
                     rows.map { t ->
-                        val main = if (t.currencyId == target.code) t.amount else BigDecimal.valueOf(t.amountMain).multiply(rb).setScale(d, RoundingMode.HALF_UP).toDouble()
+                        val main = if (t.currencyId == target.code) {
+                            t.amount
+                        } else {
+                            BigDecimal.valueOf(
+                                t.amountMain,
+                            ).multiply(rb).setScale(d, RoundingMode.HALF_UP).toDouble()
+                        }
                         t.copy(amountMain = main)
                     },
                 )
                 // Budgets.
                 val amounts = db.budgetDao().getAmounts()
-                db.budgetDao().upsertAmounts(amounts.map { it.copy(amount = Money.round(it.amount * r, d), updatedAt = now()) })
+                db.budgetDao().upsertAmounts(
+                    amounts.map {
+                        it.copy(amount = Money.round(it.amount * r, d), updatedAt = now())
+                    },
+                )
                 // Currencies rebuilt relative to the new main.
                 val oldMain = ref.mainCurrency
                 val rebuilt = existing.filter { it.id != target.code }.map { c ->
                     val catalog = CurrencyCatalog.find(c.isoCode)
                     c.copy(
-                        rate = BigDecimal.valueOf(if (c.id == oldMain.id) 1.0 else c.rate).multiply(rb).setScale(6, RoundingMode.HALF_UP).toDouble(),
+                        rate = BigDecimal.valueOf(
+                            if (c.id == oldMain.id) {
+                                1.0
+                            } else {
+                                c.rate
+                            },
+                        ).multiply(rb).setScale(6, RoundingMode.HALF_UP).toDouble(),
                         isMain = false,
                         symbol = catalog?.subSymbol ?: c.symbol,
                         updatedAt = now(),
                     )
                 }.sortedBy { it.orderSeq }.mapIndexed { i, c -> c.copy(orderSeq = i + 1) }
-                val main = (newRow ?: CurrencyEntity(target.code, target.code, target.displayName(), target.mainSymbol, target.position, target.decimals, 1.0, true, true, 0, now()))
-                    .copy(rate = 1.0, isMain = true, isVisible = true, symbol = target.mainSymbol, orderSeq = 0, updatedAt = now())
+                val main = (
+                    newRow
+                        ?: CurrencyEntity(
+                            target.code,
+                            target.code,
+                            target.displayName(),
+                            target.mainSymbol,
+                            target.position,
+                            target.decimals,
+                            1.0,
+                            true,
+                            true,
+                            0,
+                            now(),
+                        )
+                    )
+                    .copy(
+                        rate = 1.0,
+                        isMain = true,
+                        isVisible = true,
+                        symbol = target.mainSymbol,
+                        orderSeq = 0,
+                        updatedAt = now(),
+                    )
                 db.currencyDao().deleteAll()
                 db.currencyDao().upsert(listOf(main) + rebuilt)
             }

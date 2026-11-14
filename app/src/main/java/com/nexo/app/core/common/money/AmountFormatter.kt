@@ -27,26 +27,37 @@ object AmountFormatter {
 
     /** Number only, e.g. "1,234.50". Keeps a minus sign for values between -1 and 0. */
     fun number(value: Double, decimals: Int): String {
-        val rounded = BigDecimal.valueOf(value).setScale(decimals.coerceIn(0, 10), RoundingMode.HALF_UP)
+        val rounded = BigDecimal.valueOf(
+            value,
+        ).setScale(decimals.coerceIn(0, 10), RoundingMode.HALF_UP)
         val text = synchronized(cache) { format(decimals).format(rounded.abs()) }
         return if (rounded.signum() < 0) "-$text" else text
     }
 
     fun format(value: Double, symbol: String, position: SymbolPosition, decimals: Int): String {
-        val negative = BigDecimal.valueOf(value).setScale(decimals.coerceIn(0, 10), RoundingMode.HALF_UP).signum() < 0
+        val negative =
+            BigDecimal.valueOf(
+                value,
+            ).setScale(decimals.coerceIn(0, 10), RoundingMode.HALF_UP).signum() <
+                0
         val body = number(abs(value), decimals)
         val text = if (position == SymbolPosition.PREFIX) "$symbol $body" else "$body$symbol"
         return if (negative) "-$text" else text
     }
 
-    fun format(value: Double, currency: Currency?): String =
-        if (currency == null) number(value, 2) else format(value, currency.symbol, currency.symbolPosition, currency.decimals)
+    fun format(value: Double, currency: Currency?): String = if (currency == null) {
+        number(value, 2)
+    } else {
+        format(value, currency.symbol, currency.symbolPosition, currency.decimals)
+    }
 
     /** Exchange-rate display: two decimals when ≥ 1, otherwise enough to show two significant digits. */
     fun rate(rate: Double): String {
         if (rate == 0.0) return "0"
         val abs = abs(rate)
-        val scale = if (abs >= 1) 2 else {
+        val scale = if (abs >= 1) {
+            2
+        } else {
             var s = 2
             var v = abs
             while (v < 0.1 && s < 11) {
@@ -55,6 +66,8 @@ object AmountFormatter {
             }
             s
         }
-        return BigDecimal.valueOf(rate).setScale(scale, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+        return BigDecimal.valueOf(
+            rate,
+        ).setScale(scale, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
     }
 }

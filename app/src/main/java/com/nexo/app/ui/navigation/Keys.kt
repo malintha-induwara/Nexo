@@ -9,7 +9,26 @@ import kotlinx.serialization.Serializable
 @Serializable
 data object MainKey : NavKey
 
-enum class EntryMode { NEW, EDIT, COPY, FAVORITE, REPEAT_NEW, REPEAT_EDIT, PAY_CARD, IMPORT_FIX, SMS }
+enum class EntryMode {
+
+    NEW,
+
+    EDIT,
+
+    COPY,
+
+    FAVORITE,
+
+    REPEAT_NEW,
+
+    REPEAT_EDIT,
+
+    PAY_CARD,
+
+    IMPORT_FIX,
+
+    SMS,
+}
 
 @Serializable
 data class EntryKey(
@@ -52,10 +71,18 @@ data class MemoEditorKey(val memoId: String? = null, val date: String? = null) :
 data class MemoListKey(val date: String? = null) : NavKey
 
 @Serializable
-data class AccountDetailKey(val accountId: String?, val date: String? = null, val deleted: Boolean = false) : NavKey
+data class AccountDetailKey(
+    val accountId: String?,
+    val date: String? = null,
+    val deleted: Boolean = false,
+) : NavKey
 
 @Serializable
-data class AccountFormKey(val accountId: String? = null, val groupId: String? = null, val presetName: String? = null) : NavKey
+data class AccountFormKey(
+    val accountId: String? = null,
+    val groupId: String? = null,
+    val presetName: String? = null,
+) : NavKey
 
 @Serializable
 data object AccountSettingsMenuKey : NavKey
@@ -104,7 +131,11 @@ data class BudgetDetailKey(val budgetId: String, val month: String) : NavKey
 data object BudgetSettingsKey : NavKey
 
 @Serializable
-data class BudgetAddKey(val categoryId: String? = null, val presetTotal: Boolean = false, val preset: Boolean = false) : NavKey
+data class BudgetAddKey(
+    val categoryId: String? = null,
+    val presetTotal: Boolean = false,
+    val preset: Boolean = false,
+) : NavKey
 
 @Serializable
 data class BudgetEditorKey(val budgetId: String) : NavKey
@@ -146,7 +177,11 @@ data object SubCurrenciesKey : NavKey
 data object AddSubCurrencyKey : NavKey
 
 @Serializable
-data class SubCurrencyEditKey(val currencyId: String? = null, val isoCode: String? = null, val custom: Boolean = false) : NavKey
+data class SubCurrencyEditKey(
+    val currencyId: String? = null,
+    val isoCode: String? = null,
+    val custom: Boolean = false,
+) : NavKey
 
 @Serializable
 data object StyleKey : NavKey

@@ -99,16 +99,29 @@ fun AccountsTab(todaySignal: Int, vm: AccountsViewModel = hiltViewModel()) {
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(start = Space.gutter),
                 )
-                AccountsMode.PERIOD -> DateRangeChips(q.from, q.to, onChange = vm::setRange, color = colors.text)
+
+                AccountsMode.PERIOD -> DateRangeChips(
+                    q.from,
+                    q.to,
+                    onChange = vm::setRange,
+                    color = colors.text,
+                )
+
                 else -> {
                     val r = data.range
                     val label = when (q.mode) {
                         AccountsMode.WEEKLY -> r?.let { Formats.range(it.start, it.end) } ?: ""
-                        AccountsMode.MONTHLY -> Formats.monthYear(ref.settings.periods.monthPeriodContaining(q.anchor).label)
+
+                        AccountsMode.MONTHLY -> Formats.monthYear(
+                            ref.settings.periods.monthPeriodContaining(q.anchor).label,
+                        )
+
                         else -> ref.settings.periods.yearOf(q.anchor).toString()
                     }
                     PeriodNavigator(
-                        label, { vm.step(false) }, { vm.step(true) },
+                        label,
+                        { vm.step(false) },
+                        { vm.step(true) },
                         if (q.mode == AccountsMode.ANNUALLY) null else ({ datePicker = true }),
                         modifier = Modifier.padding(start = Space.xs),
                         color = colors.text,
@@ -116,16 +129,35 @@ fun AccountsTab(todaySignal: Int, vm: AccountsViewModel = hiltViewModel()) {
                 }
             }
             Spacer(Modifier.weight(1f))
-            ModePill(accountsModeLabel(q.mode)) { haptics.tick(); modePicker = true }
+            ModePill(accountsModeLabel(q.mode)) {
+                haptics.tick()
+                modePicker = true
+            }
             Spacer(Modifier.width(Space.xs))
-            RoundIconButton(Icons.Rounded.BarChart, stringResource(R.string.total_stats), { nav.navigate(TotalStatsKey) }, tint = colors.textSecondary, container = Color.Transparent)
+            RoundIconButton(Icons.Rounded.BarChart, stringResource(R.string.total_stats), {
+                nav.navigate(TotalStatsKey)
+            }, tint = colors.textSecondary, container = Color.Transparent)
             Box {
-                RoundIconButton(Icons.Rounded.MoreVert, stringResource(R.string.action_more), { menu = true }, tint = colors.textSecondary, container = Color.Transparent)
+                RoundIconButton(Icons.Rounded.MoreVert, stringResource(R.string.action_more), {
+                    menu = true
+                }, tint = colors.textSecondary, container = Color.Transparent)
                 NexoMenu(menu, onDismissRequest = { menu = false }) {
-                    NexoMenuItem(stringResource(R.string.action_add), { menu = false; nav.navigate(AccountFormKey()) }, Icons.Rounded.Add)
-                    NexoMenuItem(stringResource(R.string.show_hide), { menu = false; nav.navigate(AccountListKey(AccountListMode.VISIBILITY)) }, Icons.Rounded.Visibility)
-                    NexoMenuItem(stringResource(R.string.modify_orders), { menu = false; nav.navigate(AccountListKey(AccountListMode.REORDER)) }, Icons.Rounded.SwapVert)
-                    NexoMenuItem(stringResource(R.string.action_delete), { menu = false; nav.navigate(AccountListKey(AccountListMode.DELETE)) }, Icons.Rounded.DeleteOutline, danger = true)
+                    NexoMenuItem(stringResource(R.string.action_add), {
+                        menu = false
+                        nav.navigate(AccountFormKey())
+                    }, Icons.Rounded.Add)
+                    NexoMenuItem(stringResource(R.string.show_hide), {
+                        menu = false
+                        nav.navigate(AccountListKey(AccountListMode.VISIBILITY))
+                    }, Icons.Rounded.Visibility)
+                    NexoMenuItem(stringResource(R.string.modify_orders), {
+                        menu = false
+                        nav.navigate(AccountListKey(AccountListMode.REORDER))
+                    }, Icons.Rounded.SwapVert)
+                    NexoMenuItem(stringResource(R.string.action_delete), {
+                        menu = false
+                        nav.navigate(AccountListKey(AccountListMode.DELETE))
+                    }, Icons.Rounded.DeleteOutline, danger = true)
                 }
             }
         }
@@ -136,20 +168,55 @@ fun AccountsTab(todaySignal: Int, vm: AccountsViewModel = hiltViewModel()) {
         val sections = remember(ref, data, collapsed, noneLabel) {
             buildList {
                 data.unassigned?.let { value ->
-                    val account = AccountUi("a_none", null, noneLabel, noneLabel, GroupVisuals.None, main, value)
-                    add(AccountSection("none", noneLabel, GroupVisuals.None, value, neutral = false, collapsed = false, collapsible = false, accounts = listOf(account)))
+                    val account =
+                        AccountUi(
+                            "a_none",
+                            null,
+                            noneLabel,
+                            noneLabel,
+                            GroupVisuals.None,
+                            main,
+                            value,
+                        )
+                    add(
+                        AccountSection(
+                            "none",
+                            noneLabel,
+                            GroupVisuals.None,
+                            value,
+                            neutral = false,
+                            collapsed = false,
+                            collapsible = false,
+                            accounts = listOf(account),
+                        ),
+                    )
                 }
                 val figuresByGroup = data.figures.groupBy { it.account.groupId }
                 ref.groups.filter { it.status == GroupStatus.ACTIVE }.forEach { g ->
-                    val figures = figuresByGroup[g.id].orEmpty().filter { it.account.status == AccountStatus.ACTIVE || it.account.status == AccountStatus.HIDDEN }
+                    val figures = figuresByGroup[g.id].orEmpty().filter {
+                        it.account.status ==
+                            AccountStatus.ACTIVE ||
+                            it.account.status == AccountStatus.HIDDEN
+                    }
                     if (figures.isEmpty()) return@forEach
                     val visual = GroupVisuals.of(g)
                     val debit = g.type == GroupType.DEBIT_CARD
-                    val title = if (debit && data.debitMonthLabel != null) "${g.name} (${Formats.monthShort(data.debitMonthLabel!!.monthValue)})" else g.name
+                    val title = if (debit && data.debitMonthLabel != null) {
+                        "${g.name} (${Formats.monthShort(data.debitMonthLabel!!.monthValue)})"
+                    } else {
+                        g.name
+                    }
                     val gf = data.summary.groups[g.id]
                     // A card group owes what is payable now plus what is still building up.
-                    val total = if (g.type == GroupType.CREDIT_CARD && !periodMode) Money.add(gf?.subtotal ?: 0.0, gf?.payableSubtotal ?: 0.0) else gf?.subtotal ?: 0.0
-                    val accounts = figures.filter { it.account.status == AccountStatus.ACTIVE }.map { f ->
+                    val total = if (g.type == GroupType.CREDIT_CARD && !periodMode) {
+                        Money.add(gf?.subtotal ?: 0.0, gf?.payableSubtotal ?: 0.0)
+                    } else {
+                        gf?.subtotal
+                            ?: 0.0
+                    }
+                    val accounts = figures.filter {
+                        it.account.status == AccountStatus.ACTIVE
+                    }.map { f ->
                         val spending = f.groupType == GroupType.DEBIT_CARD && !periodMode
                         AccountUi(
                             key = "a_${f.account.id}",
@@ -165,27 +232,65 @@ fun AccountsTab(todaySignal: Int, vm: AccountsViewModel = hiltViewModel()) {
                             change = data.changes[f.account.id].takeIf { periodMode },
                         )
                     }
-                    add(AccountSection(g.id, title, visual, total, neutral = debit, collapsed = g.id in collapsed, collapsible = true, accounts = accounts))
+                    add(
+                        AccountSection(
+                            g.id,
+                            title,
+                            visual,
+                            total,
+                            neutral = debit,
+                            collapsed =
+                                g.id in collapsed,
+                            collapsible = true,
+                            accounts = accounts,
+                        ),
+                    )
                 }
             }
         }
-        if (data.loaded && data.figures.none { it.account.status == AccountStatus.ACTIVE } && data.unassigned == null) {
+        if (data.loaded && data.figures.none { it.account.status == AccountStatus.ACTIVE } &&
+            data.unassigned == null
+        ) {
             EmptyState()
             return@Column
         }
         val ui = AccountsUi(sections, data.summary, main)
-        val onToggle: (String) -> Unit = { haptics.tick(); vm.toggleCollapsed(it) }
-        val onOpen: (AccountUi) -> Unit = { a -> nav.navigate(AccountDetailKey(a.accountId, date = if (a.accountId == null) null else data.range?.end?.toString())) }
+        val onToggle: (String) -> Unit = {
+            haptics.tick()
+            vm.toggleCollapsed(it)
+        }
+        val onOpen: (AccountUi) -> Unit = { a ->
+            nav.navigate(
+                AccountDetailKey(
+                    a.accountId,
+                    date = if (a.accountId == null) {
+                        null
+                    } else {
+                        data.range?.end?.toString()
+                    },
+                ),
+            )
+        }
         AccountCards(ui, onToggle, onOpen)
     }
     if (modePicker) {
-        ChoiceDialog(stringResource(R.string.period), AccountsMode.entries, q.mode, { accountsModeLabel(it) }, onSelect = vm::setMode, onDismiss = { modePicker = false })
+        ChoiceDialog(stringResource(R.string.period), AccountsMode.entries, q.mode, {
+            accountsModeLabel(it)
+        }, onSelect = vm::setMode, onDismiss = {
+            modePicker = false
+        })
     }
     if (datePicker) {
         if (q.mode == AccountsMode.MONTHLY) {
-            MonthPickerDialog(ref.settings.periods.monthPeriodContaining(q.anchor).label, onPick = { vm.setAnchor(ref.settings.periods.monthPeriodFor(it).end) }, onDismiss = { datePicker = false })
+            MonthPickerDialog(ref.settings.periods.monthPeriodContaining(q.anchor).label, onPick = {
+                vm.setAnchor(ref.settings.periods.monthPeriodFor(it).end)
+            }, onDismiss = {
+                datePicker = false
+            })
         } else {
-            NexoDatePickerDialog(q.anchor, onPick = vm::setAnchor, onDismiss = { datePicker = false })
+            NexoDatePickerDialog(q.anchor, onPick = vm::setAnchor, onDismiss = {
+                datePicker = false
+            })
         }
     }
 }

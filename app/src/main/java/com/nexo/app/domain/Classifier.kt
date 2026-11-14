@@ -19,8 +19,15 @@ class Classifier(private val ref: RefData) {
 
     fun classify(kind: TxKind, accountId: String?, counterpartId: String?): CashFlow = when (kind) {
         TxKind.INCOME -> CashFlow.INCOME
-        TxKind.EXPENSE -> if (lumpSum && ref.isCard(accountId)) CashFlow.NEUTRAL else CashFlow.EXPENSE
+
+        TxKind.EXPENSE -> if (lumpSum && ref.isCard(accountId)) {
+            CashFlow.NEUTRAL
+        } else {
+            CashFlow.EXPENSE
+        }
+
         TxKind.TRANSFER_OUT -> classifyTransfer(accountId, counterpartId)
+
         else -> CashFlow.NEUTRAL
     }
 
@@ -58,7 +65,11 @@ class Classifier(private val ref: RefData) {
                 srcFlag && !dstFlag -> CashFlow.INCOME
                 else -> CashFlow.NEUTRAL
             }
-        } else if (dstFlag) CashFlow.EXPENSE else CashFlow.NEUTRAL
+        } else if (dstFlag) {
+            CashFlow.EXPENSE
+        } else {
+            CashFlow.NEUTRAL
+        }
     }
 }
 

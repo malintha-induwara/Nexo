@@ -84,7 +84,9 @@ fun <T> SegmentedPill(
         val (left, width) = target ?: return@LaunchedEffect
         if (left < 0) return@LaunchedEffect
         if (!placed) {
-            x.snapTo(left.toFloat()); w.snapTo(width.toFloat()); placed = true
+            x.snapTo(left.toFloat())
+            w.snapTo(width.toFloat())
+            placed = true
         } else {
             coroutineScope {
                 launch { x.animateTo(left.toFloat(), NexoMotion.snappy()) }
@@ -123,7 +125,9 @@ fun <T> SegmentedPill(
                     )
                     Box(
                         Modifier
-                            .onPlaced { c -> bounds[i] = c.positionInParent().x.toInt() to c.size.width }
+                            .onPlaced { c ->
+                                bounds[i] = c.positionInParent().x.toInt() to c.size.width
+                            }
                             .clip(CircleShape)
                             .selectable(
                                 selected = isSelected,
@@ -141,10 +145,21 @@ fun <T> SegmentedPill(
                         contentAlignment = Alignment.Center,
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(label(option), style = textStyle, color = textColor, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                            Text(
+                                label(option),
+                                style = textStyle,
+                                color = textColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
                             if (dot(option)) {
                                 Spacer(Modifier.width(5.dp))
-                                Box(Modifier.size(6.dp).clip(CircleShape).background(colors.primary))
+                                Box(
+                                    Modifier.size(
+                                        6.dp,
+                                    ).clip(CircleShape).background(colors.primary),
+                                )
                             }
                         }
                     }
@@ -163,10 +178,15 @@ fun <T> SegmentedPill(
                 equalWidths && natural.max() * n <= available -> List(n) { available / n }
                 else -> natural.map { it + (available - sum) / n }
             }
-            val placeables = measurables.mapIndexed { i, m -> m.measure(Constraints.fixed(widths[i], height)) }
+            val placeables = measurables.mapIndexed { i, m ->
+                m.measure(Constraints.fixed(widths[i], height))
+            }
             layout(widths.sum(), height) {
                 var left = 0
-                placeables.forEach { it.place(left, 0); left += it.width }
+                placeables.forEach {
+                    it.place(left, 0)
+                    left += it.width
+                }
             }
         }
     }

@@ -42,23 +42,43 @@ class SmsHistoryTest {
     private lateinit var history: DefaultSmsInboxRepository
     private lateinit var sms: DefaultSmsRepository
     private val inbox = ArrayList<IncomingSms>()
-    private fun at(day: Int, h: Int, m: Int) = LocalDateTime.of(2026, 11, day, h, m).atZone(BodyDate.ZONE).toInstant().toEpochMilli()
+    private fun at(day: Int, h: Int, m: Int) =
+        LocalDateTime.of(2026, 11, day, h, m).atZone(BodyDate.ZONE).toInstant().toEpochMilli()
 
-    private class FakeInbox(context: Context, val messages: List<IncomingSms>) : SmsInboxDataSource(context, Dispatchers.IO) {
+    private class FakeInbox(context: Context, val messages: List<IncomingSms>) :
+        SmsInboxDataSource(context, Dispatchers.IO) {
         override suspend fun read(after: Long, from: Long, until: Long, limit: Int) =
-            messages.filter { it.receivedAt > after && it.receivedAt >= from && it.receivedAt < until }.sortedBy { it.receivedAt }.take(limit)
+            messages.filter {
+                it.receivedAt > after && it.receivedAt >= from &&
+                    it.receivedAt < until
+            }.sortedBy { it.receivedAt }.take(limit)
     }
 
     @Before
     fun setUp() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
+        db =
+            Room.inMemoryDatabaseBuilder(
+                context,
+                NexoDatabase::class.java,
+            ).allowMainThreadQueries().build()
         BookSeeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
-        val refs = referenceDataRepository(db, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
+        val refs =
+            referenceDataRepository(db, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
         val prefs = DefaultUserPreferencesRepository(DevicePreferencesDataSource(context))
         val fx = fxRatesRepository(context, db, refs, prefs)
         sms = smsRepository(context, db, refs, prefs, fx)
-        history = DefaultSmsInboxRepository(context, prefs, refs, sms, fx, transactionsRepository(context, db, refs), FakeInbox(context, inbox), Dispatchers.IO)
+        history =
+            DefaultSmsInboxRepository(
+                context,
+                prefs,
+                refs,
+                sms,
+                fx,
+                transactionsRepository(context, db, refs),
+                FakeInbox(context, inbox),
+                Dispatchers.IO,
+            )
         db.smsDao().upsertSource(SmsSourceEntity("COMBANK", "4321", "1", 0))
     }
 
@@ -74,15 +94,39 @@ class SmsHistoryTest {
 
     @Test
     fun scanParsesCorrelatesAndFlags() = runBlocking {
-        receive("Your OTP at Merchant 'Lakeside University Online Payments' for LKR 9,000.00 is 987654", at(3, 19, 0))
-        receive(purchase("HTTPS://WWW.PAY.LAKE 0000000 GB", "9,000.00", "03/11/26 07:01 PM"), at(3, 19, 1))
-        receive(purchase("Mega*Store Singapore SG", "1.00", "04/11/26 10:00 AM", cur = "USD"), at(4, 10, 0))
-        receive("YOUR TRANSACTION AT Mega*Store ON YOUR CARD ENDING WITH 4321 HAS BEEN CANCELLED.", at(4, 11, 0))
+        receive(
+            "Your OTP at Merchant 'Lakeside University Online Payments' for LKR 9,000.00 is 987654",
+            at(3, 19, 0),
+        )
+        receive(
+            purchase("HTTPS://WWW.PAY.LAKE 0000000 GB", "9,000.00", "03/11/26 07:01 PM"),
+            at(3, 19, 1),
+        )
+        receive(
+            purchase("Mega*Store Singapore SG", "1.00", "04/11/26 10:00 AM", cur = "USD"),
+            at(4, 10, 0),
+        )
+        receive(
+            "YOUR TRANSACTION AT Mega*Store ON YOUR CARD ENDING WITH 4321 HAS BEEN CANCELLED.",
+            at(4, 11, 0),
+        )
         receive(purchase("CORNER SHOP Matara LK", "750.00", "05/11/26 08:00 AM"), at(5, 8, 0))
         receive("Dear Customer, your attempt to login to ComBank Digital failed.", at(5, 9, 0))
         // Already in the ledger: same account and amount, a day apart.
         db.transactionDao().insertAll(
-            listOf(TransactionEntity("t", TxKind.EXPENSE, "1", dateTime = at(6, 9, 0), date = "2026-11-06", amount = 750.0, amountMain = 750.0, amountAccount = 750.0, currencyId = "LKR", createdAt = 0, updatedAt = 0)),
+            listOf(
+                TransactionEntity(
+                    "t", TxKind.EXPENSE, "1",
+                    dateTime = at(6, 9, 0),
+                    date = "2026-11-06",
+                    amount = 750.0,
+                    amountMain = 750.0,
+                    amountAccount = 750.0,
+                    currencyId = "LKR",
+                    createdAt = 0,
+                    updatedAt = 0,
+                ),
+            ),
         )
 
         val rows = history.scanHistory(at(1, 0, 0), at(10, 0, 0))
@@ -94,7 +138,16 @@ class SmsHistoryTest {
         assertTrue(rows.single { it.item.merchant.startsWith("CORNER") }.possiblyAdded)
         assertFalse(lake.possiblyAdded)
         // Newest first.
-        assertEquals(listOf("CORNER SHOP Matara", "Mega Store Singapore", "Lakeside University Online Payments"), rows.map { it.item.merchant })
+        assertEquals(
+            listOf(
+                "CORNER SHOP Matara",
+                "Mega Store Singapore",
+                "Lakeside University Online Payments",
+            ),
+            rows.map {
+                it.item.merchant
+            },
+        )
     }
 
     @Test
@@ -110,6 +163,11 @@ class SmsHistoryTest {
     fun scanStopsAtTheRangeEnd() = runBlocking {
         receive(purchase("CORNER SHOP Matara LK", "750.00", "05/11/26 08:00 AM"), at(5, 8, 0))
         receive(purchase("LATE CAFE Galle LK", "300.00", "09/11/26 08:00 AM"), at(9, 8, 0))
-        assertEquals(listOf("CORNER SHOP Matara"), history.scanHistory(at(1, 0, 0), at(8, 0, 0)).map { it.item.merchant })
+        assertEquals(
+            listOf("CORNER SHOP Matara"),
+            history.scanHistory(at(1, 0, 0), at(8, 0, 0)).map {
+                it.item.merchant
+            },
+        )
     }
 }

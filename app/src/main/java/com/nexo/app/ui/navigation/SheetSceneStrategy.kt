@@ -55,7 +55,9 @@ class SheetSceneStrategy(private val isOnBackStack: (NavKey) -> Boolean) : Scene
     /** Drawers that have already slid in; they fade back rather than slide when returned to. */
     private val opened = mutableSetOf<Any>()
 
-    override fun SceneStrategyScope<NavKey>.calculateScene(entries: List<NavEntry<NavKey>>): Scene<NavKey>? {
+    override fun SceneStrategyScope<NavKey>.calculateScene(
+        entries: List<NavEntry<NavKey>>,
+    ): Scene<NavKey>? {
         if (entries.size < 2) return null
         val entry = entries.last()
         val navKey = entry.metadata[SheetKey] ?: return null
@@ -142,7 +144,11 @@ private fun SheetHost(motion: SheetMotion, onDismiss: () -> Unit, content: @Comp
                 .fillMaxSize()
                 .graphicsLayer { alpha = (1f - motion.hidden.value) * motion.alpha.value }
                 .background(Color.Black.copy(alpha = if (colors.isDark) 0.6f else 0.36f))
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss,
+                ),
         )
         Column(
             Modifier
@@ -157,7 +163,10 @@ private fun SheetHost(motion: SheetMotion, onDismiss: () -> Unit, content: @Comp
                 .clip(NexoShapes.sheet)
                 .background(colors.background)
                 // Swallow taps on empty areas so they do not reach the scrim.
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) {},
         ) {
             // Only the handle strip drags the drawer, so a swipe over the form or keypad cannot close it by accident.
             Box(
@@ -166,17 +175,29 @@ private fun SheetHost(motion: SheetMotion, onDismiss: () -> Unit, content: @Comp
                     .height(22.dp)
                     .draggable(
                         state = rememberDraggableState { delta ->
-                            scope.launch { motion.hidden.snapTo((motion.hidden.value + delta / motion.height).coerceIn(0f, 1f)) }
+                            scope.launch {
+                                motion.hidden.snapTo(
+                                    (motion.hidden.value + delta / motion.height).coerceIn(0f, 1f),
+                                )
+                            }
                         },
                         orientation = Orientation.Vertical,
                         onDragStopped = { velocity ->
-                            if (motion.hidden.value > 0.22f || velocity > 1400f) onDismiss()
-                            else motion.hidden.animateTo(0f, NexoMotion.snappy(SheetMotion.SETTLED))
+                            if (motion.hidden.value > 0.22f || velocity > 1400f) {
+                                onDismiss()
+                            } else {
+                                motion.hidden.animateTo(0f, NexoMotion.snappy(SheetMotion.SETTLED))
+                            }
                         },
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Box(Modifier.size(width = 36.dp, height = 4.dp).clip(CircleShape).background(colors.hairline))
+                Box(
+                    Modifier.size(
+                        width = 36.dp,
+                        height = 4.dp,
+                    ).clip(CircleShape).background(colors.hairline),
+                )
             }
             content()
         }

@@ -24,33 +24,79 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 
-data class TotalStatsUiState(val ref: RefData = RefData(), val anchor: LocalDate = LocalDate.now(), val periods: List<MonthPeriod> = emptyList(), val balances: List<Double> = emptyList(), val income: List<Double> = emptyList(), val expense: List<Double> = emptyList())
+data class TotalStatsUiState(
+    val ref: RefData = RefData(),
+    val anchor: LocalDate = LocalDate.now(),
+    val periods: List<MonthPeriod> = emptyList(),
+    val balances: List<Double> = emptyList(),
+    val income: List<Double> = emptyList(),
+    val expense: List<Double> = emptyList(),
+)
 
 @HiltViewModel
-class TotalStatsViewModel @Inject constructor(refs: ReferenceDataRepository, private val transactions: TransactionsRepository) : ViewModel() {
+class TotalStatsViewModel @Inject constructor(
+    refs: ReferenceDataRepository,
+    private val transactions: TransactionsRepository,
+) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
-    private val ref = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val ref = refs.getRefDataStream().stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        RefData(),
+    )
     private val anchor = MutableStateFlow(LocalDate.now())
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val uiState: StateFlow<TotalStatsUiState> = combine(ref, anchor, transactions.getChangeStampStream()) { r, a, _ -> r to a }.mapLatest { (r, a) ->
+    val uiState: StateFlow<TotalStatsUiState> = combine(
+        ref,
+        anchor,
+        transactions.getChangeStampStream(),
+    ) {
+            r,
+            a,
+            _,
+        ->
+        r to
+            a
+    }.mapLatest { (r, a) ->
         val e = r.settings.periods
         var p = e.monthPeriodContaining(a)
         val periods = ArrayList<MonthPeriod>()
-        repeat(6) { periods.add(0, p); p = e.previous(p) }
+        repeat(6) {
+            periods.add(0, p)
+            p = e.previous(p)
+        }
         // B10: included accounts (non-debit, not deleted, included in totals) + their debit cards + unassigned rows.
         val included = r.accounts.filter { acc ->
             val g = r.groupById[acc.groupId] ?: return@filter false
-            g.type != GroupType.DEBIT_CARD && acc.status != AccountStatus.DELETED && acc.status != AccountStatus.PURGED && acc.includeInTotals
+            g.type != GroupType.DEBIT_CARD && acc.status != AccountStatus.DELETED &&
+                acc.status != AccountStatus.PURGED &&
+                acc.includeInTotals
         }.map { it.id }.toSet()
-        val withDebits = included + r.accounts.filter { it.linkedAccountId in included && r.groupType(it.id) == GroupType.DEBIT_CARD }.map { it.id }
+        val withDebits =
+            included +
+                r.accounts.filter {
+                    it.linkedAccountId in included &&
+                        r.groupType(it.id) == GroupType.DEBIT_CARD
+                }.map { it.id }
         val balances = periods.map { per ->
-            transactions.getAggregatesUpTo(per.range.endText).filter { it.accountId == null || it.accountId in withDebits }
-                .fold(BigDecimal.ZERO) { acc, x -> acc + BigDecimal.valueOf(if (x.kind.isInflow) x.main else -x.main) }.toDouble()
+            transactions.getAggregatesUpTo(per.range.endText).filter {
+                it.accountId == null ||
+                    it.accountId in withDebits
+            }
+                .fold(BigDecimal.ZERO) { acc, x ->
+                    acc +
+                        BigDecimal.valueOf(if (x.kind.isInflow) x.main else -x.main)
+                }.toDouble()
         }
-        val sums = periods.map { per -> transactions.getAggregatesBetween(per.range.startText, per.range.endText) }
+        val sums = periods.map { per ->
+            transactions.getAggregatesBetween(per.range.startText, per.range.endText)
+        }
         TotalStatsUiState(
-            r, a, periods, balances,
+            r,
+            a,
+            periods,
+            balances,
             sums.map { s -> s.filter { it.kind == TxKind.INCOME }.sumOf { it.main } },
             sums.map { s -> s.filter { it.kind == TxKind.EXPENSE }.sumOf { it.main } },
         )

@@ -38,7 +38,9 @@ interface TagDao {
     @Query("SELECT * FROM transaction_tags WHERE transactionId = :id ORDER BY position")
     suspend fun linksForTransaction(id: String): List<TransactionTagEntity>
 
-    @Query("SELECT COUNT(*) FROM transaction_tags l JOIN transactions t ON t.id = l.transactionId WHERE l.tagId = :tagId")
+    @Query(
+        "SELECT COUNT(*) FROM transaction_tags l JOIN transactions t ON t.id = l.transactionId WHERE l.tagId = :tagId",
+    )
     suspend fun usageCount(tagId: String): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

@@ -76,29 +76,58 @@ class SearchViewModel @Inject constructor(
     private val transactions: TransactionsRepository,
 ) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
-    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        RefData(),
+    )
     private val criteria = MutableStateFlow(SearchCriteria())
     private val executed = MutableStateFlow(SearchCriteria())
     private val selection = MutableStateFlow<Set<String>>(emptySet())
 
     val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, selection)
 
-    private val result: Flow<SearchResult> = combine(ref, executed, transactions.getChangeStampStream()) { r, c, _ -> r to c }
+    private val result: Flow<SearchResult> = combine(
+        ref,
+        executed,
+        transactions.getChangeStampStream(),
+    ) {
+            r,
+            c,
+            _,
+        ->
+        r to
+            c
+    }
         .mapLatest { (r, c) -> run(r, c) }
 
     /** Note autocomplete, read once the screen starts collecting. */
     private val suggestions: Flow<List<NoteSuggestion>> = flow { emit(loadSuggestions()) }
 
-    val uiState: StateFlow<SearchUiState> = combine(ref, criteria, result, selection, suggestions) { r, c, res, selection, notes ->
+    val uiState: StateFlow<SearchUiState> = combine(ref, criteria, result, selection, suggestions) {
+            r,
+            c,
+            res,
+            selection,
+            notes,
+        ->
         SearchUiState(r, c, res, selection, notes)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
 
     private suspend fun loadSuggestions(): List<NoteSuggestion> {
         val r = refs.getRefData()
         if (!r.settings.autocomplete) return emptyList()
-        val cutoff = maxOf(System.currentTimeMillis() - 456L * 24 * 3600 * 1000, r.settings.autocompleteResetAt)
-        val cutDate = Instant.ofEpochMilli(cutoff).atZone(ZoneId.systemDefault()).toLocalDate().toIsoText()
-        return transactions.getNoteUsage(cutDate, cutoff).map { NoteSuggestion(it.note, it.count, it.lastDate) }
+        val cutoff =
+            maxOf(
+                System.currentTimeMillis() - 456L * 24 * 3600 * 1000,
+                r.settings.autocompleteResetAt,
+            )
+        val cutDate = Instant.ofEpochMilli(
+            cutoff,
+        ).atZone(ZoneId.systemDefault()).toLocalDate().toIsoText()
+        return transactions.getNoteUsage(cutDate, cutoff).map {
+            NoteSuggestion(it.note, it.count, it.lastDate)
+        }
     }
 
     fun range(r: RefData, c: SearchCriteria): DateRange {
@@ -116,23 +145,37 @@ class SearchViewModel @Inject constructor(
         val range = range(r, c)
         val text = c.query.trim()
         val pattern = "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
-        val rows = transactions.search(range.startText, range.endText, pattern, includeSource = true)
+        val rows = transactions.search(
+            range.startText,
+            range.endText,
+            pattern,
+            includeSource = true,
+        )
         val classifier = Classifier(r)
         val min = c.min
         val max = c.max
         val lo = if (min != null && max != null) minOf(min, max) else min
         val hi = if (min != null && max != null) maxOf(min, max) else max
-        val tagLinks = if (c.tags.isEmpty()) emptyMap() else transactions.getLedgerFor(rows).tagsByTx
+        val tagLinks = if (c.tags.isEmpty()) {
+            emptyMap()
+        } else {
+            transactions.getLedgerFor(rows).tagsByTx
+        }
         val filtered = rows.filter { t ->
             !t.kind.isBalance &&
                 (!c.categories.hasCategoryPart || c.categories.matches(t, r, classifier)) &&
-                (c.accounts.isEmpty() || t.accountId in c.accounts || (t.kind == TxKind.TRANSFER_OUT && t.counterpartAccountId in c.accounts)) &&
+                (
+                    c.accounts.isEmpty() || t.accountId in c.accounts ||
+                        (t.kind == TxKind.TRANSFER_OUT && t.counterpartAccountId in c.accounts)
+                    ) &&
                 (c.tags.isEmpty() || tagLinks[t.id].orEmpty().any { it in c.tags }) &&
                 (lo == null || t.amountMain >= lo) && (hi == null || t.amountMain <= hi)
         }
         val ledger = transactions.getLedgerFor(filtered)
         val factory = TransactionRowMapper(r)
-        val sorted = filtered.groupBy { it.date }.toSortedMap(compareByDescending { it }).flatMap { (_, day) ->
+        val sorted = filtered.groupBy {
+            it.date
+        }.toSortedMap(compareByDescending { it }).flatMap { (_, day) ->
             TransactionRowMapper.sortDay(day, r.settings.timeDisplay)
         }
         var inc = BigDecimal.ZERO
@@ -144,10 +187,22 @@ class SearchViewModel @Inject constructor(
                 t.kind == TxKind.EXPENSE -> exp += BigDecimal.valueOf(t.amountMain)
                 t.kind == TxKind.TRANSFER_OUT -> tr += BigDecimal.valueOf(t.amountMain)
             }
-            if (classifier.classify(t.kind, t.accountId, t.counterpartAccountId) == CashFlow.NEUTRAL) Unit
+            if (classifier.classify(t.kind, t.accountId, t.counterpartAccountId) ==
+                CashFlow.NEUTRAL
+            ) {
+                Unit
+            }
         }
-        val memos = if (text.isEmpty()) emptyList() else memos.search(range.startText, range.endText, pattern)
-            .sortedWith(compareByDescending<Memo> { it.pinned }.thenByDescending { it.dateTime }.thenByDescending { it.orderSeq })
+        val memos = if (text.isEmpty()) {
+            emptyList()
+        } else {
+            memos.search(range.startText, range.endText, pattern)
+                .sortedWith(
+                    compareByDescending<Memo> {
+                        it.pinned
+                    }.thenByDescending { it.dateTime }.thenByDescending { it.orderSeq },
+                )
+        }
         return SearchResult(
             loaded = true,
             rows = sorted.map { LocalDate.parse(it.date) to factory.row(it, ledger) },
@@ -176,8 +231,15 @@ class SearchViewModel @Inject constructor(
         c.copy(
             anchor = when (c.period) {
                 SearchPeriod.WEEKLY -> d.plusDays(if (forward) 7 else -7)
-                SearchPeriod.MONTHLY -> e.monthPeriodContaining(d).let { if (forward) e.next(it).end else e.previous(it).end }
-                SearchPeriod.ANNUALLY -> e.yearRange(e.yearOf(d) + if (forward) 1 else -1).start.plusDays(15)
+
+                SearchPeriod.MONTHLY -> e.monthPeriodContaining(d).let {
+                    if (forward) e.next(it).end else e.previous(it).end
+                }
+
+                SearchPeriod.ANNUALLY -> e.yearRange(
+                    e.yearOf(d) + if (forward) 1 else -1,
+                ).start.plusDays(15)
+
                 else -> d
             },
         )

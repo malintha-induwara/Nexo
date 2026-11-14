@@ -25,17 +25,26 @@ object Balances {
         val acct = HashMap<String?, BigDecimal>()
         for (r in rows) {
             val sign = if (r.kind.isInflow) BigDecimal.ONE else BigDecimal.ONE.negate()
-            main[r.accountId] = (main[r.accountId] ?: BigDecimal.ZERO) + sign * BigDecimal.valueOf(r.main)
-            acct[r.accountId] = (acct[r.accountId] ?: BigDecimal.ZERO) + sign * BigDecimal.valueOf(r.account)
+            main[r.accountId] =
+                (main[r.accountId] ?: BigDecimal.ZERO) + sign * BigDecimal.valueOf(r.main)
+            acct[r.accountId] =
+                (acct[r.accountId] ?: BigDecimal.ZERO) + sign * BigDecimal.valueOf(r.account)
         }
-        return main.keys.associateWith { Net(main.getValue(it).toDouble(), acct.getValue(it).toDouble()) }
+        return main.keys.associateWith {
+            Net(main.getValue(it).toDouble(), acct.getValue(it).toDouble())
+        }
     }
 
     /** Balance of [account] in its own currency, including debit cards linked to it. */
     fun balance(ref: RefData, account: Account, net: Map<String?, Net>): Double {
         val useMain = account.currencyId == ref.mainCurrency.id
         val ids = listOf(account.id) + ref.linkedDebitCards(account.id).map { it.id }
-        return Money.sum(ids.map { id -> net[id]?.let { if (useMain) it.main else it.account } ?: 0.0 })
+        return Money.sum(
+            ids.map { id ->
+                net[id]?.let { if (useMain) it.main else it.account }
+                    ?: 0.0
+            },
+        )
     }
 
     /** Net of the "None" pseudo-account in main currency. */
@@ -81,13 +90,21 @@ data class AccountsSummary(
 }
 
 object AccountsSummaryCalculator {
-    fun summarize(ref: RefData, figures: List<AccountFigure>, unassigned: Double?): AccountsSummary {
+    fun summarize(
+        ref: RefData,
+        figures: List<AccountFigure>,
+        unassigned: Double?,
+    ): AccountsSummary {
         var assets = BigDecimal.ZERO
         var liabilities = BigDecimal.ZERO
         val subtotal = HashMap<String, BigDecimal>()
         val payable = HashMap<String, BigDecimal>()
         fun addAssetOrLiability(v: Double) {
-            if (v > 0) assets += BigDecimal.valueOf(v) else liabilities += BigDecimal.valueOf(abs(v))
+            if (v > 0) {
+                assets += BigDecimal.valueOf(v)
+            } else {
+                liabilities += BigDecimal.valueOf(abs(v))
+            }
         }
         for (f in figures) {
             val a = f.account
@@ -101,7 +118,8 @@ object AccountsSummaryCalculator {
             if (f.card != null) {
                 val p = Balances.toMain(ref, f.card.payable, a.id)
                 val o = Balances.toMain(ref, f.card.other, a.id)
-                payable[group.id] = (payable[group.id] ?: BigDecimal.ZERO) + BigDecimal.valueOf(p + o)
+                payable[group.id] =
+                    (payable[group.id] ?: BigDecimal.ZERO) + BigDecimal.valueOf(p + o)
             }
             if (isDebit) continue
             addAssetOrLiability(main)
@@ -114,7 +132,11 @@ object AccountsSummaryCalculator {
         }
         if (unassigned != null) addAssetOrLiability(unassigned)
         val groups = (subtotal.keys + payable.keys).associateWith {
-            GroupFigure(it, (subtotal[it] ?: BigDecimal.ZERO).toDouble(), (payable[it] ?: BigDecimal.ZERO).toDouble())
+            GroupFigure(
+                it,
+                (subtotal[it] ?: BigDecimal.ZERO).toDouble(),
+                (payable[it] ?: BigDecimal.ZERO).toDouble(),
+            )
         }
         return AccountsSummary(assets.toDouble(), liabilities.toDouble(), groups)
     }
@@ -129,21 +151,46 @@ object AccountsSummaryCalculator {
     ): List<AccountFigure> = ref.orderedAccounts().mapNotNull { a ->
         val type = ref.groupType(a.id) ?: return@mapNotNull null
         when (type) {
-            GroupType.DEBIT_CARD -> AccountFigure(a, type, debitMonthNet[a.id]?.account ?: 0.0, excluded = true)
+            GroupType.DEBIT_CARD -> AccountFigure(
+                a,
+                type,
+                debitMonthNet[a.id]?.account ?: 0.0,
+                excluded = true,
+            )
+
             GroupType.CREDIT_CARD -> {
                 val rows = cardRows[a.id].orEmpty()
                 val card = CardStatement.compute(ref, a, rows, today)
-                AccountFigure(a, type, Balances.balance(ref, a, net), card, excluded = !a.includeInTotals)
+                AccountFigure(
+                    a,
+                    type,
+                    Balances.balance(ref, a, net),
+                    card,
+                    excluded = !a.includeInTotals,
+                )
             }
-            GroupType.NORMAL -> AccountFigure(a, type, Balances.balance(ref, a, net), excluded = !a.includeInTotals)
+
+            GroupType.NORMAL -> AccountFigure(
+                a,
+                type,
+                Balances.balance(ref, a, net),
+                excluded = !a.includeInTotals,
+            )
         }
     }
 
     /** Figures for period modes: cumulative balances as of the period end, no statement split. */
-    fun periodFigures(ref: RefData, net: Map<String?, Net>): List<AccountFigure> = ref.orderedAccounts().mapNotNull { a ->
-        val type = ref.groupType(a.id) ?: return@mapNotNull null
-        AccountFigure(a, type, Balances.balance(ref, a, net), excluded = type == GroupType.DEBIT_CARD || !a.includeInTotals)
-    }
+    fun periodFigures(ref: RefData, net: Map<String?, Net>): List<AccountFigure> =
+        ref.orderedAccounts().mapNotNull { a ->
+            val type = ref.groupType(a.id) ?: return@mapNotNull null
+            AccountFigure(
+                a,
+                type,
+                Balances.balance(ref, a, net),
+                excluded =
+                    type == GroupType.DEBIT_CARD || !a.includeInTotals,
+            )
+        }
 }
 
 /** Credit-card statement figures, negative = owed. */
@@ -164,7 +211,12 @@ data class CardFigures(
 
 object CardStatement {
     /** [rows] = all rows of the card and its linked debit cards. Prepayment tags are not used in Nexo. */
-    fun compute(ref: RefData, card: Account, rows: List<Transaction>, today: LocalDate): CardFigures {
+    fun compute(
+        ref: RefData,
+        card: Account,
+        rows: List<Transaction>,
+        today: LocalDate,
+    ): CardFigures {
         val engine = PeriodEngine(card.settlementDay.coerceIn(1, 31))
         val c = engine.monthPeriodContaining(today).range
         val p = engine.monthPeriodContaining(c.start.minusDays(1)).range
@@ -207,7 +259,13 @@ object CardStatement {
             other = 0.0
         }
         val d = ref.accountCurrency(card.id).decimals
-        return CardFigures(Money.round(payable, d), Money.round(outstanding, d), Money.round(other, d), c, p)
+        return CardFigures(
+            Money.round(payable, d),
+            Money.round(outstanding, d),
+            Money.round(other, d),
+            c,
+            p,
+        )
     }
 
     /** Payment date for a statement ending on [end]: first payment-day date strictly after it. */

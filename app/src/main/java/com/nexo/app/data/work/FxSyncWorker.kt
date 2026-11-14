@@ -37,10 +37,14 @@ class FxSyncWorker @AssistedInject constructor(
 
         fun enqueue(context: Context) {
             val request = OneTimeWorkRequestBuilder<FxSyncWorker>()
-                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .setConstraints(
+                    Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build(),
+                )
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
                 .build()
-            WorkManager.getInstance(context).enqueueUniqueWork(NAME, ExistingWorkPolicy.KEEP, request)
+            WorkManager.getInstance(
+                context,
+            ).enqueueUniqueWork(NAME, ExistingWorkPolicy.KEEP, request)
         }
     }
 }

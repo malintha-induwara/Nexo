@@ -20,7 +20,9 @@ enum class SmsKind {
     ;
 
     val isInflow: Boolean get() = this == INCOME || this == TRANSFER_IN
-    val isTransfer: Boolean get() = this == TRANSFER_TO_CASH || this == TRANSFER_OUT || this == TRANSFER_IN || this == CARD_PAYMENT
+    val isTransfer: Boolean get() = this == TRANSFER_TO_CASH || this == TRANSFER_OUT ||
+        this == TRANSFER_IN ||
+        this == CARD_PAYMENT
 }
 
 /** Whether it happened and how much. */
@@ -51,4 +53,8 @@ enum class DenyReason { DIDNT_HAPPEN, DUPLICATE, NOT_MINE, NOT_TRANSACTION }
 enum class RateSide { SELL, BUY }
 
 /** The answer to a fee prompt. A null or zero [amount] is "No fee". */
-data class FeeChoice(val amount: Double?, val remember: Boolean = false, val includeInPurchase: Boolean = false)
+data class FeeChoice(
+    val amount: Double?,
+    val remember: Boolean = false,
+    val includeInPurchase: Boolean = false,
+)

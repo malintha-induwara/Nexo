@@ -25,6 +25,7 @@ data class DateRange(val start: LocalDate, val end: LocalDate) {
 data class MonthPeriod(val range: DateRange, val label: YearMonth) {
     val start: LocalDate get() = range.start
     val end: LocalDate get() = range.end
+
     /** Budget month key: year * 100 + month. */
     val key: Int get() = label.year * 100 + label.monthValue
 }
@@ -43,7 +44,8 @@ class PeriodEngine(
 ) {
     private val s: Int = if (startDay in 1..31) startDay else 1
 
-    private fun dayIn(month: YearMonth, day: Int): LocalDate = month.atDay(minOf(day, month.lengthOfMonth()))
+    private fun dayIn(month: YearMonth, day: Int): LocalDate =
+        month.atDay(minOf(day, month.lengthOfMonth()))
 
     private fun nominalStart(d: LocalDate): LocalDate {
         if (s == 1) return d.withDayOfMonth(1)
@@ -59,11 +61,13 @@ class PeriodEngine(
 
     private fun adjustStart(start: LocalDate): LocalDate = when (weekendRule) {
         WeekendRule.NONE -> start
+
         WeekendRule.PREVIOUS_FRIDAY -> when (start.dayOfWeek) {
             DayOfWeek.SATURDAY -> start.minusDays(1)
             DayOfWeek.SUNDAY -> start.minusDays(2)
             else -> start
         }
+
         WeekendRule.FOLLOWING_MONDAY -> when (start.dayOfWeek) {
             DayOfWeek.SATURDAY -> start.plusDays(2)
             DayOfWeek.SUNDAY -> start.plusDays(1)
@@ -73,11 +77,13 @@ class PeriodEngine(
 
     private fun adjustEnd(end: LocalDate): LocalDate = when (weekendRule) {
         WeekendRule.NONE -> end
+
         WeekendRule.PREVIOUS_FRIDAY -> when (end.dayOfWeek) {
             DayOfWeek.FRIDAY -> end.minusDays(1)
             DayOfWeek.SATURDAY -> end.minusDays(2)
             else -> end
         }
+
         WeekendRule.FOLLOWING_MONDAY -> when (end.dayOfWeek) {
             DayOfWeek.FRIDAY -> end.plusDays(2)
             DayOfWeek.SATURDAY -> end.plusDays(1)
@@ -85,13 +91,17 @@ class PeriodEngine(
         }
     }
 
-    private fun rawPeriod(d: LocalDate): DateRange = DateRange(adjustStart(nominalStart(d)), adjustEnd(nominalEnd(d)))
+    private fun rawPeriod(d: LocalDate): DateRange =
+        DateRange(adjustStart(nominalStart(d)), adjustEnd(nominalEnd(d)))
 
     /** The month period containing [date]. */
     fun monthPeriodContaining(date: LocalDate): MonthPeriod {
         var range = rawPeriod(date)
-        if (date.isBefore(range.start)) range = rawPeriod(range.start.minusDays(10))
-        else if (date.isAfter(range.end)) range = rawPeriod(range.end.plusDays(10))
+        if (date.isBefore(range.start)) {
+            range = rawPeriod(range.start.minusDays(10))
+        } else if (date.isAfter(range.end)) {
+            range = rawPeriod(range.end.plusDays(10))
+        }
         return MonthPeriod(range, labelOf(range))
     }
 
@@ -104,7 +114,8 @@ class PeriodEngine(
     }
 
     fun next(period: MonthPeriod): MonthPeriod = monthPeriodContaining(period.end.plusDays(10))
-    fun previous(period: MonthPeriod): MonthPeriod = monthPeriodContaining(period.start.minusDays(10))
+    fun previous(period: MonthPeriod): MonthPeriod =
+        monthPeriodContaining(period.start.minusDays(10))
 
     /** The period labelled [month]. */
     fun monthPeriodFor(month: YearMonth): MonthPeriod {
@@ -120,9 +131,13 @@ class PeriodEngine(
     }
 
     /** The twelve periods labelled January…December of [year]. */
-    fun yearPeriods(year: Int): List<MonthPeriod> = (1..12).map { monthPeriodFor(YearMonth.of(year, it)) }
+    fun yearPeriods(year: Int): List<MonthPeriod> =
+        (1..12).map { monthPeriodFor(YearMonth.of(year, it)) }
 
-    fun yearRange(year: Int): DateRange = DateRange(monthPeriodFor(YearMonth.of(year, 1)).start, monthPeriodFor(YearMonth.of(year, 12)).end)
+    fun yearRange(year: Int): DateRange = DateRange(
+        monthPeriodFor(YearMonth.of(year, 1)).start,
+        monthPeriodFor(YearMonth.of(year, 12)).end,
+    )
 
     /** Year whose year-range contains [date]. */
     fun yearOf(date: LocalDate): Int = monthPeriodContaining(date).label.year

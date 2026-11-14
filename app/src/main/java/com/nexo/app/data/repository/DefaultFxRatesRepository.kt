@@ -31,7 +31,9 @@ class DefaultFxRatesRepository @Inject constructor(
 
     /** Fetch policy: at most every 6 hours. Returns whether a fetch succeeded. */
     override suspend fun refreshIfStale(now: Long): Boolean {
-        if (!online || now - prefs.getDeviceSettings().fxFetchedAt < FxRatesRepository.REFRESH_MS) return false
+        if (!online || now - prefs.getDeviceSettings().fxFetchedAt < FxRatesRepository.REFRESH_MS) {
+            return false
+        }
         val rows = client.fetch() ?: return false
         store(rows)
         prefs.setFxFetchedAt(now)
@@ -46,7 +48,10 @@ class DefaultFxRatesRepository @Inject constructor(
         val fresh = rows.filter { r ->
             val last = dao.latestRate(r.bank, r.ccy)
             last == null || r.capturedAt < last.capturedAt ||
-                (r.capturedAt > last.capturedAt && (last.buy != r.buy || last.sell != r.sell || last.official != r.official))
+                (
+                    r.capturedAt > last.capturedAt &&
+                        (last.buy != r.buy || last.sell != r.sell || last.official != r.official)
+                    )
         }
         if (fresh.isNotEmpty()) dao.insertSnapshots(fresh.map(FxSnapshot::asEntity))
     }
@@ -62,14 +67,28 @@ class DefaultFxRatesRepository @Inject constructor(
         val side = if (item.kind.isInflow) RateSide.BUY else RateSide.SELL
         val day = Instant.ofEpochMilli(item.occurredAt).atZone(BodyDate.ZONE).toLocalDate()
         val endOfDay = day.plusDays(1).atStartOfDay(BodyDate.ZONE).toInstant().toEpochMilli() - 1
-        var board = recent(dao.boardAtOrBefore(item.currency, endOfDay).map(FxSnapshotEntity::asExternalModel), endOfDay)
+        var board =
+            recent(
+                dao.boardAtOrBefore(item.currency, endOfDay).map(FxSnapshotEntity::asExternalModel),
+                endOfDay,
+            )
         if (board.isEmpty() && allowNetwork && online) {
             client.fetch(day)?.let { store(it) }
-            board = recent(dao.boardAtOrBefore(item.currency, endOfDay).map(FxSnapshotEntity::asExternalModel), endOfDay)
+            board =
+                recent(
+                    dao.boardAtOrBefore(
+                        item.currency,
+                        endOfDay,
+                    ).map(FxSnapshotEntity::asExternalModel),
+                    endOfDay,
+                )
         }
-        if (board.isEmpty()) board = dao.earliestBoard(item.currency).map(FxSnapshotEntity::asExternalModel)
+        if (board.isEmpty()) {
+            board = dao.earliestBoard(item.currency).map(FxSnapshotEntity::asExternalModel)
+        }
         val issuer = Banks.byName(item.bank)?.rateCode
-        val choice = RateChooser.choose(board, issuer, side) ?: manual(item.currency, r) ?: return item
+        val choice =
+            RateChooser.choose(board, issuer, side) ?: manual(item.currency, r) ?: return item
         return item.copy(
             fxRate = choice.rate,
             fxSide = side,
@@ -83,7 +102,11 @@ class DefaultFxRatesRepository @Inject constructor(
     override suspend fun fillPending(allowNetwork: Boolean): Int {
         val ref = refs.getRefData()
         var changed = 0
-        for (row in dao.pending().filter { it.certainty == Certainty.ESTIMATED && it.actualAmount == null && it.status == SmsStatus.PENDING }) {
+        for (row in dao.pending().filter {
+            it.certainty == Certainty.ESTIMATED &&
+                it.actualAmount == null &&
+                it.status == SmsStatus.PENDING
+        }) {
             val item = row.asExternalModel()
             val updated = estimate(item, ref, allowNetwork)
             if (updated != item) {
@@ -97,8 +120,12 @@ class DefaultFxRatesRepository @Inject constructor(
     /** Last fallback before asking: the rate the user keeps in Nexo's currency settings, when LKR is the main currency. */
     private fun manual(currency: String, ref: RefData): RateChoice? {
         if (!ref.mainCurrency.isoCode.equals(LKR, ignoreCase = true)) return null
-        val c = ref.currencies.firstOrNull { it.isoCode.equals(currency, ignoreCase = true) } ?: return null
-        return c.rate.takeIf { it > 0 && !c.isMain }?.let { RateChoice(it, RateChoice.MANUAL, null) }
+        val c =
+            ref.currencies.firstOrNull { it.isoCode.equals(currency, ignoreCase = true) }
+                ?: return null
+        return c.rate.takeIf {
+            it > 0 && !c.isMain
+        }?.let { RateChoice(it, RateChoice.MANUAL, null) }
     }
 
     /** Drops banks whose latest board is much older than the transaction (a bank that stopped publishing). */

@@ -15,7 +15,12 @@ import com.nexo.app.core.model.SmsStatus
 /** A Review Queue item. Nothing reaches the ledger until it is approved. */
 @Entity(
     tableName = "sms_items",
-    indices = [Index(value = ["dedupeKey"], unique = true), Index("status"), Index("smsAt"), Index("transactionId")],
+    indices = [
+        Index(
+            value = ["dedupeKey"],
+            unique = true,
+        ), Index("status"), Index("smsAt"), Index("transactionId"),
+    ],
 )
 data class SmsItemEntity(
     @PrimaryKey val id: String,

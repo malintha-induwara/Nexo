@@ -31,7 +31,10 @@ class RollingAmountTest {
     private fun parts(value: Double) = AmountParts.of(value, "Rs.", SymbolPosition.PREFIX, 2)
 
     private fun height(value: Double): Dp =
-        rule.onNodeWithContentDescription(parts(value).text).getUnclippedBoundsInRoot().let { it.bottom - it.top }
+        rule.onNodeWithContentDescription(parts(value).text).getUnclippedBoundsInRoot().let {
+            it.bottom -
+                it.top
+        }
 
     @Test
     fun rowStaysOneLineTallAfterEveryRoll() {

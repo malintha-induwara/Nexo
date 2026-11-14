@@ -13,7 +13,11 @@ sealed interface UiText {
     /** [args] may themselves be [UiText]; they are resolved first. */
     data class Resource(@StringRes val id: Int, val args: List<Any> = emptyList()) : UiText
 
-    data class Plural(@PluralsRes val id: Int, val count: Int, val args: List<Any> = listOf(count)) : UiText
+    data class Plural(
+        @PluralsRes val id: Int,
+        val count: Int,
+        val args: List<Any> = listOf(count),
+    ) : UiText
 
     /** Several texts shown as one, e.g. "Bank → Cash (3 months)". */
     data class Joined(val parts: List<UiText>) : UiText
@@ -21,7 +25,8 @@ sealed interface UiText {
     companion object {
         fun of(@StringRes id: Int, vararg args: Any): UiText = Resource(id, args.toList())
 
-        fun plural(@PluralsRes id: Int, count: Int, vararg args: Any): UiText = Plural(id, count, if (args.isEmpty()) listOf(count) else args.toList())
+        fun plural(@PluralsRes id: Int, count: Int, vararg args: Any): UiText =
+            Plural(id, count, if (args.isEmpty()) listOf(count) else args.toList())
 
         fun join(vararg parts: UiText): UiText = Joined(parts.toList())
 
@@ -30,13 +35,27 @@ sealed interface UiText {
 }
 
 /** These texts shown one after another with [separator] between them, e.g. "2 approved · 1 skipped". */
-fun List<UiText>.joinToUiText(separator: String): UiText =
-    UiText.Joined(flatMapIndexed { i, part -> if (i == 0) listOf(part) else listOf(UiText.Raw(separator), part) })
+fun List<UiText>.joinToUiText(separator: String): UiText = UiText.Joined(
+    flatMapIndexed { i, part ->
+        if (i == 0) {
+            listOf(part)
+        } else {
+            listOf(UiText.Raw(separator), part)
+        }
+    },
+)
 
 fun UiText.asString(resources: Resources): String = when (this) {
     is UiText.Raw -> value
-    is UiText.Resource -> if (args.isEmpty()) resources.getString(id) else resources.getString(id, *resolve(args, resources))
+
+    is UiText.Resource -> if (args.isEmpty()) {
+        resources.getString(id)
+    } else {
+        resources.getString(id, *resolve(args, resources))
+    }
+
     is UiText.Plural -> resources.getQuantityString(id, count, *resolve(args, resources))
+
     is UiText.Joined -> parts.joinToString("") { it.asString(resources) }
 }
 

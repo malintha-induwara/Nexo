@@ -17,7 +17,13 @@ object ReceiptRows {
     private const val SAME_ROW = 0.6f
     private const val OVERLAP = 0.5f
 
-    private class Placed(val text: String, val x: Float, val y: Float, val width: Float, val height: Float) {
+    private class Placed(
+        val text: String,
+        val x: Float,
+        val y: Float,
+        val width: Float,
+        val height: Float,
+    ) {
         val left get() = x - width / 2f
         val right get() = x + width / 2f
     }
@@ -29,7 +35,13 @@ object ReceiptRows {
         val c = cos(tilt).toFloat()
         val s = sin(tilt).toFloat()
         val placed = usable.map { l ->
-            Placed(l.text.trim(), l.centerX * c - l.centerY * s, l.centerX * s + l.centerY * c, l.width, l.height)
+            Placed(
+                l.text.trim(),
+                l.centerX * c - l.centerY * s,
+                l.centerX * s + l.centerY * c,
+                l.width,
+                l.height,
+            )
         }.sortedBy { it.y }
 
         val rows = mutableListOf<MutableList<Placed>>()

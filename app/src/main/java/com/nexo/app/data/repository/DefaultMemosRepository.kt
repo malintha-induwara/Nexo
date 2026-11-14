@@ -9,10 +9,11 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class DefaultMemosRepository @Inject constructor(
-    private val memoDao: MemoDao,
-) : MemosRepository {
-    override fun getMemosStream(start: String, end: String): Flow<List<Memo>> = memoDao.observeForRange(start, end).map { rows -> rows.map(MemoEntity::asExternalModel) }
+class DefaultMemosRepository @Inject constructor(private val memoDao: MemoDao) : MemosRepository {
+    override fun getMemosStream(start: String, end: String): Flow<List<Memo>> =
+        memoDao.observeForRange(start, end).map { rows ->
+            rows.map(MemoEntity::asExternalModel)
+        }
 
     override suspend fun getMemos(): List<Memo> = memoDao.getAll().map(MemoEntity::asExternalModel)
 
@@ -24,5 +25,6 @@ class DefaultMemosRepository @Inject constructor(
 
     override suspend fun delete(id: String) = memoDao.delete(id)
 
-    override suspend fun search(start: String, end: String, pattern: String): List<Memo> = memoDao.search(start, end, pattern).map(MemoEntity::asExternalModel)
+    override suspend fun search(start: String, end: String, pattern: String): List<Memo> =
+        memoDao.search(start, end, pattern).map(MemoEntity::asExternalModel)
 }

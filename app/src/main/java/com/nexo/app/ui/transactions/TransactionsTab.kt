@@ -153,7 +153,11 @@ import kotlin.math.sign
 import kotlinx.coroutines.delay
 
 @Composable
-fun TransactionsTab(todaySignal: Int, smsBadge: QueueBadge, vm: TransactionsViewModel = hiltViewModel()) {
+fun TransactionsTab(
+    todaySignal: Int,
+    smsBadge: QueueBadge,
+    vm: TransactionsViewModel = hiltViewModel(),
+) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
     val data = state.data
@@ -212,19 +216,35 @@ fun TransactionsTab(todaySignal: Int, smsBadge: QueueBadge, vm: TransactionsView
         }
     }
 
-    val tabs = if (ref.settings.startScreen == StartScreen.CALENDAR)
+    val tabs = if (ref.settings.startScreen == StartScreen.CALENDAR) {
         listOf(SubTab.CALENDAR, SubTab.DAILY, SubTab.MONTHLY, SubTab.TOTAL, SubTab.NOTE)
-    else listOf(SubTab.DAILY, SubTab.CALENDAR, SubTab.MONTHLY, SubTab.TOTAL, SubTab.NOTE)
-    val visibleTabs = if (filterOpen) tabs.filter { it != SubTab.TOTAL && it != SubTab.NOTE } else tabs
+    } else {
+        listOf(SubTab.DAILY, SubTab.CALENDAR, SubTab.MONTHLY, SubTab.TOTAL, SubTab.NOTE)
+    }
+    val visibleTabs = if (filterOpen) {
+        tabs.filter {
+            it != SubTab.TOTAL && it != SubTab.NOTE
+        }
+    } else {
+        tabs
+    }
 
-    val title = if (currentTab == SubTab.MONTHLY) data.year.toString() else data.period?.let { Formats.monthYear(it.label) } ?: ""
+    val title = if (currentTab == SubTab.MONTHLY) {
+        data.year.toString()
+    } else {
+        data.period?.let { Formats.monthYear(it.label) }
+            ?: ""
+    }
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().background(colors.background)) {
             val dailyRows = data.days.flatMap { it.rows }
             AnimatedContent(
                 targetState = selecting,
-                transitionSpec = { fadeIn(NexoMotion.enter(NexoMotion.MEDIUM)) togetherWith fadeOut(NexoMotion.exit()) },
+                transitionSpec = {
+                    fadeIn(NexoMotion.enter(NexoMotion.MEDIUM)) togetherWith
+                        fadeOut(NexoMotion.exit())
+                },
                 label = "header",
             ) { sel ->
                 if (sel) {
@@ -239,30 +259,63 @@ fun TransactionsTab(todaySignal: Int, smsBadge: QueueBadge, vm: TransactionsView
                                 vm.setSelection(if (selection.size >= all.size) emptySet() else all)
                             },
                             onClose = vm::clearSelection,
-                            onAction = { bulkAction = it; bulkOpen = true },
+                            onAction = {
+                                bulkAction = it
+                                bulkOpen = true
+                            },
                         )
                     }
                 } else {
                     Row(
-                        Modifier.fillMaxWidth().statusBarsPadding().height(56.dp).padding(start = Space.xs, end = Space.m),
+                        Modifier.fillMaxWidth().statusBarsPadding().height(
+                            56.dp,
+                        ).padding(start = Space.xs, end = Space.m),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         PeriodNavigator(
                             title = title,
                             onPrevious = { vm.step(false) },
                             onNext = { vm.step(true) },
-                            onTitleClick = if (currentTab == SubTab.MONTHLY) null else ({ monthPicker = true }),
+                            onTitleClick = if (currentTab == SubTab.MONTHLY) {
+                                null
+                            } else {
+                                ({ monthPicker = true })
+                            },
                             color = colors.text,
                         )
                         Spacer(Modifier.weight(1f))
-                        AnimatedVisibility(!filterOpen, enter = fadeIn(NexoMotion.enter()) + expandHorizontally(NexoMotion.snappy()), exit = fadeOut(NexoMotion.exit()) + shrinkHorizontally(NexoMotion.snappy())) {
+                        AnimatedVisibility(
+                            !filterOpen,
+                            enter =
+                                fadeIn(
+                                    NexoMotion.enter(),
+                                ) + expandHorizontally(NexoMotion.snappy()),
+                            exit =
+                                fadeOut(
+                                    NexoMotion.exit(),
+                                ) + shrinkHorizontally(NexoMotion.snappy()),
+                        ) {
                             Row {
                                 SmsInboxAction(smsBadge)
-                                HeaderAction(Icons.Rounded.StarOutline, stringResource(R.string.bookmarks)) { nav.navigate(BookmarksKey()) }
-                                HeaderAction(Icons.Rounded.Search, stringResource(R.string.search)) { nav.navigate(SearchKey()) }
+                                HeaderAction(
+                                    Icons.Rounded.StarOutline,
+                                    stringResource(R.string.bookmarks),
+                                ) {
+                                    nav.navigate(BookmarksKey())
+                                }
+                                HeaderAction(
+                                    Icons.Rounded.Search,
+                                    stringResource(R.string.search),
+                                ) {
+                                    nav.navigate(SearchKey())
+                                }
                             }
                         }
-                        HeaderAction(if (filterOpen) Icons.Rounded.Close else Icons.Rounded.FilterList, stringResource(R.string.filter), active = filterOpen) {
+                        HeaderAction(
+                            if (filterOpen) Icons.Rounded.Close else Icons.Rounded.FilterList,
+                            stringResource(R.string.filter),
+                            active = filterOpen,
+                        ) {
                             haptics.tick()
                             vm.setFilterOpen(!filterOpen)
                             filterCollapsed = false
@@ -275,7 +328,12 @@ fun TransactionsTab(todaySignal: Int, smsBadge: QueueBadge, vm: TransactionsView
                 enter = expandVertically(NexoMotion.snappy()) + fadeIn(NexoMotion.enter()),
                 exit = shrinkVertically(NexoMotion.snappy()) + fadeOut(NexoMotion.exit()),
             ) {
-                NetHero(data.totals.income, data.totals.expense, main, Modifier.collapsingHeader(header))
+                NetHero(
+                    data.totals.income,
+                    data.totals.expense,
+                    main,
+                    Modifier.collapsingHeader(header),
+                )
             }
             if (!selecting) {
                 SegmentedPill(
@@ -283,7 +341,10 @@ fun TransactionsTab(todaySignal: Int, smsBadge: QueueBadge, vm: TransactionsView
                     selected = currentTab,
                     onSelect = vm::setTab,
                     label = { stringResource(subTabLabel(it)) },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = Space.l, vertical = Space.s),
+                    modifier = Modifier.fillMaxWidth().padding(
+                        horizontal = Space.l,
+                        vertical = Space.s,
+                    ),
                     equalWidths = false,
                     textStyle = MaterialTheme.typography.labelMedium,
                     segmentPadding = 10.dp,
@@ -293,27 +354,43 @@ fun TransactionsTab(todaySignal: Int, smsBadge: QueueBadge, vm: TransactionsView
             Box(Modifier.weight(1f).fillMaxWidth().nestedScroll(header.connection)) {
                 val swipe = if (selecting) SwipeMode.NONE else ref.settings.swipeMode
                 val threshold = with(LocalDensity.current) { 90.dp.toPx() }
-                val swipeModifier = if (swipe == SwipeMode.NONE) Modifier else Modifier.pointerInput(swipe, currentTab, visibleTabs) {
-                    var total = 0f
-                    detectHorizontalDragGestures(
-                        onDragStart = { total = 0f },
-                        onHorizontalDrag = { _, dx -> total += dx },
-                        onDragEnd = {
-                            if (abs(total) > threshold) {
-                                val forward = total < 0
-                                if (swipe == SwipeMode.CHANGE_DATE) vm.step(forward)
-                                else {
-                                    val i = visibleTabs.indexOf(currentTab) + if (forward) 1 else -1
-                                    visibleTabs.getOrNull(i)?.let(vm::setTab)
+                val swipeModifier = if (swipe == SwipeMode.NONE) {
+                    Modifier
+                } else {
+                    Modifier.pointerInput(swipe, currentTab, visibleTabs) {
+                        var total = 0f
+                        detectHorizontalDragGestures(
+                            onDragStart = { total = 0f },
+                            onHorizontalDrag = { _, dx -> total += dx },
+                            onDragEnd = {
+                                if (abs(total) > threshold) {
+                                    val forward = total < 0
+                                    if (swipe == SwipeMode.CHANGE_DATE) {
+                                        vm.step(forward)
+                                    } else {
+                                        val i =
+                                            visibleTabs.indexOf(currentTab) + if (forward) 1 else -1
+                                        visibleTabs.getOrNull(i)?.let(vm::setTab)
+                                    }
                                 }
-                            }
-                        },
-                    )
+                            },
+                        )
+                    }
                 }
                 val bottom = shell.bottomInset
                 AnimatedContent(
                     targetState = data,
-                    contentKey = { d -> Triple(d.tab, if (d.tab == SubTab.MONTHLY) d.year else d.period?.key, d.loaded) },
+                    contentKey = { d ->
+                        Triple(
+                            d.tab,
+                            if (d.tab == SubTab.MONTHLY) {
+                                d.year
+                            } else {
+                                d.period?.key
+                            },
+                            d.loaded,
+                        )
+                    },
                     transitionSpec = {
                         val a = initialState
                         val b = targetState
@@ -329,18 +406,54 @@ fun TransactionsTab(todaySignal: Int, smsBadge: QueueBadge, vm: TransactionsView
                     label = "homeContent",
                 ) { d ->
                     when (d.tab) {
-                        SubTab.DAILY -> DailyContent(d, main, selection, vm::toggleSelect, state.focusDate, vm::onFocusHandled, lastSaved, bottom, onMemoStrip = { day -> daySheet = day.toString(); daySheetMemos = true })
-                        SubTab.CALENDAR -> CalendarContent(d, main, ref.settings.periods.weekStartDay, bottom) { day -> daySheet = day.toString(); daySheetMemos = false }
-                        SubTab.MONTHLY -> MonthlyContent(d, main, selectedDate, bottom) { vm.openMonth(it) }
+                        SubTab.DAILY -> DailyContent(
+                            d,
+                            main,
+                            selection,
+                            vm::toggleSelect,
+                            state.focusDate,
+                            vm::onFocusHandled,
+                            lastSaved,
+                            bottom,
+                            onMemoStrip = { day ->
+                                daySheet = day.toString()
+                                daySheetMemos = true
+                            },
+                        )
+
+                        SubTab.CALENDAR -> CalendarContent(
+                            d,
+                            main,
+                            ref.settings.periods.weekStartDay,
+                            bottom,
+                        ) { day ->
+                            daySheet = day.toString()
+                            daySheetMemos = false
+                        }
+
+                        SubTab.MONTHLY -> MonthlyContent(d, main, selectedDate, bottom) {
+                            vm.openMonth(it)
+                        }
+
                         SubTab.TOTAL -> TotalContent(d, main, state.budgetBlock, ref, bottom)
-                        SubTab.NOTE -> NoteContent(d.memos, state.savedMemo, vm::consumeSavedMemo, bottom)
+
+                        SubTab.NOTE -> NoteContent(
+                            d.memos,
+                            state.savedMemo,
+                            vm::consumeSavedMemo,
+                            bottom,
+                        )
                     }
                 }
-                val memoButton = !selecting && !filterOpen && ref.settings.memoButton && (currentTab == SubTab.DAILY || currentTab == SubTab.CALENDAR)
+                val memoButton =
+                    !selecting && !filterOpen && ref.settings.memoButton &&
+                        (currentTab == SubTab.DAILY || currentTab == SubTab.CALENDAR)
                 // Qualified so the outer Column's scoped overload isn't picked.
                 androidx.compose.animation.AnimatedVisibility(
                     memoButton,
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = Space.gutter, bottom = bottom),
+                    modifier = Modifier.align(
+                        Alignment.BottomEnd,
+                    ).padding(end = Space.gutter, bottom = bottom),
                     enter = scaleIn(NexoMotion.snappy()) + fadeIn(),
                     exit = scaleOut(NexoMotion.exit()) + fadeOut(),
                 ) {
@@ -371,41 +484,108 @@ fun TransactionsTab(todaySignal: Int, smsBadge: QueueBadge, vm: TransactionsView
             ref = ref,
             showMemos = daySheetMemos,
             onShowMemos = { daySheetMemos = it },
-            onDate = { daySheet = it.toString(); vm.select(it) },
-            onDismiss = { daySheet?.let { vm.select(LocalDate.parse(it)) }; daySheet = null },
+            onDate = {
+                daySheet = it.toString()
+                vm.select(it)
+            },
+            onDismiss = {
+                daySheet?.let { vm.select(LocalDate.parse(it)) }
+                daySheet = null
+            },
             highlightId = lastSaved,
         )
     }
 
-    if (monthPicker) data.period?.let { p -> MonthPickerDialog(p.label, onPick = vm::pickMonth, onDismiss = { monthPicker = false }) }
-    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.bulkActions, onDismiss = { bulkOpen = false })
+    if (monthPicker) {
+        data.period?.let { p ->
+            MonthPickerDialog(p.label, onPick = vm::pickMonth, onDismiss = {
+                monthPicker = false
+            })
+        }
+    }
+    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.bulkActions, onDismiss = {
+        bulkOpen = false
+    })
 }
 
 /** A 40dp header action; [active] fills it to show a mode is on (the filter). */
 @Composable
-private fun HeaderAction(icon: ImageVector, description: String, active: Boolean = false, onClick: () -> Unit) {
+private fun HeaderAction(
+    icon: ImageVector,
+    description: String,
+    active: Boolean = false,
+    onClick: () -> Unit,
+) {
     val colors = LocalNexoColors.current
-    val container by animateColorAsState(if (active) colors.raised else Color.Transparent, NexoMotion.standard(), label = "headerAction")
-    RoundIconButton(icon, description, onClick, tint = if (active) colors.text else colors.textSecondary, container = container)
+    val container by animateColorAsState(
+        if (active) colors.raised else Color.Transparent,
+        NexoMotion.standard(),
+        label = "headerAction",
+    )
+    RoundIconButton(
+        icon,
+        description,
+        onClick,
+        tint = if (active) colors.text else colors.textSecondary,
+        container = container,
+    )
 }
 
 /** The period's net as the screen's one large number, with income and expenses beneath. */
 @Composable
-private fun NetHero(income: Double, expense: Double, main: Currency, modifier: Modifier = Modifier) {
+private fun NetHero(
+    income: Double,
+    expense: Double,
+    main: Currency,
+    modifier: Modifier = Modifier,
+) {
     val money = LocalMoneyColors.current
     val colors = LocalNexoColors.current
-    Column(modifier.fillMaxWidth().padding(start = Space.gutter, end = Space.gutter, top = Space.xs, bottom = Space.m)) {
-        Text(stringResource(R.string.net), style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+    Column(
+        modifier.fillMaxWidth().padding(
+            start = Space.gutter,
+            end = Space.gutter,
+            top = Space.xs,
+            bottom = Space.m,
+        ),
+    ) {
+        Text(
+            stringResource(R.string.net),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+        )
         RollingAmount(income - expense, main, Modifier.shrinkToFit(), color = colors.text)
         Spacer(Modifier.height(Space.xs))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.SouthWest, null, tint = money.income, modifier = Modifier.size(16.dp))
+            Icon(
+                Icons.Rounded.SouthWest,
+                null,
+                tint = money.income,
+                modifier = Modifier.size(16.dp),
+            )
             Spacer(Modifier.width(Space.xs))
-            RollingAmount(income, main, style = NexoType.Amount, color = money.income, minorScale = 0.8f)
+            RollingAmount(
+                income,
+                main,
+                style = NexoType.Amount,
+                color = money.income,
+                minorScale = 0.8f,
+            )
             Spacer(Modifier.width(Space.gutter))
-            Icon(Icons.Rounded.NorthEast, null, tint = money.expense, modifier = Modifier.size(16.dp))
+            Icon(
+                Icons.Rounded.NorthEast,
+                null,
+                tint = money.expense,
+                modifier = Modifier.size(16.dp),
+            )
             Spacer(Modifier.width(Space.xs))
-            RollingAmount(expense, main, style = NexoType.Amount, color = money.expense, minorScale = 0.8f)
+            RollingAmount(
+                expense,
+                main,
+                style = NexoType.Amount,
+                color = money.expense,
+                minorScale = 0.8f,
+            )
         }
     }
 }
@@ -451,12 +631,30 @@ private fun DailyContent(
         selection = selection,
         state = state,
         onRowClick = { row ->
-            if (selection.isNotEmpty()) { haptics.tick(); onToggleSelect(row.id) } else nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
+            if (selection.isNotEmpty()) {
+                haptics.tick()
+                onToggleSelect(row.id)
+            } else {
+                nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
+            }
         },
-        onRowLongClick = { row -> haptics.longPress(); onToggleSelect(row.id) },
-        onDayClick = { d -> if (selection.isEmpty()) nav.navigate(EntryKey(date = d.toString(), fromAdd = true)) },
+        onRowLongClick = { row ->
+            haptics.longPress()
+            onToggleSelect(row.id)
+        },
+        onDayClick = { d ->
+            if (selection.isEmpty()) nav.navigate(EntryKey(date = d.toString(), fromAdd = true))
+        },
         onMemoClick = onMemoStrip,
-        header = data.repeatPreview?.let { p -> { item(key = "repeat_preview") { RepeatPreviewRow(p, main, { nav.navigate(RepeatListKey) }, Modifier.animateItem()) } } },
+        header = data.repeatPreview?.let { p ->
+            {
+                item(key = "repeat_preview") {
+                    RepeatPreviewRow(p, main, {
+                        nav.navigate(RepeatListKey)
+                    }, Modifier.animateItem())
+                }
+            }
+        },
         bottomPadding = bottom.value.toInt(),
         highlightId = highlightId,
     )
@@ -468,7 +666,13 @@ private fun DailyContent(
  * Each cell still shows income, expenses and the day's net.
  */
 @Composable
-private fun CalendarContent(data: HomeData, main: Currency, weekStart: DayOfWeek, bottom: Dp, onDay: (LocalDate) -> Unit) {
+private fun CalendarContent(
+    data: HomeData,
+    main: Currency,
+    weekStart: DayOfWeek,
+    bottom: Dp,
+    onDay: (LocalDate) -> Unit,
+) {
     val money = LocalMoneyColors.current
     val colors = LocalNexoColors.current
     Column(Modifier.fillMaxSize().padding(horizontal = Space.s)) {
@@ -490,10 +694,20 @@ private fun CalendarContent(data: HomeData, main: Currency, weekStart: DayOfWeek
             }
         }
         val weeks = data.cells.chunked(7)
-        Column(Modifier.fillMaxSize().padding(bottom = bottom), verticalArrangement = Arrangement.spacedBy(CalendarGap)) {
+        Column(
+            Modifier.fillMaxSize().padding(bottom = bottom),
+            verticalArrangement = Arrangement.spacedBy(CalendarGap),
+        ) {
             weeks.forEach { week ->
-                Row(Modifier.fillMaxWidth().weight(1f).heightIn(min = 64.dp), horizontalArrangement = Arrangement.spacedBy(CalendarGap)) {
-                    week.forEach { cell -> CalendarDay(cell, main, money, Modifier.weight(1f).fillMaxHeight()) { onDay(cell.date) } }
+                Row(
+                    Modifier.fillMaxWidth().weight(1f).heightIn(min = 64.dp),
+                    horizontalArrangement = Arrangement.spacedBy(CalendarGap),
+                ) {
+                    week.forEach { cell ->
+                        CalendarDay(cell, main, money, Modifier.weight(1f).fillMaxHeight()) {
+                            onDay(cell.date)
+                        }
+                    }
                 }
             }
         }
@@ -503,14 +717,26 @@ private fun CalendarContent(data: HomeData, main: Currency, weekStart: DayOfWeek
 private val CalendarGap = 3.dp
 
 @Composable
-private fun CalendarDay(cell: CalendarCell, main: Currency, money: MoneyColors, modifier: Modifier, onClick: () -> Unit) {
+private fun CalendarDay(
+    cell: CalendarCell,
+    main: Currency,
+    money: MoneyColors,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
     val colors = LocalNexoColors.current
     val active = cell.hasTx || cell.memoColors.isNotEmpty()
     val dim = if (cell.inPeriod) 1f else 0.45f
     // Long figures step the type down; shrinkToFit below catches anything that still overflows.
-    val longest = listOf(cell.income, cell.expense, cell.income - cell.expense).maxOf { AmountFormatter.number(it, main.decimals).length }
+    val longest = listOf(cell.income, cell.expense, cell.income - cell.expense).maxOf {
+        AmountFormatter.number(it, main.decimals).length
+    }
     val size = if (longest >= 9) ((27 - longest) / 2f).coerceAtLeast(6f) else 9.5f
-    val figure = NexoType.AmountSmall.copy(fontSize = size.sp, lineHeight = (size + 3.5f).sp, fontWeight = FontWeight.SemiBold)
+    val figure = NexoType.AmountSmall.copy(
+        fontSize = size.sp,
+        lineHeight = (size + 3.5f).sp,
+        fontWeight = FontWeight.SemiBold,
+    )
     Column(
         modifier
             .clip(NexoShapes.tile)
@@ -519,7 +745,11 @@ private fun CalendarDay(cell: CalendarCell, main: Currency, money: MoneyColors, 
             .padding(horizontal = 2.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        val label = if (cell.date.dayOfMonth == 1) Formats.monthDay(cell.date) else cell.date.dayOfMonth.toString()
+        val label = if (cell.date.dayOfMonth == 1) {
+            Formats.monthDay(cell.date)
+        } else {
+            cell.date.dayOfMonth.toString()
+        }
         Box(
             Modifier
                 .height(24.dp)
@@ -543,25 +773,67 @@ private fun CalendarDay(cell: CalendarCell, main: Currency, money: MoneyColors, 
             )
         }
         if (cell.memoColors.isNotEmpty()) {
-            Row(Modifier.padding(top = 3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.padding(top = 3.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 cell.memoColors.take(4).forEach { MemoDot(it, 5) }
-                if (cell.memoColors.size > 4) Text("+${cell.memoColors.size - 4}", fontSize = 8.sp, color = colors.textTertiary)
+                if (cell.memoColors.size > 4) {
+                    Text(
+                        "+${cell.memoColors.size - 4}",
+                        fontSize = 8.sp,
+                        color = colors.textTertiary,
+                    )
+                }
             }
         }
         Spacer(Modifier.weight(1f))
-        if (cell.income != 0.0) Text(AmountFormatter.number(cell.income, main.decimals), Modifier.shrinkToFit(), style = figure, color = money.income.copy(alpha = dim), maxLines = 1)
-        if (cell.expense != 0.0) Text(AmountFormatter.number(cell.expense, main.decimals), Modifier.shrinkToFit(), style = figure, color = money.expense.copy(alpha = dim), maxLines = 1)
-        if ((cell.income != 0.0 && cell.expense != 0.0) || (cell.hasTx && cell.income == 0.0 && cell.expense == 0.0)) {
-            Text(AmountFormatter.number(cell.income - cell.expense, main.decimals), Modifier.shrinkToFit(), style = figure, color = colors.textSecondary.copy(alpha = dim), maxLines = 1)
+        if (cell.income != 0.0) {
+            Text(
+                AmountFormatter.number(cell.income, main.decimals),
+                Modifier.shrinkToFit(),
+                style = figure,
+                color = money.income.copy(alpha = dim),
+                maxLines = 1,
+            )
+        }
+        if (cell.expense != 0.0) {
+            Text(
+                AmountFormatter.number(cell.expense, main.decimals),
+                Modifier.shrinkToFit(),
+                style = figure,
+                color = money.expense.copy(alpha = dim),
+                maxLines = 1,
+            )
+        }
+        if ((cell.income != 0.0 && cell.expense != 0.0) ||
+            (cell.hasTx && cell.income == 0.0 && cell.expense == 0.0)
+        ) {
+            Text(
+                AmountFormatter.number(cell.income - cell.expense, main.decimals),
+                Modifier.shrinkToFit(),
+                style = figure,
+                color = colors.textSecondary.copy(alpha = dim),
+                maxLines = 1,
+            )
         }
     }
 }
 
 /** One card per month: its income, expenses and net, opening to the weeks inside it. */
 @Composable
-private fun MonthlyContent(data: HomeData, main: Currency, selected: LocalDate, bottom: Dp, onWeek: (MonthPeriod) -> Unit) {
+private fun MonthlyContent(
+    data: HomeData,
+    main: Currency,
+    selected: LocalDate,
+    bottom: Dp,
+    onWeek: (MonthPeriod) -> Unit,
+) {
     val haptics = rememberHaptics()
-    var expanded by rememberSaveable(data.year) { mutableStateOf(data.months.firstOrNull { selected in it.period.range }?.period?.key ?: -1) }
+    var expanded by rememberSaveable(data.year) {
+        mutableStateOf(data.months.firstOrNull { selected in it.period.range }?.period?.key ?: -1)
+    }
     if (data.months.isEmpty()) {
         EmptyState()
         return
@@ -574,7 +846,11 @@ private fun MonthlyContent(data: HomeData, main: Currency, selected: LocalDate, 
                 main = main,
                 open = expanded == m.period.key,
                 showRange = today in m.period.range || m.period.label.monthValue == 12,
-                onToggle = { haptics.tick(); expanded = if (expanded == m.period.key) -1 else m.period.key },
+                onToggle = {
+                    haptics.tick()
+                    expanded =
+                        if (expanded == m.period.key) -1 else m.period.key
+                },
                 onWeek = { onWeek(m.period) },
                 modifier = Modifier.padding(horizontal = Space.l, vertical = Space.xs),
             )
@@ -583,7 +859,15 @@ private fun MonthlyContent(data: HomeData, main: Currency, selected: LocalDate, 
 }
 
 @Composable
-private fun MonthCard(month: MonthRow, main: Currency, open: Boolean, showRange: Boolean, onToggle: () -> Unit, onWeek: () -> Unit, modifier: Modifier = Modifier) {
+private fun MonthCard(
+    month: MonthRow,
+    main: Currency,
+    open: Boolean,
+    showRange: Boolean,
+    onToggle: () -> Unit,
+    onWeek: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = LocalNexoColors.current
     val money = LocalMoneyColors.current
     val interactions = remember { MutableInteractionSource() }
@@ -597,17 +881,36 @@ private fun MonthCard(month: MonthRow, main: Currency, open: Boolean, showRange:
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(Formats.monthShort(month.period.label.monthValue), style = MaterialTheme.typography.titleMedium, color = colors.text)
-                if (showRange) Text(Formats.range(month.period.start, month.period.end), style = NexoType.Meta, color = colors.textTertiary)
+                Text(
+                    Formats.monthShort(month.period.label.monthValue),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.text,
+                )
+                if (showRange) {
+                    Text(
+                        Formats.range(month.period.start, month.period.end),
+                        style = NexoType.Meta,
+                        color = colors.textTertiary,
+                    )
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
                 FlowAmount(month.income, main, money.income)
                 FlowAmount(month.expense, main, money.expense)
-                AmountText(month.income - month.expense, main, style = NexoType.AmountSmall, color = colors.textSecondary)
+                AmountText(
+                    month.income - month.expense,
+                    main,
+                    style = NexoType.AmountSmall,
+                    color = colors.textSecondary,
+                )
             }
             Icon(
-                Icons.Rounded.KeyboardArrowDown, null, tint = colors.textTertiary,
-                modifier = Modifier.padding(start = Space.xs).size(20.dp).graphicsLayer { rotationZ = turn },
+                Icons.Rounded.KeyboardArrowDown,
+                null,
+                tint = colors.textTertiary,
+                modifier = Modifier.padding(start = Space.xs).size(20.dp).graphicsLayer {
+                    rotationZ = turn
+                },
             )
         }
         AnimatedVisibility(
@@ -640,14 +943,28 @@ private fun WeekLine(week: WeekRow, main: Currency, onClick: () -> Unit) {
     ) {
         Text(
             Formats.range(week.range.start, week.range.end),
-            style = NexoType.Meta, color = if (week.containsToday) colors.primaryText else colors.textSecondary,
-            maxLines = 1, modifier = Modifier.width(88.dp),
+            style = NexoType.Meta,
+            color = if (week.containsToday) colors.primaryText else colors.textSecondary,
+            maxLines = 1,
+            modifier = Modifier.width(88.dp),
         )
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-            FlowAmount(week.income, main, money.income, Modifier.shrinkToFit(), NexoType.AmountSmall)
+            FlowAmount(
+                week.income,
+                main,
+                money.income,
+                Modifier.shrinkToFit(),
+                NexoType.AmountSmall,
+            )
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-            FlowAmount(week.expense, main, money.expense, Modifier.shrinkToFit(), NexoType.AmountSmall)
+            FlowAmount(
+                week.expense,
+                main,
+                money.expense,
+                Modifier.shrinkToFit(),
+                NexoType.AmountSmall,
+            )
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
             FlowAmount(net, main, colors.text, Modifier.shrinkToFit(), NexoType.AmountSmall)
@@ -664,14 +981,22 @@ private fun NoteContent(memos: List<Memo>, saved: String?, onSavedShown: () -> U
         EmptyState(stringResource(R.string.no_memos))
         return
     }
-    LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = bottom), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(
+        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = bottom),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         var lastDate: String? = null
         memos.forEach { m ->
             if (!m.pinned && m.date != lastDate) {
                 lastDate = m.date
                 val d = LocalDate.parse(m.date)
                 item(key = "d_${m.date}") {
-                    Text("${Formats.monthDay(d)} (${Formats.weekdayShort(d)})", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp, start = 4.dp))
+                    Text(
+                        "${Formats.monthDay(d)} (${Formats.weekdayShort(d)})",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp, start = 4.dp),
+                    )
                 }
             }
             item(key = m.id) {
@@ -685,15 +1010,45 @@ private fun NoteContent(memos: List<Memo>, saved: String?, onSavedShown: () -> U
                 }
                 Card(
                     onClick = { nav.navigate(MemoEditorKey(memoId = m.id)) },
-                    colors = CardDefaults.cardColors(containerColor = NexoPalette.memo(m.color, dark)),
-                    modifier = Modifier.fillMaxWidth().border(if (flash.value > 0f) 2.dp else 0.dp, MaterialTheme.colorScheme.primary.copy(alpha = flash.value), CardDefaults.shape),
+                    colors = CardDefaults.cardColors(
+                        containerColor = NexoPalette.memo(m.color, dark),
+                    ),
+                    modifier = Modifier.fillMaxWidth().border(
+                        if (flash.value > 0f) {
+                            2.dp
+                        } else {
+                            0.dp
+                        },
+                        MaterialTheme.colorScheme.primary.copy(alpha = flash.value),
+                        CardDefaults.shape,
+                    ),
                 ) {
                     Column(Modifier.padding(14.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (m.pinned) Icon(Icons.Outlined.PushPin, null, Modifier.size(16.dp).padding(end = 4.dp))
-                            if (m.title.isNotBlank()) Text(m.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (m.pinned) {
+                                Icon(
+                                    Icons.Outlined.PushPin,
+                                    null,
+                                    Modifier.size(16.dp).padding(end = 4.dp),
+                                )
+                            }
+                            if (m.title.isNotBlank()) {
+                                Text(
+                                    m.title,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                         }
-                        if (m.content.isNotBlank()) Text(m.content.trimEnd('\n'), style = MaterialTheme.typography.bodyMedium, maxLines = 6, overflow = TextOverflow.Ellipsis)
+                        if (m.content.isNotBlank()) {
+                            Text(
+                                m.content.trimEnd('\n'),
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 6,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
             }
@@ -702,27 +1057,74 @@ private fun NoteContent(memos: List<Memo>, saved: String?, onSavedShown: () -> U
 }
 
 @Composable
-private fun TotalContent(data: HomeData, main: Currency, budgetBlock: BudgetBlockData?, ref: RefData, bottom: Dp) {
+private fun TotalContent(
+    data: HomeData,
+    main: Currency,
+    budgetBlock: BudgetBlockData?,
+    ref: RefData,
+    bottom: Dp,
+) {
     val nav = LocalNavigator.current
-    LazyColumn(contentPadding = PaddingValues(12.dp, 12.dp, 12.dp, bottom), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(
+        contentPadding = PaddingValues(12.dp, 12.dp, 12.dp, bottom),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         item { data.period?.let { BudgetBlock(it, budgetBlock, ref) } }
         item {
             val s = data.summary ?: return@item
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
+            ) {
                 Column(Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.tab_accounts), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        data.period?.let { Text(Formats.range(it.start, it.end), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline) }
+                        Text(
+                            stringResource(R.string.tab_accounts),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        data.period?.let {
+                            Text(
+                                Formats.range(it.start, it.end),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline,
+                            )
+                        }
                     }
                     Spacer(Modifier.height(8.dp))
                     SummaryLine(stringResource(R.string.compared_expenses), "${s.comparedPercent}%")
-                    SummaryLine(stringResource(R.string.expenses_of, s.cashLabel), AmountFormatter.format(s.cash, main))
-                    if (s.debit != 0.0) SummaryLine(stringResource(R.string.expenses_debit_card), AmountFormatter.format(s.debit, main))
-                    if (s.cardIn != 0.0) SummaryLine(stringResource(R.string.expenses_card_pay), "${AmountFormatter.format(s.cardOut, main)}(${AmountFormatter.format(s.cardIn, main)})")
-                    else SummaryLine(stringResource(R.string.expenses_card), AmountFormatter.format(s.cardOut, main))
-                    SummaryLine(stringResource(R.string.transfer_of, s.cashLabel), AmountFormatter.format(s.transfer, main))
+                    SummaryLine(
+                        stringResource(R.string.expenses_of, s.cashLabel),
+                        AmountFormatter.format(s.cash, main),
+                    )
+                    if (s.debit != 0.0) {
+                        SummaryLine(
+                            stringResource(R.string.expenses_debit_card),
+                            AmountFormatter.format(s.debit, main),
+                        )
+                    }
+                    if (s.cardIn != 0.0) {
+                        val cardOut = AmountFormatter.format(s.cardOut, main)
+                        val cardIn = AmountFormatter.format(s.cardIn, main)
+                        SummaryLine(stringResource(R.string.expenses_card_pay), "$cardOut($cardIn)")
+                    } else {
+                        SummaryLine(
+                            stringResource(R.string.expenses_card),
+                            AmountFormatter.format(s.cardOut, main),
+                        )
+                    }
+                    SummaryLine(
+                        stringResource(R.string.transfer_of, s.cashLabel),
+                        AmountFormatter.format(s.transfer, main),
+                    )
                     Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = { data.period?.let { nav.navigate(ExcelExportKey(it.start.toString(), it.end.toString())) } }, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = {
+                        data.period?.let {
+                            nav.navigate(ExcelExportKey(it.start.toString(), it.end.toString()))
+                        }
+                    }, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.export_to_excel))
                     }
                 }
@@ -734,7 +1136,12 @@ private fun TotalContent(data: HomeData, main: Currency, budgetBlock: BudgetBloc
 @Composable
 private fun SummaryLine(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            label,
+            Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
     }
 }

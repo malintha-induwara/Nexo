@@ -65,13 +65,29 @@ fun estimatedCount(rule: RepeatRule, period: MonthPeriod): Int {
     val days = period.range.days()
     return when (rule.repeatType) {
         RepeatType.MONTHLY, RepeatType.END_OF_MONTH -> 1
-        RepeatType.BIMONTHLY, RepeatType.QUARTERLY, RepeatType.FOUR_MONTHLY, RepeatType.SEMIANNUAL, RepeatType.ANNUAL -> {
+
+        RepeatType.BIMONTHLY,
+        RepeatType.QUARTERLY,
+        RepeatType.FOUR_MONTHLY,
+        RepeatType.SEMIANNUAL,
+        RepeatType.ANNUAL,
+        -> {
             val step = rule.repeatType.monthStep!!.toLong()
             if (next in period.range || next.minusMonths(step) in period.range) 1 else 0
         }
+
         RepeatType.DAILY -> days.size
-        RepeatType.WEEKDAYS -> days.count { it.dayOfWeek != DayOfWeek.SATURDAY && it.dayOfWeek != DayOfWeek.SUNDAY }
-        RepeatType.WEEKENDS -> days.count { it.dayOfWeek == DayOfWeek.SATURDAY || it.dayOfWeek == DayOfWeek.SUNDAY }
+
+        RepeatType.WEEKDAYS -> days.count {
+            it.dayOfWeek != DayOfWeek.SATURDAY &&
+                it.dayOfWeek != DayOfWeek.SUNDAY
+        }
+
+        RepeatType.WEEKENDS -> days.count {
+            it.dayOfWeek == DayOfWeek.SATURDAY ||
+                it.dayOfWeek == DayOfWeek.SUNDAY
+        }
+
         RepeatType.WEEKLY, RepeatType.BIWEEKLY, RepeatType.FOUR_WEEKLY -> {
             val step = when (rule.repeatType) {
                 RepeatType.WEEKLY -> 7L
@@ -80,6 +96,7 @@ fun estimatedCount(rule: RepeatRule, period: MonthPeriod): Int {
             }
             days.count { ChronoUnit.DAYS.between(next, it).mod(step) == 0L }
         }
+
         RepeatType.NONE -> 0
     }
 }
@@ -101,51 +118,113 @@ fun RepeatListScreen(vm: RepeatListViewModel = hiltViewModel()) {
     Scaffold(topBar = {
         NexoTopBar(stringResource(R.string.repeat_setting), onBack = { nav.back() }) {
             if (editing) {
-                IconButton(onClick = { if (checked.isNotEmpty()) confirmDelete = true }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
-                TextButton(onClick = { editing = false; checked = emptySet() }) { Text(stringResource(R.string.action_done)) }
+                IconButton(onClick = {
+                    if (checked.isNotEmpty()) confirmDelete = true
+                }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
+                TextButton(onClick = {
+                    editing = false
+                    checked = emptySet()
+                }) { Text(stringResource(R.string.action_done)) }
             } else {
-                if (rules.isNotEmpty()) IconButton(onClick = { editing = true }) { Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit)) }
-                IconButton(onClick = { addType = true }) { Icon(Icons.Filled.Add, stringResource(R.string.action_add)) }
+                if (rules.isNotEmpty()) {
+                    IconButton(onClick = {
+                        editing = true
+                    }) { Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit)) }
+                }
+                IconButton(onClick = {
+                    addType = true
+                }) { Icon(Icons.Filled.Add, stringResource(R.string.action_add)) }
             }
         }
     }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(bottom = 24.dp)) {
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(bottom = 24.dp),
+        ) {
             item {
                 SettingRow(
                     stringResource(R.string.repeat_reflect_title),
-                    stringResource(if (ref.settings.repeatReflect == RepeatReflect.ON_DATE) R.string.reflect_on_date else R.string.reflect_first_day),
+                    stringResource(
+                        if (ref.settings.repeatReflect == RepeatReflect.ON_DATE) {
+                            R.string.reflect_on_date
+                        } else {
+                            R.string.reflect_first_day
+                        },
+                    ),
                     onClick = { pickReflect = true },
                 )
                 HorizontalDivider()
             }
-            if (rules.isEmpty()) item {
-                Column(Modifier.padding(24.dp)) {
-                    Text(stringResource(R.string.repeat_help_title), style = MaterialTheme.typography.titleMedium)
-                    Text(stringResource(R.string.repeat_help), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
+            if (rules.isEmpty()) {
+                item {
+                    Column(Modifier.padding(24.dp)) {
+                        Text(
+                            stringResource(R.string.repeat_help_title),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            stringResource(R.string.repeat_help),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
                 }
             }
-            listOf(TxKind.INCOME to R.string.income, TxKind.EXPENSE to R.string.expenses, TxKind.TRANSFER_OUT to R.string.transfer).forEach { (kind, label) ->
+            listOf(
+                TxKind.INCOME to R.string.income,
+                TxKind.EXPENSE to R.string.expenses,
+                TxKind.TRANSFER_OUT to R.string.transfer,
+            ).forEach { (kind, label) ->
                 val group = rules.filter { it.kind == kind }
                 if (group.isEmpty()) return@forEach
                 item(key = "h_$kind") {
                     val estimate = group.sumOf { r ->
                         val c = ref.currency(r.currencyId)
-                        val main = if (c.id == ref.mainCurrency.id) r.amount else r.amount * Conversion.effectiveRate(c)
+                        val main = if (c.id == ref.mainCurrency.id) {
+                            r.amount
+                        } else {
+                            r.amount *
+                                Conversion.effectiveRate(c)
+                        }
                         main * estimatedCount(r, period)
                     }
-                    Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer).padding(horizontal = 16.dp, vertical = 10.dp)) {
-                        Text(stringResource(label), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        Text(AmountFormatter.format(estimate, ref.mainCurrency), style = MaterialTheme.typography.bodyMedium)
+                    Row(
+                        Modifier.fillMaxWidth().background(
+                            MaterialTheme.colorScheme.surfaceContainer,
+                        ).padding(horizontal = 16.dp, vertical = 10.dp),
+                    ) {
+                        Text(
+                            stringResource(label),
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            AmountFormatter.format(estimate, ref.mainCurrency),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
                     }
                 }
-                items(group, key = { it.id }) { r -> RuleRow(r, ref, editing, r.id in checked, color = when (kind) {
-                    TxKind.INCOME -> money.income
-                    TxKind.EXPENSE -> money.expense
-                    else -> MaterialTheme.colorScheme.onSurface
-                }) {
-                    if (editing) checked = if (r.id in checked) checked - r.id else checked + r.id
-                    else nav.navigate(EntryKey(mode = EntryMode.REPEAT_EDIT, repeatRuleId = r.id))
-                } }
+                items(group, key = { it.id }) { r ->
+                    RuleRow(
+                        r,
+                        ref,
+                        editing,
+                        r.id in checked,
+                        color = when (kind) {
+                            TxKind.INCOME -> money.income
+                            TxKind.EXPENSE -> money.expense
+                            else -> MaterialTheme.colorScheme.onSurface
+                        },
+                    ) {
+                        if (editing) {
+                            checked = if (r.id in checked) checked - r.id else checked + r.id
+                        } else {
+                            nav.navigate(
+                                EntryKey(mode = EntryMode.REPEAT_EDIT, repeatRuleId = r.id),
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -154,8 +233,22 @@ fun RepeatListScreen(vm: RepeatListViewModel = hiltViewModel()) {
             title = stringResource(R.string.repeat_reflect_title),
             options = RepeatReflect.entries,
             selected = ref.settings.repeatReflect,
-            label = { stringResource(if (it == RepeatReflect.ON_DATE) R.string.reflect_on_date else R.string.reflect_first_day) },
-            onSelect = { if (it == RepeatReflect.FIRST_OF_PERIOD) confirmFirstDay = true else vm.setReflect(it) },
+            label = {
+                stringResource(
+                    if (it == RepeatReflect.ON_DATE) {
+                        R.string.reflect_on_date
+                    } else {
+                        R.string.reflect_first_day
+                    },
+                )
+            },
+            onSelect = {
+                if (it == RepeatReflect.FIRST_OF_PERIOD) {
+                    confirmFirstDay = true
+                } else {
+                    vm.setReflect(it)
+                }
+            },
             onDismiss = { pickReflect = false },
         )
     }
@@ -176,30 +269,81 @@ fun RepeatListScreen(vm: RepeatListViewModel = hiltViewModel()) {
             onDismiss = { addType = false },
         )
     }
-    if (confirmDelete) ConfirmDialog(stringResource(R.string.want_to_delete_n, checked.size), onConfirm = { vm.delete(checked.toList()); checked = emptySet(); editing = false }, onDismiss = { confirmDelete = false })
+    if (confirmDelete) {
+        ConfirmDialog(stringResource(R.string.want_to_delete_n, checked.size), onConfirm = {
+            vm.delete(checked.toList())
+            checked = emptySet()
+            editing = false
+        }, onDismiss = { confirmDelete = false })
+    }
 }
 
 @Composable
-private fun RuleRow(r: RepeatRule, ref: RefData, editing: Boolean, checked: Boolean, color: Color, onClick: () -> Unit) {
-    val accountText = if (r.kind.isTransfer) "${accountLabel(ref, r.accountId)} → ${accountLabel(ref, r.toAccountId)}"
-    else {
+private fun RuleRow(
+    r: RepeatRule,
+    ref: RefData,
+    editing: Boolean,
+    checked: Boolean,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    val accountText = if (r.kind.isTransfer) {
+        "${accountLabel(ref, r.accountId)} → ${accountLabel(ref, r.toAccountId)}"
+    } else {
         val main = ref.categoryName(ref.mainCategoryId(r.categoryId)) ?: ""
         val sub = ref.subCategoryId(r.categoryId)?.let { ref.categoryName(it) }
         "${accountLabel(ref, r.accountId)}  ${if (sub != null) "$main/$sub" else main}"
     }
     val next = runCatching { LocalDate.parse(r.nextDate) }.getOrNull()
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (editing) Checkbox(checked, onCheckedChange = null, modifier = Modifier.padding(end = 8.dp))
+    Row(
+        Modifier.fillMaxWidth().clickable(
+            onClick = onClick,
+        ).padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (editing) {
+            Checkbox(checked, onCheckedChange = null, modifier = Modifier.padding(end = 8.dp))
+        }
         Column(Modifier.weight(1f)) {
             Text(r.note.ifBlank { accountText }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (r.note.isNotBlank()) Text(accountText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            val weekday = if (r.repeatType in setOf(RepeatType.WEEKLY, RepeatType.BIWEEKLY, RepeatType.FOUR_WEEKLY) && next != null) " (${Formats.weekdayShort(next)})" else ""
+            if (r.note.isNotBlank()) {
+                Text(
+                    accountText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            val weekday = if (r.repeatType in
+                setOf(RepeatType.WEEKLY, RepeatType.BIWEEKLY, RepeatType.FOUR_WEEKLY) &&
+                next != null
+            ) {
+                " (${Formats.weekdayShort(next)})"
+            } else {
+                ""
+            }
             Text(
-                (next?.let { Formats.shortDate(it) } ?: "") + " · " + repeatLabel(r.repeatType) + weekday +
-                    (r.endDate?.let { " · " + stringResource(R.string.repeat_end) + " " + Formats.shortDate(LocalDate.parse(it)) } ?: ""),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline,
+                (next?.let { Formats.shortDate(it) } ?: "") + " · " + repeatLabel(r.repeatType) +
+                    weekday +
+                    (
+                        r.endDate?.let {
+                            " · " + stringResource(R.string.repeat_end) + " " +
+                                Formats.shortDate(LocalDate.parse(it))
+                        }
+                            ?: ""
+                        ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
             )
-            if (ref.settings.showDescription && r.description.isNotBlank()) Text(r.description.lines().first(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, maxLines = 1)
+            if (ref.settings.showDescription && r.description.isNotBlank()) {
+                Text(
+                    r.description.lines().first(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                    maxLines = 1,
+                )
+            }
         }
         Text(AmountFormatter.format(r.amount, ref.currency(r.currencyId)), color = color)
     }

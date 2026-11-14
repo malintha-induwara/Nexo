@@ -31,11 +31,15 @@ class ReceiptTextDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
-    private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
+    private val recognizer by lazy {
+        TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    }
 
     /** The recognised lines with their positions. Throws [IOException] when the photo cannot be opened or decoded. */
     suspend fun recognize(uri: Uri): List<OcrLine> {
-        val bitmap = withContext(ioDispatcher) { decodeUpright(uri) } ?: throw IOException("Cannot decode the photo")
+        val bitmap =
+            withContext(ioDispatcher) { decodeUpright(uri) }
+                ?: throw IOException("Cannot decode the photo")
         val text = try {
             recognizer.process(InputImage.fromBitmap(bitmap, 0)).await()
         } finally {
@@ -57,11 +61,24 @@ class ReceiptTextDataSource @Inject constructor(
         var sample = 1
         while (maxOf(bounds.outWidth, bounds.outHeight) / sample > MAX_SIDE) sample *= 2
         val bitmap = resolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
+            BitmapFactory.decodeStream(
+                it,
+                null,
+                BitmapFactory.Options().apply {
+                    inSampleSize = sample
+                },
+            )
         } ?: return null
         val rotation = runCatching {
             resolver.openInputStream(uri)?.use { stream ->
-                when (ExifInterface(stream).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+                when (
+                    ExifInterface(
+                        stream,
+                    ).getAttributeInt(
+                        ExifInterface.TAG_ORIENTATION,
+                        ExifInterface.ORIENTATION_NORMAL,
+                    )
+                ) {
                     ExifInterface.ORIENTATION_ROTATE_90 -> 90f
                     ExifInterface.ORIENTATION_ROTATE_180 -> 180f
                     ExifInterface.ORIENTATION_ROTATE_270 -> 270f
@@ -70,7 +87,17 @@ class ReceiptTextDataSource @Inject constructor(
             }
         }.getOrNull() ?: 0f
         if (rotation == 0f) return bitmap
-        val upright = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, Matrix().apply { postRotate(rotation) }, true)
+        val upright = Bitmap.createBitmap(
+            bitmap,
+            0,
+            0,
+            bitmap.width,
+            bitmap.height,
+            Matrix().apply {
+                postRotate(rotation)
+            },
+            true,
+        )
         if (upright !== bitmap) bitmap.recycle()
         return upright
     }
@@ -80,7 +107,13 @@ class ReceiptTextDataSource @Inject constructor(
         val corners = line.cornerPoints
         if (corners == null || corners.size != 4) {
             val b = line.boundingBox ?: return OcrLine(line.text, 0f, 0f, 0f, 0f)
-            return OcrLine.box(line.text, b.left.toFloat(), b.top.toFloat(), b.right.toFloat(), b.bottom.toFloat())
+            return OcrLine.box(
+                line.text,
+                b.left.toFloat(),
+                b.top.toFloat(),
+                b.right.toFloat(),
+                b.bottom.toFloat(),
+            )
         }
         val (tl, tr, _, bl) = corners
         return OcrLine(
@@ -89,7 +122,9 @@ class ReceiptTextDataSource @Inject constructor(
             centerY = corners.sumOf { it.y }.toFloat() / 4f,
             width = hypot((tr.x - tl.x).toFloat(), (tr.y - tl.y).toFloat()),
             height = hypot((bl.x - tl.x).toFloat(), (bl.y - tl.y).toFloat()),
-            angle = Math.toDegrees(atan2((tr.y - tl.y).toDouble(), (tr.x - tl.x).toDouble())).toFloat(),
+            angle = Math.toDegrees(
+                atan2((tr.y - tl.y).toDouble(), (tr.x - tl.x).toDouble()),
+            ).toFloat(),
         )
     }
 

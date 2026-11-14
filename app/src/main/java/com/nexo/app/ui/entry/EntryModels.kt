@@ -78,23 +78,40 @@ data class EntryForm(
 
     /** Scan receipt is offered wherever an expense or income amount can come from a photo of a bill; it is how photos are attached. */
     val scanAllowed: Boolean
-        get() = !isTransfer && !isBalance && !isBalanceAdjustment && !repeatMode && repeat == RepeatType.NONE && photos.size < 3
+        get() = !isTransfer && !isBalance && !isBalanceAdjustment && !repeatMode &&
+            repeat == RepeatType.NONE &&
+            photos.size < 3
 
     /** Transfers carry a fee; so does an SMS expense, as a linked bank-fee row. */
-    val feeAllowed: Boolean get() = isTransfer || (mode == EntryMode.SMS && type == EntryType.EXPENSE)
+    val feeAllowed: Boolean get() = isTransfer ||
+        (mode == EntryMode.SMS && type == EntryType.EXPENSE)
     val isBalance: Boolean get() = balanceKind != null
     val isEdit: Boolean get() = originalId != null && mode == EntryMode.EDIT
     val repeatMode: Boolean get() = mode == EntryMode.REPEAT_NEW || mode == EntryMode.REPEAT_EDIT
-    val showRepInst: Boolean get() = mode !in setOf(EntryMode.EDIT, EntryMode.PAY_CARD, EntryMode.IMPORT_FIX)
+    val showRepInst: Boolean get() = mode !in
+        setOf(EntryMode.EDIT, EntryMode.PAY_CARD, EntryMode.IMPORT_FIX)
     val showContinue: Boolean get() = mode == EntryMode.NEW && repeat == RepeatType.NONE
     val showTime: Boolean get() = repeat == RepeatType.NONE
 
     val fields: List<Field>
         get() {
-            val pair = if (isTransfer) listOf(Field.FROM, Field.TO) else listOf(Field.ACCOUNT, Field.CATEGORY)
-            val amount = if (feeAllowed && feeExpanded) listOf(Field.AMOUNT, Field.FEE) else listOf(Field.AMOUNT)
-            return if (inputOrder == InputOrder.ACCOUNT_FIRST) pair + amount
-            else if (isTransfer) amount + pair else amount + listOf(Field.CATEGORY, Field.ACCOUNT)
+            val pair = if (isTransfer) {
+                listOf(Field.FROM, Field.TO)
+            } else {
+                listOf(Field.ACCOUNT, Field.CATEGORY)
+            }
+            val amount = if (feeAllowed && feeExpanded) {
+                listOf(Field.AMOUNT, Field.FEE)
+            } else {
+                listOf(Field.AMOUNT)
+            }
+            return if (inputOrder == InputOrder.ACCOUNT_FIRST) {
+                pair + amount
+            } else if (isTransfer) {
+                amount + pair
+            } else {
+                amount + listOf(Field.CATEGORY, Field.ACCOUNT)
+            }
         }
 
     fun isEmpty(f: Field): Boolean = when (f) {

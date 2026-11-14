@@ -68,7 +68,10 @@ import kotlinx.coroutines.flow.update
 
 @Composable
 fun StatsDetailScreen(key: StatsDetailKey) {
-    val vm = hiltViewModel<StatsDetailViewModel, StatsDetailViewModel.Factory>(creationCallback = { it.create(key) })
+    val vm =
+        hiltViewModel<StatsDetailViewModel, StatsDetailViewModel.Factory>(creationCallback = {
+            it.create(key)
+        })
     val ui by vm.uiState.collectAsStateWithLifecycle()
     val ref = ui.ref
     val q = ui.query
@@ -82,31 +85,87 @@ fun StatsDetailScreen(key: StatsDetailKey) {
     BackHandler(enabled = selection.isNotEmpty()) { vm.setSelection(emptySet()) }
     val periodLabel = when (q.scope) {
         StatsScope.WEEKLY -> Formats.range(ui.range.start, ui.range.end)
-        StatsScope.MONTHLY -> Formats.monthYear(ref.settings.periods.monthPeriodContaining(q.anchor).label)
+
+        StatsScope.MONTHLY -> Formats.monthYear(
+            ref.settings.periods.monthPeriodContaining(q.anchor).label,
+        )
+
         StatsScope.ANNUALLY -> ref.settings.periods.yearOf(q.anchor).toString()
+
         StatsScope.PERIOD -> ""
     }
     val summaryLabel = stringResource(
         when (q.scope) {
             StatsScope.MONTHLY -> R.string.month_total
+
             StatsScope.WEEKLY -> R.string.weekly_total
-            StatsScope.ANNUALLY -> if (key.kind == StatsDetailKind.INCOME || key.kind == StatsDetailKind.TRANSFER_INCOME_GROUP) R.string.annual_income else R.string.annual_expenses
+
+            StatsScope.ANNUALLY -> if (key.kind == StatsDetailKind.INCOME ||
+                key.kind == StatsDetailKind.TRANSFER_INCOME_GROUP
+            ) {
+                R.string.annual_income
+            } else {
+                R.string.annual_expenses
+            }
+
             StatsScope.PERIOD -> R.string.total
         },
     )
     Scaffold(topBar = {
         val rows = ui.days.flatMap { it.rows }
-        if (selection.isNotEmpty()) SelectionBar(selection.size, rows.size, selectedNet(rows, selection), main, onToggleAll = {
-            vm.setSelection(if (selection.size >= rows.size) emptySet() else rows.map { it.id }.toSet())
-        }, onClose = { vm.setSelection(emptySet()) }, onAction = { bulkAction = it; bulkOpen = true })
-        else NexoTopBar(ui.title.asString(), onBack = { nav.back() })
+        if (selection.isNotEmpty()) {
+            SelectionBar(
+                selection.size,
+                rows.size,
+                selectedNet(rows, selection),
+                main,
+                onToggleAll = {
+                    vm.setSelection(
+                        if (selection.size >= rows.size) {
+                            emptySet()
+                        } else {
+                            rows.map { it.id }.toSet()
+                        },
+                    )
+                },
+                onClose = { vm.setSelection(emptySet()) },
+                onAction = {
+                    bulkAction = it
+                    bulkOpen = true
+                },
+            )
+        } else {
+            NexoTopBar(ui.title.asString(), onBack = { nav.back() })
+        }
     }) { p ->
         Column(Modifier.fillMaxSize().padding(p)) {
-            if (q.scope == StatsScope.PERIOD) DateRangeChips(q.from, q.to, vm::setRange)
-            else PeriodNavigator(periodLabel, { vm.step(false) }, { vm.step(true) }, if (q.scope == StatsScope.MONTHLY) ({ picker = true }) else null, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurface)
+            if (q.scope == StatsScope.PERIOD) {
+                DateRangeChips(q.from, q.to, vm::setRange)
+            } else {
+                PeriodNavigator(
+                    periodLabel,
+                    { vm.step(false) },
+                    { vm.step(true) },
+                    if (q.scope == StatsScope.MONTHLY) {
+                        ({ picker = true })
+                    } else {
+                        null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
             DayGroupList(
-                groups = ui.days, main = main, selection = selection,
-                onRowClick = { row -> if (selection.isNotEmpty()) vm.toggleSelect(row.id) else nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id)) },
+                groups = ui.days,
+                main = main,
+                selection = selection,
+                onRowClick = { row ->
+                    if (selection.isNotEmpty()) {
+                        vm.toggleSelect(row.id)
+                    } else {
+                        nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
+                    }
+                },
                 onRowLongClick = { row -> vm.toggleSelect(row.id) },
                 onMemoClick = { d -> nav.navigate(MemoListKey(d.toString())) },
                 header = {
@@ -114,9 +173,27 @@ fun StatsDetailScreen(key: StatsDetailKey) {
                         val colors = LocalNexoColors.current
                         GroupCard(Modifier.padding(horizontal = Space.l, vertical = Space.xs)) {
                             Column(Modifier.padding(Space.s)) {
-                                Row(Modifier.padding(horizontal = Space.s, vertical = Space.s), verticalAlignment = Alignment.CenterVertically) {
-                                    Text(summaryLabel.uppercase(Locale.getDefault()), style = NexoType.Caps, color = colors.textTertiary, maxLines = 1, modifier = Modifier.weight(1f))
-                                    AmountText(if (q.scope == StatsScope.ANNUALLY) ui.trend.sum() else ui.total, main, style = NexoType.Balance, color = colors.text)
+                                Row(
+                                    Modifier.padding(horizontal = Space.s, vertical = Space.s),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        summaryLabel.uppercase(Locale.getDefault()),
+                                        style = NexoType.Caps,
+                                        color = colors.textTertiary,
+                                        maxLines = 1,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    AmountText(
+                                        if (q.scope == StatsScope.ANNUALLY) {
+                                            ui.trend.sum()
+                                        } else {
+                                            ui.total
+                                        },
+                                        main,
+                                        style = NexoType.Balance,
+                                        color = colors.text,
+                                    )
                                 }
                                 ui.breakdown.forEach { b ->
                                     val on = b.key == sel
@@ -124,37 +201,86 @@ fun StatsDetailScreen(key: StatsDetailKey) {
                                         Modifier
                                             .fillMaxWidth()
                                             .clip(NexoShapes.control)
-                                            .background(if (on) colors.primarySoft else Color.Transparent)
+                                            .background(
+                                                if (on) colors.primarySoft else Color.Transparent,
+                                            )
                                             .clickable { vm.select(b.key) }
                                             .padding(horizontal = Space.s, vertical = 10.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        Text(b.name.asString(), style = MaterialTheme.typography.bodyMedium, color = if (on) colors.primaryText else colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                                         Text(
-                                            if (b.key == "all") "" else b.percent?.takeIf { it > 0 }?.let { "$it%" } ?: "-",
-                                            style = NexoType.Meta, color = colors.textSecondary, textAlign = TextAlign.End, modifier = Modifier.width(48.dp),
+                                            b.name.asString(),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = if (on) colors.primaryText else colors.text,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        Text(
+                                            if (b.key == "all") {
+                                                ""
+                                            } else {
+                                                b.percent?.takeIf { it > 0 }?.let { "$it%" }
+                                                    ?: "-"
+                                            },
+                                            style = NexoType.Meta,
+                                            color = colors.textSecondary,
+                                            textAlign = TextAlign.End,
+                                            modifier = Modifier.width(48.dp),
                                         )
                                         Spacer(Modifier.width(Space.m))
-                                        AmountText(b.amount, main, style = NexoType.AmountSmall, color = colors.text)
+                                        AmountText(
+                                            b.amount,
+                                            main,
+                                            style = NexoType.AmountSmall,
+                                            color = colors.text,
+                                        )
                                     }
                                 }
                             }
                         }
                     }
                     if (ui.trend.any { it != 0.0 } && ui.trend.size == ui.trendLabels.size) {
-                        item(key = "trend") { TrendCard(ui.title.asString(), ui.trendLabels, ui.trend, NexoPalette.Stats[ui.color % 11], main) }
+                        item(key = "trend") {
+                            TrendCard(
+                                ui.title.asString(),
+                                ui.trendLabels,
+                                ui.trend,
+                                NexoPalette.Stats[
+                                    ui.color %
+                                        11,
+                                ],
+                                main,
+                            )
+                        }
                     }
                 },
             )
         }
     }
-    if (picker) MonthPickerDialog(ref.settings.periods.monthPeriodContaining(q.anchor).label, onPick = vm::setMonth, onDismiss = { picker = false })
-    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.bulkActions, onDismiss = { bulkOpen = false })
+    if (picker) {
+        MonthPickerDialog(
+            ref.settings.periods.monthPeriodContaining(q.anchor).label,
+            onPick = vm::setMonth,
+            onDismiss = {
+                picker = false
+            },
+        )
+    }
+    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.bulkActions, onDismiss = {
+        bulkOpen = false
+    })
 }
 
 /** The category's total over the recent periods; tap or drag the chart to read another period. */
 @Composable
-private fun TrendCard(title: String, labels: List<String>, values: List<Double>, color: Color, main: Currency) {
+private fun TrendCard(
+    title: String,
+    labels: List<String>,
+    values: List<Double>,
+    color: Color,
+    main: Currency,
+) {
     val haptics = rememberHaptics()
     var picked by rememberSaveable(labels) { mutableIntStateOf(labels.lastIndex) }
     val i = picked.coerceIn(0, labels.lastIndex)
@@ -162,9 +288,20 @@ private fun TrendCard(title: String, labels: List<String>, values: List<Double>,
         Column(Modifier.padding(start = Space.l, end = Space.l, top = Space.l, bottom = Space.m)) {
             ChartTitle(title, labels[i])
             Spacer(Modifier.height(Space.xxs))
-            AmountText(values[i], main, Modifier.shrinkToFit(), style = NexoType.Balance, color = LocalNexoColors.current.text)
+            AmountText(
+                values[i],
+                main,
+                Modifier.shrinkToFit(),
+                style = NexoType.Balance,
+                color = LocalNexoColors.current.text,
+            )
             Spacer(Modifier.height(Space.s))
-            AreaChart(labels, values, color, i, { if (it != picked) { haptics.tick(); picked = it } })
+            AreaChart(labels, values, color, i, {
+                if (it != picked) {
+                    haptics.tick()
+                    picked = it
+                }
+            })
         }
     }
 }

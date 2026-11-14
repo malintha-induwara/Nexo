@@ -61,9 +61,14 @@ import org.json.JSONObject
 /** Column-name based cursor access that tolerates missing columns. */
 private class Row(private val c: Cursor) {
     private fun idx(name: String) = c.getColumnIndex(name)
-    fun str(name: String): String? = idx(name).takeIf { it >= 0 && !c.isNull(it) }?.let { c.getString(it) }
+    fun str(name: String): String? =
+        idx(name).takeIf { it >= 0 && !c.isNull(it) }?.let { c.getString(it) }
     fun text(name: String): String = str(name) ?: ""
-    fun dbl(name: String): Double? = str(name)?.trim()?.takeIf { it.isNotEmpty() }?.toDoubleOrNull()?.takeIf { !it.isNaN() && !it.isInfinite() }
+    fun dbl(name: String): Double? =
+        str(name)?.trim()?.takeIf { it.isNotEmpty() }?.toDoubleOrNull()?.takeIf {
+            !it.isNaN() &&
+                !it.isInfinite()
+        }
     fun long(name: String): Long? = dbl(name)?.toLong()
     fun int(name: String): Int? = dbl(name)?.toInt()
 }
@@ -83,7 +88,14 @@ class LegacyImporter @Inject constructor(
     suspend fun import(file: File): RestoreResult = withContext(ioDispatcher) {
         runCatching {
             SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY).use { src ->
-                if (!hasColumn(src, "INOUTCOME", "uid")) return@withContext RestoreResult.Unsupported
+                if (!hasColumn(
+                        src,
+                        "INOUTCOME",
+                        "uid",
+                    )
+                ) {
+                    return@withContext RestoreResult.Unsupported
+                }
                 val data = read(src)
                 db.withTransaction {
                     val w = db.openHelper.writableDatabase
@@ -101,7 +113,11 @@ class LegacyImporter @Inject constructor(
                     db.budgetDao().upsertBudgets(data.budgets)
                     db.budgetDao().upsertAmounts(data.budgetAmounts)
                     db.memoDao().upsert(data.memos)
-                    db.settingDao().putAll(data.settings.toMap().map { SettingEntity(it.key, it.value) })
+                    db.settingDao().putAll(
+                        data.settings.toMap().map {
+                            SettingEntity(it.key, it.value)
+                        },
+                    )
                 }
             }
             // Fill anything the backup lacked (no groups, no currency…).
@@ -110,19 +126,29 @@ class LegacyImporter @Inject constructor(
         }.getOrElse { RestoreResult.Failed(it.message) }
     }
 
-    private fun hasColumn(db: SQLiteDatabase, table: String, column: String): Boolean = runCatching {
-        db.rawQuery("PRAGMA table_info(`$table`)", null).use { c ->
-            val n = c.getColumnIndex("name")
-            generateSequence { if (c.moveToNext()) c.getString(n) else null }.any { it.equals(column, ignoreCase = true) }
-        }
-    }.getOrDefault(false)
+    private fun hasColumn(db: SQLiteDatabase, table: String, column: String): Boolean =
+        runCatching {
+            db.rawQuery("PRAGMA table_info(`$table`)", null).use { c ->
+                val n = c.getColumnIndex("name")
+                generateSequence {
+                    if (c.moveToNext()) c.getString(n) else null
+                }.any { it.equals(column, ignoreCase = true) }
+            }
+        }.getOrDefault(false)
 
-    private fun hasTable(db: SQLiteDatabase, table: String): Boolean =
-        db.rawQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", arrayOf(table)).use { it.moveToFirst() }
+    private fun hasTable(db: SQLiteDatabase, table: String): Boolean = db.rawQuery(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+        arrayOf(table),
+    ).use {
+        it.moveToFirst()
+    }
 
     private inline fun SQLiteDatabase.each(table: String, block: (Row) -> Unit) {
         if (!hasTable(this, table)) return
-        rawQuery("SELECT * FROM `$table`", null).use { c -> val r = Row(c); while (c.moveToNext()) block(r) }
+        rawQuery("SELECT * FROM `$table`", null).use { c ->
+            val r = Row(c)
+            while (c.moveToNext()) block(r)
+        }
     }
 
     private fun deleted(r: Row, column: String) = r.int(column) == 1
@@ -151,12 +177,19 @@ class LegacyImporter @Inject constructor(
         val currencyMap = HashMap<String, String>()
         val currencies = LinkedHashMap<String, CurrencyEntity>()
         var mainIso: String? = null
-        src.each("CURRENCY") { r -> if (r.int("IS_MAIN_CURRENCY") == 1 && r.int("IS_SHOW") != 0 && mainIso == null) mainIso = r.str("ISO") }
+        src.each("CURRENCY") { r ->
+            if (r.int("IS_MAIN_CURRENCY") == 1 && r.int("IS_SHOW") != 0 && mainIso == null) {
+                mainIso = r.str("ISO")
+            }
+        }
         src.each("CURRENCY") { r ->
             val uid = r.str("uid") ?: return@each
             val iso = r.str("ISO")?.takeIf { it.isNotBlank() }
             val custom = r.str("INSERT_TYPE") == "C" || iso == null
-            if (!custom && mainIso != null && r.str("MAIN_ISO") != null && r.str("MAIN_ISO") != mainIso && currencies.containsKey(iso)) {
+            if (!custom && mainIso != null && r.str("MAIN_ISO") != null &&
+                r.str("MAIN_ISO") != mainIso &&
+                currencies.containsKey(iso)
+            ) {
                 currencyMap[uid] = iso!!
                 return@each
             }
@@ -169,9 +202,22 @@ class LegacyImporter @Inject constructor(
                 id = id,
                 isoCode = if (custom) null else iso,
                 name = r.str("NAME") ?: catalog?.displayName() ?: id,
-                symbol = r.str("SYMBOL")?.takeIf { it.isNotBlank() } ?: catalog?.let { if (isMain) it.mainSymbol else it.subSymbol } ?: (iso ?: "¤"),
-                symbolPosition = if (r.str("SYMBOL_POSITION") == "S") SymbolPosition.SUFFIX else SymbolPosition.PREFIX,
-                decimals = (r.int("DECIMAL_POINT") ?: catalog?.decimals ?: 2).let { if (it == 6) 8 else it.coerceIn(0, 8) },
+                symbol =
+                    r.str("SYMBOL")?.takeIf { it.isNotBlank() }
+                        ?: catalog?.let { if (isMain) it.mainSymbol else it.subSymbol }
+                        ?: (iso ?: "¤"),
+                symbolPosition = if (r.str("SYMBOL_POSITION") == "S") {
+                    SymbolPosition.SUFFIX
+                } else {
+                    SymbolPosition.PREFIX
+                },
+                decimals = (r.int("DECIMAL_POINT") ?: catalog?.decimals ?: 2).let {
+                    if (it == 6) {
+                        8
+                    } else {
+                        it.coerceIn(0, 8)
+                    }
+                },
                 rate = if (isMain) 1.0 else (r.dbl("RATE")?.takeIf { it > 0 } ?: 1.0),
                 isMain = isMain,
                 isVisible = r.int("IS_SHOW") != 0 && r.int("IS_DEL") != 1,
@@ -211,7 +257,8 @@ class LegacyImporter @Inject constructor(
             )
         }
         val groupIds = groups.map { it.id }.toSet()
-        val fallbackGroup = groups.firstOrNull { it.id == "11" }?.id ?: groups.firstOrNull()?.id ?: "11"
+        val fallbackGroup =
+            groups.firstOrNull { it.id == "11" }?.id ?: groups.firstOrNull()?.id ?: "11"
 
         // Accounts.
         val accounts = ArrayList<AccountEntity>()
@@ -232,15 +279,29 @@ class LegacyImporter @Inject constructor(
                 },
                 includeInTotals = r.str("ZDATA2")?.trim() != "1",
                 linkedAccountId = r.str("cardAssetUid")?.takeIf { it.isNotBlank() && it != "0" },
-                settlementDay = r.str("CARD_DAY_FIN")?.filter { it.isDigit() }?.toIntOrNull()?.takeIf { it in 1..31 } ?: 1,
-                paymentDay = r.str("CARD_DAY_PAY")?.filter { it.isDigit() }?.toIntOrNull()?.takeIf { it in 1..31 } ?: 1,
+                settlementDay =
+                    r.str("CARD_DAY_FIN")?.filter { it.isDigit() }?.toIntOrNull()?.takeIf {
+                        it in
+                            1..31
+                    }
+                        ?: 1,
+                paymentDay =
+                    r.str("CARD_DAY_PAY")?.filter { it.isDigit() }?.toIntOrNull()?.takeIf {
+                        it in
+                            1..31
+                    }
+                        ?: 1,
                 transferExpense = r.int("IS_TRANS_EXPENSE") == 1,
                 createdAt = r.long("ID") ?: 0L,
                 updatedAt = r.long("A_UTIME") ?: now,
             )
         }
         val accountIds = accounts.map { it.id }.toSet()
-        fun acc(uid: String?): String? = uid?.takeIf { it.isNotBlank() && it != "-2" && it != "0" }?.takeIf { it in accountIds }
+        fun acc(uid: String?): String? =
+            uid?.takeIf { it.isNotBlank() && it != "-2" && it != "0" }?.takeIf {
+                it in
+                    accountIds
+            }
 
         // Categories.
         val categories = ArrayList<CategoryEntity>()
@@ -251,7 +312,13 @@ class LegacyImporter @Inject constructor(
                 id = uid,
                 name = r.text("NAME"),
                 kind = if (r.int("TYPE") == 0) CategoryKind.INCOME else CategoryKind.EXPENSE,
-                parentId = if (sub) r.str("pUid")?.takeIf { it.isNotBlank() && it != "0" } else null,
+                parentId = if (sub) {
+                    r.str("pUid")?.takeIf {
+                        it.isNotBlank() && it != "0"
+                    }
+                } else {
+                    null
+                },
                 orderSeq = r.int("ORDERSEQ") ?: 0,
                 isDeleted = r.int("C_IS_DEL") == 1,
                 createdAt = r.long("ID") ?: 0L,
@@ -265,8 +332,17 @@ class LegacyImporter @Inject constructor(
         src.each("REPEATTRANSACTION") { r ->
             if (deleted(r, "IS_DEL")) return@each
             val uid = r.str("uid") ?: return@each
-            val type = r.int("REPEAT_TYPE")?.let { RepeatType.fromCode(it) }?.takeIf { it != RepeatType.NONE } ?: return@each
-            val next = r.long("NEXT_DATE")?.takeIf { it > 0 }?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() } ?: return@each
+            val type =
+                r.int("REPEAT_TYPE")?.let { RepeatType.fromCode(it) }?.takeIf {
+                    it !=
+                        RepeatType.NONE
+                }
+                    ?: return@each
+            val next =
+                r.long("NEXT_DATE")?.takeIf {
+                    it > 0
+                }?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
+                    ?: return@each
             val doType = r.int("DO_TYPE") ?: 1
             val kind = when (doType) {
                 0 -> TxKind.INCOME
@@ -277,13 +353,23 @@ class LegacyImporter @Inject constructor(
             repeats += RepeatRuleEntity(
                 id = uid, kind = kind,
                 accountId = acc(if (swap) r.str("toAssetUid") else r.str("assetUid")),
-                toAccountId = if (kind == TxKind.TRANSFER_OUT) acc(if (swap) r.str("assetUid") else r.str("toAssetUid")) else null,
-                categoryId = if (kind == TxKind.TRANSFER_OUT) null else r.str("ctgUid")?.takeIf { it in categoryIds },
+                toAccountId = if (kind == TxKind.TRANSFER_OUT) {
+                    acc(if (swap) r.str("assetUid") else r.str("toAssetUid"))
+                } else {
+                    null
+                },
+                categoryId = if (kind == TxKind.TRANSFER_OUT) {
+                    null
+                } else {
+                    r.str("ctgUid")?.takeIf { it in categoryIds }
+                },
                 currencyId = cur(r.str("currencyUid")?.takeIf { it != "0" }),
                 amount = r.dbl("AMOUNT_SUB") ?: 0.0,
                 note = r.text("PAYEE"), description = r.text("MEMO"),
                 repeatType = type, nextDate = next.toIsoText(),
-                endDate = r.long("END_DATE")?.takeIf { it > 0 }?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate().toIsoText() },
+                endDate = r.long("END_DATE")?.takeIf {
+                    it > 0
+                }?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate().toIsoText() },
                 anchorDay = next.dayOfMonth, createdAt = now, updatedAt = r.long("USETIME") ?: now,
             )
         }
@@ -305,28 +391,43 @@ class LegacyImporter @Inject constructor(
                 else -> return@each
             }
             val ms = r.long("ZDATE")
-            val date = r.str("WDATE")?.takeIf { it.length == 10 }?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-                ?: ms?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() } ?: return@each
-            val time = ms?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalTime() } ?: LocalTime.MIDNIGHT
+            val date =
+                r.str("WDATE")?.takeIf {
+                    it.length == 10
+                }?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                    ?: ms?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
+                    ?: return@each
+            val time =
+                ms?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalTime() }
+                    ?: LocalTime.MIDNIGHT
             val ctg = r.str("ctgUid")?.trim()
             val adjustment = ctg == "-4" || kind.isBalance
             val account = acc(r.str("assetUid"))
             val main = r.dbl("ZMONEY") ?: 0.0
             val amount = r.dbl("IN_ZMONEY") ?: main
             val currencyId = cur(r.str("currencyUid")?.takeIf { it.isNotBlank() && it != "0" })
-            val accountAmount = r.dbl("AMOUNT_ACCOUNT") ?: if (account == null || accountCurrency[account] == mainId) main else amount
+            val accountAmount =
+                r.dbl("AMOUNT_ACCOUNT")
+                    ?: if (account == null || accountCurrency[account] == mainId) main else amount
             val marker = r.str("CARDDIVIDMONTH")?.trim()?.toIntOrNull() ?: 0
             val position = Regex("\\((\\d+)/(\\d+)\\)").find(r.text("CARD_DIVIDE_MONTH_STR"))
             val divide = r.str("cardDivideUid")?.takeIf { it.isNotBlank() && it != "0" }
             val installment = divide != null && (marker == 10001 || position != null)
             val repeatType = if (marker in 1..17) RepeatType.fromCode(marker) else null
-            val repeatRule = uid.substringBeforeLast('_', "").substringBeforeLast('_', "").takeIf { it in repeatIds }
+            val repeatRule = uid.substringBeforeLast('_', "").substringBeforeLast('_', "").takeIf {
+                it in
+                    repeatIds
+            }
             transactions += TransactionEntity(
                 id = uid,
                 kind = kind,
                 accountId = account,
                 counterpartAccountId = if (kind.isTransfer) acc(r.str("toAssetUid")) else null,
-                categoryId = if (kind.isTransfer || adjustment) null else ctg?.takeIf { it in categoryIds },
+                categoryId = if (kind.isTransfer || adjustment) {
+                    null
+                } else {
+                    ctg?.takeIf { it in categoryIds }
+                },
                 isBalanceAdjustment = adjustment,
                 dateTime = date.atTime(time).atZone(zone).toInstant().toEpochMilli(),
                 date = date.toIsoText(),
@@ -339,8 +440,18 @@ class LegacyImporter @Inject constructor(
                 transferGroupId = r.str("txUidTrans")?.takeIf { it.isNotBlank() && it != "0" },
                 feeGroupId = r.str("txUidFee")?.takeIf { it.isNotBlank() && it != "0" },
                 installmentGroupId = if (installment) divide else null,
-                installmentIndex = if (installment) position?.groupValues?.get(1)?.toIntOrNull() ?: 0 else 0,
-                installmentCount = if (installment) position?.groupValues?.get(2)?.toIntOrNull() ?: 0 else 0,
+                installmentIndex = if (installment) {
+                    position?.groupValues?.get(1)?.toIntOrNull()
+                        ?: 0
+                } else {
+                    0
+                },
+                installmentCount = if (installment) {
+                    position?.groupValues?.get(2)?.toIntOrNull()
+                        ?: 0
+                } else {
+                    0
+                },
                 repeatRuleId = repeatRule,
                 repeatType = repeatType,
                 sourceText = r.str("SMS_ORIGIN")?.takeIf { it.isNotBlank() },
@@ -371,11 +482,21 @@ class LegacyImporter @Inject constructor(
         src.each("PHOTO") { r ->
             if (deleted(r, "IS_DEL")) return@each
             val tx = r.str("txUid")?.takeIf { it in txIds } ?: return@each
-            val name = r.str("FILE_NAME")?.takeIf { it.isNotBlank() } ?: r.str("FILE_PATH")?.substringAfterLast('/') ?: return@each
+            val name =
+                r.str("FILE_NAME")?.takeIf { it.isNotBlank() }
+                    ?: r.str("FILE_PATH")?.substringAfterLast('/')
+                    ?: return@each
             val meta = runCatching { JSONObject(r.text("ORG_FILE_NAME")) }.getOrNull()
             photos += PhotoEntity(
-                id = r.str("uid") ?: UUID.randomUUID().toString(), transactionId = tx, fileName = name, fileSize = r.long("FILE_SIZE") ?: 0,
-                orderIndex = meta?.optInt("order", 1) ?: 1, checksum = meta?.optString("checksum").orEmpty(), createdAt = meta?.optLong("ctime", now) ?: now,
+                id = r.str("uid") ?: UUID.randomUUID().toString(),
+                transactionId = tx,
+                fileName = name,
+                fileSize =
+                    r.long("FILE_SIZE") ?: 0,
+                orderIndex = meta?.optInt("order", 1) ?: 1,
+                checksum = meta?.optString("checksum").orEmpty(),
+                createdAt =
+                    meta?.optLong("ctime", now) ?: now,
             )
         }
 
@@ -394,10 +515,21 @@ class LegacyImporter @Inject constructor(
             favorites += FavoriteEntity(
                 id = uid, kind = kind,
                 accountId = acc(if (swap) r.str("toAssetUid") else r.str("assetUid")),
-                toAccountId = if (kind == TxKind.TRANSFER_OUT) acc(if (swap) r.str("assetUid") else r.str("toAssetUid")) else null,
-                categoryId = if (kind == TxKind.TRANSFER_OUT) null else r.str("ctgUid")?.takeIf { it in categoryIds },
+                toAccountId = if (kind == TxKind.TRANSFER_OUT) {
+                    acc(if (swap) r.str("assetUid") else r.str("toAssetUid"))
+                } else {
+                    null
+                },
+                categoryId = if (kind == TxKind.TRANSFER_OUT) {
+                    null
+                } else {
+                    r.str("ctgUid")?.takeIf { it in categoryIds }
+                },
                 currencyId = cur(r.str("currencyUid")), amount = r.dbl("AMOUNT_SUB") ?: 0.0,
-                note = r.text("PAYEE"), description = r.text("MEMO"), orderSeq = r.int("ORDERSEQ") ?: 0, updatedAt = r.long("USETIME") ?: now,
+                note = r.text("PAYEE"), description = r.text("MEMO"),
+                orderSeq =
+                    r.int("ORDERSEQ") ?: 0,
+                updatedAt = r.long("USETIME") ?: now,
             )
         }
 
@@ -408,11 +540,17 @@ class LegacyImporter @Inject constructor(
             val uid = r.str("uid") ?: return@each
             if ((r.int("DO_TYPE") ?: 1) != 1 || (r.int("TRANSFER_TYPE") ?: 0) != 0) return@each
             val total = r.int("IS_TOTAL") == 1
-            val target = if (total) null else r.str("targetUid")?.takeIf { it in categoryIds } ?: return@each
+            val target = if (total) {
+                null
+            } else {
+                r.str("targetUid")?.takeIf { it in categoryIds }
+                    ?: return@each
+            }
             val id = Budget.idFor(target)
             budgetIdMap[uid] = id
             if (budgets[id]?.isDeleted == false) return@each
-            budgets[id] = BudgetEntity(id, target, r.int("ORDER_SEQ") ?: 0, r.int("IS_DEL") == 1, now)
+            budgets[id] =
+                BudgetEntity(id, target, r.int("ORDER_SEQ") ?: 0, r.int("IS_DEL") == 1, now)
         }
         val budgetAmounts = LinkedHashMap<String, BudgetAmountEntity>()
         src.each("BUDGET_AMOUNT") { r ->
@@ -429,17 +567,34 @@ class LegacyImporter @Inject constructor(
             if (deleted(r, "isDel")) return@each
             val uid = r.str("uid") ?: return@each
             val ms = r.long("memoTime") ?: now
-            val date = r.str("memoDate")?.takeIf { it.length == 10 } ?: Instant.ofEpochMilli(ms).atZone(zone).toLocalDate().toIsoText()
+            val date =
+                r.str("memoDate")?.takeIf { it.length == 10 }
+                    ?: Instant.ofEpochMilli(ms).atZone(zone).toLocalDate().toIsoText()
             memos += MemoEntity(
-                id = uid, title = r.text("title"), content = r.text("content"), date = date, dateTime = ms,
-                pinned = r.int("pinned") == 1, pinnedAt = r.long("pinnedTime") ?: 0, orderSeq = r.int("orderSeq") ?: 0,
-                color = runCatching { MemoColor.valueOf(r.text("color").uppercase()) }.getOrDefault(MemoColor.WHITE), updatedAt = now,
+                id = uid,
+                title = r.text("title"),
+                content = r.text("content"), date = date, dateTime = ms,
+                pinned = r.int("pinned") == 1, pinnedAt = r.long("pinnedTime") ?: 0,
+                orderSeq =
+                    r.int("orderSeq") ?: 0,
+                color = runCatching {
+                    MemoColor.valueOf(r.text("color").uppercase())
+                }.getOrDefault(MemoColor.WHITE),
+                updatedAt = now,
             )
         }
 
         return Data(
-            currencies.values.toList(), groups, accounts, categories, transactions, tags, links.values.toList(), photos,
-            repeats, favorites, budgets.values.toList(), budgetAmounts.values.toList(), memos, readSettings(src),
+            currencies.values.toList(),
+            groups,
+            accounts,
+            categories,
+            transactions,
+            tags,
+            links.values.toList(),
+            photos,
+            repeats, favorites, budgets.values.toList(), budgetAmounts.values.toList(), memos,
+            readSettings(src),
         )
     }
 
@@ -460,8 +615,20 @@ class LegacyImporter @Inject constructor(
                 "2" -> WeekendRule.FOLLOWING_MONDAY
                 else -> WeekendRule.NONE
             },
-            weekStartDay = v(10002)?.toIntOrNull()?.takeIf { it in 0..6 }?.let { if (it == 0) DayOfWeek.SUNDAY else DayOfWeek.of(it) } ?: DayOfWeek.SUNDAY,
-            startScreen = if ((v(10003)?.toIntOrNull() ?: 0) >= 1) StartScreen.CALENDAR else StartScreen.DAILY,
+            weekStartDay =
+                v(10002)?.toIntOrNull()?.takeIf { it in 0..6 }?.let {
+                    if (it == 0) {
+                        DayOfWeek.SUNDAY
+                    } else {
+                        DayOfWeek.of(it)
+                    }
+                }
+                    ?: DayOfWeek.SUNDAY,
+            startScreen = if ((v(10003)?.toIntOrNull() ?: 0) >= 1) {
+                StartScreen.CALENDAR
+            } else {
+                StartScreen.DAILY
+            },
             swipeMode = when (v(10014)) {
                 "0" -> SwipeMode.CHANGE_TAB
                 "2" -> SwipeMode.NONE
@@ -476,10 +643,18 @@ class LegacyImporter @Inject constructor(
             memoButton = v(10016) == "1",
             quickAddNotification = v(10000) == "1",
             carryOver = v(-5457) == "1",
-            cardAccounting = if (v(-30009) == "1") CardAccounting.LUMP_SUM else CardAccounting.AT_USE,
+            cardAccounting = if (v(-30009) == "1") {
+                CardAccounting.LUMP_SUM
+            } else {
+                CardAccounting.AT_USE
+            },
             transferIncome = v(10012) != "2",
             subcategories = v(19810) == "1",
-            repeatReflect = if (v(10009) == "1") RepeatReflect.FIRST_OF_PERIOD else RepeatReflect.ON_DATE,
+            repeatReflect = if (v(10009) == "1") {
+                RepeatReflect.FIRST_OF_PERIOD
+            } else {
+                RepeatReflect.ON_DATE
+            },
         ).let { if (values.isEmpty()) d else it }
     }
 }

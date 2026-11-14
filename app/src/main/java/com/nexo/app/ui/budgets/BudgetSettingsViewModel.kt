@@ -35,13 +35,36 @@ class BudgetSettingsViewModel @Inject constructor(
     private val repo: BudgetsRepository,
 ) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
-    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        RefData(),
+    )
     private val added = MutableStateFlow(false)
 
-    private val currentKey: Int get() = ref.value.settings.periods.monthPeriodContaining(LocalDate.now()).key
+    private val currentKey: Int get() = ref.value.settings.periods.monthPeriodContaining(
+        LocalDate.now(),
+    ).key
 
-    val uiState: StateFlow<BudgetSettingsUiState> = combine(ref, repo.getBudgetsStream(), repo.getBudgetAmountsStream(), added) { r, b, a, done ->
-        val list = BudgetCalc.compute(r, b, a, emptyList(), r.settings.periods.monthPeriodContaining(LocalDate.now()).key, forSettings = true)
+    val uiState: StateFlow<BudgetSettingsUiState> = combine(
+        ref,
+        repo.getBudgetsStream(),
+        repo.getBudgetAmountsStream(),
+        added,
+    ) {
+            r,
+            b,
+            a,
+            done,
+        ->
+        val list = BudgetCalc.compute(
+            r,
+            b,
+            a,
+            emptyList(),
+            r.settings.periods.monthPeriodContaining(LocalDate.now()).key,
+            forSettings = true,
+        )
         BudgetSettingsUiState(r, b, a, list, done)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BudgetSettingsUiState())
 
@@ -54,9 +77,13 @@ class BudgetSettingsViewModel @Inject constructor(
         added.value = false
     }
 
-    fun setMonth(budgetId: String, key: Int, amount: Double) = viewModelScope.launch { repo.setMonth(budgetId, key, amount) }
+    fun setMonth(budgetId: String, key: Int, amount: Double) = viewModelScope.launch {
+        repo.setMonth(budgetId, key, amount)
+    }
 
-    fun setDefault(budgetId: String, amount: Double) = viewModelScope.launch { repo.setDefault(budgetId, currentKey, amount) }
+    fun setDefault(budgetId: String, amount: Double) = viewModelScope.launch {
+        repo.setDefault(budgetId, currentKey, amount)
+    }
 
     fun delete(budgetId: String) = viewModelScope.launch { repo.delete(budgetId) }
 }

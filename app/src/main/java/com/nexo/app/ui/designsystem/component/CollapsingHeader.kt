@@ -44,7 +44,11 @@ class CollapsingHeaderState {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
             if (available.y < 0f && heightPx > 0f) Offset(0f, consume(available.y)) else Offset.Zero
 
-        override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset =
+        override fun onPostScroll(
+            consumed: Offset,
+            available: Offset,
+            source: NestedScrollSource,
+        ): Offset =
             if (available.y > 0f && heightPx > 0f) Offset(0f, consume(available.y)) else Offset.Zero
 
         override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
@@ -72,7 +76,9 @@ fun rememberCollapsingHeaderState(): CollapsingHeaderState = remember { Collapsi
 fun Modifier.collapsingHeader(state: CollapsingHeaderState): Modifier = this
     .clipToBounds()
     .layout { measurable, constraints ->
-        val placeable = measurable.measure(constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity))
+        val placeable = measurable.measure(
+            constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity),
+        )
         state.heightPx = placeable.height.toFloat()
         val height = (placeable.height + state.offset).roundToInt().coerceIn(0, placeable.height)
         layout(placeable.width, height) {

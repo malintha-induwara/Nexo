@@ -10,9 +10,22 @@ interface CurrenciesRepository {
 
     suspend fun saveSub(c: Currency)
 
-    fun builtinSub(c: CatalogCurrency, rate: Double, position: SymbolPosition, decimals: Int, existing: Currency?): Currency
+    fun builtinSub(
+        c: CatalogCurrency,
+        rate: Double,
+        position: SymbolPosition,
+        decimals: Int,
+        existing: Currency?,
+    ): Currency
 
-    fun customSub(id: String?, name: String, symbol: String, position: SymbolPosition, decimals: Int, rate: Double): Currency
+    fun customSub(
+        id: String?,
+        name: String,
+        symbol: String,
+        position: SymbolPosition,
+        decimals: Int,
+        rate: Double,
+    ): Currency
 
     suspend fun hide(id: String)
 

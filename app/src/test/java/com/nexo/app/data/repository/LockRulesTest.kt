@@ -16,12 +16,24 @@ class LockRulesTest {
     @Test
     fun aTripToTheCameraDoesNotLock() {
         assertFalse(DefaultAppLockRepository.shouldLock(45_000, immediately, handoff = true))
-        assertFalse(DefaultAppLockRepository.shouldLock(DefaultAppLockRepository.HANDOFF_GRACE, immediately, handoff = true))
+        assertFalse(
+            DefaultAppLockRepository.shouldLock(
+                DefaultAppLockRepository.HANDOFF_GRACE,
+                immediately,
+                handoff = true,
+            ),
+        )
     }
 
     @Test
     fun aHandoffLeftTooLongStillLocks() {
-        assertTrue(DefaultAppLockRepository.shouldLock(DefaultAppLockRepository.HANDOFF_GRACE + 1, immediately, handoff = true))
+        assertTrue(
+            DefaultAppLockRepository.shouldLock(
+                DefaultAppLockRepository.HANDOFF_GRACE + 1,
+                immediately,
+                handoff = true,
+            ),
+        )
     }
 
     @Test

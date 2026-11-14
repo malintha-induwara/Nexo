@@ -32,11 +32,22 @@ import com.nexo.app.ui.designsystem.component.IncomeExpensePill
 import com.nexo.app.ui.designsystem.theme.nexo
 import com.nexo.app.ui.transactions.FilterCriteria
 
-data class CheckItem(val id: String, val label: String, val header: Boolean = false, val indent: Boolean = false)
+data class CheckItem(
+    val id: String,
+    val label: String,
+    val header: Boolean = false,
+    val indent: Boolean = false,
+)
 
 /** Generic multi-select list with an "All" tri-state header. */
 @Composable
-fun MultiSelectDialog(title: String, items: List<CheckItem>, initial: Set<String>, onConfirm: (Set<String>) -> Unit, onDismiss: () -> Unit) {
+fun MultiSelectDialog(
+    title: String,
+    items: List<CheckItem>,
+    initial: Set<String>,
+    onConfirm: (Set<String>) -> Unit,
+    onDismiss: () -> Unit,
+) {
     var selected by remember { mutableStateOf(initial) }
     val ids = items.filter { !it.header }.map { it.id }.toSet()
     AlertDialog(
@@ -44,14 +55,21 @@ fun MultiSelectDialog(title: String, items: List<CheckItem>, initial: Set<String
         title = { Text(title) },
         text = {
             Column {
-                Row(Modifier.fillMaxWidth().clickable { selected = if (selected.containsAll(ids)) emptySet() else ids }, verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.fillMaxWidth().clickable {
+                        selected =
+                            if (selected.containsAll(ids)) emptySet() else ids
+                    },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     TriStateCheckbox(
                         when {
                             selected.isEmpty() -> ToggleableState.Off
                             selected.containsAll(ids) -> ToggleableState.On
                             else -> ToggleableState.Indeterminate
                         },
-                        onClick = null, modifier = Modifier.padding(8.dp),
+                        onClick = null,
+                        modifier = Modifier.padding(8.dp),
                     )
                     Text(stringResource(R.string.all), fontWeight = FontWeight.SemiBold)
                 }
@@ -59,14 +77,30 @@ fun MultiSelectDialog(title: String, items: List<CheckItem>, initial: Set<String
                     items.forEach { item ->
                         item(key = item.id + item.header) {
                             if (item.header) {
-                                Text(item.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.nexo.primaryText, modifier = Modifier.padding(top = 10.dp, start = 8.dp))
+                                Text(
+                                    item.label,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.nexo.primaryText,
+                                    modifier = Modifier.padding(top = 10.dp, start = 8.dp),
+                                )
                             } else {
                                 Row(
-                                    Modifier.fillMaxWidth().clickable { selected = if (item.id in selected) selected - item.id else selected + item.id }
+                                    Modifier.fillMaxWidth().clickable {
+                                        selected =
+                                            if (item.id in selected) {
+                                                selected - item.id
+                                            } else {
+                                                selected + item.id
+                                            }
+                                    }
                                         .padding(start = if (item.indent) 24.dp else 0.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Checkbox(item.id in selected, onCheckedChange = null, modifier = Modifier.padding(8.dp))
+                                    Checkbox(
+                                        item.id in selected,
+                                        onCheckedChange = null,
+                                        modifier = Modifier.padding(8.dp),
+                                    )
                                     Text(item.label)
                                 }
                             }
@@ -75,8 +109,15 @@ fun MultiSelectDialog(title: String, items: List<CheckItem>, initial: Set<String
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(selected); onDismiss() }) { Text(stringResource(R.string.action_ok)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = {
+            TextButton(onClick = {
+                onConfirm(selected)
+                onDismiss()
+            }) { Text(stringResource(R.string.action_ok)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }
 
@@ -95,7 +136,12 @@ fun accountItems(ref: RefData): List<CheckItem> {
 
 /** Category criterion: Income / Expenses tabs, with all-of-kind and per category / subcategory picks. */
 @Composable
-fun CategoryCriteriaDialog(ref: RefData, initial: FilterCriteria, onConfirm: (FilterCriteria) -> Unit, onDismiss: () -> Unit) {
+fun CategoryCriteriaDialog(
+    ref: RefData,
+    initial: FilterCriteria,
+    onConfirm: (FilterCriteria) -> Unit,
+    onDismiss: () -> Unit,
+) {
     var f by remember { mutableStateOf(initial) }
     var tab by remember { mutableIntStateOf(1) }
     AlertDialog(
@@ -103,26 +149,56 @@ fun CategoryCriteriaDialog(ref: RefData, initial: FilterCriteria, onConfirm: (Fi
         title = { Text(stringResource(R.string.category)) },
         text = {
             Column {
-                IncomeExpensePill(tab, onSelect = { tab = it }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                IncomeExpensePill(tab, onSelect = {
+                    tab = it
+                }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
                 val kind = if (tab == 0) CategoryKind.INCOME else CategoryKind.EXPENSE
                 val allOn = if (kind == CategoryKind.INCOME) f.incomeAll else f.expenseAll
-                Row(Modifier.fillMaxWidth().clickable { f = if (kind == CategoryKind.INCOME) f.copy(incomeAll = !f.incomeAll) else f.copy(expenseAll = !f.expenseAll) }, verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.fillMaxWidth().clickable {
+                        f =
+                            if (kind == CategoryKind.INCOME) {
+                                f.copy(incomeAll = !f.incomeAll)
+                            } else {
+                                f.copy(expenseAll = !f.expenseAll)
+                            }
+                    },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Checkbox(allOn, onCheckedChange = null, modifier = Modifier.padding(8.dp))
                     Text(stringResource(R.string.all), fontWeight = FontWeight.SemiBold)
                 }
                 LazyColumn(Modifier.height(340.dp)) {
                     ref.mainCategories(kind).forEach { m ->
                         item(key = m.id) {
-                            Row(Modifier.fillMaxWidth().clickable { f = f.copy(categories = toggle(f.categories, m.id)) }, verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(m.id in f.categories || allOn, onCheckedChange = null, modifier = Modifier.padding(8.dp))
+                            Row(
+                                Modifier.fillMaxWidth().clickable {
+                                    f = f.copy(categories = toggle(f.categories, m.id))
+                                },
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    m.id in f.categories || allOn,
+                                    onCheckedChange = null,
+                                    modifier = Modifier.padding(8.dp),
+                                )
                                 Text(m.name)
                             }
                         }
                         if (ref.settings.subcategories) {
                             ref.subCategories(m.id).forEach { s ->
                                 item(key = s.id) {
-                                    Row(Modifier.fillMaxWidth().clickable { f = f.copy(categories = toggle(f.categories, s.id)) }.padding(start = 24.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Checkbox(s.id in f.categories || m.id in f.categories || allOn, onCheckedChange = null, modifier = Modifier.padding(8.dp))
+                                    Row(
+                                        Modifier.fillMaxWidth().clickable {
+                                            f = f.copy(categories = toggle(f.categories, s.id))
+                                        }.padding(start = 24.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Checkbox(
+                                            s.id in f.categories || m.id in f.categories || allOn,
+                                            onCheckedChange = null,
+                                            modifier = Modifier.padding(8.dp),
+                                        )
                                         Text(s.name)
                                     }
                                 }
@@ -132,8 +208,15 @@ fun CategoryCriteriaDialog(ref: RefData, initial: FilterCriteria, onConfirm: (Fi
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(f); onDismiss() }) { Text(stringResource(R.string.action_ok)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = {
+            TextButton(onClick = {
+                onConfirm(f)
+                onDismiss()
+            }) { Text(stringResource(R.string.action_ok)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }
 

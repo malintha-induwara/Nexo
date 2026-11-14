@@ -36,7 +36,11 @@ class DefaultTransactionsRepositoryTest {
     @Before
     fun setUp() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
+        db =
+            Room.inMemoryDatabaseBuilder(
+                context,
+                NexoDatabase::class.java,
+            ).allowMainThreadQueries().build()
         BookSeeder(context, db).seedFresh(CurrencyCatalog.find("USD")!!)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val refs = referenceDataRepository(db, scope)
@@ -50,7 +54,17 @@ class DefaultTransactionsRepositoryTest {
 
     @Test
     fun transferWithFeeIsCreatedAndDeletedTogether() = runBlocking {
-        val id = transactions.save(TxDraft(type = EntryType.TRANSFER, accountId = "1", toAccountId = "11", dateTime = at, amount = 100.0, currencyId = "USD", fee = FeeDraft(1.5, "USD")))
+        val id = transactions.save(
+            TxDraft(
+                type = EntryType.TRANSFER,
+                accountId = "1",
+                toAccountId = "11",
+                dateTime = at,
+                amount = 100.0,
+                currencyId = "USD",
+                fee = FeeDraft(1.5, "USD"),
+            ),
+        )
         val rows = db.transactionDao().getAll()
         assertEquals(3, rows.size)
         val out = rows.single { it.kind == TxKind.TRANSFER_OUT }
@@ -68,8 +82,28 @@ class DefaultTransactionsRepositoryTest {
 
     @Test
     fun transferConvertedToExpenseDropsPartnerAndFee() = runBlocking {
-        val id = transactions.save(TxDraft(type = EntryType.TRANSFER, accountId = "1", toAccountId = "11", dateTime = at.minusHours(2), amount = 50.0, currencyId = "USD", fee = FeeDraft(1.0, "USD")))
-        transactions.save(TxDraft(editingId = id, type = EntryType.EXPENSE, accountId = "1", categoryId = "6", dateTime = at.minusHours(2), amount = 50.0, currencyId = "USD"))
+        val id = transactions.save(
+            TxDraft(
+                type = EntryType.TRANSFER,
+                accountId = "1",
+                toAccountId = "11",
+                dateTime = at.minusHours(2),
+                amount = 50.0,
+                currencyId = "USD",
+                fee = FeeDraft(1.0, "USD"),
+            ),
+        )
+        transactions.save(
+            TxDraft(
+                editingId = id,
+                type = EntryType.EXPENSE,
+                accountId = "1",
+                categoryId = "6",
+                dateTime = at.minusHours(2),
+                amount = 50.0,
+                currencyId = "USD",
+            ),
+        )
         val rows = db.transactionDao().getAll()
         assertEquals(1, rows.size)
         assertEquals(TxKind.EXPENSE, rows.single().kind)
@@ -78,10 +112,25 @@ class DefaultTransactionsRepositoryTest {
 
     @Test
     fun installmentsSplitAcrossMonths() = runBlocking {
-        transactions.save(TxDraft(type = EntryType.EXPENSE, accountId = "2", categoryId = "6", dateTime = LocalDateTime.of(2024, 1, 31, 10, 0), amount = 100.0, currencyId = "USD", installments = 3))
+        transactions.save(
+            TxDraft(
+                type = EntryType.EXPENSE,
+                accountId = "2",
+                categoryId = "6",
+                dateTime = LocalDateTime.of(2024, 1, 31, 10, 0),
+                amount = 100.0,
+                currencyId = "USD",
+                installments = 3,
+            ),
+        )
         val rows = db.transactionDao().getAll().sortedBy { it.date }
         assertEquals(listOf("2024-01-31", "2024-02-29", "2024-03-31"), rows.map { it.date })
         assertEquals(listOf(33.34, 33.33, 33.33), rows.map { it.amount })
-        assertTrue(rows.all { it.installmentCount == 3 && it.installmentGroupId == rows.first().installmentGroupId })
+        assertTrue(
+            rows.all {
+                it.installmentCount == 3 &&
+                    it.installmentGroupId == rows.first().installmentGroupId
+            },
+        )
     }
 }

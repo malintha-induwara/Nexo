@@ -43,7 +43,14 @@ import com.nexo.app.ui.designsystem.theme.Space
 @Composable
 fun SheetTitle(title: String, hint: String? = null) {
     val colors = LocalNexoColors.current
-    Column(Modifier.fillMaxWidth().padding(start = Space.gutter, end = Space.gutter, top = Space.xs, bottom = Space.s)) {
+    Column(
+        Modifier.fillMaxWidth().padding(
+            start = Space.gutter,
+            end = Space.gutter,
+            top = Space.xs,
+            bottom = Space.s,
+        ),
+    ) {
         Text(title, style = MaterialTheme.typography.titleMedium, color = colors.text)
         if (hint != null) {
             Spacer(Modifier.size(Space.xxs))
@@ -62,14 +69,31 @@ fun ColumnScope.AccountPickList(ref: RefData, selectedId: String?, onPick: (Stri
         .filter { it.second.isNotEmpty() }
     LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = Space.xl)) {
         groups.forEach { (group, accounts) ->
-            item(key = "g_${group.id}") { SectionHeader(group.name, Modifier.padding(top = Space.s)) }
+            item(key = "g_${group.id}") {
+                SectionHeader(group.name, Modifier.padding(top = Space.s))
+            }
             items(accounts, key = { it.id }) { a ->
                 Row(
-                    Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable { haptics.tick(); onPick(a.id) }.padding(horizontal = Space.gutter),
+                    Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable {
+                        haptics.tick()
+                        onPick(a.id)
+                    }.padding(horizontal = Space.gutter),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(a.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = colors.text)
-                    if (a.id == selectedId) Icon(Icons.Rounded.Check, null, tint = colors.text, modifier = Modifier.size(20.dp))
+                    Text(
+                        a.name,
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.text,
+                    )
+                    if (a.id == selectedId) {
+                        Icon(
+                            Icons.Rounded.Check,
+                            null,
+                            tint = colors.text,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                 }
             }
         }
@@ -83,17 +107,29 @@ fun DenyReasonList(onPick: (DenyReason?) -> Unit) {
     Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = Space.m)) {
         DenyReason.entries.forEach { r ->
             Row(
-                Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable { onPick(r) }.padding(horizontal = Space.gutter),
+                Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable {
+                    onPick(r)
+                }.padding(horizontal = Space.gutter),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(stringResource(denyLabel(r)), style = MaterialTheme.typography.bodyLarge, color = colors.text)
+                Text(
+                    stringResource(denyLabel(r)),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.text,
+                )
             }
         }
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable { onPick(null) }.padding(horizontal = Space.gutter),
+            Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable {
+                onPick(null)
+            }.padding(horizontal = Space.gutter),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(stringResource(R.string.sms_deny_no_reason), style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+            Text(
+                stringResource(R.string.sms_deny_no_reason),
+                style = MaterialTheme.typography.labelLarge,
+                color = colors.textSecondary,
+            )
         }
     }
 }
@@ -123,7 +159,10 @@ fun SmsPromptCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Button(
                 onClick = onPrimary,
-                colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.primary,
+                    contentColor = colors.onPrimary,
+                ),
             ) { Text(primary, style = MaterialTheme.typography.labelLarge) }
             if (secondary != null && onSecondary != null) {
                 TextButton(onClick = onSecondary, modifier = Modifier.padding(start = Space.s)) {

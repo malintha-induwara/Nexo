@@ -101,10 +101,17 @@ fun StyleScreen(vm: SettingsViewModel = hiltViewModel()) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val device = state.device
     val d = device ?: return
-    Scaffold(topBar = { NexoTopBar(stringResource(R.string.style), onBack = { nav.back() }) }) { p ->
+    Scaffold(topBar = {
+        NexoTopBar(stringResource(R.string.style), onBack = { nav.back() })
+    }) { p ->
         Column(Modifier.padding(p)) {
             listOf(ThemeMode.SYSTEM, ThemeMode.DARK, ThemeMode.LIGHT).forEach { m ->
-                Row(Modifier.fillMaxWidth().clickable { vm.setThemeMode(m) }.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.fillMaxWidth().clickable {
+                        vm.setThemeMode(m)
+                    }.padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     RadioButton(d.themeMode == m, onClick = null, modifier = Modifier.padding(8.dp))
                     Text(themeModeLabel(m))
                 }
@@ -127,32 +134,81 @@ fun ReminderScreen(vm: SettingsViewModel = hiltViewModel()) {
         vm.setReminder(enabled, h, m, days)
         ReminderScheduler.schedule(context, enabled, h, m)
     }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
-        if (ok) apply(true, d.reminderHour, d.reminderMinute, d.reminderDays)
-    }
+    val permission =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+            if (ok) apply(true, d.reminderHour, d.reminderMinute, d.reminderDays)
+        }
     LaunchedEffect(Unit) { if (!ReminderScheduler.canScheduleExact(context)) exactPrompt = true }
-    Scaffold(topBar = { NexoTopBar(stringResource(R.string.alarm_setting), onBack = { nav.back() }) }) { p ->
+    Scaffold(topBar = {
+        NexoTopBar(stringResource(R.string.alarm_setting), onBack = { nav.back() })
+    }) { p ->
         Column(Modifier.padding(p)) {
             SwitchRow(stringResource(R.string.alarm), d.reminderEnabled, { on ->
-                if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !Notifications.canPost(context)) permission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                else apply(on, d.reminderHour, d.reminderMinute, d.reminderDays)
+                if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    !Notifications.canPost(context)
+                ) {
+                    permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    apply(on, d.reminderHour, d.reminderMinute, d.reminderDays)
+                }
             })
             if (d.reminderEnabled) {
-                SettingRow(stringResource(R.string.time), Formats.time(LocalTime.of(d.reminderHour, d.reminderMinute), DateFormat.is24HourFormat(context)), onClick = { time = true })
+                SettingRow(
+                    stringResource(R.string.time),
+                    Formats.time(
+                        LocalTime.of(d.reminderHour, d.reminderMinute),
+                        DateFormat.is24HourFormat(context),
+                    ),
+                    onClick = {
+                        time = true
+                    },
+                )
                 SectionHeader(stringResource(R.string.repeat))
-                FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(DayOfWeek.SUNDAY) .plus(DayOfWeek.entries.filter { it != DayOfWeek.SUNDAY }).forEach { day ->
+                FlowRow(
+                    Modifier.padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    listOf(DayOfWeek.SUNDAY).plus(
+                        DayOfWeek.entries.filter {
+                            it != DayOfWeek.SUNDAY
+                        },
+                    ).forEach { day ->
                         val on = day.value in d.reminderDays
-                        FilterChip(on, onClick = { apply(true, d.reminderHour, d.reminderMinute, if (on) d.reminderDays - day.value else d.reminderDays + day.value) }, label = { Text(Formats.weekdayShort(day)) })
+                        FilterChip(on, onClick = {
+                            apply(
+                                true,
+                                d.reminderHour,
+                                d.reminderMinute,
+                                if (on) {
+                                    d.reminderDays -
+                                        day.value
+                                } else {
+                                    d.reminderDays + day.value
+                                },
+                            )
+                        }, label = { Text(Formats.weekdayShort(day)) })
                     }
                 }
             }
         }
     }
-    if (time) NexoTimePickerDialog(LocalTime.of(d.reminderHour, d.reminderMinute), onPick = { t -> apply(true, t.hour, t.minute, d.reminderDays) }, onDismiss = { time = false })
+    if (time) {
+        NexoTimePickerDialog(LocalTime.of(d.reminderHour, d.reminderMinute), onPick = { t ->
+            apply(true, t.hour, t.minute, d.reminderDays)
+        }, onDismiss = {
+            time = false
+        })
+    }
     if (exactPrompt && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         ConfirmDialog(stringResource(R.string.exact_alarm_prompt), onConfirm = {
-            runCatching { context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + context.packageName))) }
+            runCatching {
+                context.startActivity(
+                    Intent(
+                        Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                        Uri.parse("package:" + context.packageName),
+                    ),
+                )
+            }
         }, onDismiss = { exactPrompt = false })
     }
 }
@@ -170,18 +226,39 @@ fun LockSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     var timeout by rememberSaveable { mutableStateOf(false) }
     var confirmRemove by rememberSaveable { mutableStateOf(false) }
     val bioAvailable = BiometricPrompter.isAvailable(context)
-    val promptTitle = stringResource(R.string.biometric_prompt_title, stringResource(R.string.app_name))
+    val promptTitle =
+        stringResource(R.string.biometric_prompt_title, stringResource(R.string.app_name))
     val cancel = stringResource(R.string.action_cancel)
-    Scaffold(topBar = { NexoTopBar(stringResource(R.string.lock_settings), onBack = { nav.back() }) }) { p ->
+    Scaffold(topBar = {
+        NexoTopBar(stringResource(R.string.lock_settings), onBack = { nav.back() })
+    }) { p ->
         Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
-            Text(stringResource(R.string.lock_settings_text), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
+            Text(
+                stringResource(R.string.lock_settings_text),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(16.dp),
+            )
             if (!d.lockEnabled) {
-                SettingRow(stringResource(R.string.pin_set_up), stringResource(R.string.off), onClick = { pinFlow = "new" })
+                SettingRow(
+                    stringResource(R.string.pin_set_up),
+                    stringResource(R.string.off),
+                    onClick = {
+                        pinFlow = "new"
+                    },
+                )
             } else {
-                SettingRow(stringResource(R.string.pin_change), stringResource(R.string.on), onClick = { pinFlow = "change" })
+                SettingRow(
+                    stringResource(R.string.pin_change),
+                    stringResource(R.string.on),
+                    onClick = {
+                        pinFlow = "change"
+                    },
+                )
                 SettingRow(stringResource(R.string.pin_remove), onClick = { confirmRemove = true })
                 SwitchRow(
-                    stringResource(R.string.biometric_unlock), d.biometricsEnabled && bioAvailable,
+                    stringResource(R.string.biometric_unlock),
+                    d.biometricsEnabled && bioAvailable,
                     onChange = { on ->
                         if (!on) {
                             vm.setBiometricsEnabled(false)
@@ -189,28 +266,60 @@ fun LockSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                             val activity = context as? FragmentActivity ?: return@SwitchRow
                             val cipher = vm.createBiometricKey()
                             if (cipher != null) {
-                                BiometricPrompter.prompt(activity, promptTitle, cancel, cipher, onSuccess = { vm.setBiometricsEnabled(true) })
+                                BiometricPrompter.prompt(
+                                    activity,
+                                    promptTitle,
+                                    cancel,
+                                    cipher,
+                                    onSuccess = { vm.setBiometricsEnabled(true) },
+                                )
                             }
                         }
                     },
-                    subtitle = stringResource(if (bioAvailable) R.string.biometric_shared_warning else R.string.biometric_unavailable),
+                    subtitle = stringResource(
+                        if (bioAvailable) {
+                            R.string.biometric_shared_warning
+                        } else {
+                            R.string.biometric_unavailable
+                        },
+                    ),
                     enabled = bioAvailable,
                 )
-                SettingRow(stringResource(R.string.lock_after), timeoutLabel(d.lockTimeout), onClick = { timeout = true })
+                SettingRow(
+                    stringResource(R.string.lock_after),
+                    timeoutLabel(d.lockTimeout),
+                    onClick = {
+                        timeout = true
+                    },
+                )
                 SettingRow(stringResource(R.string.lock_now), onClick = { vm.lockNow() })
             }
         }
     }
-    if (timeout) ChoiceDialog(stringResource(R.string.lock_after), LockTimeout.entries, d.lockTimeout, { timeoutLabel(it) }, onSelect = { t -> vm.setLockTimeout(t) }, onDismiss = { timeout = false })
+    if (timeout) {
+        ChoiceDialog(stringResource(R.string.lock_after), LockTimeout.entries, d.lockTimeout, {
+            timeoutLabel(it)
+        }, onSelect = { t -> vm.setLockTimeout(t) }, onDismiss = {
+            timeout = false
+        })
+    }
     if (confirmRemove) {
         PinFlowDialog(
-            mode = "verify", currentHash = d.pinHash, descending = d.numberPadDescending,
-            onDone = { vm.setPin(null); confirmRemove = false },
+            mode = "verify",
+            currentHash = d.pinHash,
+            descending = d.numberPadDescending,
+            onDone = {
+                vm.setPin(null)
+                confirmRemove = false
+            },
             onDismiss = { confirmRemove = false },
         )
     }
     pinFlow?.let { mode ->
-        PinFlowDialog(mode, d.pinHash, d.numberPadDescending, onDone = { pin -> vm.setPin(pin); pinFlow = null }, onDismiss = { pinFlow = null })
+        PinFlowDialog(mode, d.pinHash, d.numberPadDescending, onDone = { pin ->
+            vm.setPin(pin)
+            pinFlow = null
+        }, onDismiss = { pinFlow = null })
     }
 }
 
@@ -230,7 +339,13 @@ private fun timeoutLabel(t: LockTimeout) = stringResource(
  * [onDone] receives the new PIN (or the verified one for "verify").
  */
 @Composable
-private fun PinFlowDialog(mode: String, currentHash: String?, descending: Boolean, onDone: (String) -> Unit, onDismiss: () -> Unit) {
+private fun PinFlowDialog(
+    mode: String,
+    currentHash: String?,
+    descending: Boolean,
+    onDone: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
     var step by remember { mutableIntStateOf(if (mode == "new") 1 else 0) }
     var pin by remember { mutableStateOf("") }
     var first by remember { mutableStateOf("") }
@@ -241,29 +356,64 @@ private fun PinFlowDialog(mode: String, currentHash: String?, descending: Boolea
         1 -> R.string.pin_enter_new
         else -> R.string.pin_enter_again
     }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
         Surface(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().systemBarsPadding().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Column(
+                Modifier.fillMaxSize().systemBarsPadding().padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
                 Text(stringResource(title), style = MaterialTheme.typography.titleMedium)
                 Box(Modifier.padding(24.dp)) { PinDots(pin.length, shake) }
-                Text(message?.let { stringResource(it) } ?: "", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 16.dp))
+                Text(
+                    message?.let {
+                        stringResource(it)
+                    } ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
                 PinKeypad(onDigit = { digit ->
                     if (pin.length >= 4) return@PinKeypad
                     pin += digit
                     if (pin.length == 4) {
                         when (step) {
                             0 -> if (currentHash != null && PinHasher.verify(pin, currentHash)) {
-                                if (mode == "verify") onDone(pin) else { step = 1; message = null }
-                            } else { shake++; message = R.string.lock_wrong_pin }
-                            1 -> { first = pin; step = 2; message = null }
-                            else -> if (pin == first) onDone(pin) else { shake++; message = R.string.pin_mismatch; step = 1; first = "" }
+                                if (mode == "verify") {
+                                    onDone(pin)
+                                } else {
+                                    step = 1
+                                    message = null
+                                }
+                            } else {
+                                shake++
+                                message = R.string.lock_wrong_pin
+                            }
+
+                            1 -> {
+                                first = pin
+                                step = 2
+                                message = null
+                            }
+
+                            else -> if (pin == first) {
+                                onDone(pin)
+                            } else {
+                                shake++
+                                message = R.string.pin_mismatch
+                                step = 1
+                                first = ""
+                            }
                         }
                         pin = ""
                     }
                 }, onBackspace = { pin = pin.dropLast(1) }, descending = descending)
-                TextButton(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             }
         }
     }
 }
-

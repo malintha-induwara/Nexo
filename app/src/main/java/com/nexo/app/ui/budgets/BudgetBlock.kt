@@ -79,35 +79,65 @@ fun BudgetBlock(period: MonthPeriod, data: BudgetBlockData?, ref: RefData) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.Savings, null, tint = MaterialTheme.nexo.primaryText)
                 Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.budget), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text(
+                    stringResource(R.string.budget),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
                 TextButton(onClick = { nav.navigate(BudgetSettingsKey) }) {
                     Text(stringResource(R.string.budget_setting))
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
                 }
             }
             if (d?.total == null) {
-                Text(stringResource(R.string.budget_empty_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                Text(
+                    stringResource(R.string.budget_empty_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
                 return@Column
             }
-            if (today != null) Text(stringResource(R.string.today), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.nexo.primaryText)
+            if (today != null) {
+                Text(
+                    stringResource(R.string.today),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.nexo.primaryText,
+                )
+            }
             val anyChildren = d.rows.any { it.children.isNotEmpty() }
             BudgetRowView(d.total, ref.mainCurrency, today, onClick = {
-                if (d.total.budgetId != null) nav.navigate(BudgetEditorKey(d.total.budgetId)) else nav.navigate(BudgetAddKey(presetTotal = true, preset = true))
+                if (d.total.budgetId != null) {
+                    nav.navigate(BudgetEditorKey(d.total.budgetId))
+                } else {
+                    nav.navigate(BudgetAddKey(presetTotal = true, preset = true))
+                }
             }, expandable = anyChildren, expanded = expandedAll, onExpand = {
                 expandedAll = !expandedAll
-                expanded = if (expandedAll) d.rows.mapNotNull { it.categoryId }.toSet() else emptySet()
+                expanded =
+                    if (expandedAll) d.rows.mapNotNull { it.categoryId }.toSet() else emptySet()
             })
             d.rows.forEach { row ->
                 val open = row.categoryId in expanded
                 BudgetRowView(row, ref.mainCurrency, today, onClick = {
-                    nav.navigate(BudgetDetailKey(row.budgetId ?: "virtual_${row.categoryId}", period.label.toString()))
+                    nav.navigate(
+                        BudgetDetailKey(
+                            row.budgetId ?: "virtual_${row.categoryId}",
+                            period.label.toString(),
+                        ),
+                    )
                 }, expandable = row.children.isNotEmpty(), expanded = open, onExpand = {
-                    expanded = if (open) expanded - row.categoryId!! else expanded + row.categoryId!!
+                    expanded =
+                        if (open) expanded - row.categoryId!! else expanded + row.categoryId!!
                 })
-                if (open) row.children.forEach { child ->
-                    BudgetRowView(child, ref.mainCurrency, today, small = true, onClick = {
-                        child.budgetId?.let { nav.navigate(BudgetDetailKey(it, period.label.toString())) }
-                    })
+                if (open) {
+                    row.children.forEach { child ->
+                        BudgetRowView(child, ref.mainCurrency, today, small = true, onClick = {
+                            child.budgetId?.let {
+                                nav.navigate(BudgetDetailKey(it, period.label.toString()))
+                            }
+                        })
+                    }
                 }
             }
         }
@@ -131,36 +161,95 @@ fun BudgetRowView(
     val money = LocalMoneyColors.current
     val barColor = if (over) money.expenseFill else money.incomeFill
     val usedColor = if (over) money.expense else money.income
-    Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = if (small) 16.dp else 0.dp, top = 10.dp, bottom = 4.dp)) {
+    Column(
+        Modifier.fillMaxWidth().clickable(
+            onClick = onClick,
+        ).padding(start = if (small) 16.dp else 0.dp, top = 10.dp, bottom = 4.dp),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(if (row.isTotal) stringResource(R.string.total_budget) else row.name, style = if (small) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge, fontWeight = if (row.isTotal) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(AmountFormatter.format(row.amount, main), style = MaterialTheme.typography.bodySmall)
-            if (expandable) Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, null, Modifier.clickable(onClick = onExpand).padding(start = 4.dp))
+            Text(
+                if (row.isTotal) stringResource(R.string.total_budget) else row.name,
+                style = if (small) {
+                    MaterialTheme.typography.bodyMedium
+                } else {
+                    MaterialTheme.typography.bodyLarge
+                },
+                fontWeight = if (row.isTotal) FontWeight.SemiBold else FontWeight.Normal,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                AmountFormatter.format(row.amount, main),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            if (expandable) {
+                Icon(
+                    if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    null,
+                    Modifier.clickable(onClick = onExpand).padding(start = 4.dp),
+                )
+            }
         }
         // A thin meter: the fill is what has been used, the tick is where today falls in the month.
         Box(Modifier.fillMaxWidth().padding(vertical = 8.dp).height(if (small) 6.dp else 8.dp)) {
             Box(Modifier.matchParentSize().clip(CircleShape).background(colors.raised))
-            if (row.fill > 0f) Box(Modifier.fillMaxWidth(row.fill).fillMaxHeight().clip(CircleShape).background(barColor))
+            if (row.fill > 0f) {
+                Box(
+                    Modifier.fillMaxWidth(
+                        row.fill,
+                    ).fillMaxHeight().clip(CircleShape).background(barColor),
+                )
+            }
             if (today != null) {
                 Canvas(Modifier.matchParentSize()) {
                     val x = size.width * today
                     val reach = 4.dp.toPx()
-                    drawLine(colors.surface, Offset(x, -reach), Offset(x, size.height + reach), strokeWidth = 5.dp.toPx())
-                    drawLine(colors.text, Offset(x, -reach), Offset(x, size.height + reach), strokeWidth = 2.dp.toPx())
+                    drawLine(
+                        colors.surface,
+                        Offset(x, -reach),
+                        Offset(x, size.height + reach),
+                        strokeWidth = 5.dp.toPx(),
+                    )
+                    drawLine(
+                        colors.text,
+                        Offset(x, -reach),
+                        Offset(x, size.height + reach),
+                        strokeWidth = 2.dp.toPx(),
+                    )
                 }
             }
         }
         Row {
             Text(
-                if (row.used < 0) "(${AmountFormatter.format(-row.used, main)})" else AmountFormatter.format(row.used, main),
-                color = usedColor, style = MaterialTheme.typography.bodySmall,
+                if (row.used < 0) {
+                    "(${AmountFormatter.format(-row.used, main)})"
+                } else {
+                    AmountFormatter.format(row.used, main)
+                },
+                color = usedColor,
+                style = MaterialTheme.typography.bodySmall,
             )
-            Text(" · " + (row.rate?.let { "$it%" } ?: "-"), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary, modifier = Modifier.weight(1f))
             Text(
-                if (over) stringResource(R.string.excess) + " " + AmountFormatter.format(row.remaining, main) else AmountFormatter.format(row.remaining, main),
-                style = MaterialTheme.typography.bodySmall, color = if (over) money.expense else MaterialTheme.colorScheme.onSurface,
+                " · " + (
+                    row.rate?.let {
+                        "$it%"
+                    } ?: "-"
+                    ),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textSecondary,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                if (over) {
+                    stringResource(R.string.excess) + " " +
+                        AmountFormatter.format(row.remaining, main)
+                } else {
+                    AmountFormatter.format(row.remaining, main)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (over) money.expense else MaterialTheme.colorScheme.onSurface,
             )
         }
     }
 }
-

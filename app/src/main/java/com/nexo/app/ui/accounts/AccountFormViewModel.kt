@@ -76,7 +76,11 @@ class AccountFormViewModel @AssistedInject constructor(
     }
 
     /** Kept for event handlers that need the reference data synchronously. */
-    private val ref = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val ref = refs.getRefDataStream().stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        RefData(),
+    )
     private val form = MutableStateFlow(AccountFormUiState())
 
     val uiState: StateFlow<AccountFormUiState> = combine(form, ref) { s, r -> s.copy(ref = r) }
@@ -97,14 +101,44 @@ class AccountFormViewModel @AssistedInject constructor(
             original = a
             if (a == null) {
                 val g = key.groupId ?: r.groups.firstOrNull { it.status == GroupStatus.ACTIVE }?.id
-                form.value = AccountFormUiState(loaded = true, groupId = g, name = key.presetName ?: "", currencyId = r.mainCurrency.id, originalCurrencyId = r.mainCurrency.id, pickGroup = key.groupId == null)
+                form.value =
+                    AccountFormUiState(
+                        loaded = true,
+                        groupId = g,
+                        name = key.presetName ?: "",
+                        currencyId = r.mainCurrency.id,
+                        originalCurrencyId = r.mainCurrency.id,
+                        pickGroup =
+                            key.groupId == null,
+                    )
             } else {
-                rows = transactions.getAllForAccounts(listOf(a.id) + r.linkedDebitCards(a.id).map { it.id })
-                val bal = Money.round(balanceIn(r, a.currencyId, a), r.currency(a.currencyId).decimals)
+                rows =
+                    transactions.getAllForAccounts(
+                        listOf(a.id) + r.linkedDebitCards(a.id).map {
+                            it.id
+                        },
+                    )
+                val bal = Money.round(
+                    balanceIn(r, a.currencyId, a),
+                    r.currency(a.currencyId).decimals,
+                )
                 form.value = AccountFormUiState(
-                    loaded = true, isNew = false, id = a.id, groupId = a.groupId, name = a.name, amount = bal, balance = bal,
-                    currencyId = a.currencyId, originalCurrencyId = a.currencyId, linkedAccountId = a.linkedAccountId, description = a.description,
-                    settlementDay = a.settlementDay, paymentDay = a.paymentDay, includeInTotals = a.includeInTotals, hidden = a.status == AccountStatus.HIDDEN,
+                    loaded = true,
+                    isNew = false,
+                    id = a.id,
+                    groupId = a.groupId,
+                    name = a.name,
+                    amount = bal,
+                    balance = bal,
+                    currencyId = a.currencyId,
+                    originalCurrencyId = a.currencyId,
+                    linkedAccountId = a.linkedAccountId,
+                    description = a.description,
+                    settlementDay = a.settlementDay,
+                    paymentDay = a.paymentDay,
+                    includeInTotals = a.includeInTotals,
+                    hidden =
+                        a.status == AccountStatus.HIDDEN,
                 )
             }
         }
@@ -115,9 +149,19 @@ class AccountFormViewModel @AssistedInject constructor(
         val target = r.currency(currencyId)
         return Money.sum(
             rows.map { t ->
-                val v = if (target.id == r.mainCurrency.id) t.amountMain
-                else if (currencyId == a.currencyId) t.amountAccount
-                else Conversion.accountAmount(t.amount, t.amountMain, r.currency(t.currencyId), target, r.mainCurrency)
+                val v = if (target.id == r.mainCurrency.id) {
+                    t.amountMain
+                } else if (currencyId == a.currencyId) {
+                    t.amountAccount
+                } else {
+                    Conversion.accountAmount(
+                        t.amount,
+                        t.amountMain,
+                        r.currency(t.currencyId),
+                        target,
+                        r.mainCurrency,
+                    )
+                }
                 if (t.kind.isInflow) v else -v
             },
         )
@@ -140,8 +184,9 @@ class AccountFormViewModel @AssistedInject constructor(
         val r = ref.value
         val a = original
         form.update { s ->
-            if (a == null) s.copy(currencyId = id)
-            else {
+            if (a == null) {
+                s.copy(currencyId = id)
+            } else {
                 val bal = Money.round(balanceIn(r, id, a), r.currency(id).decimals)
                 s.copy(currencyId = id, amount = bal, balance = bal)
             }
@@ -200,9 +245,19 @@ class AccountFormViewModel @AssistedInject constructor(
                 updatedAt = now,
             )
             repo.saveAccount(account)
-            val diff = if (type == GroupType.DEBIT_CARD) 0.0 else Money.round(s.amount - (if (s.isNew) 0.0 else s.balance), r.currency(s.currencyId).decimals)
-            if (diff != 0.0) form.update { it.copy(difference = diff, confirmCurrency = false) }
-            else form.update { it.copy(close = AccountFormClose.BACK) }
+            val diff = if (type == GroupType.DEBIT_CARD) {
+                0.0
+            } else {
+                Money.round(
+                    s.amount - (if (s.isNew) 0.0 else s.balance),
+                    r.currency(s.currencyId).decimals,
+                )
+            }
+            if (diff != 0.0) {
+                form.update { it.copy(difference = diff, confirmCurrency = false) }
+            } else {
+                form.update { it.copy(close = AccountFormClose.BACK) }
+            }
         }
     }
 
@@ -222,9 +277,17 @@ class AccountFormViewModel @AssistedInject constructor(
         form.update { it.copy(close = AccountFormClose.TO_MAIN) }
     }
 
-    private fun showMessage(@StringRes text: Int) = form.update { it.copy(userMessage = UserMessage(UiText.of(text))) }
+    private fun showMessage(@StringRes text: Int) = form.update {
+        it.copy(userMessage = UserMessage(UiText.of(text)))
+    }
 
-    fun onUserMessageShown(id: Long) = form.update { if (it.userMessage?.id == id) it.copy(userMessage = null) else it }
+    fun onUserMessageShown(id: Long) = form.update {
+        if (it.userMessage?.id == id) {
+            it.copy(userMessage = null)
+        } else {
+            it
+        }
+    }
 
     fun onCloseHandled() = form.update { it.copy(close = null) }
 }

@@ -44,7 +44,12 @@ fun ConfirmDialog(
         onDismissRequest = onDismiss,
         title = title?.let { { Text(it) } },
         text = { Text(message) },
-        confirmButton = { TextButton(onClick = { onDismiss(); onConfirm() }) { Text(confirmText) } },
+        confirmButton = {
+            TextButton(onClick = {
+                onDismiss()
+                onConfirm()
+            }) { Text(confirmText) }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text(dismissText) } },
     )
 }
@@ -55,7 +60,9 @@ fun MessageDialog(message: String, onDismiss: () -> Unit, title: String? = null)
         onDismissRequest = onDismiss,
         title = title?.let { { Text(it) } },
         text = { Text(message) },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) } },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) }
+        },
     )
 }
 
@@ -77,7 +84,11 @@ fun <T> ChoiceDialog(
         text = {
             Column {
                 if (description != null) {
-                    Text(description, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 12.dp))
+                    Text(
+                        description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 12.dp),
+                    )
                 }
                 LazyColumn(Modifier.heightIn(max = 420.dp)) {
                     itemsIndexed(options) { _, option ->
@@ -99,7 +110,9 @@ fun <T> ChoiceDialog(
             }
         },
         confirmButton = { extraButton?.invoke() },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }
 
@@ -129,13 +142,19 @@ fun TextFieldDialog(
                 singleLine = singleLine,
                 isError = error != null,
                 supportingText = error?.let { { Text(it) } },
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focus),
             )
         },
-        confirmButton = { TextButton(onClick = { onConfirm(text) }) { Text(stringResource(R.string.action_ok)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(text) }) { Text(stringResource(R.string.action_ok)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }

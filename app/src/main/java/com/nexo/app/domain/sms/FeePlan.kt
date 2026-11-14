@@ -10,5 +10,6 @@ sealed interface FeePlan {
     data class Auto(val route: FeeRoute?, val amount: Double) : FeePlan
 
     /** Ask, pre-filled with the last fee on this route — or, for [fxDifference], with actual − estimate. */
-    data class Ask(val route: FeeRoute, val prefill: Double?, val fxDifference: Boolean = false) : FeePlan
+    data class Ask(val route: FeeRoute, val prefill: Double?, val fxDifference: Boolean = false) :
+        FeePlan
 }

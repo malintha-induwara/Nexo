@@ -96,12 +96,21 @@ fun SwipeActionRow(
         if (offset != 0f && action != null) {
             val progress = (abs(offset) / threshold).coerceIn(0f, 1f)
             Row(
-                Modifier.matchParentSize().background(if (armed) colors.raisedHigh else colors.raised).padding(horizontal = Space.gutter),
+                Modifier.matchParentSize().background(
+                    if (armed) colors.raisedHigh else colors.raised,
+                ).padding(horizontal = Space.gutter),
                 horizontalArrangement = if (offset > 0) Arrangement.Start else Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 val tint = if (action.enabled) colors.text else colors.textTertiary
-                Row(Modifier.graphicsLayer { alpha = 0.35f + 0.65f * progress; scaleX = 0.85f + 0.15f * progress; scaleY = scaleX }, verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.graphicsLayer {
+                        alpha = 0.35f + 0.65f * progress
+                        scaleX = 0.85f + 0.15f * progress
+                        scaleY = scaleX
+                    },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Icon(action.icon, null, tint = tint, modifier = Modifier.size(22.dp))
                     Spacer(Modifier.width(Space.s))
                     Text(action.label, style = MaterialTheme.typography.labelLarge, color = tint)
@@ -125,7 +134,11 @@ fun SwipeActionRow(
                             haptics.reject()
                         }
                         armed = false
-                        scope.launch { animate(offset, 0f, animationSpec = NexoMotion.snappy()) { v, _ -> offset = v } }
+                        scope.launch {
+                            animate(offset, 0f, animationSpec = NexoMotion.snappy()) { v, _ ->
+                                offset = v
+                            }
+                        }
                     },
                 ),
         ) { content() }

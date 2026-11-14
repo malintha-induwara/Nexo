@@ -33,10 +33,15 @@ data class CurrencyUiState(
 
 /** Shared by the main-currency and sub-currency screens. */
 @HiltViewModel
-class CurrencyViewModel @Inject constructor(refs: ReferenceDataRepository, private val repo: CurrenciesRepository) : ViewModel() {
+class CurrencyViewModel @Inject constructor(
+    refs: ReferenceDataRepository,
+    private val repo: CurrenciesRepository,
+) : ViewModel() {
     private val effects = MutableStateFlow(CurrencyUiState())
 
-    val uiState: StateFlow<CurrencyUiState> = combine(refs.getRefDataStream(), effects) { r, e -> e.copy(ref = r) }
+    val uiState: StateFlow<CurrencyUiState> = combine(refs.getRefDataStream(), effects) { r, e ->
+        e.copy(ref = r)
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CurrencyUiState())
 
     fun setMainFormat(position: SymbolPosition, decimals: Int) = viewModelScope.launch {
@@ -48,14 +53,28 @@ class CurrencyViewModel @Inject constructor(refs: ReferenceDataRepository, priva
     fun changeMainWithRate(target: CatalogCurrency, rate: Double) = viewModelScope.launch {
         effects.update { it.copy(busy = true) }
         val ok = repo.changeMainWithRate(target, rate)
-        effects.update { it.copy(busy = false, userMessage = UserMessage(UiText.of(if (ok) R.string.main_changed else R.string.main_change_failed)), closed = true) }
+        effects.update {
+            it.copy(
+                busy = false,
+                userMessage = UserMessage(
+                    UiText.of(if (ok) R.string.main_changed else R.string.main_change_failed),
+                ),
+                closed = true,
+            )
+        }
     }
 
     /** "Data initialization": everything is reset with [target] as the main currency. */
     fun changeMainWithReset(target: CatalogCurrency) = viewModelScope.launch {
         effects.update { it.copy(busy = true) }
         repo.changeMainWithReset(target)
-        effects.update { it.copy(busy = false, userMessage = UserMessage(UiText.of(R.string.main_changed)), closed = true) }
+        effects.update {
+            it.copy(
+                busy = false,
+                userMessage = UserMessage(UiText.of(R.string.main_changed)),
+                closed = true,
+            )
+        }
     }
 
     fun reorder(ids: List<String>) = viewModelScope.launch { repo.reorder(ids) }
@@ -63,14 +82,31 @@ class CurrencyViewModel @Inject constructor(refs: ReferenceDataRepository, priva
     fun hide(id: String) = viewModelScope.launch { repo.hide(id) }
 
     /** Saves a custom sub-currency when [catalog] is null, otherwise a built-in one. */
-    fun saveSub(catalog: CatalogCurrency?, existing: Currency?, name: String, symbol: String, position: SymbolPosition, decimals: Int, rate: Double) = viewModelScope.launch {
-        val row = if (catalog == null) repo.customSub(existing?.id, name, symbol, position, decimals, rate)
-        else repo.builtinSub(catalog, rate, position, decimals, existing)
+    fun saveSub(
+        catalog: CatalogCurrency?,
+        existing: Currency?,
+        name: String,
+        symbol: String,
+        position: SymbolPosition,
+        decimals: Int,
+        rate: Double,
+    ) = viewModelScope.launch {
+        val row = if (catalog == null) {
+            repo.customSub(existing?.id, name, symbol, position, decimals, rate)
+        } else {
+            repo.builtinSub(catalog, rate, position, decimals, existing)
+        }
         repo.saveSub(row)
         effects.update { it.copy(closed = true) }
     }
 
-    fun onUserMessageShown(id: Long) = effects.update { if (it.userMessage?.id == id) it.copy(userMessage = null) else it }
+    fun onUserMessageShown(id: Long) = effects.update {
+        if (it.userMessage?.id == id) {
+            it.copy(userMessage = null)
+        } else {
+            it
+        }
+    }
 
     fun onClosedHandled() = effects.update { it.copy(closed = false) }
 }

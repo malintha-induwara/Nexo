@@ -100,7 +100,9 @@ abstract class DataModule {
     abstract fun receiptRepository(impl: DefaultReceiptRepository): ReceiptRepository
 
     @Binds
-    abstract fun referenceDataRepository(impl: DefaultReferenceDataRepository): ReferenceDataRepository
+    abstract fun referenceDataRepository(
+        impl: DefaultReferenceDataRepository,
+    ): ReferenceDataRepository
 
     @Binds
     abstract fun repeatRulesRepository(impl: DefaultRepeatRulesRepository): RepeatRulesRepository
@@ -115,11 +117,15 @@ abstract class DataModule {
     abstract fun tagsRepository(impl: DefaultTagsRepository): TagsRepository
 
     @Binds
-    abstract fun transactionImportRepository(impl: DefaultTransactionImportRepository): TransactionImportRepository
+    abstract fun transactionImportRepository(
+        impl: DefaultTransactionImportRepository,
+    ): TransactionImportRepository
 
     @Binds
     abstract fun transactionsRepository(impl: DefaultTransactionsRepository): TransactionsRepository
 
     @Binds
-    abstract fun userPreferencesRepository(impl: DefaultUserPreferencesRepository): UserPreferencesRepository
+    abstract fun userPreferencesRepository(
+        impl: DefaultUserPreferencesRepository,
+    ): UserPreferencesRepository
 }

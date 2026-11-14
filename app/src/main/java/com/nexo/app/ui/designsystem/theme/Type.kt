@@ -17,8 +17,11 @@ import com.nexo.app.R
  * Both are variable fonts. The weight axis must be set explicitly: the plain `Font(resId, weight)`
  * overload loads the file's default instance (ExtraLight / Light) whatever weight it is tagged with.
  */
-private fun variable(resId: Int, weight: FontWeight) =
-    Font(resId, weight, variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)))
+private fun variable(resId: Int, weight: FontWeight) = Font(
+    resId,
+    weight,
+    variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)),
+)
 
 val Nunito = FontFamily(
     variable(R.font.nunito_variable, FontWeight.Medium),
@@ -37,7 +40,12 @@ val Figtree = FontFamily(
 
 private val Trimmed = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)
 
-private fun figtree(size: Int, line: Int, weight: FontWeight = FontWeight.Normal, tracking: Double = 0.0) = TextStyle(
+private fun figtree(
+    size: Int,
+    line: Int,
+    weight: FontWeight = FontWeight.Normal,
+    tracking: Double = 0.0,
+) = TextStyle(
     fontFamily = Figtree,
     fontWeight = weight,
     fontSize = size.sp,
@@ -46,7 +54,12 @@ private fun figtree(size: Int, line: Int, weight: FontWeight = FontWeight.Normal
     lineHeightStyle = Trimmed,
 )
 
-private fun nunito(size: Int, line: Int, weight: FontWeight = FontWeight.ExtraBold, tracking: Double = 0.0) = TextStyle(
+private fun nunito(
+    size: Int,
+    line: Int,
+    weight: FontWeight = FontWeight.ExtraBold,
+    tracking: Double = 0.0,
+) = TextStyle(
     fontFamily = Nunito,
     fontWeight = weight,
     fontSize = size.sp,
@@ -78,14 +91,18 @@ val NexoTypography = Typography(
 object NexoType {
     /** The single dominant number on a screen. */
     val Hero = nunito(56, 60, tracking = -0.02)
+
     /** Large amount inside a section, e.g. the entry display while typing small sums. */
     val AmountLarge = nunito(22, 28)
+
     /** The figure a card is about: an account's balance, a category's total. */
     val Balance = nunito(19, 24)
+
     /** Trailing amount on a 64dp row. */
     val Amount = nunito(16, 22, FontWeight.Bold)
     val AmountSmall = nunito(13, 18, FontWeight.Bold)
     val Keypad = nunito(26, 30, FontWeight.Bold)
+
     /** Upper-case section and day labels. Callers upper-case the text themselves. */
     val Caps = figtree(11, 14, FontWeight.SemiBold, 0.06)
     val RowTitle = figtree(16, 22, FontWeight.Medium)

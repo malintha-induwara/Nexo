@@ -34,8 +34,24 @@ class DefaultReferenceDataRepository @Inject constructor(
     @ApplicationScope scope: CoroutineScope,
 ) : ReferenceDataRepository {
     private val refData: SharedFlow<RefData> = combine(
-        combine(accountGroupDao.observeAll(), accountDao.observeAll(), categoryDao.observeAll()) { g, a, c -> Triple(g, a, c) },
-        combine(currencyDao.observeAll(), tagDao.observeAll(), bookSettings.getBookSettingsStream()) { cur, t, s -> Triple(cur, t, s) },
+        combine(accountGroupDao.observeAll(), accountDao.observeAll(), categoryDao.observeAll()) {
+                g,
+                a,
+                c,
+            ->
+            Triple(g, a, c)
+        },
+        combine(
+            currencyDao.observeAll(),
+            tagDao.observeAll(),
+            bookSettings.getBookSettingsStream(),
+        ) {
+                cur,
+                t,
+                s,
+            ->
+            Triple(cur, t, s)
+        },
     ) { (g, a, c), (cur, t, s) ->
         RefData(
             groups = g.map(AccountGroupEntity::asExternalModel),

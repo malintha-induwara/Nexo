@@ -22,10 +22,15 @@ class FakeMemosRepository(initial: List<Memo> = emptyList()) : MemosRepository {
 
     override suspend fun nextOrder(): Int = (memos.value.maxOfOrNull { it.orderSeq } ?: 0) + 1
 
-    override suspend fun save(memo: Memo) = memos.update { list -> list.filter { it.id != memo.id } + memo }
+    override suspend fun save(memo: Memo) = memos.update { list ->
+        list.filter { it.id != memo.id } +
+            memo
+    }
 
     override suspend fun delete(id: String) = memos.update { list -> list.filter { it.id != id } }
 
     override suspend fun search(start: String, end: String, pattern: String): List<Memo> =
-        memos.value.filter { it.date in start..end && (pattern in it.title || pattern in it.content) }
+        memos.value.filter {
+            it.date in start..end && (pattern in it.title || pattern in it.content)
+        }
 }

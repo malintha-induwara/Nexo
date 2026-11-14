@@ -18,7 +18,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-data class RepeatListUiState(val ref: RefData = RefData(), val rules: List<RepeatRule> = emptyList())
+data class RepeatListUiState(
+    val ref: RefData = RefData(),
+    val rules: List<RepeatRule> = emptyList(),
+)
 
 @HiltViewModel
 class RepeatListViewModel @Inject constructor(
@@ -26,7 +29,11 @@ class RepeatListViewModel @Inject constructor(
     private val refs: ReferenceDataRepository,
     private val bookSettings: BookSettingsRepository,
 ) : ViewModel() {
-    val uiState: StateFlow<RepeatListUiState> = combine(refs.getRefDataStream(), repo.getRulesStream(), ::RepeatListUiState)
+    val uiState: StateFlow<RepeatListUiState> = combine(
+        refs.getRefDataStream(),
+        repo.getRulesStream(),
+        ::RepeatListUiState,
+    )
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RepeatListUiState())
     fun delete(ids: List<String>) = viewModelScope.launch { repo.delete(ids) }
     fun setReflect(r: RepeatReflect) = viewModelScope.launch {

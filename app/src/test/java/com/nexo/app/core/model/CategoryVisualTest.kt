@@ -5,8 +5,23 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class CategoryVisualTest {
-    private fun cat(id: String, name: String, parent: String? = null, emoji: String? = null, color: Int? = null) =
-        Category(id, name, CategoryKind.EXPENSE, parent, 0, createdAt = 0, updatedAt = 0, emoji = emoji, colorIndex = color)
+    private fun cat(
+        id: String,
+        name: String,
+        parent: String? = null,
+        emoji: String? = null,
+        color: Int? = null,
+    ) = Category(
+        id,
+        name,
+        CategoryKind.EXPENSE,
+        parent,
+        0,
+        createdAt = 0,
+        updatedAt = 0,
+        emoji = emoji,
+        colorIndex = color,
+    )
 
     @Test
     fun ownEmojiAndColourWin() {
@@ -66,7 +81,9 @@ class CategoryVisualTest {
     fun colourIndexIsAlwaysInRange() {
         val v = CategoryVisuals.resolve(cat("x", "Rent", color = 23), null)
         assertEquals(3, v.colorIndex)
-        repeat(50) { i -> assert(CategoryVisuals.stableColor("id-$i") in 0 until CategoryVisuals.HUES) }
+        repeat(50) { i ->
+            assert(CategoryVisuals.stableColor("id-$i") in 0 until CategoryVisuals.HUES)
+        }
     }
 
     @Test

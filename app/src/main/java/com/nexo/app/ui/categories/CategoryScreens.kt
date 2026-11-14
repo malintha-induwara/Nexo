@@ -123,22 +123,66 @@ private fun EditableList(
         if (items.isEmpty()) item { EmptyState(empty) }
         itemsIndexed(items, key = { _, c -> c.id }) { i, c ->
             Row(
-                Modifier.animateItem().fillMaxWidth().heightIn(min = 64.dp).clickable { onClick(c) }.padding(start = Space.gutter, end = Space.xs),
+                Modifier.animateItem().fillMaxWidth().heightIn(min = 64.dp).clickable {
+                    onClick(c)
+                }.padding(start = Space.gutter, end = Space.xs),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 CategoryTileFor(visual(c))
                 Spacer(Modifier.width(Space.m))
                 Column(Modifier.weight(1f).padding(vertical = Space.m)) {
-                    Text(label(c), style = NexoType.RowTitle, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    subtitle(c)?.let { Text(it, style = NexoType.Meta, color = colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    Text(
+                        label(c),
+                        style = NexoType.RowTitle,
+                        color = colors.text,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    subtitle(c)?.let {
+                        Text(
+                            it,
+                            style = NexoType.Meta,
+                            color = colors.textTertiary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
-                IconButton(onClick = { onReorder(items.map { it.id }.toMutableList().apply { add(i - 1, removeAt(i)) }) }, enabled = i > 0) {
-                    Icon(Icons.Rounded.KeyboardArrowUp, stringResource(R.string.move_up), tint = if (i > 0) colors.textSecondary else colors.hairline)
+                IconButton(onClick = {
+                    onReorder(items.map { it.id }.toMutableList().apply { add(i - 1, removeAt(i)) })
+                }, enabled = i > 0) {
+                    Icon(
+                        Icons.Rounded.KeyboardArrowUp,
+                        stringResource(R.string.move_up),
+                        tint = if (i > 0) {
+                            colors.textSecondary
+                        } else {
+                            colors.hairline
+                        },
+                    )
                 }
-                IconButton(onClick = { onReorder(items.map { it.id }.toMutableList().apply { add(i + 1, removeAt(i)) }) }, enabled = i < items.size - 1) {
-                    Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.move_down), tint = if (i < items.size - 1) colors.textSecondary else colors.hairline)
+                IconButton(onClick = {
+                    onReorder(items.map { it.id }.toMutableList().apply { add(i + 1, removeAt(i)) })
+                }, enabled = i < items.size - 1) {
+                    Icon(
+                        Icons.Rounded.KeyboardArrowDown,
+                        stringResource(R.string.move_down),
+                        tint = if (i < items.size - 1) {
+                            colors.textSecondary
+                        } else {
+                            colors.hairline
+                        },
+                    )
                 }
-                IconButton(onClick = { onDelete(c) }) { Icon(Icons.Rounded.RemoveCircleOutline, stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error) }
+                IconButton(onClick = {
+                    onDelete(c)
+                }) {
+                    Icon(
+                        Icons.Rounded.RemoveCircleOutline,
+                        stringResource(R.string.action_delete),
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         }
         item { Spacer(Modifier.navigationBarsPadding().height(Space.xl)) }
@@ -155,25 +199,65 @@ fun CategoryListScreen(key: CategoryListKey, vm: CategoryViewModel = hiltViewMod
     val mains = ref.mainCategories(key.kind)
     val subsOn = ref.settings.subcategories
     Scaffold(topBar = {
-        NexoTopBar(stringResource(if (key.kind == CategoryKind.INCOME) R.string.income_category else R.string.expenses_category), onBack = { nav.back() }) {
-            IconButton(onClick = { nav.navigate(CategoryFormKey(key.kind)) }) { Icon(Icons.Rounded.Add, stringResource(R.string.action_add)) }
+        NexoTopBar(
+            stringResource(
+                if (key.kind == CategoryKind.INCOME) {
+                    R.string.income_category
+                } else {
+                    R.string.expenses_category
+                },
+            ),
+            onBack = { nav.back() },
+        ) {
+            IconButton(onClick = {
+                nav.navigate(CategoryFormKey(key.kind))
+            }) { Icon(Icons.Rounded.Add, stringResource(R.string.action_add)) }
         }
     }) { p ->
         Box(Modifier.padding(top = p.calculateTopPadding())) {
             EditableList(
                 items = mains,
                 visual = { ref.visual(it.id) },
-                label = { c -> val n = ref.subCategories(c.id).size; if (subsOn && n > 0) "${c.name} ($n)" else c.name },
-                subtitle = { c -> if (subsOn) ref.subCategories(c.id).joinToString(", ") { it.name }.ifEmpty { null } else null },
-                onClick = { c -> if (subsOn) nav.navigate(SubcategoryListKey(c.id)) else nav.navigate(CategoryFormKey(key.kind, c.id)) },
+                label = { c ->
+                    val n = ref.subCategories(c.id).size
+                    if (subsOn && n > 0) {
+                        "${c.name} ($n)"
+                    } else {
+                        c.name
+                    }
+                },
+                subtitle = { c ->
+                    if (subsOn) {
+                        ref.subCategories(c.id).joinToString(", ") {
+                            it.name
+                        }.ifEmpty { null }
+                    } else {
+                        null
+                    }
+                },
+                onClick = { c ->
+                    if (subsOn) {
+                        nav.navigate(SubcategoryListKey(c.id))
+                    } else {
+                        nav.navigate(CategoryFormKey(key.kind, c.id))
+                    }
+                },
                 onReorder = vm::reorder,
                 onDelete = { deleting = it.id },
-                header = { SwitchRow(stringResource(R.string.subcategory), subsOn, vm::setSubcategories) },
+                header = {
+                    SwitchRow(stringResource(R.string.subcategory), subsOn, vm::setSubcategories)
+                },
                 empty = stringResource(R.string.no_data),
             )
         }
     }
-    deleting?.let { id -> ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.delete(id) }, onDismiss = { deleting = null }) }
+    deleting?.let { id ->
+        ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
+            vm.delete(id)
+        }, onDismiss = {
+            deleting = null
+        })
+    }
 }
 
 @Composable
@@ -185,28 +269,43 @@ fun SubcategoryListScreen(key: SubcategoryListKey, vm: CategoryViewModel = hiltV
     val parent = ref.categoryById[key.parentId] ?: return
     Scaffold(topBar = {
         NexoTopBar(parent.name, onBack = { nav.back() }) {
-            IconButton(onClick = { nav.navigate(CategoryFormKey(parent.kind, parent.id)) }) { Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit)) }
-            IconButton(onClick = { nav.navigate(CategoryFormKey(parent.kind, parentId = parent.id, sub = true)) }) { Icon(Icons.Rounded.Add, stringResource(R.string.action_add)) }
+            IconButton(onClick = {
+                nav.navigate(CategoryFormKey(parent.kind, parent.id))
+            }) { Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit)) }
+            IconButton(onClick = {
+                nav.navigate(CategoryFormKey(parent.kind, parentId = parent.id, sub = true))
+            }) { Icon(Icons.Rounded.Add, stringResource(R.string.action_add)) }
         }
     }) { p ->
         Box(Modifier.padding(top = p.calculateTopPadding())) {
             EditableList(
                 items = ref.subCategories(parent.id),
                 visual = { ref.visual(it.id) },
-                label = { it.name }, subtitle = { null },
-                onClick = { c -> nav.navigate(CategoryFormKey(parent.kind, c.id, parent.id, sub = true)) },
+                label = { it.name },
+                subtitle = { null },
+                onClick = { c ->
+                    nav.navigate(CategoryFormKey(parent.kind, c.id, parent.id, sub = true))
+                },
                 onReorder = vm::reorder,
                 onDelete = { deleting = it.id },
                 empty = stringResource(R.string.no_subcategories),
             )
         }
     }
-    deleting?.let { id -> ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.delete(id) }, onDismiss = { deleting = null }) }
+    deleting?.let { id ->
+        ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
+            vm.delete(id)
+        }, onDismiss = {
+            deleting = null
+        })
+    }
 }
 
 /** Hue used least among the main categories of [kind], so new categories spread across the palette. */
 private fun leastUsedHue(ref: RefData, kind: CategoryKind): Int {
-    val used = ref.mainCategories(kind).mapNotNull { ref.visual(it.id)?.colorIndex }.groupingBy { it }.eachCount()
+    val used = ref.mainCategories(kind).mapNotNull {
+        ref.visual(it.id)?.colorIndex
+    }.groupingBy { it }.eachCount()
     return (0 until CategoryHues.count).minBy { used[it] ?: 0 }
 }
 
@@ -230,21 +329,32 @@ fun CategoryFormScreen(key: CategoryFormKey, vm: CategoryViewModel = hiltViewMod
     LaunchedEffect(state.navigation) {
         when (val target = state.navigation) {
             CategoryNavigation.Back -> nav.back()
+
             is CategoryNavigation.SubcategoriesOf -> {
                 nav.backTo { it is CategoryListKey }
                 nav.navigate(SubcategoryListKey(target.parentId))
             }
+
             null -> return@LaunchedEffect
         }
         vm.onNavigationHandled()
     }
     val existing = key.categoryId?.let { ref.categoryById[it] }
     val isSub = key.sub || existing?.parentId != null
-    var name by rememberSaveable(existing?.id) { mutableStateOf(existing?.name ?: key.presetName ?: "") }
-    var parent by rememberSaveable(existing?.id) { mutableStateOf(existing?.parentId ?: key.parentId) }
+    var name by rememberSaveable(existing?.id) {
+        mutableStateOf(existing?.name ?: key.presetName ?: "")
+    }
+    var parent by rememberSaveable(existing?.id) {
+        mutableStateOf(existing?.parentId ?: key.parentId)
+    }
     var emoji by rememberSaveable(existing?.id) { mutableStateOf(existing?.emoji) }
     // New main categories start on the least-used hue; subcategories inherit unless one is picked.
-    var color by rememberSaveable(existing?.id) { mutableStateOf(existing?.colorIndex ?: if (existing == null && !isSub) leastUsedHue(ref, key.kind) else null) }
+    var color by rememberSaveable(existing?.id) {
+        mutableStateOf(
+            existing?.colorIndex
+                ?: if (existing == null && !isSub) leastUsedHue(ref, key.kind) else null,
+        )
+    }
     var custom by rememberSaveable { mutableStateOf("") }
     var error by rememberSaveable { mutableStateOf<Int?>(null) }
     var pickParent by rememberSaveable { mutableStateOf(false) }
@@ -260,131 +370,314 @@ fun CategoryFormScreen(key: CategoryFormKey, vm: CategoryViewModel = hiltViewMod
     }
     val parentEntity = parent?.let { ref.categoryById[it] }
     val draft = (existing ?: Category("draft", "", key.kind, null, 0, createdAt = 0, updatedAt = 0))
-        .copy(name = name, parentId = if (isSub) parent else null, emoji = emoji, colorIndex = color)
+        .copy(
+            name = name,
+            parentId = if (isSub) parent else null,
+            emoji = emoji,
+            colorIndex = color,
+        )
     val preview = CategoryVisuals.resolve(draft, if (isSub) parentEntity else null)
 
     Scaffold(topBar = { NexoTopBar(stringResource(title), onBack = { nav.back() }) }) { p ->
         Column(
-            Modifier.padding(top = p.calculateTopPadding()).fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().navigationBarsPadding(),
+            Modifier.padding(
+                top = p.calculateTopPadding(),
+            ).fillMaxWidth().verticalScroll(
+                rememberScrollState(),
+            ).imePadding().navigationBarsPadding(),
         ) {
             val gutter = Modifier.padding(horizontal = Space.gutter)
-            Row(gutter.fillMaxWidth().padding(vertical = Space.l), verticalAlignment = Alignment.CenterVertically) {
-                CategoryTile(preview.emoji, preview.monogram, CategoryHues.of(preview.colorIndex, colors.isDark), size = 64.dp)
+            Row(
+                gutter.fillMaxWidth().padding(vertical = Space.l),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CategoryTile(
+                    preview.emoji,
+                    preview.monogram,
+                    CategoryHues.of(preview.colorIndex, colors.isDark),
+                    size = 64.dp,
+                )
                 Spacer(Modifier.width(Space.l))
                 OutlinedTextField(
-                    name, { name = it; error = null }, label = { Text(stringResource(if (isSub) R.string.subcategory_name else R.string.name)) },
-                    singleLine = true, isError = error != null, supportingText = error?.let { { Text(stringResource(it)) } }, modifier = Modifier.weight(1f),
+                    name,
+                    {
+                        name = it
+                        error = null
+                    },
+                    label = {
+                        Text(
+                            stringResource(if (isSub) R.string.subcategory_name else R.string.name),
+                        )
+                    },
+                    singleLine = true,
+                    isError = error != null,
+                    supportingText = error?.let {
+                        { Text(stringResource(it)) }
+                    },
+                    modifier = Modifier.weight(1f),
                     shape = NexoShapes.control,
                 )
             }
             if (isSub) {
-                SettingRow(stringResource(R.string.category), parentEntity?.name ?: stringResource(R.string.select_specific_category), onClick = { pickParent = true })
+                SettingRow(
+                    stringResource(R.string.category),
+                    parentEntity?.name ?: stringResource(R.string.select_specific_category),
+                    onClick = {
+                        pickParent = true
+                    },
+                )
             }
 
             SectionHeader(stringResource(R.string.category_emoji))
-            FlowRow(gutter.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Space.xs), verticalArrangement = Arrangement.spacedBy(Space.xs)) {
-                EmojiCell(null, selected = emoji == null, label = stringResource(R.string.category_emoji_auto)) { emoji = null }
-                val shown = if (emoji != null && emoji !in EMOJI_CHOICES) listOf(emoji!!) + EMOJI_CHOICES else EMOJI_CHOICES
+            FlowRow(
+                gutter.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Space.xs),
+                verticalArrangement = Arrangement.spacedBy(Space.xs),
+            ) {
+                EmojiCell(
+                    null,
+                    selected = emoji == null,
+                    label = stringResource(R.string.category_emoji_auto),
+                ) {
+                    emoji = null
+                }
+                val shown = if (emoji != null && emoji !in EMOJI_CHOICES) {
+                    listOf(emoji!!) + EMOJI_CHOICES
+                } else {
+                    EMOJI_CHOICES
+                }
                 shown.forEach { e -> EmojiCell(e, selected = emoji == e) { emoji = e } }
             }
             OutlinedTextField(
                 custom,
-                { v -> custom = v; firstGrapheme(v)?.let { emoji = it } },
+                { v ->
+                    custom = v
+                    firstGrapheme(v)?.let { emoji = it }
+                },
                 label = { Text(stringResource(R.string.category_emoji_custom)) },
                 singleLine = true,
                 shape = NexoShapes.control,
                 modifier = gutter.fillMaxWidth().padding(top = Space.m),
             )
             if (emoji == null) {
-                Text(stringResource(R.string.category_emoji_auto_hint), style = NexoType.Meta, color = colors.textTertiary, modifier = gutter.padding(top = Space.xs))
+                Text(
+                    stringResource(R.string.category_emoji_auto_hint),
+                    style = NexoType.Meta,
+                    color = colors.textTertiary,
+                    modifier = gutter.padding(top = Space.xs),
+                )
             }
 
             SectionHeader(stringResource(R.string.category_color))
-            FlowRow(gutter.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Space.s), verticalArrangement = Arrangement.spacedBy(Space.s)) {
+            FlowRow(
+                gutter.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Space.s),
+                verticalArrangement = Arrangement.spacedBy(Space.s),
+            ) {
                 if (isSub) {
                     val inherited = parentEntity?.let { ref.visual(it.id)?.colorIndex } ?: 0
-                    Swatch(CategoryHues.of(inherited, colors.isDark), selected = color == null, description = stringResource(R.string.category_color_inherit), inherit = true) { color = null }
+                    Swatch(
+                        CategoryHues.of(inherited, colors.isDark),
+                        selected = color == null,
+                        description = stringResource(R.string.category_color_inherit),
+                        inherit = true,
+                    ) {
+                        color = null
+                    }
                 }
                 (0 until CategoryHues.count).forEach { i ->
-                    Swatch(CategoryHues.of(i, colors.isDark), selected = color == i || (color == null && !isSub && preview.colorIndex == i), description = stringResource(R.string.category_color_n, i + 1)) { color = i }
+                    Swatch(
+                        CategoryHues.of(i, colors.isDark),
+                        selected =
+                            color == i || (color == null && !isSub && preview.colorIndex == i),
+                        description = stringResource(R.string.category_color_n, i + 1),
+                    ) { color = i }
                 }
             }
 
             Button(onClick = {
                 when {
                     name.isBlank() -> error = R.string.please_enter_contents
+
                     isSub && parent == null -> error = R.string.select_specific_category
-                    else -> vm.save(key.kind, existing?.id, name, if (isSub) parent else existing?.parentId, emoji, color)
+
+                    else -> vm.save(
+                        key.kind,
+                        existing?.id,
+                        name,
+                        if (isSub) parent else existing?.parentId,
+                        emoji,
+                        color,
+                    )
                 }
-            }, modifier = gutter.fillMaxWidth().padding(top = Space.section).height(52.dp)) { Text(stringResource(R.string.action_save), style = MaterialTheme.typography.labelLarge) }
+            }, modifier = gutter.fillMaxWidth().padding(top = Space.section).height(52.dp)) {
+                Text(
+                    stringResource(R.string.action_save),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
             if (existing != null && isSub) {
-                OutlinedButton(onClick = { confirmMain = true }, modifier = gutter.fillMaxWidth().padding(top = Space.s).height(52.dp)) { Text(stringResource(R.string.to_main_category)) }
+                OutlinedButton(onClick = {
+                    confirmMain = true
+                }, modifier = gutter.fillMaxWidth().padding(top = Space.s).height(52.dp)) {
+                    Text(stringResource(R.string.to_main_category))
+                }
             }
             if (existing != null && !isSub && ref.settings.subcategories) {
-                OutlinedButton(onClick = { pickTarget = true }, modifier = gutter.fillMaxWidth().padding(top = Space.s).height(52.dp)) { Text(stringResource(R.string.to_subcategory)) }
+                OutlinedButton(onClick = {
+                    pickTarget = true
+                }, modifier = gutter.fillMaxWidth().padding(top = Space.s).height(52.dp)) {
+                    Text(stringResource(R.string.to_subcategory))
+                }
             }
             Spacer(Modifier.height(Space.xl))
         }
     }
     if (pickParent) {
-        ChoiceDialog(stringResource(R.string.category), ref.mainCategories(key.kind), ref.categoryById[parent], { it.name }, onSelect = { parent = it.id }, onDismiss = { pickParent = false })
+        ChoiceDialog(
+            stringResource(R.string.category),
+            ref.mainCategories(key.kind),
+            ref.categoryById[parent],
+            {
+                it.name
+            },
+            onSelect = {
+                parent = it.id
+            },
+            onDismiss = { pickParent = false },
+        )
     }
     if (pickTarget && existing != null) {
         ChoiceDialog(
-            stringResource(R.string.to_subcategory), ref.mainCategories(key.kind).filter { it.id != existing.id }, null,
-            { c -> val n = ref.subCategories(c.id).size; "${c.name} ($n)" }, onSelect = { confirmTarget = it.id }, onDismiss = { pickTarget = false },
+            stringResource(R.string.to_subcategory),
+            ref.mainCategories(key.kind).filter {
+                it.id !=
+                    existing.id
+            },
+            null,
+            { c ->
+                val n = ref.subCategories(c.id).size
+                "${c.name} ($n)"
+            },
+            onSelect = {
+                confirmTarget = it.id
+            },
+            onDismiss = { pickTarget = false },
         )
     }
     confirmTarget?.let { target ->
         ConfirmDialog(
-            stringResource(R.string.to_subcategory_confirm, existing?.name ?: "", ref.categoryName(target) ?: ""),
+            stringResource(
+                R.string.to_subcategory_confirm,
+                existing?.name ?: "",
+                ref.categoryName(target) ?: "",
+            ),
             onConfirm = { vm.moveUnder(existing!!.id, target) },
             onDismiss = { confirmTarget = null },
         )
     }
     if (confirmMain && existing != null) {
-        ConfirmDialog(stringResource(R.string.to_main_confirm), onConfirm = { vm.makeMain(existing.id) }, onDismiss = { confirmMain = false })
+        ConfirmDialog(stringResource(R.string.to_main_confirm), onConfirm = {
+            vm.makeMain(existing.id)
+        }, onDismiss = {
+            confirmMain = false
+        })
     }
 }
 
 @Composable
-private fun EmojiCell(emoji: String?, selected: Boolean, label: String? = null, onClick: () -> Unit) {
+private fun EmojiCell(
+    emoji: String?,
+    selected: Boolean,
+    label: String? = null,
+    onClick: () -> Unit,
+) {
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
-    val ring by animateColorAsState(if (selected) colors.primary else Color.Transparent, NexoMotion.standard(), label = "emojiRing")
-    val scale by animateFloatAsState(if (selected) 1f else 0.94f, NexoMotion.snappy(), label = "emojiScale")
+    val ring by animateColorAsState(
+        if (selected) colors.primary else Color.Transparent,
+        NexoMotion.standard(),
+        label = "emojiRing",
+    )
+    val scale by animateFloatAsState(
+        if (selected) 1f else 0.94f,
+        NexoMotion.snappy(),
+        label = "emojiScale",
+    )
     Box(
         Modifier
             .size(44.dp)
-            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .clip(NexoShapes.tile)
             .background(if (selected) colors.raisedHigh else colors.raised)
             .border(1.5.dp, ring, NexoShapes.tile)
-            .clickable(role = Role.RadioButton) { haptics.tick(); onClick() }
-            .semantics { this.selected = selected; label?.let { contentDescription = it } },
+            .clickable(role = Role.RadioButton) {
+                haptics.tick()
+                onClick()
+            }
+            .semantics {
+                this.selected = selected
+                label?.let { contentDescription = it }
+            },
         contentAlignment = Alignment.Center,
     ) {
-        if (emoji != null) Text(emoji, fontSize = 22.sp)
-        else Text(label ?: "", style = NexoType.Caps, color = colors.textSecondary, maxLines = 1)
+        if (emoji != null) {
+            Text(emoji, fontSize = 22.sp)
+        } else {
+            Text(label ?: "", style = NexoType.Caps, color = colors.textSecondary, maxLines = 1)
+        }
     }
 }
 
 @Composable
-private fun Swatch(color: Color, selected: Boolean, description: String, inherit: Boolean = false, onClick: () -> Unit) {
+private fun Swatch(
+    color: Color,
+    selected: Boolean,
+    description: String,
+    inherit: Boolean = false,
+    onClick: () -> Unit,
+) {
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
-    val scale by animateFloatAsState(if (selected) 1f else 0.86f, NexoMotion.snappy(), label = "swatch")
+    val scale by animateFloatAsState(
+        if (selected) 1f else 0.86f,
+        NexoMotion.snappy(),
+        label = "swatch",
+    )
     Box(
         Modifier
             .size(40.dp)
-            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .clip(CircleShape)
             .background(if (inherit) colors.tint(color, colors.raised) else color)
-            .border(if (inherit) 1.5.dp else 0.dp, if (inherit) color else Color.Transparent, CircleShape)
-            .clickable(role = Role.RadioButton) { haptics.tick(); onClick() }
-            .semantics { this.selected = selected; contentDescription = description },
+            .border(
+                if (inherit) 1.5.dp else 0.dp,
+                if (inherit) color else Color.Transparent,
+                CircleShape,
+            )
+            .clickable(role = Role.RadioButton) {
+                haptics.tick()
+                onClick()
+            }
+            .semantics {
+                this.selected = selected
+                contentDescription = description
+            },
         contentAlignment = Alignment.Center,
     ) {
-        if (selected) Icon(Icons.Rounded.Check, null, tint = if (inherit) color else colors.background, modifier = Modifier.size(20.dp))
+        if (selected) {
+            Icon(
+                Icons.Rounded.Check,
+                null,
+                tint = if (inherit) color else colors.background,
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }

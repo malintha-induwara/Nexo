@@ -85,9 +85,17 @@ import com.nexo.app.ui.stats.StatsTab
 import com.nexo.app.ui.transactions.TransactionsTab
 
 enum class MainTab(val label: Int, val icon: ImageVector, val selectedIcon: ImageVector) {
-    TRANSACTIONS(R.string.tab_trans, Icons.AutoMirrored.Outlined.ReceiptLong, Icons.AutoMirrored.Rounded.ReceiptLong),
+    TRANSACTIONS(
+        R.string.tab_trans,
+        Icons.AutoMirrored.Outlined.ReceiptLong,
+        Icons.AutoMirrored.Rounded.ReceiptLong,
+    ),
     STATS(R.string.tab_stats, Icons.Outlined.PieChart, Icons.Rounded.PieChart),
-    ACCOUNTS(R.string.tab_accounts, Icons.Outlined.AccountBalanceWallet, Icons.Rounded.AccountBalanceWallet),
+    ACCOUNTS(
+        R.string.tab_accounts,
+        Icons.Outlined.AccountBalanceWallet,
+        Icons.Rounded.AccountBalanceWallet,
+    ),
     MORE(R.string.tab_more, Icons.Outlined.MoreHoriz, Icons.Rounded.MoreHoriz),
 }
 
@@ -101,6 +109,7 @@ class ShellController(hidden: MutableState<Boolean> = mutableStateOf(false)) {
     var bottomBarHidden by hidden
     var addOverride by mutableStateOf<(() -> Unit)?>(null)
     var addLabelOverride by mutableStateOf<Int?>(null)
+
     /** Bottom padding a scrolling list needs to clear the floating bar. */
     var bottomInset by mutableStateOf(0.dp)
 }
@@ -148,7 +157,10 @@ fun MainShell(vm: MainShellViewModel = hiltViewModel()) {
             AnimatedContent(
                 targetState = tab,
                 transitionSpec = {
-                    (fadeIn(NexoMotion.enter(NexoMotion.MEDIUM, delay = 40)) + scaleIn(NexoMotion.enter(NexoMotion.LONG), initialScale = 0.985f)) togetherWith
+                    (
+                        fadeIn(NexoMotion.enter(NexoMotion.MEDIUM, delay = 40)) +
+                            scaleIn(NexoMotion.enter(NexoMotion.LONG), initialScale = 0.985f)
+                        ) togetherWith
                         fadeOut(NexoMotion.exit(90))
                 },
                 label = "tab",
@@ -164,40 +176,95 @@ fun MainShell(vm: MainShellViewModel = hiltViewModel()) {
                 }
             }
             // Holding the add button: the add action, and the way into the Review Queue whether or not anything waits.
-            AnimatedVisibility(addMenu, enter = fadeIn(NexoMotion.enter()), exit = fadeOut(NexoMotion.exit())) {
-                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.28f)).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { addMenu = false })
+            AnimatedVisibility(
+                addMenu,
+                enter = fadeIn(NexoMotion.enter()),
+                exit = fadeOut(NexoMotion.exit()),
+            ) {
+                Box(
+                    Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.28f)).clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) {
+                        addMenu = false
+                    },
+                )
             }
             AnimatedVisibility(
                 visible = addMenu,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = controller.bottomInset + 4.dp),
-                enter = fadeIn(NexoMotion.enter()) + scaleIn(NexoMotion.snappy(), initialScale = 0.9f, transformOrigin = TransformOrigin(0.5f, 1f)),
-                exit = fadeOut(NexoMotion.exit()) + scaleOut(NexoMotion.exit(), targetScale = 0.95f, transformOrigin = TransformOrigin(0.5f, 1f)),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(
+                    bottom =
+                        controller.bottomInset + 4.dp,
+                ),
+                enter =
+                    fadeIn(NexoMotion.enter()) +
+                        scaleIn(
+                            NexoMotion.snappy(),
+                            initialScale = 0.9f,
+                            transformOrigin = TransformOrigin(0.5f, 1f),
+                        ),
+                exit =
+                    fadeOut(NexoMotion.exit()) +
+                        scaleOut(
+                            NexoMotion.exit(),
+                            targetScale = 0.95f,
+                            transformOrigin = TransformOrigin(0.5f, 1f),
+                        ),
             ) {
-                Column(Modifier.width(264.dp).clip(NexoShapes.panel).background(if (colors.isDark) colors.raised else colors.background).padding(Space.s)) {
-                    AddMenuRow(Icons.Rounded.Add, stringResource(controller.addLabelOverride ?: R.string.add_transaction), 0) {
+                Column(
+                    Modifier.width(
+                        264.dp,
+                    ).clip(NexoShapes.panel).background(
+                        if (colors.isDark) colors.raised else colors.background,
+                    ).padding(Space.s),
+                ) {
+                    AddMenuRow(
+                        Icons.Rounded.Add,
+                        stringResource(controller.addLabelOverride ?: R.string.add_transaction),
+                        0,
+                    ) {
                         addMenu = false
                         controller.addOverride?.invoke() ?: nav.navigate(EntryKey(fromAdd = true))
                     }
-                    AddMenuRow(Icons.Rounded.Inbox, stringResource(R.string.sms_queue_row), queue.count) { addMenu = false; nav.navigate(SmsQueueKey) }
+                    AddMenuRow(
+                        Icons.Rounded.Inbox,
+                        stringResource(R.string.sms_queue_row),
+                        queue.count,
+                    ) {
+                        addMenu = false
+                        nav.navigate(SmsQueueKey)
+                    }
                 }
             }
             AnimatedVisibility(
                 visible = barVisible,
                 modifier = Modifier.align(Alignment.BottomCenter),
                 enter = slideInVertically(NexoMotion.snappy()) { it } + fadeIn(NexoMotion.enter()),
-                exit = slideOutVertically(NexoMotion.exit(NexoMotion.MEDIUM)) { it } + fadeOut(NexoMotion.exit()),
+                exit =
+                    slideOutVertically(NexoMotion.exit(NexoMotion.MEDIUM)) { it } +
+                        fadeOut(NexoMotion.exit()),
             ) {
                 PillBottomBar(
-                    items = MainTab.entries.map { BarItem(stringResource(it.label), it.icon, it.selectedIcon) },
-                    onAddLongPress = { haptics.longPress(); addMenu = true },
+                    items = MainTab.entries.map {
+                        BarItem(stringResource(it.label), it.icon, it.selectedIcon)
+                    },
+                    onAddLongPress = {
+                        haptics.longPress()
+                        addMenu = true
+                    },
                     addLongPressLabel = stringResource(R.string.sms_queue_row),
                     selected = tab.ordinal,
                     onSelect = { i ->
                         val t = MainTab.entries[i]
                         if (tab == t) todaySignal++ else tab = t
                     },
-                    onAdd = { controller.addOverride?.invoke() ?: nav.navigate(EntryKey(fromAdd = true)) },
-                    addLabel = stringResource(controller.addLabelOverride ?: R.string.add_transaction),
+                    onAdd = {
+                        controller.addOverride?.invoke()
+                            ?: nav.navigate(EntryKey(fromAdd = true))
+                    },
+                    addLabel = stringResource(
+                        controller.addLabelOverride ?: R.string.add_transaction,
+                    ),
                 )
             }
         }
@@ -209,17 +276,30 @@ fun MainShell(vm: MainShellViewModel = hiltViewModel()) {
 private fun AddMenuRow(icon: ImageVector, label: String, count: Int, onClick: () -> Unit) {
     val colors = LocalNexoColors.current
     Row(
-        Modifier.fillMaxWidth().clip(NexoShapes.control).clickable(onClick = onClick).padding(horizontal = Space.m, vertical = Space.m),
+        Modifier.fillMaxWidth().clip(
+            NexoShapes.control,
+        ).clickable(onClick = onClick).padding(horizontal = Space.m, vertical = Space.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, null, tint = colors.textSecondary, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(Space.m))
-        Text(label, style = MaterialTheme.typography.bodyLarge, color = colors.text, modifier = Modifier.weight(1f))
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = colors.text,
+            modifier = Modifier.weight(1f),
+        )
         if (count > 0) {
             Text(
                 count.toString(),
-                Modifier.defaultMinSize(minWidth = 20.dp).clip(CircleShape).background(colors.primary).padding(horizontal = 6.dp, vertical = 2.dp),
-                style = MaterialTheme.typography.labelSmall, color = colors.onPrimary, textAlign = TextAlign.Center,
+                Modifier.defaultMinSize(
+                    minWidth = 20.dp,
+                ).clip(
+                    CircleShape,
+                ).background(colors.primary).padding(horizontal = 6.dp, vertical = 2.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onPrimary,
+                textAlign = TextAlign.Center,
             )
         }
     }

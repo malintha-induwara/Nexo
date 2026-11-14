@@ -1,6 +1,5 @@
 package com.nexo.app.core.model
 
-
 /** What a ledger row shows in its category column. */
 sealed interface CategoryLabel {
     data object Transfer : CategoryLabel
@@ -13,10 +12,18 @@ sealed interface CategoryLabel {
 
 fun RefData.categoryLabel(tx: Transaction): CategoryLabel = when {
     tx.kind.isTransfer -> CategoryLabel.Transfer
+
     tx.isBalanceAdjustment || tx.kind.isBalance -> CategoryLabel.ModifiedBalance
+
     else -> CategoryLabel.Category(
         main = mainCategoryId(tx.categoryId)?.let { categoryName(it) },
-        sub = if (settings.subcategories) subCategoryId(tx.categoryId)?.let { categoryName(it) } else null,
+        sub = if (settings.subcategories) {
+            subCategoryId(tx.categoryId)?.let {
+                categoryName(it)
+            }
+        } else {
+            null
+        },
     )
 }
 
@@ -24,10 +31,19 @@ fun RefData.categoryLabel(tx: Transaction): CategoryLabel = when {
 fun List<Transaction>.sortedForDay(order: TimeDisplay): List<Transaction> {
     val minute = { t: Transaction -> t.dateTime / 60_000 }
     val cmp: Comparator<Transaction> = when {
-        order.byTime && order.descending -> compareByDescending(minute).thenByDescending { it.updatedAt }.thenByDescending { it.createdAt }
+        order.byTime && order.descending -> compareByDescending(minute).thenByDescending {
+            it.updatedAt
+        }.thenByDescending { it.createdAt }
+
         order.byTime -> compareBy(minute).thenBy { it.updatedAt }.thenBy { it.createdAt }
-        order.descending -> compareByDescending<Transaction> { it.updatedAt }.thenByDescending { it.dateTime }.thenByDescending { it.createdAt }
-        else -> compareBy<Transaction> { it.updatedAt }.thenBy { it.dateTime }.thenBy { it.createdAt }
+
+        order.descending -> compareByDescending<Transaction> {
+            it.updatedAt
+        }.thenByDescending { it.dateTime }.thenByDescending { it.createdAt }
+
+        else -> compareBy<Transaction> {
+            it.updatedAt
+        }.thenBy { it.dateTime }.thenBy { it.createdAt }
     }
     return sortedWith(cmp)
 }

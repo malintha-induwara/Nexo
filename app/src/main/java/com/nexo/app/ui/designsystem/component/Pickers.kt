@@ -43,7 +43,8 @@ import java.time.YearMonth
 import java.time.ZoneOffset
 
 private fun LocalDate.utcMillis(): Long = atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
-private fun Long.utcDate(): LocalDate = Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
+private fun Long.utcDate(): LocalDate =
+    Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
 
 /** Date picker limited to 1985–2050. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,7 +74,9 @@ fun NexoDatePickerDialog(
                 onDismiss()
             }) { Text(stringResource(R.string.action_ok)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     ) {
         DatePicker(state = state)
     }
@@ -93,7 +96,9 @@ fun NexoTimePickerDialog(initial: LocalTime, onPick: (LocalTime) -> Unit, onDism
                 onDismiss()
             }) { Text(stringResource(R.string.action_ok)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }
 
@@ -104,31 +109,60 @@ fun MonthPickerDialog(selected: YearMonth, onPick: (YearMonth) -> Unit, onDismis
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                IconButton(onClick = { year-- }) { Icon(Icons.Filled.ChevronLeft, stringResource(R.string.action_previous)) }
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                IconButton(onClick = {
+                    year--
+                }) { Icon(Icons.Filled.ChevronLeft, stringResource(R.string.action_previous)) }
                 Text(year.toString(), style = MaterialTheme.typography.titleLarge)
-                IconButton(onClick = { year++ }) { Icon(Icons.Filled.ChevronRight, stringResource(R.string.action_next)) }
+                IconButton(onClick = {
+                    year++
+                }) { Icon(Icons.Filled.ChevronRight, stringResource(R.string.action_next)) }
             }
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (row in 0 until 4) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
                         for (col in 0 until 3) {
                             val m = row * 3 + col + 1
                             val isSel = selected.year == year && selected.monthValue == m
-                            val action = { onPick(YearMonth.of(year, m)); onDismiss() }
-                            if (isSel) FilledTonalButton(onClick = action, modifier = Modifier.weight(1f)) { Text(Formats.monthShort(m), maxLines = 1) }
-                            else OutlinedButton(onClick = action, modifier = Modifier.weight(1f)) { Text(Formats.monthShort(m), maxLines = 1) }
+                            val action = {
+                                onPick(YearMonth.of(year, m))
+                                onDismiss()
+                            }
+                            if (isSel) {
+                                FilledTonalButton(
+                                    onClick = action,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(Formats.monthShort(m), maxLines = 1)
+                                }
+                            } else {
+                                OutlinedButton(onClick = action, modifier = Modifier.weight(1f)) {
+                                    Text(Formats.monthShort(m), maxLines = 1)
+                                }
+                            }
                         }
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onPick(YearMonth.now()); onDismiss() }) { Text(stringResource(R.string.this_month)) }
+            TextButton(onClick = {
+                onPick(YearMonth.now())
+                onDismiss()
+            }) { Text(stringResource(R.string.this_month)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
+        },
     )
 }
 
@@ -148,7 +182,16 @@ fun DateRangeChips(
         TextButton(onClick = { editing = 2 }) { Text(Formats.shortDate(end), color = color) }
     }
     when (editing) {
-        1 -> NexoDatePickerDialog(start, onPick = { d -> onChange(d, if (d.isAfter(end)) d else end) }, onDismiss = { editing = 0 })
-        2 -> NexoDatePickerDialog(end, onPick = { d -> onChange(if (d.isBefore(start)) d else start, d) }, onDismiss = { editing = 0 })
+        1 -> NexoDatePickerDialog(start, onPick = { d ->
+            onChange(d, if (d.isAfter(end)) d else end)
+        }, onDismiss = {
+            editing = 0
+        })
+
+        2 -> NexoDatePickerDialog(end, onPick = { d ->
+            onChange(if (d.isBefore(start)) d else start, d)
+        }, onDismiss = {
+            editing = 0
+        })
     }
 }

@@ -103,7 +103,9 @@ fun PillBottomBar(
                 launch { thumbW.animateTo(width, NexoMotion.snappy()) }
             }
         } else {
-            thumbX.snapTo(left); thumbW.snapTo(width); thumbPlaced = true
+            thumbX.snapTo(left)
+            thumbW.snapTo(width)
+            thumbPlaced = true
         }
     }
     val barColor = if (colors.isDark) colors.raised else colors.surface
@@ -113,7 +115,13 @@ fun PillBottomBar(
     Box(
         modifier
             .fillMaxWidth()
-            .background(Brush.verticalGradient(0f to Color.Transparent, 0.45f to colors.background.copy(alpha = 0.92f), 1f to colors.background))
+            .background(
+                Brush.verticalGradient(
+                    0f to Color.Transparent,
+                    0.45f to colors.background.copy(alpha = 0.92f),
+                    1f to colors.background,
+                ),
+            )
             .navigationBarsPadding()
             .padding(horizontal = Space.gutter, vertical = Space.m),
     ) {
@@ -121,7 +129,18 @@ fun PillBottomBar(
             Modifier
                 .fillMaxWidth()
                 .height(Sizes.bottomBar)
-                .then(if (colors.isDark) Modifier else Modifier.shadow(16.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.10f), spotColor = Color.Black.copy(alpha = 0.10f)))
+                .then(
+                    if (colors.isDark) {
+                        Modifier
+                    } else {
+                        Modifier.shadow(
+                            16.dp,
+                            CircleShape,
+                            ambientColor = Color.Black.copy(alpha = 0.10f),
+                            spotColor = Color.Black.copy(alpha = 0.10f),
+                        )
+                    },
+                )
                 .clip(CircleShape)
                 .background(barColor),
         ) {
@@ -144,7 +163,9 @@ fun PillBottomBar(
                 modifier = Modifier.fillMaxSize().selectableGroup(),
                 content = {
                     items.forEachIndexed { i, item ->
-                        if (i == 2) AddButton(onAdd, addLabel, Modifier, onAddLongPress, addLongPressLabel)
+                        if (i == 2) {
+                            AddButton(onAdd, addLabel, Modifier, onAddLongPress, addLongPressLabel)
+                        }
                         BarTab(
                             item = item,
                             selected = i == selected,
@@ -159,13 +180,29 @@ fun PillBottomBar(
             ) { measurables, constraints ->
                 val height = constraints.maxHeight
                 val available = constraints.maxWidth
-                val labels = measurables.mapIndexed { j, m -> if (j == ADD_INDEX) 0 else m.maxIntrinsicWidth(height) }
+                val labels = measurables.mapIndexed { j, m ->
+                    if (j == ADD_INDEX) {
+                        0
+                    } else {
+                        m.maxIntrinsicWidth(height)
+                    }
+                }
                 val labelSum = labels.sum()
                 val tabs = measurables.size - 1
-                val pad = TAB_PADDING.roundToPx().coerceAtMost((available - ADD_SLOT.roundToPx() - labelSum) / (2 * tabs))
+                val pad = TAB_PADDING.roundToPx().coerceAtMost(
+                    (available - ADD_SLOT.roundToPx() - labelSum) / (2 * tabs),
+                )
                     .coerceAtLeast(MIN_TAB_PADDING.roundToPx())
-                val addWidth = ADD_SLOT.roundToPx().coerceAtMost(available - labelSum - 2 * pad * tabs).coerceAtLeast(MIN_ADD_SLOT.roundToPx())
-                val natural = labels.mapIndexed { j, w -> if (j == ADD_INDEX) addWidth else w + 2 * pad }
+                val addWidth = ADD_SLOT.roundToPx().coerceAtMost(
+                    available - labelSum - 2 * pad * tabs,
+                ).coerceAtLeast(MIN_ADD_SLOT.roundToPx())
+                val natural = labels.mapIndexed { j, w ->
+                    if (j == ADD_INDEX) {
+                        addWidth
+                    } else {
+                        w + 2 * pad
+                    }
+                }
                 val sum = natural.sum()
                 val half = (available - addWidth) / 2
                 val left = natural[0] + natural[1]
@@ -175,19 +212,38 @@ fun PillBottomBar(
                     left <= half && right <= half -> {
                         val l = half - left
                         val r = available - addWidth - half - right
-                        listOf(natural[0] + l / 2, natural[1] + l - l / 2, addWidth, natural[3] + r / 2, natural[4] + r - r / 2)
+                        listOf(
+                            natural[0] + l / 2,
+                            natural[1] + l - l / 2,
+                            addWidth,
+                            natural[3] + r / 2,
+                            natural[4] + r - r / 2,
+                        )
                     }
+
                     sum <= available -> {
                         val extra = (available - sum) / natural.size
-                        natural.map { it + extra }.toMutableList().also { it[it.lastIndex] += available - sum - extra * natural.size }
+                        natural.map { it + extra }.toMutableList().also {
+                            it[it.lastIndex] +=
+                                available - sum - extra * natural.size
+                        }
                     }
+
                     else -> {
                         val room = (available - addWidth).coerceAtLeast(0)
                         val tabsSum = (sum - addWidth).coerceAtLeast(1)
-                        natural.mapIndexed { j, w -> if (j == ADD_INDEX) addWidth else w * room / tabsSum }
+                        natural.mapIndexed { j, w ->
+                            if (j == ADD_INDEX) {
+                                addWidth
+                            } else {
+                                w * room / tabsSum
+                            }
+                        }
                     }
                 }
-                val placeables = measurables.mapIndexed { j, m -> m.measure(Constraints.fixed(widths[j], height)) }
+                val placeables = measurables.mapIndexed { j, m ->
+                    m.measure(Constraints.fixed(widths[j], height))
+                }
                 layout(available, height) {
                     var x = 0
                     placeables.forEachIndexed { j, p ->
@@ -206,6 +262,7 @@ fun PillBottomBar(
 }
 
 private val THUMB_INSET = 5.dp
+
 /** Padding between a tab's label and the edge of its highlight. */
 private val TAB_PADDING = 12.dp
 private val MIN_TAB_PADDING = 5.dp
@@ -216,12 +273,26 @@ private const val ADD_INDEX = 2
 @Composable
 private fun BarTab(item: BarItem, selected: Boolean, onClick: () -> Unit, modifier: Modifier) {
     val colors = LocalNexoColors.current
-    val tint by animateColorAsState(if (selected) colors.text else colors.textSecondary, NexoMotion.standard(), label = "tab")
-    val bump by animateFloatAsState(if (selected) 1f else 0.94f, NexoMotion.snappy(), label = "tabScale")
+    val tint by animateColorAsState(
+        if (selected) colors.text else colors.textSecondary,
+        NexoMotion.standard(),
+        label = "tab",
+    )
+    val bump by animateFloatAsState(
+        if (selected) 1f else 0.94f,
+        NexoMotion.snappy(),
+        label = "tabScale",
+    )
     Column(
         modifier
             .fillMaxHeight()
-            .selectable(selected, interactionSource = remember { MutableInteractionSource() }, indication = null, role = Role.Tab, onClick = onClick),
+            .selectable(
+                selected,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                role = Role.Tab,
+                onClick = onClick,
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -230,7 +301,10 @@ private fun BarTab(item: BarItem, selected: Boolean, onClick: () -> Unit, modifi
                 if (on) item.selectedIcon else item.icon,
                 contentDescription = null,
                 tint = tint,
-                modifier = Modifier.size(22.dp).graphicsLayer { scaleX = bump; scaleY = bump },
+                modifier = Modifier.size(22.dp).graphicsLayer {
+                    scaleX = bump
+                    scaleY = bump
+                },
             )
         }
         Spacer(Modifier.height(2.dp))
@@ -258,7 +332,13 @@ private fun BarTab(item: BarItem, selected: Boolean, onClick: () -> Unit, modifi
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun AddButton(onAdd: () -> Unit, label: String, modifier: Modifier, onLongPress: (() -> Unit)?, longPressLabel: String?) {
+private fun AddButton(
+    onAdd: () -> Unit,
+    label: String,
+    modifier: Modifier,
+    onLongPress: (() -> Unit)?,
+    longPressLabel: String?,
+) {
     val colors = LocalNexoColors.current
     val interactions = remember { MutableInteractionSource() }
     Box(modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
@@ -268,7 +348,14 @@ private fun AddButton(onAdd: () -> Unit, label: String, modifier: Modifier, onLo
                 .size(48.dp)
                 .clip(CircleShape)
                 .background(colors.primary)
-                .combinedClickable(interactionSource = interactions, indication = null, role = Role.Button, onClick = onAdd, onLongClick = onLongPress, onLongClickLabel = longPressLabel)
+                .combinedClickable(
+                    interactionSource = interactions,
+                    indication = null,
+                    role = Role.Button,
+                    onClick = onAdd,
+                    onLongClick = onLongPress,
+                    onLongClickLabel = longPressLabel,
+                )
                 .semantics { contentDescription = label },
             contentAlignment = Alignment.Center,
         ) {

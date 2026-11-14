@@ -74,11 +74,16 @@ data class HubItem(val label: Int, val icon: ImageVector, val key: NavKey)
 
 /** Sends the feedback e-mail. The address is a placeholder for the publisher's own. */
 fun feedbackIntent(context: Context, subjectRes: Int = R.string.feedback_subject): Intent {
-    val body = "\n\n---\n${Build.MANUFACTURER} ${Build.MODEL}\nAndroid ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n" +
-        "Nexo ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\nLocale ${java.util.Locale.getDefault()}"
+    val body =
+        "\n\n---\n${Build.MANUFACTURER} ${Build.MODEL}\nAndroid ${Build.VERSION.RELEASE} (API " +
+            "${Build.VERSION.SDK_INT})\n" +
+            "Nexo ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\nLocale ${java.util.Locale.getDefault()}"
     return Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).apply {
         putExtra(Intent.EXTRA_EMAIL, arrayOf(context.getString(R.string.support_email)))
-        putExtra(Intent.EXTRA_SUBJECT, context.getString(subjectRes, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE))
+        putExtra(
+            Intent.EXTRA_SUBJECT,
+            context.getString(subjectRes, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
+        )
         putExtra(Intent.EXTRA_TEXT, body)
     }
 }
@@ -102,27 +107,66 @@ fun SettingsTab(vm: SettingsViewModel = hiltViewModel()) {
         HubItem(R.string.feedback, Icons.Outlined.Feedback, FeedbackKey),
     )
     Column(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxWidth().background(header.container).statusBarsPadding().height(56.dp), contentAlignment = Alignment.CenterStart) {
-            Text(stringResource(R.string.tab_more), color = header.content, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 16.dp))
+        Box(
+            Modifier.fillMaxWidth().background(header.container).statusBarsPadding().height(56.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Text(
+                stringResource(R.string.tab_more),
+                color = header.content,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 16.dp),
+            )
         }
         Text(
             "Nexo ${BuildConfig.VERSION_NAME}",
-            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.padding(start = 16.dp, top = 12.dp).combinedClickable(onClick = {}, onLongClick = {
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.padding(start = 16.dp, top = 12.dp).combinedClickable(onClick = {
+            }, onLongClick = {
                 runCatching { context.startActivity(feedbackIntent(context)) }
             }),
         )
-        Card(Modifier.fillMaxWidth().padding(12.dp).clickable { nav.navigate(LockSettingsKey) }, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Card(
+            Modifier.fillMaxWidth().padding(12.dp).clickable {
+                nav.navigate(LockSettingsKey)
+            },
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        ) {
             Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(44.dp).background(MaterialTheme.colorScheme.primary, CircleShape), contentAlignment = Alignment.Center) {
-                    Icon(if (device?.lockEnabled == true) Icons.Outlined.Lock else Icons.Outlined.LockOpen, null, tint = MaterialTheme.colorScheme.onPrimary)
+                Box(
+                    Modifier.size(44.dp).background(MaterialTheme.colorScheme.primary, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        if (device?.lockEnabled == true) {
+                            Icons.Outlined.Lock
+                        } else {
+                            Icons.Outlined.LockOpen
+                        },
+                        null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                    )
                 }
                 Column(Modifier.weight(1f).padding(start = 12.dp)) {
                     Text(stringResource(R.string.app_lock), fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(if (device?.lockEnabled == true) R.string.lock_on else R.string.lock_off), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        stringResource(
+                            if (device?.lockEnabled == true) {
+                                R.string.lock_on
+                            } else {
+                                R.string.lock_off
+                            },
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 if (device?.lockEnabled == true) {
-                    IconButton(onClick = vm::lockNow) { Icon(Icons.Outlined.Lock, stringResource(R.string.lock_now)) }
+                    IconButton(onClick = vm::lockNow) {
+                        Icon(Icons.Outlined.Lock, stringResource(R.string.lock_now))
+                    }
                 }
             }
         }
@@ -135,12 +179,26 @@ fun SettingsTab(vm: SettingsViewModel = hiltViewModel()) {
         ) {
             items(items) { item ->
                 Column(
-                    Modifier.background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp)).clickable { nav.navigate(item.key) }.padding(vertical = 18.dp),
+                    Modifier.background(
+                        MaterialTheme.colorScheme.surface,
+                        RoundedCornerShape(12.dp),
+                    ).clickable {
+                        nav.navigate(item.key)
+                    }.padding(vertical = 18.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Icon(item.icon, null, tint = MaterialTheme.nexo.primaryText, modifier = Modifier.size(28.dp))
+                    Icon(
+                        item.icon,
+                        null,
+                        tint = MaterialTheme.nexo.primaryText,
+                        modifier = Modifier.size(28.dp),
+                    )
                     Spacer(Modifier.height(8.dp))
-                    Text(stringResource(item.label), style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
+                    Text(
+                        stringResource(item.label),
+                        style = MaterialTheme.typography.labelLarge,
+                        textAlign = TextAlign.Center,
+                    )
                 }
             }
         }

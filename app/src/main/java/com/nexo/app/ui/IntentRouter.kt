@@ -19,20 +19,33 @@ import com.nexo.app.ui.navigation.SmsQueueKey
 object IntentRouter {
     fun route(intent: Intent?): List<NavKey> {
         intent ?: return emptyList()
-        if (intent.action == Intent.ACTION_VIEW && intent.data?.scheme == SCHEME && intent.data?.host == "inoutadd") {
+        if (intent.action == Intent.ACTION_VIEW && intent.data?.scheme == SCHEME &&
+            intent.data?.host == "inoutadd"
+        ) {
             return listOf(EntryKey(external = true))
         }
         // Opening a backup file with Nexo asks to restore it.
-        if (intent.action == Intent.ACTION_VIEW && (intent.data?.scheme == "content" || intent.data?.scheme == "file")) {
+        if (intent.action == Intent.ACTION_VIEW &&
+            (intent.data?.scheme == "content" || intent.data?.scheme == "file")
+        ) {
             return listOf(RestoreFileKey(intent.data.toString()))
         }
         return when (intent.action) {
             ACTION_ADD -> listOf(
-                EntryKey(type = intent.getStringExtra(EXTRA_TYPE)?.let { runCatching { EntryType.valueOf(it) }.getOrNull() }, external = true),
+                EntryKey(
+                    type = intent.getStringExtra(EXTRA_TYPE)?.let {
+                        runCatching { EntryType.valueOf(it) }.getOrNull()
+                    },
+                    external = true,
+                ),
             )
+
             ACTION_SEARCH -> listOf(SearchKey(fromNotification = true))
+
             ACTION_BOOKMARKS -> listOf(BookmarksKey())
+
             ACTION_REVIEW -> listOf(SmsQueueKey)
+
             else -> emptyList()
         }
     }

@@ -72,12 +72,23 @@ fun AmountText(
     minorScale: Float = 0.8f,
     minorAlpha: Float = 0.6f,
 ) {
-    val minor = SpanStyle(fontSize = minorScale * style.fontSize, color = color.copy(alpha = color.alpha * minorAlpha))
+    val minor = SpanStyle(
+        fontSize = minorScale * style.fontSize,
+        color = color.copy(alpha = color.alpha * minorAlpha),
+    )
     val text = buildAnnotatedString {
         append(parts.sign)
-        if (parts.prefix.isNotEmpty()) withStyle(minor) { append(parts.prefix); append(' ') }
+        if (parts.prefix.isNotEmpty()) {
+            withStyle(minor) {
+                append(parts.prefix)
+                append(' ')
+            }
+        }
         append(parts.integer)
-        withStyle(minor) { append(parts.fraction); append(parts.suffix) }
+        withStyle(minor) {
+            append(parts.fraction)
+            append(parts.suffix)
+        }
     }
     Text(
         text,
@@ -131,23 +142,51 @@ fun RollingAmount(
     val minorStyle = style.minor(minorScale)
     val minorColor = color.copy(alpha = color.alpha * minorAlpha)
     Row(modifier.clearAndSetSemantics { contentDescription = parts.text }) {
-        if (parts.sign.isNotEmpty()) Text(parts.sign, Modifier.alignByBaseline(), style = style, color = color)
-        if (parts.prefix.isNotEmpty()) Text(parts.prefix + " ", Modifier.alignByBaseline(), style = minorStyle, color = minorColor)
+        if (parts.sign.isNotEmpty()) {
+            Text(parts.sign, Modifier.alignByBaseline(), style = style, color = color)
+        }
+        if (parts.prefix.isNotEmpty()) {
+            Text(
+                parts.prefix + " ",
+                Modifier.alignByBaseline(),
+                style = minorStyle,
+                color = minorColor,
+            )
+        }
         RollingRun(parts.integer, style, color, direction, Modifier.alignByBaseline())
-        if (parts.fraction.isNotEmpty()) RollingRun(parts.fraction, minorStyle, minorColor, direction, Modifier.alignByBaseline())
-        if (parts.suffix.isNotEmpty()) Text(parts.suffix, Modifier.alignByBaseline(), style = minorStyle, color = minorColor)
+        if (parts.fraction.isNotEmpty()) {
+            RollingRun(
+                parts.fraction,
+                minorStyle,
+                minorColor,
+                direction,
+                Modifier.alignByBaseline(),
+            )
+        }
+        if (parts.suffix.isNotEmpty()) {
+            Text(parts.suffix, Modifier.alignByBaseline(), style = minorStyle, color = minorColor)
+        }
     }
 }
 
 @Composable
-private fun RollingRun(text: String, style: TextStyle, color: Color, direction: Int, modifier: Modifier) {
+private fun RollingRun(
+    text: String,
+    style: TextStyle,
+    color: Color,
+    direction: Int,
+    modifier: Modifier,
+) {
     Row(modifier) {
         val n = text.length
         for (i in 0 until n) {
             val ch = text[i]
             key(n - i) {
-                if (ch.isDigit()) DigitSlot(ch, style, color, direction)
-                else Text(ch.toString(), Modifier.alignByBaseline(), style = style, color = color)
+                if (ch.isDigit()) {
+                    DigitSlot(ch, style, color, direction)
+                } else {
+                    Text(ch.toString(), Modifier.alignByBaseline(), style = style, color = color)
+                }
             }
         }
     }
@@ -204,7 +243,10 @@ private fun RowScope.DigitSlot(digit: Char, style: TextStyle, color: Color, dire
         layout(
             width = placeables.maxOf { it.width },
             height = placeables.maxOf { it.height },
-            alignmentLines = mapOf(FirstBaseline to face[FirstBaseline], LastBaseline to face[LastBaseline]),
+            alignmentLines = mapOf(
+                FirstBaseline to face[FirstBaseline],
+                LastBaseline to face[LastBaseline],
+            ),
         ) {
             placeables.forEach { it.place(0, 0) }
         }
@@ -216,7 +258,9 @@ private fun RowScope.DigitSlot(digit: Char, style: TextStyle, color: Color, dire
  * than the space available, so a long balance never wraps or clips. Anchored at the start.
  */
 fun Modifier.shrinkToFit(): Modifier = this.layout { measurable, constraints ->
-    val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
+    val placeable = measurable.measure(
+        constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity),
+    )
     if (!constraints.hasBoundedWidth || placeable.width <= constraints.maxWidth) {
         layout(placeable.width, placeable.height) { placeable.place(0, 0) }
     } else {

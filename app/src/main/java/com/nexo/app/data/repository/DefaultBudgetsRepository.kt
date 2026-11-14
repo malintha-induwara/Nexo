@@ -14,43 +14,98 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /** Budgets with effective-from monthly amounts. */
-class DefaultBudgetsRepository @Inject constructor(private val db: NexoDatabase) : BudgetsRepository {
-    override fun getBudgetsStream(): Flow<List<Budget>> = db.budgetDao().observeBudgets().map { rows -> rows.map(BudgetEntity::asExternalModel) }
-    override fun getBudgetAmountsStream(): Flow<List<BudgetAmount>> = db.budgetDao().observeAmounts().map { rows -> rows.map(BudgetAmountEntity::asExternalModel) }
+class DefaultBudgetsRepository @Inject constructor(private val db: NexoDatabase) :
+    BudgetsRepository {
+    override fun getBudgetsStream(): Flow<List<Budget>> =
+        db.budgetDao().observeBudgets().map { rows ->
+            rows.map(BudgetEntity::asExternalModel)
+        }
+    override fun getBudgetAmountsStream(): Flow<List<BudgetAmount>> =
+        db.budgetDao().observeAmounts().map { rows ->
+            rows.map(BudgetAmountEntity::asExternalModel)
+        }
 
     private fun now() = System.currentTimeMillis()
 
     /** [currentKey] is the label key of the current month. */
-    override suspend fun add(categoryId: String?, amount: Double, currentKey: Int) = db.withTransaction {
-        val id = Budget.idFor(categoryId)
-        val existing = db.budgetDao().getBudget(id)
-        when {
-            existing == null -> {
-                db.budgetDao().upsertBudgets(listOf(BudgetEntity(id, categoryId, db.budgetDao().maxOrder() + 1, false, now())))
-                db.budgetDao().upsertAmounts(listOf(BudgetAmountEntity(BudgetAmount.idFor(id, 0), id, 0, amount, now())))
-            }
-            !existing.isDeleted -> setMonth(id, currentKey, amount)
-            else -> {
-                db.budgetDao().upsertBudgets(listOf(existing.copy(isDeleted = false, updatedAt = now())))
-                val records = db.budgetDao().amountsFor(id)
-                if (records.isEmpty()) db.budgetDao().upsertAmounts(listOf(BudgetAmountEntity(BudgetAmount.idFor(id, 0), id, 0, amount, now())))
-                else db.budgetDao().upsertAmounts(records.map { it.copy(amount = amount, updatedAt = now()) })
+    override suspend fun add(categoryId: String?, amount: Double, currentKey: Int) =
+        db.withTransaction {
+            val id = Budget.idFor(categoryId)
+            val existing = db.budgetDao().getBudget(id)
+            when {
+                existing == null -> {
+                    db.budgetDao().upsertBudgets(
+                        listOf(
+                            BudgetEntity(
+                                id,
+                                categoryId,
+                                db.budgetDao().maxOrder() + 1,
+                                false,
+                                now(),
+                            ),
+                        ),
+                    )
+                    db.budgetDao().upsertAmounts(
+                        listOf(BudgetAmountEntity(BudgetAmount.idFor(id, 0), id, 0, amount, now())),
+                    )
+                }
+
+                !existing.isDeleted -> setMonth(id, currentKey, amount)
+
+                else -> {
+                    db.budgetDao().upsertBudgets(
+                        listOf(existing.copy(isDeleted = false, updatedAt = now())),
+                    )
+                    val records = db.budgetDao().amountsFor(id)
+                    if (records.isEmpty()) {
+                        db.budgetDao().upsertAmounts(
+                            listOf(
+                                BudgetAmountEntity(BudgetAmount.idFor(id, 0), id, 0, amount, now()),
+                            ),
+                        )
+                    } else {
+                        db.budgetDao().upsertAmounts(
+                            records.map {
+                                it.copy(amount = amount, updatedAt = now())
+                            },
+                        )
+                    }
+                }
             }
         }
-    }
 
     override suspend fun setMonth(budgetId: String, key: Int, amount: Double) {
         val records = db.budgetDao().amountsFor(budgetId)
-        db.budgetDao().upsertAmounts(BudgetMath.perMonthEdit(budgetId, records.map(BudgetAmountEntity::asExternalModel), key, amount, now()).map(BudgetAmount::asEntity))
+        db.budgetDao().upsertAmounts(
+            BudgetMath.perMonthEdit(
+                budgetId,
+                records.map(BudgetAmountEntity::asExternalModel),
+                key,
+                amount,
+                now(),
+            ).map(BudgetAmount::asEntity),
+        )
     }
 
     override suspend fun setDefault(budgetId: String, currentKey: Int, amount: Double) {
         val records = db.budgetDao().amountsFor(budgetId)
         if (records.isEmpty()) {
-            db.budgetDao().upsertAmounts(listOf(BudgetAmountEntity(BudgetAmount.idFor(budgetId, 0), budgetId, 0, amount, now())))
+            db.budgetDao().upsertAmounts(
+                listOf(
+                    BudgetAmountEntity(BudgetAmount.idFor(budgetId, 0), budgetId, 0, amount, now()),
+                ),
+            )
             return
         }
-        db.budgetDao().upsertAmounts(BudgetMath.defaultEdit(budgetId, records.map(BudgetAmountEntity::asExternalModel), currentKey, amount, now()).map(BudgetAmount::asEntity))
+        db.budgetDao().upsertAmounts(
+            BudgetMath.defaultEdit(
+                budgetId,
+                records.map(BudgetAmountEntity::asExternalModel),
+                currentKey,
+                amount,
+                now(),
+            ).map(BudgetAmount::asEntity),
+        )
     }
 
     /** Soft delete; the amounts stay stored for a later revival. */
@@ -58,5 +113,4 @@ class DefaultBudgetsRepository @Inject constructor(private val db: NexoDatabase)
         val b = db.budgetDao().getBudget(budgetId) ?: return@withTransaction
         db.budgetDao().upsertBudgets(listOf(b.copy(isDeleted = true, updatedAt = now())))
     }
-
 }

@@ -26,7 +26,8 @@ interface SmsEntryPoint {
     fun appScope(): CoroutineScope
 }
 
-fun Context.smsEntry(): SmsEntryPoint = EntryPointAccessors.fromApplication(applicationContext, SmsEntryPoint::class.java)
+fun Context.smsEntry(): SmsEntryPoint =
+    EntryPointAccessors.fromApplication(applicationContext, SmsEntryPoint::class.java)
 
 /** Realtime capture. Multipart messages arrive together and are joined per sender. */
 class SmsReceiver : BroadcastReceiver() {
@@ -36,7 +37,16 @@ class SmsReceiver : BroadcastReceiver() {
         if (parts.isEmpty()) return
         val receivedAt = System.currentTimeMillis()
         val messages = parts.groupBy { it.originatingAddress.orEmpty() }.map { (sender, list) ->
-            IncomingSms(SmsMessage(sender, list.joinToString("") { it.messageBody.orEmpty() }, list.first().timestampMillis), receivedAt)
+            IncomingSms(
+                SmsMessage(
+                    sender,
+                    list.joinToString("") {
+                        it.messageBody.orEmpty()
+                    },
+                    list.first().timestampMillis,
+                ),
+                receivedAt,
+            )
         }
         val pending = goAsync()
         context.smsEntry().appScope().launch {

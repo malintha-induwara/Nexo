@@ -18,15 +18,24 @@ class ReceiptRowsTest {
             OcrLine.box("4,250.00", 600f, 548f, 760f, 578f),
             OcrLine.box("5,000.00", 600f, 591f, 760f, 621f),
         )
-        assertEquals(listOf("SUB TOTAL  3,950.00", "TOTAL  4,250.00", "CASH  5,000.00"), ReceiptRows.build(lines))
+        assertEquals(
+            listOf("SUB TOTAL  3,950.00", "TOTAL  4,250.00", "CASH  5,000.00"),
+            ReceiptRows.build(lines),
+        )
     }
 
     @Test
     fun aTiltedPhotoStillLinesUp() {
         // The whole receipt turned 6° clockwise: the price sits lower than its label by more than a line height.
         val angle = Math.toRadians(6.0)
-        fun turned(text: String, x: Float, y: Float, w: Float) =
-            OcrLine(text, (x * cos(angle) - y * sin(angle)).toFloat(), (x * sin(angle) + y * cos(angle)).toFloat(), w, 30f, 6f)
+        fun turned(text: String, x: Float, y: Float, w: Float) = OcrLine(
+            text,
+            (x * cos(angle) - y * sin(angle)).toFloat(),
+            (x * sin(angle) + y * cos(angle)).toFloat(),
+            w,
+            30f,
+            6f,
+        )
         val lines = listOf(
             turned("SUB TOTAL", 130f, 500f, 180f),
             turned("TOTAL", 95f, 545f, 110f),
@@ -35,7 +44,10 @@ class ReceiptRowsTest {
         )
         val rows = ReceiptRows.build(lines)
         assertEquals(listOf("SUB TOTAL  3,950.00", "TOTAL  4,250.00"), rows)
-        assertEquals("4250.00", ReceiptParser.read(lines, LocalDate.of(2026, 11, 14)).total?.toPlainString())
+        assertEquals(
+            "4250.00",
+            ReceiptParser.read(lines, LocalDate.of(2026, 11, 14)).total?.toPlainString(),
+        )
     }
 
     @Test
@@ -49,6 +61,9 @@ class ReceiptRowsTest {
 
     @Test
     fun blankLinesAreDropped() {
-        assertEquals(emptyList<String>(), ReceiptRows.build(listOf(OcrLine.box("  ", 0f, 0f, 10f, 10f))))
+        assertEquals(
+            emptyList<String>(),
+            ReceiptRows.build(listOf(OcrLine.box("  ", 0f, 0f, 10f, 10f))),
+        )
     }
 }

@@ -77,21 +77,34 @@ fun InlineBottomSheet(
     BackHandler(enabled = visible) { dismiss() }
 
     fun settle(velocity: Float) {
-        if (drag > height * 0.28f || velocity > 1400f) dismiss()
-        else scope.launch { animate(drag, 0f, animationSpec = NexoMotion.snappy()) { v, _ -> drag = v } }
+        if (drag > height * 0.28f || velocity > 1400f) {
+            dismiss()
+        } else {
+            scope.launch {
+                animate(drag, 0f, animationSpec = NexoMotion.snappy()) { v, _ ->
+                    drag = v
+                }
+            }
+        }
     }
     val nested = remember {
         object : NestedScrollConnection {
             // Dragging up while the sheet is pulled down moves the sheet back first.
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source != NestedScrollSource.UserInput || available.y >= 0f || drag <= 0f) return Offset.Zero
+                if (source != NestedScrollSource.UserInput || available.y >= 0f || drag <= 0f) {
+                    return Offset.Zero
+                }
                 val used = maxOf(available.y, -drag)
                 drag += used
                 return Offset(0f, used)
             }
 
             // A list at its top hands the rest of a downward drag to the sheet.
-            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
                 if (source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
                 drag += available.y
                 return Offset(0f, available.y)
@@ -106,13 +119,20 @@ fun InlineBottomSheet(
     }
 
     Box(modifier.fillMaxSize()) {
-        AnimatedVisibility(visible, enter = fadeIn(NexoMotion.enter()), exit = fadeOut(NexoMotion.exit(NexoMotion.MEDIUM))) {
+        AnimatedVisibility(
+            visible,
+            enter = fadeIn(NexoMotion.enter()),
+            exit = fadeOut(NexoMotion.exit(NexoMotion.MEDIUM)),
+        ) {
             Box(
                 Modifier
                     .fillMaxSize()
                     .graphicsLayer { alpha = 1f - (drag / height).coerceIn(0f, 1f) * 0.7f }
                     .background(Color.Black.copy(alpha = if (colors.isDark) 0.55f else 0.32f))
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { dismiss() },
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { dismiss() },
             )
         }
         AnimatedVisibility(
@@ -130,17 +150,24 @@ fun InlineBottomSheet(
                     .clip(NexoShapes.sheet)
                     .background(colors.surface)
                     // Swallow taps on empty areas so they do not reach the scrim.
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) {}
                     .nestedScroll(nested)
                     .draggable(
-                        state = rememberDraggableState { delta -> drag = (drag + delta).coerceAtLeast(0f) },
+                        state = rememberDraggableState { delta ->
+                            drag = (drag + delta).coerceAtLeast(0f)
+                        },
                         orientation = Orientation.Vertical,
                         onDragStopped = { velocity -> settle(velocity) },
                     )
                     .navigationBarsPadding(),
             ) {
                 Box(
-                    Modifier.align(Alignment.CenterHorizontally).padding(top = 10.dp, bottom = 2.dp).size(width = 36.dp, height = 4.dp)
+                    Modifier.align(
+                        Alignment.CenterHorizontally,
+                    ).padding(top = 10.dp, bottom = 2.dp).size(width = 36.dp, height = 4.dp)
                         .clip(CircleShape).background(colors.hairline),
                 )
                 content()

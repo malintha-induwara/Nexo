@@ -47,9 +47,23 @@ import kotlinx.coroutines.launch
 
 enum class DetailTab { DAILY, MONTHLY, ANNUALLY }
 
-data class PeriodRowUi(val label: String, val range: DateRange, val deposit: Double, val withdrawal: Double, val balance: Double, val current: Boolean, val month: YearMonth? = null, val year: Int? = null)
+data class PeriodRowUi(
+    val label: String,
+    val range: DateRange,
+    val deposit: Double,
+    val withdrawal: Double,
+    val balance: Double,
+    val current: Boolean,
+    val month: YearMonth? = null,
+    val year: Int? = null,
+)
 
-data class ChartData(val labels: List<String>, val balances: List<Double>, val inflow: List<Double>, val outflow: List<Double>)
+data class ChartData(
+    val labels: List<String>,
+    val balances: List<Double>,
+    val inflow: List<Double>,
+    val outflow: List<Double>,
+)
 
 data class AccountDetailUiState(
     val loaded: Boolean = false,
@@ -90,48 +104,111 @@ class AccountDetailViewModel @AssistedInject constructor(
     }
 
     /** Kept for event handlers that need the reference data synchronously. */
-    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        RefData(),
+    )
     private val tab = MutableStateFlow(DetailTab.DAILY)
-    private val anchor = MutableStateFlow(key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now())
+    private val anchor =
+        MutableStateFlow(
+            key.date?.let {
+                runCatching { LocalDate.parse(it) }.getOrNull()
+            } ?: LocalDate.now(),
+        )
     private val charts = MutableStateFlow(false)
     private val selection = MutableStateFlow<Set<String>>(emptySet())
     private val restored = MutableStateFlow(false)
     val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, selection)
 
-    private val content = combine(ref, tab, anchor, charts, transactions.getChangeStampStream()) { r, t, a, c, _ -> Quad(r, t, a, c) }
-        .mapLatest { compute(it.r, it.t, it.a, it.c).copy(ref = it.r, tab = it.t, anchor = it.a, charts = it.c) }
+    private val content = combine(ref, tab, anchor, charts, transactions.getChangeStampStream()) {
+            r,
+            t,
+            a,
+            c,
+            _,
+        ->
+        Quad(r, t, a, c)
+    }
+        .mapLatest {
+            compute(
+                it.r,
+                it.t,
+                it.a,
+                it.c,
+            ).copy(ref = it.r, tab = it.t, anchor = it.a, charts = it.c)
+        }
 
-    val uiState: StateFlow<AccountDetailUiState> = combine(content, selection, restored) { c, ids, done -> c.copy(selection = ids, restored = done) }
+    val uiState: StateFlow<AccountDetailUiState> = combine(content, selection, restored) {
+            c,
+            ids,
+            done,
+        ->
+        c.copy(selection = ids, restored = done)
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountDetailUiState())
 
     private data class Quad(val r: RefData, val t: DetailTab, val a: LocalDate, val c: Boolean)
 
-    fun engineFor(r: RefData, a: Account?): PeriodEngine =
-        if (a != null && r.groupType(a.id) == GroupType.CREDIT_CARD) PeriodEngine(a.settlementDay, weekStart = r.settings.weekStartDay) else r.settings.periods
+    fun engineFor(r: RefData, a: Account?): PeriodEngine = if (a != null &&
+        r.groupType(a.id) == GroupType.CREDIT_CARD
+    ) {
+        PeriodEngine(a.settlementDay, weekStart = r.settings.weekStartDay)
+    } else {
+        r.settings.periods
+    }
 
-    private suspend fun compute(r: RefData, tab: DetailTab, anchor: LocalDate, charts: Boolean): AccountDetailUiState {
+    private suspend fun compute(
+        r: RefData,
+        tab: DetailTab,
+        anchor: LocalDate,
+        charts: Boolean,
+    ): AccountDetailUiState {
         val account = key.accountId?.let { r.accountById[it] }
         val factory = TransactionRowMapper(r)
         if (account == null) {
             // "None" pseudo-account: all unassigned rows, no balances.
             val rows = transactions.getWithoutAccount()
             val ledger = transactions.getLedgerFor(rows)
-            return AccountDetailUiState(loaded = true, title = UiText.of(R.string.none), days = factory.dayGroups(rows, ledger))
+            return AccountDetailUiState(
+                loaded = true,
+                title = UiText.of(R.string.none),
+                days = factory.dayGroups(rows, ledger),
+            )
         }
         val type = r.groupType(account.id) ?: GroupType.NORMAL
         val ids = listOf(account.id) + r.linkedDebitCards(account.id).map { it.id }
-        val all = transactions.getAllForAccounts(ids).sortedWith(compareBy({ it.date }, { it.dateTime }, { it.createdAt }))
+        val all = transactions.getAllForAccounts(ids).sortedWith(
+            compareBy({
+                it.date
+            }, { it.dateTime }, { it.createdAt }),
+        )
         val engine = engineFor(r, account)
         val measure = { t: Transaction -> Balances.rowMeasure(r, t, account) }
         val signed = { t: Transaction -> if (t.kind.isInflow) measure(t) else -measure(t) }
-        fun net(rows: List<Transaction>) = rows.fold(BigDecimal.ZERO) { acc, t -> acc + BigDecimal.valueOf(signed(t)) }.toDouble()
-        fun inflow(rows: List<Transaction>) = rows.filter { it.kind.isInflow }.fold(BigDecimal.ZERO) { a, t -> a + BigDecimal.valueOf(measure(t)) }.toDouble()
-        fun outflow(rows: List<Transaction>) = rows.filter { !it.kind.isInflow }.fold(BigDecimal.ZERO) { a, t -> a + BigDecimal.valueOf(measure(t)) }.toDouble()
+        fun net(rows: List<Transaction>) = rows.fold(BigDecimal.ZERO) { acc, t ->
+            acc +
+                BigDecimal.valueOf(signed(t))
+        }.toDouble()
+        fun inflow(rows: List<Transaction>) =
+            rows.filter { it.kind.isInflow }.fold(BigDecimal.ZERO) { a, t ->
+                a +
+                    BigDecimal.valueOf(measure(t))
+            }.toDouble()
+        fun outflow(rows: List<Transaction>) =
+            rows.filter { !it.kind.isInflow }.fold(BigDecimal.ZERO) { a, t ->
+                a +
+                    BigDecimal.valueOf(measure(t))
+            }.toDouble()
         fun inRange(range: DateRange) = all.filter { LocalDate.parse(it.date) in range }
         fun before(d: LocalDate) = all.filter { LocalDate.parse(it.date).isBefore(d) }
         fun upTo(d: LocalDate) = all.filter { !LocalDate.parse(it.date).isAfter(d) }
         val isDebit = type == GroupType.DEBIT_CARD
-        val card = if (type == GroupType.CREDIT_CARD) CardStatement.compute(r, account, all, LocalDate.now()) else null
+        val card = if (type == GroupType.CREDIT_CARD) {
+            CardStatement.compute(r, account, all, LocalDate.now())
+        } else {
+            null
+        }
         val cur = r.accountCurrency(account.id)
 
         when (tab) {
@@ -144,15 +221,24 @@ class AccountDetailViewModel @AssistedInject constructor(
                 val runningMap = HashMap<String, Double>()
                 // Chronological order inside the display order of the day.
                 rows.groupBy { it.date }.toSortedMap().forEach { (_, day) ->
-                    val ordered = TransactionRowMapper.sortDay(day, r.settings.timeDisplay).let { if (r.settings.timeDisplay.descending) it.reversed() else it }
+                    val ordered = TransactionRowMapper.sortDay(day, r.settings.timeDisplay).let {
+                        if (r.settings.timeDisplay.descending) it.reversed() else it
+                    }
                     ordered.forEach { t ->
                         running += BigDecimal.valueOf(signed(t))
                         runningMap[t.id] = running.toDouble()
                     }
                 }
                 val ledger = transactions.getLedgerFor(rows)
-                val memos = memos.getMemos().filter { LocalDate.parse(it.date) in range }.groupBy { LocalDate.parse(it.date) }
-                val days = factory.dayGroups(rows, ledger, memos = memos, includeBalance = true) { t ->
+                val memos = memos.getMemos().filter {
+                    LocalDate.parse(it.date) in range
+                }.groupBy { LocalDate.parse(it.date) }
+                val days = factory.dayGroups(
+                    rows,
+                    ledger,
+                    memos = memos,
+                    includeBalance = true,
+                ) { t ->
                     val row = factory.row(t, ledger)
                     val shown = when {
                         account.currencyId == r.mainCurrency.id -> t.amountMain
@@ -160,15 +246,38 @@ class AccountDetailViewModel @AssistedInject constructor(
                         else -> t.amountAccount
                     }
                     val flow = if (t.kind.isInflow) CashFlow.INCOME else CashFlow.EXPENSE
-                    val title = if (t.kind == TxKind.TRANSFER_IN) factory.transferText(t.counterpartAccountId, t.accountId) else row.title
-                    row.copy(amountText = AmountFormatter.format(shown, cur), flow = flow, amountMain = shown, title = if (row.titleIsNote) row.title else title, accountText = if (t.kind == TxKind.TRANSFER_IN) title else row.accountText)
+                    val title = if (t.kind == TxKind.TRANSFER_IN) {
+                        factory.transferText(t.counterpartAccountId, t.accountId)
+                    } else {
+                        row.title
+                    }
+                    row.copy(
+                        amountText = AmountFormatter.format(shown, cur),
+                        flow = flow,
+                        amountMain = shown,
+                        title = if (row.titleIsNote) row.title else title,
+                        accountText = if (t.kind == TxKind.TRANSFER_IN) {
+                            title
+                        } else {
+                            row.accountText
+                        },
+                    )
                 }
                 val endBalance = if (isDebit) net(rows) else net(upTo(range.end))
-                val help = !isDebit && LocalDate.now() in range && all.any { val d = LocalDate.parse(it.date); d.isAfter(range.end) && d.isBefore(LocalDate.of(2050, 1, 1)) }
+                val help =
+                    !isDebit && LocalDate.now() in range &&
+                        all.any {
+                            val d = LocalDate.parse(it.date)
+                            d.isAfter(range.end) &&
+                                d.isBefore(LocalDate.of(2050, 1, 1))
+                        }
                 val chart = if (charts) {
                     var p = period
                     val list = ArrayList<MonthPeriod>()
-                    repeat(6) { list.add(0, p); p = engine.previous(p) }
+                    repeat(6) {
+                        list.add(0, p)
+                        p = engine.previous(p)
+                    }
                     val nonBalance = { l: List<Transaction> -> l.filter { !it.kind.isBalance } }
                     ChartData(
                         list.map { Formats.monthShort(it.label.monthValue) },
@@ -176,14 +285,22 @@ class AccountDetailViewModel @AssistedInject constructor(
                         list.map { inflow(nonBalance(inRange(it.range))) },
                         list.map { outflow(nonBalance(inRange(it.range))) },
                     )
-                } else null
+                } else {
+                    null
+                }
                 return AccountDetailUiState(
                     loaded = true, account = account, type = type, range = range,
                     title = UiText.Raw(Formats.monthYear(period.label)),
-                    days = days, running = runningMap, deposit = inflow(rows), withdrawal = outflow(rows),
-                    balance = if (isDebit) null else endBalance, showHelp = help, chart = chart, card = card,
+                    days = days, running = runningMap,
+                    deposit = inflow(rows),
+                    withdrawal = outflow(rows),
+                    balance = if (isDebit) null else endBalance,
+                    showHelp = help,
+                    chart = chart,
+                    card = card,
                 )
             }
+
             DetailTab.MONTHLY -> {
                 val year = engine.yearOf(anchor)
                 val periods = engine.yearPeriods(year)
@@ -192,16 +309,42 @@ class AccountDetailViewModel @AssistedInject constructor(
                 val rowsUi = periods.map { p ->
                     val rows = inRange(p.range)
                     bal += BigDecimal.valueOf(net(rows))
-                    PeriodRowUi(Formats.monthShort(p.label.monthValue), p.range, inflow(rows), outflow(rows), bal.toDouble(), today in p.range, month = p.label)
+                    PeriodRowUi(
+                        Formats.monthShort(p.label.monthValue),
+                        p.range,
+                        inflow(rows),
+                        outflow(rows),
+                        bal.toDouble(),
+                        today in p.range,
+                        month = p.label,
+                    )
                 }.reversed()
                 val yr = DateRange(periods.first().start, periods.last().end)
                 val rows = inRange(yr)
                 return AccountDetailUiState(
-                    loaded = true, account = account, type = type, range = yr, title = UiText.Raw(year.toString()), periods = rowsUi,
-                    deposit = inflow(rows), withdrawal = outflow(rows), balance = if (isDebit) null else net(upTo(yr.end)),
-                    chart = if (charts) yearChart(engine, year, ::inRange, ::upTo, ::net, ::inflow, ::outflow) else null, card = card,
+                    loaded = true, account = account, type = type, range = yr,
+                    title = UiText.Raw(year.toString()),
+                    periods = rowsUi,
+                    deposit = inflow(rows),
+                    withdrawal = outflow(rows),
+                    balance = if (isDebit) null else net(upTo(yr.end)),
+                    chart = if (charts) {
+                        yearChart(
+                            engine,
+                            year,
+                            ::inRange,
+                            ::upTo,
+                            ::net,
+                            ::inflow,
+                            ::outflow,
+                        )
+                    } else {
+                        null
+                    },
+                    card = card,
                 )
             }
+
             DetailTab.ANNUALLY -> {
                 val dates = all.map { LocalDate.parse(it.date) }
                 val thisYear = engine.yearOf(LocalDate.now())
@@ -214,13 +357,39 @@ class AccountDetailViewModel @AssistedInject constructor(
                     val yr = engine.yearRange(y)
                     val rows = inRange(yr)
                     bal += BigDecimal.valueOf(net(rows))
-                    PeriodRowUi(y.toString(), yr, inflow(rows), outflow(rows), bal.toDouble(), y == thisYear, year = y)
+                    PeriodRowUi(
+                        y.toString(),
+                        yr,
+                        inflow(rows),
+                        outflow(rows),
+                        bal.toDouble(),
+                        y == thisYear,
+                        year = y,
+                    )
                 }.reversed()
                 val chartYear = engine.yearOf(anchor)
                 return AccountDetailUiState(
-                    loaded = true, account = account, type = type, range = DateRange.ALL, title = UiText.Raw("$lo ~ $last"), periods = rowsUi,
-                    deposit = rowsUi.sumOf { it.deposit }, withdrawal = rowsUi.sumOf { it.withdrawal }, balance = null,
-                    chart = if (charts) yearChart(engine, chartYear, ::inRange, ::upTo, ::net, ::inflow, ::outflow) else null, card = card,
+                    loaded = true, account = account, type = type, range = DateRange.ALL,
+                    title = UiText.Raw("$lo ~ $last"),
+                    periods = rowsUi,
+                    deposit = rowsUi.sumOf {
+                        it.deposit
+                    },
+                    withdrawal = rowsUi.sumOf { it.withdrawal }, balance = null,
+                    chart = if (charts) {
+                        yearChart(
+                            engine,
+                            chartYear,
+                            ::inRange,
+                            ::upTo,
+                            ::net,
+                            ::inflow,
+                            ::outflow,
+                        )
+                    } else {
+                        null
+                    },
+                    card = card,
                 )
             }
         }
@@ -269,7 +438,10 @@ class AccountDetailViewModel @AssistedInject constructor(
         val e = engineFor(r, r.accountById[key.accountId])
         anchor.update { d ->
             when (tab.value) {
-                DetailTab.DAILY -> e.monthPeriodContaining(d).let { if (forward) e.next(it).end else e.previous(it).end }
+                DetailTab.DAILY -> e.monthPeriodContaining(d).let {
+                    if (forward) e.next(it).end else e.previous(it).end
+                }
+
                 else -> e.yearRange(e.yearOf(d) + if (forward) 1 else -1).start.plusDays(15)
             }
         }

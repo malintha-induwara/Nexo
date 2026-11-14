@@ -88,28 +88,71 @@ fun ImportListScreen(vm: BackupViewModel = hiltViewModel()) {
     }
     Scaffold(topBar = {
         NexoTopBar(stringResource(R.string.import_excel), onBack = { nav.back() }) {
-            IconButton(onClick = { nav.navigate(HelpPageKey("import")) }) { Icon(Icons.AutoMirrored.Outlined.HelpOutline, stringResource(R.string.help)) }
-            if (editing) TextButton(onClick = { if (checked.isNotEmpty()) confirm = true }) { Text(stringResource(R.string.action_delete)) }
-            else if (files.isNotEmpty()) IconButton(onClick = { editing = true }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
+            IconButton(onClick = {
+                nav.navigate(HelpPageKey("import"))
+            }) { Icon(Icons.AutoMirrored.Outlined.HelpOutline, stringResource(R.string.help)) }
+            if (editing) {
+                TextButton(onClick = {
+                    if (checked.isNotEmpty()) confirm = true
+                }) { Text(stringResource(R.string.action_delete)) }
+            } else if (files.isNotEmpty()) {
+                IconButton(onClick = {
+                    editing = true
+                }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
+            }
         }
     }) { p ->
         Column(Modifier.padding(p)) {
-            Text(stringResource(R.string.import_text), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
-            Button(onClick = { context.expectReturn(); picker.launch(arrayOf("text/*", "application/octet-stream", "text/tab-separated-values")) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Text(
+                stringResource(R.string.import_text),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(16.dp),
+            )
+            Button(onClick = {
+                context.expectReturn()
+                picker.launch(
+                    arrayOf("text/*", "application/octet-stream", "text/tab-separated-values"),
+                )
+            }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 Text(stringResource(R.string.import_excel))
             }
             if (files.isEmpty()) EmptyState()
             LazyColumn {
                 items(files, key = { it.name }) { f ->
-                    Row(Modifier.fillMaxWidth().clickable {
-                        if (editing) checked = if (f.name in checked) checked - f.name else checked + f.name else nav.navigate(ImportPreviewKey(f.name))
-                    }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        if (editing) Checkbox(f.name in checked, onCheckedChange = null, modifier = Modifier.padding(end = 12.dp))
+                    Row(
+                        Modifier.fillMaxWidth().clickable {
+                            if (editing) {
+                                checked =
+                                    if (f.name in checked) {
+                                        checked - f.name
+                                    } else {
+                                        checked + f.name
+                                    }
+                            } else {
+                                nav.navigate(ImportPreviewKey(f.name))
+                            }
+                        }.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (editing) {
+                            Checkbox(
+                                f.name in checked,
+                                onCheckedChange = null,
+                                modifier = Modifier.padding(end = 12.dp),
+                            )
+                        }
                         Column {
                             Text(f.name)
                             Text(
-                                Formats.dateTime(Instant.ofEpochMilli(f.lastModified()).atZone(ZoneId.systemDefault()).toLocalDateTime()) + " · ${f.length() / 1000} KB",
-                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline,
+                                Formats.dateTime(
+                                    Instant.ofEpochMilli(
+                                        f.lastModified(),
+                                    ).atZone(ZoneId.systemDefault()).toLocalDateTime(),
+                                ) +
+                                    " · ${f.length() / 1000} KB",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline,
                             )
                         }
                     }
@@ -118,18 +161,39 @@ fun ImportListScreen(vm: BackupViewModel = hiltViewModel()) {
             }
         }
     }
-    if (confirm) ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.deleteImports(checked); checked = emptySet(); editing = false }, onDismiss = { confirm = false })
+    if (confirm) {
+        ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
+            vm.deleteImports(checked)
+            checked = emptySet()
+            editing = false
+        }, onDismiss = { confirm = false })
+    }
 }
 
 @Composable
 private fun errorText(row: ImportRow): String? {
     val e = row.error ?: return null
     return when (e.type) {
-        ImportErrorType.DATE -> stringResource(R.string.import_error_date, LocalDate.now().toString())
+        ImportErrorType.DATE -> stringResource(
+            R.string.import_error_date,
+            LocalDate.now().toString(),
+        )
+
         ImportErrorType.TYPE -> stringResource(R.string.import_error_type)
+
         ImportErrorType.AMOUNT -> stringResource(R.string.import_error_amount)
-        ImportErrorType.INCOME_CATEGORY, ImportErrorType.EXPENSE_CATEGORY -> stringResource(R.string.import_error_category, e.name ?: "")
-        ImportErrorType.INCOME_SUB, ImportErrorType.EXPENSE_SUB -> stringResource(R.string.import_error_subcategory, e.name ?: "", e.parent ?: "")
+
+        ImportErrorType.INCOME_CATEGORY, ImportErrorType.EXPENSE_CATEGORY -> stringResource(
+            R.string.import_error_category,
+            e.name ?: "",
+        )
+
+        ImportErrorType.INCOME_SUB, ImportErrorType.EXPENSE_SUB -> stringResource(
+            R.string.import_error_subcategory,
+            e.name ?: "",
+            e.parent ?: "",
+        )
+
         ImportErrorType.ACCOUNT -> stringResource(R.string.import_error_account, e.name ?: "")
     }
 }
@@ -154,13 +218,19 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: BackupViewModel = hiltViewMod
     LaunchedEffect(state.result) {
         when (val r = state.result) {
             BackupResult.LineRemoved -> reload++
+
             is BackupResult.ImportSaved -> if (r.failed == 0) {
                 Toast.makeText(context, R.string.saved, Toast.LENGTH_SHORT).show()
                 nav.backTo { it is ImportListKey }
             } else {
-                Toast.makeText(context, resources.getString(R.string.import_partial, r.saved, r.failed), Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    context,
+                    resources.getString(R.string.import_partial, r.saved, r.failed),
+                    Toast.LENGTH_LONG,
+                ).show()
                 reload++
             }
+
             else -> return@LaunchedEffect
         }
         vm.onResultHandled()
@@ -172,30 +242,78 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: BackupViewModel = hiltViewMod
     val rows = preview?.rows.orEmpty()
     Scaffold(topBar = {
         NexoTopBar(stringResource(R.string.import_input_n, rows.size), onBack = { nav.back() }) {
-            TextButton(onClick = { confirmSave = true }, enabled = rows.isNotEmpty()) { Text(stringResource(R.string.action_save)) }
+            TextButton(onClick = {
+                confirmSave = true
+            }, enabled = rows.isNotEmpty()) { Text(stringResource(R.string.action_save)) }
         }
     }) { p ->
         LazyColumn(Modifier.padding(p)) {
             if (preview != null && rows.isEmpty()) item { EmptyState() }
             items(rows.take(shown), key = { "${it.index}_${it.raw.hashCode()}" }) { row ->
                 val err = errorText(row)
-                Row(Modifier.fillMaxWidth().clickable {
-                    if (row.error != null) fix = row
-                    else nav.navigate(EntryKey(mode = EntryMode.IMPORT_FIX, importFile = key.fileName, importLine = row.index, importOrder = order?.name))
-                }.padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.fillMaxWidth().clickable {
+                        if (row.error != null) {
+                            fix = row
+                        } else {
+                            nav.navigate(
+                                EntryKey(
+                                    mode = EntryMode.IMPORT_FIX,
+                                    importFile = key.fileName,
+                                    importLine = row.index,
+                                    importOrder = order?.name,
+                                ),
+                            )
+                        }
+                    }.padding(start = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Column(Modifier.weight(1f).padding(vertical = 10.dp)) {
-                        Text(row.raw.replace('\t', ' '), maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
-                        err?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall) }
+                        Text(
+                            row.raw.replace('\t', ' '),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        err?.let {
+                            Text(
+                                it,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
                     }
-                    IconButton(onClick = { deleteRow = row }) { Icon(Icons.Filled.RemoveCircle, stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error) }
+                    IconButton(onClick = {
+                        deleteRow = row
+                    }) {
+                        Icon(
+                            Icons.Filled.RemoveCircle,
+                            stringResource(R.string.action_delete),
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
-            if (rows.size > shown) item { TextButton(onClick = { shown += 50 }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.action_more)) } }
+            if (rows.size > shown) {
+                item {
+                    TextButton(onClick = {
+                        shown += 50
+                    }, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.action_more))
+                    }
+                }
+            }
         }
     }
     BusyOverlay(busy, null)
-    deleteRow?.let { r -> ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.removeLine(key.fileName, r.index) }, onDismiss = { deleteRow = null }) }
+    deleteRow?.let { r ->
+        ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
+            vm.removeLine(key.fileName, r.index)
+        }, onDismiss = {
+            deleteRow = null
+        })
+    }
     if (confirmSave) {
         ConfirmDialog(stringResource(R.string.save_question), onConfirm = {
             vm.saveImport(key.fileName, order)
@@ -203,39 +321,125 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: BackupViewModel = hiltViewMod
     }
     fix?.let { row ->
         val e = row.error!!
-        val edit = { nav.navigate(EntryKey(mode = EntryMode.IMPORT_FIX, importFile = key.fileName, importLine = row.index, importOrder = order?.name)) }
-        val kind = if (e.type == ImportErrorType.INCOME_CATEGORY || e.type == ImportErrorType.INCOME_SUB) CategoryKind.INCOME else CategoryKind.EXPENSE
+        val edit = {
+            nav.navigate(
+                EntryKey(
+                    mode = EntryMode.IMPORT_FIX,
+                    importFile = key.fileName,
+                    importLine = row.index,
+                    importOrder = order?.name,
+                ),
+            )
+        }
+        val kind = if (e.type == ImportErrorType.INCOME_CATEGORY ||
+            e.type == ImportErrorType.INCOME_SUB
+        ) {
+            CategoryKind.INCOME
+        } else {
+            CategoryKind.EXPENSE
+        }
         AlertDialog(
             onDismissRequest = { fix = null },
             title = { Text(errorText(row) ?: "") },
             text = {
                 Column {
-                    TextButton(onClick = { fix = null; edit() }) { Text(stringResource(R.string.action_edit)) }
+                    TextButton(onClick = {
+                        fix = null
+                        edit()
+                    }) { Text(stringResource(R.string.action_edit)) }
                     when (e.type) {
                         ImportErrorType.DATE -> DateOrder.entries.forEach { o ->
-                            TextButton(onClick = { fix = null; order = o }) {
-                                Text("${o.pattern}  (${LocalDate.now().format(DateTimeFormatter.ofPattern(o.pattern))})")
+                            TextButton(onClick = {
+                                fix = null
+                                order = o
+                            }) {
+                                val sample = LocalDate.now().format(
+                                    DateTimeFormatter.ofPattern(o.pattern),
+                                )
+                                Text("${o.pattern}  ($sample)")
                             }
                         }
+
                         ImportErrorType.INCOME_CATEGORY, ImportErrorType.EXPENSE_CATEGORY -> {
-                            TextButton(onClick = { fix = null; nav.navigate(CategoryListKey(kind)) }) { Text(stringResource(if (kind == CategoryKind.INCOME) R.string.income_category_setting else R.string.expenses_category_setting)) }
-                            TextButton(onClick = { fix = null; nav.navigate(CategoryFormKey(kind, presetName = e.name)) }) { Text(stringResource(R.string.add_named, e.name ?: "")) }
+                            TextButton(onClick = {
+                                fix = null
+                                nav.navigate(CategoryListKey(kind))
+                            }) {
+                                Text(
+                                    stringResource(
+                                        if (kind == CategoryKind.INCOME) {
+                                            R.string.income_category_setting
+                                        } else {
+                                            R.string.expenses_category_setting
+                                        },
+                                    ),
+                                )
+                            }
+                            TextButton(onClick = {
+                                fix = null
+                                nav.navigate(CategoryFormKey(kind, presetName = e.name))
+                            }) {
+                                Text(stringResource(R.string.add_named, e.name ?: ""))
+                            }
                         }
+
                         ImportErrorType.INCOME_SUB, ImportErrorType.EXPENSE_SUB -> {
-                            TextButton(onClick = { fix = null; nav.navigate(CategoryListKey(kind)) }) { Text(stringResource(if (kind == CategoryKind.INCOME) R.string.income_category_setting else R.string.expenses_category_setting)) }
-                            val parentId = ref.mainCategories(kind).firstOrNull { it.name == e.parent }?.id
-                            TextButton(onClick = { fix = null; nav.navigate(CategoryFormKey(kind, parentId = parentId, sub = true, presetName = e.name)) }) { Text(stringResource(R.string.add_named, "${e.name} → ${e.parent}")) }
+                            TextButton(onClick = {
+                                fix = null
+                                nav.navigate(CategoryListKey(kind))
+                            }) {
+                                Text(
+                                    stringResource(
+                                        if (kind == CategoryKind.INCOME) {
+                                            R.string.income_category_setting
+                                        } else {
+                                            R.string.expenses_category_setting
+                                        },
+                                    ),
+                                )
+                            }
+                            val parentId = ref.mainCategories(kind).firstOrNull {
+                                it.name ==
+                                    e.parent
+                            }?.id
+                            TextButton(onClick = {
+                                fix = null
+                                nav.navigate(
+                                    CategoryFormKey(
+                                        kind,
+                                        parentId = parentId,
+                                        sub = true,
+                                        presetName = e.name,
+                                    ),
+                                )
+                            }) {
+                                Text(stringResource(R.string.add_named, "${e.name} → ${e.parent}"))
+                            }
                         }
+
                         ImportErrorType.ACCOUNT -> {
-                            TextButton(onClick = { fix = null; nav.navigate(AccountListKey()) }) { Text(stringResource(R.string.tab_accounts)) }
-                            TextButton(onClick = { fix = null; nav.navigate(AccountFormKey(presetName = e.name)) }) { Text(stringResource(R.string.add_named, e.name ?: "")) }
+                            TextButton(onClick = {
+                                fix = null
+                                nav.navigate(AccountListKey())
+                            }) { Text(stringResource(R.string.tab_accounts)) }
+                            TextButton(onClick = {
+                                fix = null
+                                nav.navigate(AccountFormKey(presetName = e.name))
+                            }) {
+                                Text(stringResource(R.string.add_named, e.name ?: ""))
+                            }
                         }
+
                         else -> Unit
                     }
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { fix = null }) { Text(stringResource(R.string.action_cancel)) } },
+            dismissButton = {
+                TextButton(onClick = {
+                    fix = null
+                }) { Text(stringResource(R.string.action_cancel)) }
+            },
         )
     }
 }

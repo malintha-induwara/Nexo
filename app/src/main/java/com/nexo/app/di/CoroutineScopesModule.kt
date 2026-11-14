@@ -18,6 +18,7 @@ object CoroutineScopesModule {
     @Provides
     @Singleton
     @ApplicationScope
-    fun applicationScope(@Dispatcher(NexoDispatchers.Default) dispatcher: CoroutineDispatcher): CoroutineScope =
-        CoroutineScope(SupervisorJob() + dispatcher)
+    fun applicationScope(
+        @Dispatcher(NexoDispatchers.Default) dispatcher: CoroutineDispatcher,
+    ): CoroutineScope = CoroutineScope(SupervisorJob() + dispatcher)
 }

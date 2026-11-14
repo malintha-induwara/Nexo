@@ -30,7 +30,12 @@ import kotlinx.coroutines.launch
 
 enum class AccountsMode { ALL, WEEKLY, MONTHLY, ANNUALLY, PERIOD }
 
-data class AccountsQuery(val mode: AccountsMode = AccountsMode.ALL, val anchor: LocalDate = LocalDate.now(), val from: LocalDate = LocalDate.now(), val to: LocalDate = LocalDate.now())
+data class AccountsQuery(
+    val mode: AccountsMode = AccountsMode.ALL,
+    val anchor: LocalDate = LocalDate.now(),
+    val from: LocalDate = LocalDate.now(),
+    val to: LocalDate = LocalDate.now(),
+)
 
 data class AccountsData(
     val loaded: Boolean = false,
@@ -58,13 +63,25 @@ class AccountsViewModel @Inject constructor(
     private val prefs: UserPreferencesRepository,
 ) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
-    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        RefData(),
+    )
     private val query = MutableStateFlow(AccountsQuery())
 
-    private val data = combine(ref, query, transactions.getChangeStampStream()) { r, q, _ -> r to q }
+    private val data = combine(ref, query, transactions.getChangeStampStream()) { r, q, _ ->
+        r to q
+    }
         .mapLatest { (r, q) -> compute(r, q) }
 
-    val uiState: StateFlow<AccountsUiState> = combine(ref, prefs.getDeviceSettingsStream(), query, data, ::AccountsUiState)
+    val uiState: StateFlow<AccountsUiState> = combine(
+        ref,
+        prefs.getDeviceSettingsStream(),
+        query,
+        data,
+        ::AccountsUiState,
+    )
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountsUiState())
 
     fun range(r: RefData, q: AccountsQuery): DateRange? {
@@ -84,14 +101,33 @@ class AccountsViewModel @Inject constructor(
         if (range == null) {
             val net = Balances.netByAccount(transactions.getAggregatesUpTo("9999-12-31"))
             val month = r.settings.periods.monthPeriodContaining(today)
-            val debitNet = Balances.netByAccount(transactions.getAggregatesBetween(month.range.startText, month.range.endText))
+            val debitNet = Balances.netByAccount(
+                transactions.getAggregatesBetween(month.range.startText, month.range.endText),
+            )
             val cards = r.accounts.filter { r.groupType(it.id) == GroupType.CREDIT_CARD }
             val cardRows = cards.associate { c ->
-                c.id to transactions.getAllForAccounts(listOf(c.id) + r.linkedDebitCards(c.id).map { it.id })
+                c.id to
+                    transactions.getAllForAccounts(
+                        listOf(c.id) + r.linkedDebitCards(c.id).map {
+                            it.id
+                        },
+                    )
             }
-            val figures = AccountsSummaryCalculator.allModeFigures(r, net, debitNet, cardRows, today)
+            val figures = AccountsSummaryCalculator.allModeFigures(
+                r,
+                net,
+                debitNet,
+                cardRows,
+                today,
+            )
             val unassigned = if (net.containsKey(null)) Balances.unassigned(net) else null
-            return AccountsData(true, figures, AccountsSummaryCalculator.summarize(r, figures, unassigned), unassigned = unassigned, debitMonthLabel = month.label)
+            return AccountsData(
+                true,
+                figures,
+                AccountsSummaryCalculator.summarize(r, figures, unassigned),
+                unassigned = unassigned,
+                debitMonthLabel = month.label,
+            )
         }
         val net = Balances.netByAccount(transactions.getAggregatesUpTo(range.endText))
         val previousEnd = when (q.mode) {
@@ -102,9 +138,19 @@ class AccountsViewModel @Inject constructor(
         }
         val prevNet = Balances.netByAccount(transactions.getAggregatesUpTo(previousEnd.toIsoText()))
         val figures = AccountsSummaryCalculator.periodFigures(r, net)
-        val changes = figures.associate { f -> f.account.id to (f.balance - Balances.balance(r, f.account, prevNet)) }
+        val changes = figures.associate { f ->
+            f.account.id to
+                (f.balance - Balances.balance(r, f.account, prevNet))
+        }
         val unassigned = if (net.containsKey(null)) Balances.unassigned(net) else null
-        return AccountsData(true, figures, AccountsSummaryCalculator.summarize(r, figures, unassigned), changes, unassigned, range)
+        return AccountsData(
+            true,
+            figures,
+            AccountsSummaryCalculator.summarize(r, figures, unassigned),
+            changes,
+            unassigned,
+            range,
+        )
     }
 
     fun setMode(m: AccountsMode) = query.update {
@@ -121,8 +167,15 @@ class AccountsViewModel @Inject constructor(
         q.copy(
             anchor = when (q.mode) {
                 AccountsMode.WEEKLY -> d.plusDays(if (forward) 7 else -7)
-                AccountsMode.MONTHLY -> e.monthPeriodContaining(d).let { if (forward) e.next(it).end else e.previous(it).end }
-                AccountsMode.ANNUALLY -> e.yearRange(e.yearOf(d) + if (forward) 1 else -1).start.plusDays(15)
+
+                AccountsMode.MONTHLY -> e.monthPeriodContaining(d).let {
+                    if (forward) e.next(it).end else e.previous(it).end
+                }
+
+                AccountsMode.ANNUALLY -> e.yearRange(
+                    e.yearOf(d) + if (forward) 1 else -1,
+                ).start.plusDays(15)
+
                 else -> d
             },
         )

@@ -41,7 +41,12 @@ import java.text.DecimalFormatSymbols
 /** Full-screen calculator. Returns the evaluated value on OK. */
 @Composable
 fun CalculatorDialog(initial: Double?, onResult: (BigDecimal) -> Unit, onDismiss: () -> Unit) {
-    val start = initial?.let { BigDecimal.valueOf(it).stripTrailingZeros().toPlainString() }?.takeIf { it != "0" } ?: ""
+    val start =
+        initial?.let { BigDecimal.valueOf(it).stripTrailingZeros().toPlainString() }?.takeIf {
+            it !=
+                "0"
+        }
+            ?: ""
     var expr by rememberSaveable { mutableStateOf(start) }
     var echo by rememberSaveable { mutableStateOf("") }
     var error by rememberSaveable { mutableStateOf(false) }
@@ -56,11 +61,24 @@ fun CalculatorDialog(initial: Double?, onResult: (BigDecimal) -> Unit, onDismiss
                 val s = num.toString()
                 val intPart = s.substringBefore('.')
                 val frac = if (s.contains('.')) sep + s.substringAfter('.') else ""
-                sb.append((intPart.toBigDecimalOrNull()?.let { grouping.format(it) } ?: intPart) + frac)
+                sb.append(
+                    (
+                        intPart.toBigDecimalOrNull()?.let {
+                            grouping.format(it)
+                        } ?: intPart
+                        ) + frac,
+                )
                 num.clear()
             }
         }
-        for (c in e) if (c.isDigit() || c == '.') num.append(c) else { flush(); sb.append(' ').append(c).append(' ') }
+        for (c in e) {
+            if (c.isDigit() || c == '.') {
+                num.append(c)
+            } else {
+                flush()
+                sb.append(' ').append(c).append(' ')
+            }
+        }
         flush()
         return sb.toString()
     }
@@ -73,28 +91,63 @@ fun CalculatorDialog(initial: Double?, onResult: (BigDecimal) -> Unit, onDismiss
     fun press(k: String) {
         error = false
         when (k) {
-            "AC" -> { expr = ""; echo = "" }
+            "AC" -> {
+                expr = ""
+                echo = ""
+            }
+
             "BS" -> expr = expr.dropLast(1)
+
             "=" -> {
                 when (val r = Calculator.evaluate(expr)) {
-                    is Calculator.Outcome.Value -> { echo = display(expr); expr = r.value.toPlainString() }
-                    Calculator.Outcome.DivideByZero -> { error = true; echo = display(expr); expr = "" }
+                    is Calculator.Outcome.Value -> {
+                        echo = display(expr)
+                        expr = r.value.toPlainString()
+                    }
+
+                    Calculator.Outcome.DivideByZero -> {
+                        error = true
+                        echo = display(expr)
+                        expr = ""
+                    }
+
                     Calculator.Outcome.Invalid -> error = true
                 }
             }
+
             else -> expr = Calculator.type(expr, k)
         }
     }
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(Modifier.fillMaxSize().systemBarsPadding()) {
                 NexoTopBar(stringResource(R.string.calculator), onBack = onDismiss)
-                Column(Modifier.weight(1f).fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.Bottom) {
-                    Text(echo, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(
+                    Modifier.weight(1f).fillMaxWidth().padding(24.dp),
+                    verticalArrangement = Arrangement.Bottom,
+                ) {
                     Text(
-                        if (error) stringResource(R.string.calc_error) else display(expr).ifEmpty { "0" },
-                        modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End, fontSize = 40.sp, fontWeight = FontWeight.Light,
+                        echo,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.End,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        if (error) {
+                            stringResource(R.string.calc_error)
+                        } else {
+                            display(expr).ifEmpty {
+                                "0"
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.End,
+                        fontSize = 40.sp,
+                        fontWeight = FontWeight.Light,
                     )
                 }
                 val rows = listOf(
@@ -106,18 +159,34 @@ fun CalculatorDialog(initial: Double?, onResult: (BigDecimal) -> Unit, onDismiss
                 )
                 Column(Modifier.padding(6.dp)) {
                     rows.forEach { row ->
-                        Row(Modifier.fillMaxWidth().height(68.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            Modifier.fillMaxWidth().height(68.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
                             row.forEach { k ->
                                 CalcKey(
                                     k,
                                     accent = k == "OK",
                                     operator = k in setOf("÷", "×", "−", "+", "="),
-                                    label = if (k == ".") sep.toString() else if (k == "OK") stringResource(R.string.action_ok) else k,
+                                    label = if (k == ".") {
+                                        sep.toString()
+                                    } else if (k == "OK") {
+                                        stringResource(R.string.action_ok)
+                                    } else {
+                                        k
+                                    },
                                 ) {
                                     if (k == "OK") {
                                         val v = evaluate()
-                                        if (v != null) { onResult(v); onDismiss() } else error = true
-                                    } else press(k)
+                                        if (v != null) {
+                                            onResult(v)
+                                            onDismiss()
+                                        } else {
+                                            error = true
+                                        }
+                                    } else {
+                                        press(k)
+                                    }
                                 }
                             }
                         }
@@ -129,17 +198,38 @@ fun CalculatorDialog(initial: Double?, onResult: (BigDecimal) -> Unit, onDismiss
 }
 
 @Composable
-private fun RowScope.CalcKey(key: String, accent: Boolean, operator: Boolean, label: String, onClick: () -> Unit) {
+private fun RowScope.CalcKey(
+    key: String,
+    accent: Boolean,
+    operator: Boolean,
+    label: String,
+    onClick: () -> Unit,
+) {
     val bg = when {
         accent -> MaterialTheme.colorScheme.primary
         operator -> MaterialTheme.colorScheme.primaryContainer
         else -> MaterialTheme.colorScheme.surface
     }
     Box(
-        Modifier.weight(1f).padding(vertical = 3.dp).fillMaxSize().background(bg, MaterialTheme.shapes.medium).clickable(onClick = onClick),
+        Modifier.weight(
+            1f,
+        ).padding(
+            vertical = 3.dp,
+        ).fillMaxSize().background(bg, MaterialTheme.shapes.medium).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        if (key == "BS") Icon(Icons.AutoMirrored.Outlined.Backspace, stringResource(R.string.action_delete))
-        else Text(label, fontSize = 22.sp, color = if (accent) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+        if (key == "BS") {
+            Icon(Icons.AutoMirrored.Outlined.Backspace, stringResource(R.string.action_delete))
+        } else {
+            Text(
+                label,
+                fontSize = 22.sp,
+                color = if (accent) {
+                    MaterialTheme.colorScheme.onPrimary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+            )
+        }
     }
 }

@@ -51,11 +51,15 @@ class AccountSettingsViewModel @Inject constructor(
         ::AccountSettingsUiState,
     ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountSettingsUiState())
 
-    fun updateSettings(transform: (BookSettings) -> BookSettings) = viewModelScope.launch { bookSettings.updateBookSettings(transform) }
+    fun updateSettings(transform: (BookSettings) -> BookSettings) = viewModelScope.launch {
+        bookSettings.updateBookSettings(transform)
+    }
 
     fun reorderGroups(ids: List<String>) = viewModelScope.launch { repo.reorderGroups(ids) }
 
-    fun setGroupStatus(id: String, status: GroupStatus) = viewModelScope.launch { repo.setGroupStatus(id, status) }
+    fun setGroupStatus(id: String, status: GroupStatus) = viewModelScope.launch {
+        repo.setGroupStatus(id, status)
+    }
 
     fun saveGroup(id: String?, name: String, type: GroupType) = viewModelScope.launch {
         repo.saveGroup(id, name, type)
@@ -66,10 +70,15 @@ class AccountSettingsViewModel @Inject constructor(
         groupSaved.value = false
     }
 
-    fun setStatus(id: String, status: AccountStatus) = viewModelScope.launch { repo.setStatus(id, status) }
+    fun setStatus(id: String, status: AccountStatus) = viewModelScope.launch {
+        repo.setStatus(id, status)
+    }
 
     /** Order = position in the whole list; the group may change. */
-    fun reorderAccounts(order: List<Pair<String, String>>) = viewModelScope.launch { repo.reorderAccounts(order) }
+    fun reorderAccounts(order: List<Pair<String, String>>) =
+        viewModelScope.launch { repo.reorderAccounts(order) }
 
-    fun setTransferExpense(id: String, on: Boolean) = viewModelScope.launch { repo.setTransferExpense(id, on) }
+    fun setTransferExpense(id: String, on: Boolean) = viewModelScope.launch {
+        repo.setTransferExpense(id, on)
+    }
 }

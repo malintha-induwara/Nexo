@@ -16,7 +16,10 @@ class CalculationsTest {
 
     @Test
     fun installmentDatesClampToShortMonths() {
-        assertEquals(listOf(d("2024-01-31"), d("2024-02-29"), d("2024-03-31")), Installments.dates(d("2024-01-31"), 3))
+        assertEquals(
+            listOf(d("2024-01-31"), d("2024-02-29"), d("2024-03-31")),
+            Installments.dates(d("2024-01-31"), 3),
+        )
     }
 
     @Test
@@ -34,7 +37,10 @@ class CalculationsTest {
         assertEquals(d("2024-05-18"), RepeatSchedule.next(d("2024-05-17"), RepeatType.WEEKENDS, 17))
         assertEquals(d("2024-05-19"), RepeatSchedule.next(d("2024-05-18"), RepeatType.WEEKENDS, 18))
         assertEquals(d("2024-05-25"), RepeatSchedule.next(d("2024-05-19"), RepeatType.WEEKENDS, 19))
-        assertEquals(d("2024-06-30"), RepeatSchedule.next(d("2024-05-31"), RepeatType.END_OF_MONTH, 31))
+        assertEquals(
+            d("2024-06-30"),
+            RepeatSchedule.next(d("2024-05-31"), RepeatType.END_OF_MONTH, 31),
+        )
     }
 
     @Test
@@ -44,7 +50,8 @@ class CalculationsTest {
         assertEquals(d("2024-05-31"), RepeatSchedule.snap(d("2024-05-15"), RepeatType.END_OF_MONTH))
     }
 
-    private fun rec(key: Int, amount: Double) = BudgetAmount(BudgetAmount.idFor("b", key), "b", key, amount, 0)
+    private fun rec(key: Int, amount: Double) =
+        BudgetAmount(BudgetAmount.idFor("b", key), "b", key, amount, 0)
 
     @Test
     fun budgetEffectiveAmount() {

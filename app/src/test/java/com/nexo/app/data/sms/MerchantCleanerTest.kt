@@ -46,8 +46,14 @@ class MerchantCleanerTest {
 
     @Test
     fun atmDistrictSuffix() {
-        assertEquals("MATARA-2 BR MATARA", MerchantCleaner.clean("MATARA-2 BR MATARA SPLK", atm = true))
-        assertEquals("Hill Bank GALAHA", MerchantCleaner.clean("Hill Bank GALAHA CP LK", atm = true))
+        assertEquals(
+            "MATARA-2 BR MATARA",
+            MerchantCleaner.clean("MATARA-2 BR MATARA SPLK", atm = true),
+        )
+        assertEquals(
+            "Hill Bank GALAHA",
+            MerchantCleaner.clean("Hill Bank GALAHA CP LK", atm = true),
+        )
     }
 
     @Test
@@ -58,7 +64,10 @@ class MerchantCleanerTest {
 
     @Test
     fun codesAreAlwaysStripped() {
-        val stored = Redactor.stored("ComBank Digital-Transfer to Other Banks LKR 7,500.00 attempted. Please use code 987654 to approve.", keepFullText = true)
+        val stored = Redactor.stored(
+            "ComBank Digital-Transfer to Other Banks LKR 7,500.00 attempted. Please use code 987654 to approve.",
+            keepFullText = true,
+        )
         assertFalse(stored.contains("987654"))
         assertTrue(stored.contains("LKR 7,500.00"))
         assertFalse(Redactor.stripCodes("Code 987654 is your One Time Password").contains("987654"))
@@ -67,9 +76,12 @@ class MerchantCleanerTest {
 
     @Test
     fun redactionHidesNumbersButKeepsAmounts() {
-        val body = "Your A/C 8001234567 debited LKR 5,000.00 to A/C 1234XXXX5678 card ending #4321. Call 0771234567 or +94112345678. Ref ***9876"
+        val body = "Your A/C 8001234567 debited LKR 5,000.00 to A/C 1234XXXX5678 card ending " +
+            "#4321. Call 0771234567 or +94112345678. Ref ***9876"
         val r = Redactor.redact(body)
-        listOf("8001234567", "5678", "4321", "0771234567", "+94112345678", "9876").forEach { assertFalse(it, r.contains(it)) }
+        listOf("8001234567", "5678", "4321", "0771234567", "+94112345678", "9876").forEach {
+            assertFalse(it, r.contains(it))
+        }
         assertTrue(r.contains("LKR 5,000.00"))
         assertTrue(Redactor.stored(body, keepFullText = true).contains("8001234567"))
         assertFalse(Redactor.stored(body, keepFullText = false).contains("8001234567"))

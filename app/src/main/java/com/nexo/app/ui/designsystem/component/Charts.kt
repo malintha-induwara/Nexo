@@ -81,27 +81,54 @@ private fun tickLabel(v: Double): String {
 }
 
 /** The plot area inside a chart canvas: value ticks down the left, one slot per label along the bottom. */
-private class Plot(val left: Float, val top: Float, val width: Float, val height: Float, val slots: Int, val scale: AxisScale) {
+private class Plot(
+    val left: Float,
+    val top: Float,
+    val width: Float,
+    val height: Float,
+    val slots: Int,
+    val scale: AxisScale,
+) {
     val slot: Float get() = width / slots
     fun x(i: Int): Float = left + slot * i + slot / 2
-    fun y(v: Double): Float = top + ((scale.top - v) / (scale.top - scale.bottom)).toFloat() * height
+    fun y(v: Double): Float =
+        top + ((scale.top - v) / (scale.top - scale.bottom)).toFloat() * height
 }
 
 private val PlotGutter = 40.dp
 
 /** Draws the hairline grid with its value ticks and the labels under the slots; returns the plot area. */
-private fun DrawScope.drawPlotFrame(labels: List<String>, scale: AxisScale, grid: Color, ink: Paint): Plot {
-    val plot = Plot(PlotGutter.toPx(), 8.dp.toPx(), size.width - PlotGutter.toPx(), size.height - 30.dp.toPx(), labels.size, scale)
+private fun DrawScope.drawPlotFrame(
+    labels: List<String>,
+    scale: AxisScale,
+    grid: Color,
+    ink: Paint,
+): Plot {
+    val plot = Plot(
+        PlotGutter.toPx(),
+        8.dp.toPx(),
+        size.width - PlotGutter.toPx(),
+        size.height - 30.dp.toPx(),
+        labels.size,
+        scale,
+    )
     var v = scale.bottom
     while (v <= scale.top + scale.step / 2) {
         val y = plot.y(v)
         drawLine(grid, Offset(plot.left, y), Offset(size.width, y), 1.dp.toPx())
         ink.textAlign = Paint.Align.RIGHT
-        drawContext.canvas.nativeCanvas.drawText(tickLabel(v), plot.left - 8.dp.toPx(), y + ink.textSize * 0.35f, ink)
+        drawContext.canvas.nativeCanvas.drawText(
+            tickLabel(v),
+            plot.left - 8.dp.toPx(),
+            y + ink.textSize * 0.35f,
+            ink,
+        )
         v += scale.step
     }
     ink.textAlign = Paint.Align.CENTER
-    labels.forEachIndexed { i, l -> drawContext.canvas.nativeCanvas.drawText(l, plot.x(i), size.height - 4.dp.toPx(), ink) }
+    labels.forEachIndexed { i, l ->
+        drawContext.canvas.nativeCanvas.drawText(l, plot.x(i), size.height - 4.dp.toPx(), ink)
+    }
     return plot
 }
 
@@ -129,7 +156,9 @@ private fun Modifier.pickSlot(count: Int, onPick: (Int) -> Unit): Modifier {
     return this
         .pointerInput(count) { detectTapGestures { onPick(slotAt(it.x)) } }
         .pointerInput(count) {
-            detectHorizontalDragGestures(onDragStart = { onPick(slotAt(it.x)) }) { change, _ -> onPick(slotAt(change.position.x)) }
+            detectHorizontalDragGestures(onDragStart = {
+                onPick(slotAt(it.x))
+            }) { change, _ -> onPick(slotAt(change.position.x)) }
         }
 }
 
@@ -162,8 +191,9 @@ fun AreaChart(
         values.forEachIndexed { i, v ->
             val x = plot.x(i)
             val y = plot.y(v)
-            if (i == 0) line.moveTo(x, y)
-            else {
+            if (i == 0) {
+                line.moveTo(x, y)
+            } else {
                 // Level tangents at each point: the curve never overshoots a value.
                 val half = (x - plot.x(i - 1)) / 2
                 line.cubicTo(plot.x(i - 1) + half, plot.y(values[i - 1]), x - half, y, x, y)
@@ -178,11 +208,20 @@ fun AreaChart(
         }
         clipRect(right = plot.left + plot.width * reveal.value) {
             drawPath(area, color.copy(alpha = 0.12f))
-            drawPath(line, color, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawPath(
+                line,
+                color,
+                style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
+            )
         }
         if (selected in values.indices && reveal.value > 0.98f) {
             val x = plot.x(selected)
-            drawLine(colors.textTertiary, Offset(x, plot.top), Offset(x, plot.top + plot.height), 1.dp.toPx())
+            drawLine(
+                colors.textTertiary,
+                Offset(x, plot.top),
+                Offset(x, plot.top + plot.height),
+                1.dp.toPx(),
+            )
             drawCircle(colors.surface, 7.dp.toPx(), Offset(x, plot.y(values[selected])))
             drawCircle(color, 5.dp.toPx(), Offset(x, plot.y(values[selected])))
         }
@@ -219,16 +258,29 @@ fun ColumnChart(
         val plot = drawPlotFrame(labels, scale, colors.hairline, ink)
         if (selected in labels.indices) {
             val inset = 4.dp.toPx()
-            drawRoundRect(colors.raised, Offset(plot.left + plot.slot * selected + inset, plot.top), Size(plot.slot - inset * 2, plot.height), CornerRadius(8.dp.toPx()))
+            drawRoundRect(
+                colors.raised,
+                Offset(plot.left + plot.slot * selected + inset, plot.top),
+                Size(plot.slot - inset * 2, plot.height),
+                CornerRadius(8.dp.toPx()),
+            )
             // The grid stays readable through the band.
             var v = scale.bottom
             while (v <= scale.top + scale.step / 2) {
-                drawLine(colors.hairline, Offset(plot.left + plot.slot * selected + inset, plot.y(v)), Offset(plot.left + plot.slot * (selected + 1) - inset, plot.y(v)), 1.dp.toPx())
+                drawLine(
+                    colors.hairline,
+                    Offset(plot.left + plot.slot * selected + inset, plot.y(v)),
+                    Offset(plot.left + plot.slot * (selected + 1) - inset, plot.y(v)),
+                    1.dp.toPx(),
+                )
                 v += scale.step
             }
         }
         val gap = 2.dp.toPx()
-        val thick = min(24.dp.toPx(), (plot.slot * 0.62f - gap * (series.size - 1)) / series.size).coerceAtLeast(2.dp.toPx())
+        val thick = min(
+            24.dp.toPx(),
+            (plot.slot * 0.62f - gap * (series.size - 1)) / series.size,
+        ).coerceAtLeast(2.dp.toPx())
         val group = thick * series.size + gap * (series.size - 1)
         val zero = plot.y(0.0)
         series.forEachIndexed { s, list ->
@@ -242,9 +294,14 @@ fun ColumnChart(
                 val bar = Path().apply {
                     addRoundRect(
                         RoundRect(
-                            x, min(end, zero), x + thick, max(end, zero),
-                            topLeftCornerRadius = if (up) r else none, topRightCornerRadius = if (up) r else none,
-                            bottomLeftCornerRadius = if (up) none else r, bottomRightCornerRadius = if (up) none else r,
+                            x,
+                            min(end, zero),
+                            x + thick,
+                            max(end, zero),
+                            topLeftCornerRadius = if (up) r else none,
+                            topRightCornerRadius = if (up) r else none,
+                            bottomLeftCornerRadius = if (up) none else r,
+                            bottomRightCornerRadius = if (up) none else r,
                         ),
                     )
                 }
@@ -256,8 +313,18 @@ fun ColumnChart(
             if (i >= labels.size || t == 0.0) return@forEachIndexed
             val half = min(plot.slot / 2 - 4.dp.toPx(), group / 2 + 8.dp.toPx())
             val y = plot.y(t)
-            drawLine(colors.surface, Offset(plot.x(i) - half - 1.dp.toPx(), y), Offset(plot.x(i) + half + 1.dp.toPx(), y), 5.dp.toPx())
-            drawLine(targetColor, Offset(plot.x(i) - half, y), Offset(plot.x(i) + half, y), 2.dp.toPx())
+            drawLine(
+                colors.surface,
+                Offset(plot.x(i) - half - 1.dp.toPx(), y),
+                Offset(plot.x(i) + half + 1.dp.toPx(), y),
+                5.dp.toPx(),
+            )
+            drawLine(
+                targetColor,
+                Offset(plot.x(i) - half, y),
+                Offset(plot.x(i) + half, y),
+                2.dp.toPx(),
+            )
         }
     }
 }
@@ -292,7 +359,8 @@ fun DonutChart(
                     i -> 1f
                     else -> -1f
                 },
-                NexoMotion.snappy(), label = "slice",
+                NexoMotion.snappy(),
+                label = "slice",
             )
         }
     }
@@ -308,7 +376,9 @@ fun DonutChart(
                         onSlice?.invoke(-1)
                         return@detectTapGestures
                     }
-                    var angle = Math.toDegrees(atan2((pos.y - c.y).toDouble(), (pos.x - c.x).toDouble())) + 90
+                    var angle =
+                        Math.toDegrees(atan2((pos.y - c.y).toDouble(), (pos.x - c.x).toDouble())) +
+                            90
                     if (angle < 0) angle += 360
                     var acc = 0.0
                     slices.forEachIndexed { i, s ->
@@ -338,7 +408,11 @@ fun DonutChart(
                 if (visible > 0f) {
                     drawArc(
                         s.color.copy(alpha = 1f + 0.65f * min(e, 0f)),
-                        start - 90f + gap / 2, visible, false, topLeft, arc,
+                        start - 90f + gap / 2,
+                        visible,
+                        false,
+                        topLeft,
+                        arc,
                         style = Stroke(band + lift * max(e, 0f)),
                     )
                 }

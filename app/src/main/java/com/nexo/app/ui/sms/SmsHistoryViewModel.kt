@@ -110,12 +110,27 @@ class SmsHistoryViewModel @AssistedInject constructor(
 
     /** Everything but the reference data, which comes from its own stream. */
     private val screenState = MutableStateFlow(
-        SmsHistoryUiState(gap = gap, range = if (gap) HistoryRange.GAP else HistoryRange.MONTH, permitted = inbox.hasPermission()),
+        SmsHistoryUiState(
+            gap = gap,
+            range = if (gap) HistoryRange.GAP else HistoryRange.MONTH,
+            permitted = inbox.hasPermission(),
+        ),
     )
     private val feePrompts = MutableStateFlow<List<FeePrompt>>(emptyList())
 
-    val uiState: StateFlow<SmsHistoryUiState> = combine(refs.getRefDataStream(), screenState, feePrompts) { ref, s, prompts ->
-        val visible = s.rows.orEmpty().filter { s.kind.matches(it.item.kind) && (s.card == null || it.item.cardLast4 == s.card) }
+    val uiState: StateFlow<SmsHistoryUiState> = combine(
+        refs.getRefDataStream(),
+        screenState,
+        feePrompts,
+    ) {
+            ref,
+            s,
+            prompts,
+        ->
+        val visible = s.rows.orEmpty().filter {
+            s.kind.matches(it.item.kind) &&
+                (s.card == null || it.item.cardLast4 == s.card)
+        }
         s.copy(ref = ref, visible = visible, feePrompt = prompts.firstOrNull())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), screenState.value)
 
@@ -157,10 +172,13 @@ class SmsHistoryViewModel @AssistedInject constructor(
         val state = screenState.value
         return when (val r = state.range) {
             HistoryRange.GAP -> key.gapFrom to key.gapUntil
+
             HistoryRange.CUSTOM -> {
                 val (from, to) = state.custom
-                from.atStartOfDay(zone).toInstant().toEpochMilli() to to.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+                from.atStartOfDay(zone).toInstant().toEpochMilli() to
+                    to.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
             }
+
             else -> now - r.days!! * DAY_MS to now
         }
     }
@@ -175,18 +193,45 @@ class SmsHistoryViewModel @AssistedInject constructor(
         val (from, until) = bounds()
         val rows = inbox.scanHistory(from, until)
         // Nothing is selected by default; keep only choices that are still on screen.
-        screenState.update { s -> s.copy(rows = rows, selection = s.selection.filter { id -> rows.any { it.item.id == id } }.toSet()) }
+        screenState.update { s ->
+            s.copy(
+                rows = rows,
+                selection = s.selection.filter { id ->
+                    rows.any {
+                        it.item.id ==
+                            id
+                    }
+                }.toSet(),
+            )
+        }
     }
 
     fun toggle(row: HistoryRow) {
         if (row.cancelled) return
-        screenState.update { s -> s.copy(selection = if (row.item.id in s.selection) s.selection - row.item.id else s.selection + row.item.id) }
+        screenState.update { s ->
+            s.copy(
+                selection = if (row.item.id in s.selection) {
+                    s.selection - row.item.id
+                } else {
+                    s.selection + row.item.id
+                },
+            )
+        }
     }
 
     /** Selects every visible row, or clears them when all are already selected. */
     fun selectAll(rows: List<HistoryRow>) {
         val ids = rows.filter { !it.cancelled }.map { it.item.id }.toSet()
-        screenState.update { s -> s.copy(selection = if (ids.all { id -> id in s.selection }) s.selection - ids else s.selection + ids) }
+        screenState.update { s ->
+            s.copy(
+                selection = if (ids.all { id -> id in s.selection }) {
+                    s.selection -
+                        ids
+                } else {
+                    s.selection + ids
+                },
+            )
+        }
     }
 
     /** "Which account is the card ending 1111?": remembered for live capture too, and applied to these rows. */
@@ -196,9 +241,13 @@ class SmsHistoryViewModel @AssistedInject constructor(
         screenState.update { s ->
             s.copy(
                 rows = s.rows?.map { row ->
-                    if (row.item.bank == card.bank && row.item.cardLast4 == card.last4 && row.item.accountId == null) {
+                    if (row.item.bank == card.bank && row.item.cardLast4 == card.last4 &&
+                        row.item.accountId == null
+                    ) {
                         row.copy(item = sms.prepare(row.item.copy(accountId = accountId), ref))
-                    } else row
+                    } else {
+                        row
+                    }
                 },
             )
         }
@@ -210,7 +259,9 @@ class SmsHistoryViewModel @AssistedInject constructor(
      */
     fun add() = viewModelScope.launch {
         val state = screenState.value
-        val chosen = state.rows.orEmpty().filter { it.item.id in state.selection && !it.cancelled }.map { it.item }
+        val chosen = state.rows.orEmpty().filter {
+            it.item.id in state.selection && !it.cancelled
+        }.map { it.item }
         if (chosen.isEmpty() || state.adding) return@launch
         screenState.update { it.copy(adding = true) }
         val stored = sms.getItems(sms.keep(chosen))
@@ -227,11 +278,27 @@ class SmsHistoryViewModel @AssistedInject constructor(
             }
             when (val plan = getFeePlan(item)) {
                 FeePlan.None -> if (approveSms(item.id) is ApproveResult.Done) added++
-                is FeePlan.Auto -> if (approveSms(item.id, FeeChoice(plan.amount)) is ApproveResult.Done) added++
-                is FeePlan.Ask -> if (plan.fxDifference) prompts += FeePrompt(listOf(item), plan) else asks.getOrPut(plan.route) { ArrayList() } += item to plan
+
+                is FeePlan.Auto -> if (approveSms(
+                        item.id,
+                        FeeChoice(plan.amount),
+                    ) is ApproveResult.Done
+                ) {
+                    added++
+                }
+
+                is FeePlan.Ask -> if (plan.fxDifference) {
+                    prompts += FeePrompt(listOf(item), plan)
+                } else {
+                    asks.getOrPut(plan.route) { ArrayList() } +=
+                        item to plan
+                }
             }
         }
-        asks.values.forEach { group -> prompts += FeePrompt(group.map { it.first }, group.first().second) }
+        asks.values.forEach { group ->
+            prompts +=
+                FeePrompt(group.map { it.first }, group.first().second)
+        }
         feePrompts.value = prompts
         if (prompts.isEmpty()) finish()
     }
@@ -240,8 +307,13 @@ class SmsHistoryViewModel @AssistedInject constructor(
     fun answerFee(choice: FeeChoice?) = viewModelScope.launch {
         val prompt = feePrompts.value.firstOrNull() ?: return@launch
         feePrompts.update { it.drop(1) }
-        if (choice == null) toQueue += prompt.items.size
-        else prompt.items.forEach { if (approveSms(it.id, choice) is ApproveResult.Done) added++ else toQueue++ }
+        if (choice == null) {
+            toQueue += prompt.items.size
+        } else {
+            prompt.items.forEach {
+                if (approveSms(it.id, choice) is ApproveResult.Done) added++ else toQueue++
+            }
+        }
         if (feePrompts.value.isEmpty()) finish()
     }
 

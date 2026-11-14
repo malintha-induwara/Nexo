@@ -36,14 +36,22 @@ class PhotoFileDataSource @Inject constructor(
     fun file(fileName: String): File = File(dirs.photos, fileName)
 
     fun displayName(uri: Uri): String? = runCatching {
-        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+        context.contentResolver.query(
+            uri,
+            arrayOf(OpenableColumns.DISPLAY_NAME),
+            null,
+            null,
+            null,
+        )?.use { c ->
             if (c.moveToFirst()) c.getString(0) else null
         }
     }.getOrNull() ?: uri.lastPathSegment
 
     fun extensionOf(uri: Uri): String? {
         val name = displayName(uri)
-        val ext = name?.substringAfterLast('.', "")?.lowercase(Locale.ROOT)?.takeIf { it.isNotEmpty() }
+        val ext = name?.substringAfterLast('.', "")?.lowercase(Locale.ROOT)?.takeIf {
+            it.isNotEmpty()
+        }
         if (ext != null) return ext
         val mime = context.contentResolver.getType(uri) ?: return null
         return MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)
@@ -56,29 +64,48 @@ class PhotoFileDataSource @Inject constructor(
     }
 
     /** Writes [bytes] as a new photo file, downscaling sources over 2 MB. [extension] is used for small files only. */
-    suspend fun write(bytes: ByteArray, extension: String?, checksum: String): StoredPhoto = withContext(ioDispatcher) {
-        val large = bytes.size > MAX_BYTES
-        val name = UUID.randomUUID().toString() + "." + (if (large || extension.isNullOrEmpty()) "jpg" else extension)
-        val out = file(name)
-        if (large) {
-            val data = downscale(bytes) ?: bytes
-            out.writeBytes(data)
-        } else {
-            out.writeBytes(bytes)
+    suspend fun write(bytes: ByteArray, extension: String?, checksum: String): StoredPhoto =
+        withContext(ioDispatcher) {
+            val large = bytes.size > MAX_BYTES
+            val name =
+                UUID.randomUUID().toString() + "." +
+                    (if (large || extension.isNullOrEmpty()) "jpg" else extension)
+            val out = file(name)
+            if (large) {
+                val data = downscale(bytes) ?: bytes
+                out.writeBytes(data)
+            } else {
+                out.writeBytes(bytes)
+            }
+            StoredPhoto(name, out.length(), checksum)
         }
-        StoredPhoto(name, out.length(), checksum)
-    }
 
     private fun downscale(bytes: ByteArray): ByteArray? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         var sample = 1
         while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= MAX_SIDE) sample *= 2
-        val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample }) ?: return null
+        val bmp =
+            BitmapFactory.decodeByteArray(
+                bytes,
+                0,
+                bytes.size,
+                BitmapFactory.Options().apply {
+                    inSampleSize = sample
+                },
+            )
+                ?: return null
         val longest = maxOf(bmp.width, bmp.height)
         val scale = if (longest > MAX_SIDE) MAX_SIDE.toFloat() / longest else 1f
         val rotation = runCatching {
-            when (ExifInterface(bytes.inputStream()).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+            when (
+                ExifInterface(
+                    bytes.inputStream(),
+                ).getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL,
+                )
+            ) {
                 ExifInterface.ORIENTATION_ROTATE_90 -> 90f
                 ExifInterface.ORIENTATION_ROTATE_180 -> 180f
                 ExifInterface.ORIENTATION_ROTATE_270 -> 270f
@@ -116,29 +143,40 @@ class PhotoFileDataSource @Inject constructor(
                 put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
                 put(MediaStore.Images.Media.MIME_TYPE, mimeFor(fileName))
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Nexo")
+                    put(
+                        MediaStore.Images.Media.RELATIVE_PATH,
+                        Environment.DIRECTORY_PICTURES + "/Nexo",
+                    )
                 }
             }
-            val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return@runCatching false
-            context.contentResolver.openOutputStream(uri)?.use { out -> src.inputStream().use { it.copyTo(out) } }
+            val uri =
+                context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                    ?: return@runCatching false
+            context.contentResolver.openOutputStream(uri)?.use { out ->
+                src.inputStream().use { it.copyTo(out) }
+            }
             true
         }.getOrDefault(false)
     }
 
-    private fun mimeFor(name: String): String = when (name.substringAfterLast('.').lowercase(Locale.ROOT)) {
-        "png" -> "image/png"
-        "webp" -> "image/webp"
-        "heic", "heif" -> "image/heif"
-        "bmp" -> "image/bmp"
-        "tif", "tiff" -> "image/tiff"
-        else -> "image/jpeg"
-    }
+    private fun mimeFor(name: String): String =
+        when (name.substringAfterLast('.').lowercase(Locale.ROOT)) {
+            "png" -> "image/png"
+            "webp" -> "image/webp"
+            "heic", "heif" -> "image/heif"
+            "bmp" -> "image/bmp"
+            "tif", "tiff" -> "image/tiff"
+            else -> "image/jpeg"
+        }
 
     companion object {
         const val MAX_BYTES = 2_097_152
         const val MAX_SIDE = 2048
         val SUPPORTED = setOf("jpg", "jpeg", "png", "bmp", "tif", "tiff", "heic", "heif", "webp")
 
-        fun md5(bytes: ByteArray): String = MessageDigest.getInstance("MD5").digest(bytes).joinToString("") { "%02x".format(it) }
+        fun md5(bytes: ByteArray): String =
+            MessageDigest.getInstance("MD5").digest(bytes).joinToString("") {
+                "%02x".format(it)
+            }
     }
 }

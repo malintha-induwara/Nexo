@@ -53,7 +53,17 @@ class EntryViewModelTest {
     private suspend fun TestScope.openForm(key: EntryKey = EntryKey()): EntryViewModel {
         val b = book
         val vm = EntryViewModel(
-            key, b.refs, b.sms, b.transactions, b.favorites, b.repeats, b.prefs, home, b.photos, b.tags, b.importer,
+            key,
+            b.refs,
+            b.sms,
+            b.transactions,
+            b.favorites,
+            b.repeats,
+            b.prefs,
+            home,
+            b.photos,
+            b.tags,
+            b.importer,
             GetSmsLedgerAmountUseCase(), b.getFeePlan, b.receipts,
         )
         backgroundScope.launch { vm.uiState.collect {} }

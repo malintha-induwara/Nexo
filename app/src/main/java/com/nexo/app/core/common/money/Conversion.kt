@@ -21,7 +21,11 @@ object Conversion {
         crossRate: Double? = null,
     ): Amounts {
         val amount = Money.round(typed, tx.decimals)
-        val mainAmount = if (tx.id == main.id) amount else Money.round(Money.multiply(amount, rate), main.decimals)
+        val mainAmount = if (tx.id == main.id) {
+            amount
+        } else {
+            Money.round(Money.multiply(amount, rate), main.decimals)
+        }
         val acct = when {
             crossRate != null -> Money.round(Money.multiply(amount, crossRate), account.decimals)
             tx.id == account.id -> amount
@@ -32,7 +36,13 @@ object Conversion {
     }
 
     /** Account amount for the other side of a transfer. */
-    fun accountAmount(amount: Double, mainAmount: Double, tx: Currency, account: Currency, main: Currency): Double = when {
+    fun accountAmount(
+        amount: Double,
+        mainAmount: Double,
+        tx: Currency,
+        account: Currency,
+        main: Currency,
+    ): Double = when {
         tx.id == account.id -> amount
         account.id == main.id -> mainAmount
         else -> Money.round(Money.divide(mainAmount, effectiveRate(account)), account.decimals)

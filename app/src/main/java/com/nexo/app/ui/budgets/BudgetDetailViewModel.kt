@@ -63,52 +63,115 @@ class BudgetDetailViewModel @AssistedInject constructor(
         fun create(key: BudgetDetailKey): BudgetDetailViewModel
     }
 
-    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        RefData(),
+    )
     private val budgetId = MutableStateFlow(key.budgetId)
     private val month = MutableStateFlow(YearMonth.parse(key.month))
 
-    val uiState: StateFlow<BudgetDetailUiState> = combine(ref, budgetId, month, repo.getBudgetsStream(), repo.getBudgetAmountsStream()) { r, id, m, b, a -> Inputs(r, id, m, b, a) }
+    val uiState: StateFlow<BudgetDetailUiState> = combine(
+        ref,
+        budgetId,
+        month,
+        repo.getBudgetsStream(),
+        repo.getBudgetAmountsStream(),
+    ) {
+            r,
+            id,
+            m,
+            b,
+            a,
+        ->
+        Inputs(r, id, m, b, a)
+    }
         .flatMapLatest { inp ->
             val e = inp.r.settings.periods
             val year = e.yearPeriods(inp.m.year)
             val range = DateRange(year.first().start, year.last().end)
-            combine(transactions.getLedgerStream(range), transactions.getChangeStampStream()) { l, _ -> l }.map { l -> build(inp, year, l) }
+            combine(transactions.getLedgerStream(range), transactions.getChangeStampStream()) {
+                    l,
+                    _,
+                ->
+                l
+            }.map { l -> build(inp, year, l) }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BudgetDetailUiState())
 
-    private data class Inputs(val r: RefData, val id: String, val m: YearMonth, val budgets: List<Budget>, val amounts: List<BudgetAmount>)
+    private data class Inputs(
+        val r: RefData,
+        val id: String,
+        val m: YearMonth,
+        val budgets: List<Budget>,
+        val amounts: List<BudgetAmount>,
+    )
 
     private fun build(inp: Inputs, year: List<MonthPeriod>, l: Ledger): BudgetDetailUiState {
         val r = inp.r
         val budget = inp.budgets.firstOrNull { it.id == inp.id }
-        val categoryId = budget?.categoryId ?: inp.id.removePrefix("virtual_").takeIf { inp.id.startsWith("virtual_") }
+        val categoryId =
+            budget?.categoryId
+                ?: inp.id.removePrefix("virtual_").takeIf { inp.id.startsWith("virtual_") }
         val cat = categoryId?.let { r.categoryById[it] }
         val isSub = cat?.parentId != null
         val byBudget = inp.amounts.groupBy { it.budgetId }
-        val subBudgets = if (cat != null && !isSub) inp.budgets.filter { b -> !b.isDeleted && b.categoryId?.let { r.categoryById[it]?.parentId } == cat.id } else emptyList()
+        val subBudgets = if (cat != null && !isSub) {
+            inp.budgets.filter { b ->
+                !b.isDeleted &&
+                    b.categoryId?.let { r.categoryById[it]?.parentId } == cat.id
+            }
+        } else {
+            emptyList()
+        }
         fun budgetFor(key: Int): Double {
             val own = budget?.let { BudgetMath.effective(byBudget[it.id].orEmpty(), key) } ?: 0.0
-            return if (own == 0.0 && !isSub) subBudgets.sumOf { BudgetMath.effective(byBudget[it.id].orEmpty(), key) } else own
+            return if (own == 0.0 && !isSub) {
+                subBudgets.sumOf { BudgetMath.effective(byBudget[it.id].orEmpty(), key) }
+            } else {
+                own
+            }
         }
         val expense = l.rows.filter { it.kind == TxKind.EXPENSE && !it.isBalanceAdjustment }
         fun matches(t: Transaction) =
             if (isSub) t.categoryId == categoryId else r.mainCategoryId(t.categoryId) == categoryId
         val months = year.map { p ->
-            val used = expense.filter { LocalDate.parse(it.date) in p.range && matches(it) }.sumOf { it.amountMain }
+            val used = expense.filter {
+                LocalDate.parse(it.date) in p.range && matches(it)
+            }.sumOf { it.amountMain }
             BudgetMonth(p, budgetFor(p.key), Money.round(used, r.mainCurrency.decimals))
         }
         val selected = months.indexOfFirst { it.period.label == inp.m }.coerceAtLeast(0)
         val sel = months.getOrNull(selected)
         val factory = TransactionRowMapper(r)
-        val dayRows = expense.filter { sel != null && LocalDate.parse(it.date) in sel.period.range && matches(it) }
+        val dayRows = expense.filter {
+            sel != null && LocalDate.parse(it.date) in sel.period.range &&
+                matches(it)
+        }
         val parentId = if (isSub) cat?.parentId else categoryId
         val siblings = if (r.settings.subcategories && parentId != null) {
             val mainB = inp.budgets.firstOrNull { !it.isDeleted && it.categoryId == parentId }
-            val subs = inp.budgets.filter { b -> !b.isDeleted && b.categoryId?.let { r.categoryById[it]?.parentId } == parentId }
-            if (subs.isEmpty()) emptyList()
-            else listOf((mainB?.id ?: "virtual_$parentId") to (r.categoryName(parentId) ?: "")) + subs.map { it.id to (r.categoryName(it.categoryId) ?: "") }
-        } else emptyList()
+            val subs = inp.budgets.filter { b ->
+                !b.isDeleted &&
+                    b.categoryId?.let { r.categoryById[it]?.parentId } == parentId
+            }
+            if (subs.isEmpty()) {
+                emptyList()
+            } else {
+                listOf((mainB?.id ?: "virtual_$parentId") to (r.categoryName(parentId) ?: "")) +
+                    subs.map { it.id to (r.categoryName(it.categoryId) ?: "") }
+            }
+        } else {
+            emptyList()
+        }
         return BudgetDetailUiState(
-            loaded = true, ref = r, month = inp.m, budgetId = inp.id, name = cat?.name ?: "", categoryId = categoryId, isVirtual = budget == null,
+            loaded = true,
+            ref = r,
+            month = inp.m,
+            budgetId = inp.id,
+            name = cat?.name ?: "",
+            categoryId = categoryId,
+            isVirtual =
+                budget == null,
             siblings = siblings, months = months, selected = selected,
             days = factory.dayGroups(dayRows, l),
         )

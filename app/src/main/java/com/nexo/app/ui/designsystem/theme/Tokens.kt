@@ -18,9 +18,11 @@ object Space {
     val s = 8.dp
     val m = 12.dp
     val l = 16.dp
+
     /** Horizontal page gutter. */
     val gutter = 20.dp
     val xl = 24.dp
+
     /** Gap between sections. */
     val section = 28.dp
     val xxl = 32.dp
@@ -78,13 +80,19 @@ object NexoMotion {
         spring(dampingRatio = 0.8f, stiffness = 380f, visibilityThreshold = visibilityThreshold)
 
     /** Slower, no-overshoot spring for large surfaces. */
-    fun <T> gentle(visibilityThreshold: T? = null): FiniteAnimationSpec<T> =
-        spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 260f, visibilityThreshold = visibilityThreshold)
+    fun <T> gentle(visibilityThreshold: T? = null): FiniteAnimationSpec<T> = spring(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = 260f,
+        visibilityThreshold = visibilityThreshold,
+    )
 
     /** Quick press feedback. */
     fun <T> press(): FiniteAnimationSpec<T> = spring(dampingRatio = 0.6f, stiffness = 900f)
 
-    fun <T> enter(duration: Int = MEDIUM, delay: Int = 0): FiniteAnimationSpec<T> = tween(duration, delay, EmphasizedDecelerate)
-    fun <T> exit(duration: Int = SHORT): FiniteAnimationSpec<T> = tween(duration, easing = EmphasizedAccelerate)
-    fun <T> standard(duration: Int = MEDIUM): FiniteAnimationSpec<T> = tween(duration, easing = Emphasized)
+    fun <T> enter(duration: Int = MEDIUM, delay: Int = 0): FiniteAnimationSpec<T> =
+        tween(duration, delay, EmphasizedDecelerate)
+    fun <T> exit(duration: Int = SHORT): FiniteAnimationSpec<T> =
+        tween(duration, easing = EmphasizedAccelerate)
+    fun <T> standard(duration: Int = MEDIUM): FiniteAnimationSpec<T> =
+        tween(duration, easing = Emphasized)
 }

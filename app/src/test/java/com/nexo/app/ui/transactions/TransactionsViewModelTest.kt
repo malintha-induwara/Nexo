@@ -56,7 +56,15 @@ class TransactionsViewModelTest {
     }
 
     private suspend fun saveLunch(): String = book.transactions.save(
-        TxDraft(type = EntryType.EXPENSE, accountId = "1", categoryId = "6", dateTime = LocalDate.now().atTime(0, 1), amount = 2450.0, currencyId = "LKR", note = "Lunch"),
+        TxDraft(
+            type = EntryType.EXPENSE,
+            accountId = "1",
+            categoryId = "6",
+            dateTime = LocalDate.now().atTime(0, 1),
+            amount = 2450.0,
+            currencyId = "LKR",
+            note = "Lunch",
+        ),
     )
 
     @Test

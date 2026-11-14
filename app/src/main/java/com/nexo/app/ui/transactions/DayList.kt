@@ -100,7 +100,12 @@ fun dayLabel(date: LocalDate): String {
 
 /** Upper-case day label with the day's income and expenses on the right. Tapping it adds an entry on that day. */
 @Composable
-fun DayHeader(group: DayGroup, main: Currency, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
+fun DayHeader(
+    group: DayGroup,
+    main: Currency,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
     val money = LocalMoneyColors.current
     val colors = LocalNexoColors.current
     Row(
@@ -119,7 +124,13 @@ fun DayHeader(group: DayGroup, main: Currency, onClick: (() -> Unit)?, modifier:
             overflow = TextOverflow.Ellipsis,
         )
         if (group.income != 0.0) {
-            AmountText(group.income, main, style = NexoType.AmountSmall, color = money.income, sign = AmountParts.Sign.ALWAYS)
+            AmountText(
+                group.income,
+                main,
+                style = NexoType.AmountSmall,
+                color = money.income,
+                sign = AmountParts.Sign.ALWAYS,
+            )
         }
         if (group.income != 0.0 && group.expense != 0.0) Spacer(Modifier.width(Space.m))
         if (group.expense != 0.0) {
@@ -136,9 +147,16 @@ fun RowTile(row: TxRowUi) {
     val kind = row.tx?.kind
     when {
         row.isCarryOver -> IconTile(Icons.Rounded.History, colors.textSecondary)
+
         v != null -> CategoryTile(v.emoji, v.monogram, CategoryHues.of(v.colorIndex, colors.isDark))
+
         kind != null && kind.isTransfer -> IconTile(Icons.Rounded.SwapHoriz, colors.textSecondary)
-        kind != null && (kind.isBalance || row.tx?.isBalanceAdjustment == true) -> IconTile(Icons.Rounded.Tune, colors.textSecondary)
+
+        kind != null && (kind.isBalance || row.tx?.isBalanceAdjustment == true) -> IconTile(
+            Icons.Rounded.Tune,
+            colors.textSecondary,
+        )
+
         else -> CategoryTile(null, "?", colors.textSecondary)
     }
 }
@@ -162,7 +180,11 @@ fun TxRow(
 ) {
     val money = LocalMoneyColors.current
     val colors = LocalNexoColors.current
-    val background by animateColorAsState(if (selected) colors.raised else Color.Transparent, NexoMotion.standard(), label = "rowSelected")
+    val background by animateColorAsState(
+        if (selected) colors.raised else Color.Transparent,
+        NexoMotion.standard(),
+        label = "rowSelected",
+    )
     val flash = remember { Animatable(0f) }
     LaunchedEffect(highlight) {
         if (highlight) {
@@ -203,14 +225,25 @@ fun TxRow(
         AnimatedContent(
             targetState = selected,
             transitionSpec = {
-                (scaleIn(NexoMotion.snappy(), initialScale = 0.6f) + fadeIn(NexoMotion.enter(NexoMotion.SHORT))) togetherWith
+                (
+                    scaleIn(NexoMotion.snappy(), initialScale = 0.6f) +
+                        fadeIn(NexoMotion.enter(NexoMotion.SHORT))
+                    ) togetherWith
                     (scaleOut(NexoMotion.exit(), targetScale = 0.6f) + fadeOut(NexoMotion.exit()))
             },
             label = "rowTile",
         ) { on ->
             if (on) {
-                Box(Modifier.size(Sizes.tile).clip(NexoShapes.tile).background(colors.primary), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Check, null, tint = colors.onPrimary, modifier = Modifier.size(22.dp))
+                Box(
+                    Modifier.size(Sizes.tile).clip(NexoShapes.tile).background(colors.primary),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Rounded.Check,
+                        null,
+                        tint = colors.onPrimary,
+                        modifier = Modifier.size(22.dp),
+                    )
                 }
             } else {
                 RowTile(row)
@@ -218,21 +251,67 @@ fun TxRow(
         }
         Spacer(Modifier.width(Space.m))
         Column(Modifier.weight(1f)) {
-            Text(title, style = NexoType.RowTitle, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (meta.isNotEmpty()) Text(meta, style = NexoType.Meta, color = colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            row.descriptionLine?.let { Text(it, style = NexoType.Meta, color = colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            Text(
+                title,
+                style = NexoType.RowTitle,
+                color = colors.text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (meta.isNotEmpty()) {
+                Text(
+                    meta,
+                    style = NexoType.Meta,
+                    color = colors.textTertiary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            row.descriptionLine?.let {
+                Text(
+                    it,
+                    style = NexoType.Meta,
+                    color = colors.textTertiary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         Spacer(Modifier.width(Space.m))
         if (row.hasPhoto) {
-            Icon(Icons.Outlined.Image, null, tint = colors.textTertiary, modifier = Modifier.padding(end = Space.s).size(16.dp))
+            Icon(
+                Icons.Outlined.Image,
+                null,
+                tint = colors.textTertiary,
+                modifier = Modifier.padding(end = Space.s).size(16.dp),
+            )
         }
         Column(horizontalAlignment = Alignment.End) {
             when (row.flow) {
-                CashFlow.INCOME -> AmountText(row.amount, row.currency, color = money.income, sign = AmountParts.Sign.ALWAYS)
+                CashFlow.INCOME -> AmountText(
+                    row.amount,
+                    row.currency,
+                    color = money.income,
+                    sign = AmountParts.Sign.ALWAYS,
+                )
+
                 CashFlow.EXPENSE -> AmountText(-row.amount, row.currency, color = money.expense)
-                CashFlow.NEUTRAL -> AmountText(row.amount, row.currency, color = colors.text, sign = AmountParts.Sign.NONE)
+
+                CashFlow.NEUTRAL -> AmountText(
+                    row.amount,
+                    row.currency,
+                    color = colors.text,
+                    sign = AmountParts.Sign.NONE,
+                )
             }
-            if (runningBalance != null) Text("($runningBalance)", style = NexoType.Meta, color = colors.textTertiary, maxLines = 1)
+            if (runningBalance != null) {
+                Text(
+                    "($runningBalance)",
+                    style = NexoType.Meta,
+                    color = colors.textTertiary,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
@@ -242,7 +321,13 @@ fun MemoDot(color: MemoColor, size: Int = 8) {
     val c = NexoPalette.memoDot(color)
     Box(
         Modifier.size(size.dp).background(c, CircleShape)
-            .then(if (color == MemoColor.WHITE) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, CircleShape) else Modifier),
+            .then(
+                if (color == MemoColor.WHITE) {
+                    Modifier.border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                } else {
+                    Modifier
+                },
+            ),
     )
 }
 
@@ -258,12 +343,17 @@ fun MemoStrip(memos: List<Memo>, onClick: () -> Unit, modifier: Modifier = Modif
             .padding(horizontal = Space.xs, vertical = Space.xs),
     ) {
         memos.forEach { m ->
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(vertical = 3.dp),
+            ) {
                 MemoDot(m.color)
                 Spacer(Modifier.width(Space.s))
                 Text(
                     m.title.ifBlank { m.content.replace('\n', ' ').trim() },
-                    style = NexoType.Meta, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    style = NexoType.Meta,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     color = colors.textSecondary,
                 )
             }
@@ -272,10 +362,17 @@ fun MemoStrip(memos: List<Memo>, onClick: () -> Unit, modifier: Modifier = Modif
 }
 
 @Composable
-fun RepeatPreviewRow(p: RepeatPreview, main: Currency, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun RepeatPreviewRow(
+    p: RepeatPreview,
+    main: Currency,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = LocalNexoColors.current
     Row(
-        modifier.fillMaxWidth().heightIn(min = Sizes.row).clickable(onClick = onClick).padding(horizontal = Space.gutter, vertical = Space.s),
+        modifier.fillMaxWidth().heightIn(
+            min = Sizes.row,
+        ).clickable(onClick = onClick).padding(horizontal = Space.gutter, vertical = Space.s),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconTile(Icons.Rounded.Repeat, colors.textSecondary)
@@ -286,7 +383,13 @@ fun RepeatPreviewRow(p: RepeatPreview, main: Currency, onClick: () -> Unit, modi
                 add(p.dates.joinToString(", ") { "${it.monthValue}/${it.dayOfMonth}" })
                 if (p.names.isNotEmpty()) add(p.names.joinToString(", "))
             }.joinToString(" · ")
-            Text(detail, style = NexoType.Meta, color = colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                detail,
+                style = NexoType.Meta,
+                color = colors.textTertiary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         Spacer(Modifier.width(Space.m))
         AmountText(p.amount, main, color = colors.textSecondary, sign = AmountParts.Sign.NONE)
@@ -311,27 +414,46 @@ fun DayGroupList(
     bottomPadding: Int = 96,
     highlightId: String? = null,
 ) {
-    LazyColumn(modifier, state = state, contentPadding = PaddingValues(bottom = bottomPadding.dp), verticalArrangement = Arrangement.Top) {
+    LazyColumn(
+        modifier,
+        state = state,
+        contentPadding = PaddingValues(bottom = bottomPadding.dp),
+        verticalArrangement = Arrangement.Top,
+    ) {
         header?.invoke(this)
         if (groups.isEmpty()) {
-            item(key = "empty") { EmptyState(emptyText ?: stringResource(R.string.no_data), Modifier.animateItem()) }
+            item(key = "empty") {
+                EmptyState(emptyText ?: stringResource(R.string.no_data), Modifier.animateItem())
+            }
         }
         groups.forEach { g ->
             item(key = "h_${g.date}", contentType = "day") {
                 Column(Modifier.animateItem()) {
                     DayHeader(g, main, onDayClick?.let { { it(g.date) } })
-                    if (g.memos.isNotEmpty()) MemoStrip(g.memos, onClick = { onMemoClick?.invoke(g.date) })
+                    if (g.memos.isNotEmpty()) {
+                        MemoStrip(g.memos, onClick = {
+                            onMemoClick?.invoke(g.date)
+                        })
+                    }
                 }
             }
             items(g.rows, key = { "r_${g.date}_${it.id}" }, contentType = { "row" }) { row ->
                 Box(Modifier.animateItem()) {
-                    if (rowContent != null) rowContent(row)
-                    else TxRow(
-                        row, selected = row.id in selection,
-                        onClick = { if (!row.isCarryOver) onRowClick(row) },
-                        onLongClick = if (row.isCarryOver || onRowLongClick == null) null else ({ onRowLongClick(row) }),
-                        highlight = row.id == highlightId,
-                    )
+                    if (rowContent != null) {
+                        rowContent(row)
+                    } else {
+                        TxRow(
+                            row,
+                            selected = row.id in selection,
+                            onClick = { if (!row.isCarryOver) onRowClick(row) },
+                            onLongClick = if (row.isCarryOver || onRowLongClick == null) {
+                                null
+                            } else {
+                                ({ onRowLongClick(row) })
+                            },
+                            highlight = row.id == highlightId,
+                        )
+                    }
                 }
             }
         }

@@ -49,10 +49,20 @@ interface SmsRepository {
     suspend fun markQueueSeen(now: Long = System.currentTimeMillis())
 
     /** Records the ledger row an item became, and learns its card account and merchant category. */
-    suspend fun markApproved(item: SmsItem, transactionId: String, bankAccountId: String?, categoryId: String?)
+    suspend fun markApproved(
+        item: SmsItem,
+        transactionId: String,
+        bankAccountId: String?,
+        categoryId: String?,
+    )
 
     /** Same, for an item reviewed in the entry form; ignored once the item is no longer pending. */
-    suspend fun markApproved(itemId: String, transactionId: String, bankAccountId: String?, categoryId: String?)
+    suspend fun markApproved(
+        itemId: String,
+        transactionId: String,
+        bankAccountId: String?,
+        categoryId: String?,
+    )
 
     /** Returns the items as they were, for Undo. */
     suspend fun deny(ids: Collection<String>, reason: DenyReason? = null): List<SmsItem>

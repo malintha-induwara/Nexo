@@ -39,12 +39,25 @@ class SmsFixtureReplayTest {
         val path = System.getenv("NEXO_SMS_FIXTURE")
         assumeTrue("NEXO_SMS_FIXTURE not set", !path.isNullOrBlank())
         // Unit tests run in the module directory; relative paths are taken from the project root.
-        val file = File(path!!).let { if (it.isAbsolute) it else File(File(System.getProperty("user.dir") ?: ".").absoluteFile.parentFile, path) }
+        val file = File(path!!).let {
+            if (it.isAbsolute) {
+                it
+            } else {
+                File(File(System.getProperty("user.dir") ?: ".").absoluteFile.parentFile, path)
+            }
+        }
         assumeTrue("Fixture not found: $file", file.exists())
 
-        val rows = Json.parseToJsonElement(file.readText()).jsonObject["messages"]!!.jsonArray.map { e ->
+        val rows = Json.parseToJsonElement(
+            file.readText(),
+        ).jsonObject["messages"]!!.jsonArray.map { e ->
             val o = e.jsonObject
-            Row(o["id"]!!.jsonPrimitive.int, o["sender"]!!.jsonPrimitive.content, o["body"]!!.jsonPrimitive.content, o["expected"]!!.jsonObject)
+            Row(
+                o["id"]!!.jsonPrimitive.int,
+                o["sender"]!!.jsonPrimitive.content,
+                o["body"]!!.jsonPrimitive.content,
+                o["expected"]!!.jsonObject,
+            )
         }
         // Stored newest first; replay oldest first.
         val replay = rows.sortedByDescending { it.id }
@@ -62,13 +75,23 @@ class SmsFixtureReplayTest {
             parsed[r.id] = p
             when (val o = correlator.accept(msg, p, r.body, msg.timestamp)) {
                 is SmsCorrelator.Outcome.Created -> itemOf[r.id] = o.item.id
-                is SmsCorrelator.Outcome.Cancelled -> cancels[r.id] = itemOf.entries.firstOrNull { it.value == o.item.id }?.key
-                is SmsCorrelator.Outcome.Merged, is SmsCorrelator.Outcome.Upgraded, is SmsCorrelator.Outcome.Duplicate ->
+
+                is SmsCorrelator.Outcome.Cancelled -> cancels[r.id] =
+                    itemOf.entries.firstOrNull { it.value == o.item.id }?.key
+
+                is SmsCorrelator.Outcome.Merged,
+                is SmsCorrelator.Outcome.Upgraded,
+                is SmsCorrelator.Outcome.Duplicate,
+                ->
                     println("#${r.id}: $o")
+
                 else -> if (p is ParsedSms.Cancel) cancels[r.id] = null
             }
         }
-        val cancelledBy = cancels.entries.filter { it.value != null }.associate { it.value!! to it.key }
+        val cancelledBy = cancels.entries.filter { it.value != null }.associate {
+            it.value!! to
+                it.key
+        }
 
         val problems = ArrayList<String>()
         val tally = sortedMapOf<String, Int>()
@@ -88,7 +111,10 @@ class SmsFixtureReplayTest {
                     actual["amount"] = p.amount.toPlainString()
                     actual["currency"] = p.currency
                     actual["certainty"] = p.certainty.name.lowercase(Locale.ROOT)
-                    actual["feePrompt"] = p.feeRoute?.takeIf { it.defaultMode != FeeMode.NEVER }?.name?.lowercase(Locale.ROOT)
+                    actual["feePrompt"] =
+                        p.feeRoute?.takeIf {
+                            it.defaultMode != FeeMode.NEVER
+                        }?.name?.lowercase(Locale.ROOT)
                     actual["cardLast4"] = p.cardLast4
                     actual["payee"] = p.payee
                     actual["ref"] = p.reference
@@ -97,9 +123,11 @@ class SmsFixtureReplayTest {
                     actual["merchantRaw"] = item?.merchantRaw?.ifEmpty { null }
                     actual["merchant"] = item?.merchant?.ifEmpty { null }
                     actual["merchantKey"] = item?.merchantKey?.ifEmpty { null }
-                    actual["merchantSource"] = if (item?.merchantFromOtp == true) "otp-message" else null
+                    actual["merchantSource"] =
+                        if (item?.merchantFromOtp == true) "otp-message" else null
                     actual["cancelledBy"] = cancelledBy[r.id]?.toString()
                 }
+
                 is ParsedSms.Cancel -> {
                     actual["kind"] = "cancel_previous"
                     actual["merchantRaw"] = p.merchant.raw
@@ -108,21 +136,41 @@ class SmsFixtureReplayTest {
                     actual["cardLast4"] = p.cardLast4
                     actual["cancels"] = cancels[r.id]?.toString()
                 }
+
                 else -> Unit
             }
             for ((k, v) in actual) {
                 val want = (e[k] as? JsonPrimitive)?.contentOrNull
                 val wantNorm = if (k == "date") want?.replace(" at ", " ") else want
-                if (wantNorm != v) problems += "#${r.id} ${e["template"]?.jsonPrimitive?.contentOrNull}: $k expected=$want actual=$v"
+                if (wantNorm != v) {
+                    problems +=
+                        "#${r.id} ${e["template"]?.jsonPrimitive?.contentOrNull}: $k expected=$want actual=$v"
+                }
             }
-            val label = "${actual["result"]}" + (p as? ParsedSms.Movement)?.let { " ${it.certainty.name.lowercase(Locale.ROOT)}" }.orEmpty()
+            val label =
+                "${actual["result"]}" +
+                    (p as? ParsedSms.Movement)?.let {
+                        " ${it.certainty.name.lowercase(Locale.ROOT)}"
+                    }.orEmpty()
             tally[label] = (tally[label] ?: 0) + 1
         }
 
         println("Replayed ${rows.size} messages from ${file.name}")
         tally.forEach { (k, v) -> println("  %-22s %d".format(k, v)) }
-        println("  fee prompts: " + parsed.values.filterIsInstance<ParsedSms.Movement>().mapNotNull { m -> m.feeRoute?.takeIf { it.defaultMode != FeeMode.NEVER } }.groupingBy { it }.eachCount())
-        println("  merchant from OTP: ${store.items.values.count { it.merchantFromOtp }}, cancelled: ${store.items.values.count { it.status == SmsStatus.CANCELLED }}")
+        println(
+            "  fee prompts: " +
+                parsed.values.filterIsInstance<ParsedSms.Movement>().mapNotNull { m ->
+                    m.feeRoute?.takeIf {
+                        it.defaultMode !=
+                            FeeMode.NEVER
+                    }
+                }.groupingBy { it }.eachCount(),
+        )
+        println(
+            "  merchant from OTP: ${store.items.values.count {
+                it.merchantFromOtp
+            }}, cancelled: ${store.items.values.count { it.status == SmsStatus.CANCELLED }}",
+        )
         problems.forEach(::println)
         assertTrue("${problems.size} mismatches", problems.isEmpty())
     }

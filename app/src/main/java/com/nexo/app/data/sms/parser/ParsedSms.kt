@@ -56,19 +56,39 @@ sealed interface ParsedSms {
     ) : ParsedSms
 
     /** A purchase was cancelled. The message carries no amount. */
-    data class Cancel(override val bank: Bank, val merchant: Merchant, val cardLast4: String) : ParsedSms
+    data class Cancel(override val bank: Bank, val merchant: Merchant, val cardLast4: String) :
+        ParsedSms
 
     /** An OTP that names the merchant cleanly; kept briefly to improve the next purchase. */
-    data class OtpHint(override val bank: Bank, val merchant: String, val amount: BigDecimal, val currency: String) : ParsedSms
+    data class OtpHint(
+        override val bank: Bank,
+        val merchant: String,
+        val amount: BigDecimal,
+        val currency: String,
+    ) : ParsedSms
 
-    data class Ignored(override val bank: Bank?, val reason: IgnoreReason, val detail: String = "") : ParsedSms
+    data class Ignored(
+        override val bank: Bank?,
+        val reason: IgnoreReason,
+        val detail: String = "",
+    ) : ParsedSms
 }
 
 internal object Amounts {
     /** "Rs"/"Rs." mean LKR. */
-    fun currency(raw: String): String = raw.trimEnd('.').uppercase().let { if (it == "RS") "LKR" else it }
+    fun currency(raw: String): String = raw.trimEnd('.').uppercase().let {
+        if (it == "RS") {
+            "LKR"
+        } else {
+            it
+        }
+    }
 
-    fun parse(raw: String): BigDecimal? = raw.replace(",", "").toBigDecimalOrNull()?.setScale(2, RoundingMode.HALF_UP)?.takeIf { it.signum() > 0 }
+    fun parse(raw: String): BigDecimal? =
+        raw.replace(",", "").toBigDecimalOrNull()?.setScale(2, RoundingMode.HALF_UP)?.takeIf {
+            it.signum() >
+                0
+        }
 }
 
 /** Fixed-format messages dedupe on their parsed fields, so two byte-identical alerts seconds apart stay one item. */

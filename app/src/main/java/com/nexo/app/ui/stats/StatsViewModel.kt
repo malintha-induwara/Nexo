@@ -31,7 +31,14 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 
-data class StatsRow(val key: String?, val name: UiText, val amount: Double, val percent: Double, val colorIndex: Int, val kind: StatsDetailKind)
+data class StatsRow(
+    val key: String?,
+    val name: UiText,
+    val amount: Double,
+    val percent: Double,
+    val colorIndex: Int,
+    val kind: StatsDetailKind,
+)
 
 data class StatsData(
     val range: DateRange = DateRange(LocalDate.now(), LocalDate.now()),
@@ -66,18 +73,29 @@ fun scopeRange(e: PeriodEngine, q: StatsQuery): DateRange = when (q.scope) {
     StatsScope.PERIOD -> DateRange(q.from, q.to)
 }
 
-fun stepAnchor(e: PeriodEngine, scope: StatsScope, d: LocalDate, forward: Boolean): LocalDate = when (scope) {
-    StatsScope.WEEKLY -> d.plusDays(if (forward) 7 else -7)
-    StatsScope.MONTHLY -> e.monthPeriodContaining(d).let { if (forward) e.next(it).end else e.previous(it).end }
-    StatsScope.ANNUALLY -> e.yearRange(e.yearOf(d) + if (forward) 1 else -1).start.plusDays(15)
-    StatsScope.PERIOD -> d
-}
+fun stepAnchor(e: PeriodEngine, scope: StatsScope, d: LocalDate, forward: Boolean): LocalDate =
+    when (scope) {
+        StatsScope.WEEKLY -> d.plusDays(if (forward) 7 else -7)
+
+        StatsScope.MONTHLY -> e.monthPeriodContaining(d).let {
+            if (forward) e.next(it).end else e.previous(it).end
+        }
+
+        StatsScope.ANNUALLY -> e.yearRange(e.yearOf(d) + if (forward) 1 else -1).start.plusDays(15)
+
+        StatsScope.PERIOD -> d
+    }
 
 fun statsRows(ref: RefData, rows: List<Transaction>, income: Boolean): List<StatsRow> {
     val kind = if (income) TxKind.INCOME else TxKind.EXPENSE
     val cats = HashMap<String, BigDecimal>()
     rows.filter { it.kind == kind }.forEach { t ->
-        val key = if (t.isBalanceAdjustment) KEY_MODIFIED else ref.mainCategoryId(t.categoryId) ?: KEY_NONE
+        val key = if (t.isBalanceAdjustment) {
+            KEY_MODIFIED
+        } else {
+            ref.mainCategoryId(t.categoryId)
+                ?: KEY_NONE
+        }
         cats[key] = (cats[key] ?: BigDecimal.ZERO) + BigDecimal.valueOf(t.amountMain)
     }
     val c = Classifier(ref)
@@ -91,19 +109,45 @@ fun statsRows(ref: RefData, rows: List<Transaction>, income: Boolean): List<Stat
         } ?: return@forEach
         te[group] = (te[group] ?: BigDecimal.ZERO) + BigDecimal.valueOf(t.amountMain)
     }
-    val positiveBase = cats.values.filter { it.signum() > 0 }.fold(BigDecimal.ZERO, BigDecimal::add) + te.values.fold(BigDecimal.ZERO, BigDecimal::add)
-    fun pct(a: BigDecimal) = if (a.signum() > 0 && positiveBase.signum() != 0) a.multiply(BigDecimal(100)).divide(positiveBase, 6, RoundingMode.HALF_UP).toDouble() else 0.0
+    val positiveBase =
+        cats.values.filter { it.signum() > 0 }.fold(BigDecimal.ZERO, BigDecimal::add) +
+            te.values.fold(BigDecimal.ZERO, BigDecimal::add)
+    fun pct(a: BigDecimal) = if (a.signum() > 0 && positiveBase.signum() != 0) {
+        a.multiply(BigDecimal(100)).divide(positiveBase, 6, RoundingMode.HALF_UP).toDouble()
+    } else {
+        0.0
+    }
     val list = cats.map { (k, v) ->
         val name = when (k) {
             KEY_NONE -> UiText.of(R.string.none)
             KEY_MODIFIED -> UiText.of(R.string.modified_balance)
             else -> ref.categoryName(k)?.let(UiText::Raw) ?: UiText.of(R.string.none)
         }
-        StatsRow(k, name, v.toDouble(), pct(v), 0, if (income) StatsDetailKind.INCOME else StatsDetailKind.EXPENSE)
+        StatsRow(
+            k,
+            name,
+            v.toDouble(),
+            pct(v),
+            0,
+            if (income) StatsDetailKind.INCOME else StatsDetailKind.EXPENSE,
+        )
     } + te.filter { it.value.signum() != 0 }.map { (g, v) ->
-        StatsRow(g, UiText.Raw(ref.groupById[g]?.name ?: ""), v.toDouble(), pct(v), 0, if (income) StatsDetailKind.TRANSFER_INCOME_GROUP else StatsDetailKind.TRANSFER_EXPENSE_GROUP)
+        StatsRow(
+            g,
+            UiText.Raw(ref.groupById[g]?.name ?: ""),
+            v.toDouble(),
+            pct(v),
+            0,
+            if (income) {
+                StatsDetailKind.TRANSFER_INCOME_GROUP
+            } else {
+                StatsDetailKind.TRANSFER_EXPENSE_GROUP
+            },
+        )
     }
-    return list.sortedByDescending { it.amount }.mapIndexed { i, row -> row.copy(colorIndex = i % 11) }
+    return list.sortedByDescending {
+        it.amount
+    }.mapIndexed { i, row -> row.copy(colorIndex = i % 11) }
 }
 
 private fun r(ref: RefData, accountId: String?): String? = ref.accountById[accountId]?.groupId
@@ -115,13 +159,19 @@ class StatsViewModel @Inject constructor(
     transactions: TransactionsRepository,
 ) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
-    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        RefData(),
+    )
     private val query = MutableStateFlow(StatsQuery())
     private val income = MutableStateFlow(false)
 
     private val data = combine(ref, query) { r, q -> r to q }.flatMapLatest { (r, q) ->
         val range = scopeRange(r.settings.periods, q)
-        transactions.getLedgerStream(range).map { l -> StatsData(range, statsRows(r, l.rows, true), statsRows(r, l.rows, false)) }
+        transactions.getLedgerStream(range).map { l ->
+            StatsData(range, statsRows(r, l.rows, true), statsRows(r, l.rows, false))
+        }
     }
 
     val uiState: StateFlow<StatsUiState> = combine(ref, query, income, data, ::StatsUiState)
@@ -136,14 +186,26 @@ class StatsViewModel @Inject constructor(
         val cur = scopeRange(e, q)
         when (s) {
             StatsScope.PERIOD -> q.copy(scope = s, from = cur.start, to = cur.end)
-            StatsScope.WEEKLY -> q.copy(scope = s, anchor = if (LocalDate.now() in cur) LocalDate.now() else q.anchor)
+
+            StatsScope.WEEKLY -> q.copy(
+                scope = s,
+                anchor = if (LocalDate.now() in cur) {
+                    LocalDate.now()
+                } else {
+                    q.anchor
+                },
+            )
+
             else -> q.copy(scope = s)
         }
     }
 
-    fun step(forward: Boolean) = query.update { it.copy(anchor = stepAnchor(ref.value.settings.periods, it.scope, it.anchor, forward)) }
+    fun step(forward: Boolean) = query.update {
+        it.copy(anchor = stepAnchor(ref.value.settings.periods, it.scope, it.anchor, forward))
+    }
     fun setAnchor(d: LocalDate) = query.update { it.copy(anchor = d) }
-    fun setMonth(m: YearMonth) = query.update { it.copy(anchor = ref.value.settings.periods.monthPeriodFor(m).end) }
+    fun setMonth(m: YearMonth) =
+        query.update { it.copy(anchor = ref.value.settings.periods.monthPeriodFor(m).end) }
     fun setRange(f: LocalDate, t: LocalDate) = query.update { it.copy(from = f, to = t) }
     fun goToday() = query.update { it.copy(anchor = LocalDate.now()) }
 }

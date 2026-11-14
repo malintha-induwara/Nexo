@@ -66,13 +66,20 @@ class FxTest {
         assertEquals(captured, combank.capturedAt)
         assertNull(rows.single { it.bank == "hnb" }.official)
         assertTrue(FxRatesNetworkDataSource.parse("not json").isEmpty())
-        assertTrue(FxRatesNetworkDataSource.parse("""{"error":"Commercial bank rates need an API key."}""").isEmpty())
+        assertTrue(
+            FxRatesNetworkDataSource.parse(
+                """{"error":"Commercial bank rates need an API key."}""",
+            ).isEmpty(),
+        )
     }
 
     @Test
     fun issuerRateFirstThenMedianThenOfficial() {
         val usd = FxRatesNetworkDataSource.parse(sample).filter { it.ccy == "USD" }
-        assertEquals(RateChoice(336.5, "combank", captured), RateChooser.choose(usd, "combank", RateSide.SELL))
+        assertEquals(
+            RateChoice(336.5, "combank", captured),
+            RateChooser.choose(usd, "combank", RateSide.SELL),
+        )
         assertEquals(328.5, RateChooser.choose(usd, "combank", RateSide.BUY)!!.rate, 0.0)
         // NTB isn't on this board: the median of 336.0, 336.5 and 337.0.
         val median = RateChooser.choose(usd, "ntb", RateSide.SELL)!!
@@ -94,17 +101,34 @@ class FxTest {
         assertEquals(4.21, RateChooser.estimate(0.0125, 336.5), 0.0)
     }
 
-    private fun repo(): Triple<NexoDatabase, FxRatesRepository, ReferenceDataRepository> = runBlocking {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
-        BookSeeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
-        val refs = referenceDataRepository(db, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
-        Triple(db, fxRatesRepository(context, db, refs), refs)
-    }
+    private fun repo(): Triple<NexoDatabase, FxRatesRepository, ReferenceDataRepository> =
+        runBlocking {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val db = Room.inMemoryDatabaseBuilder(
+                context,
+                NexoDatabase::class.java,
+            ).allowMainThreadQueries().build()
+            BookSeeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
+            val refs =
+                referenceDataRepository(
+                    db,
+                    CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+                )
+            Triple(db, fxRatesRepository(context, db, refs), refs)
+        }
 
     private fun usdItem(occurredAt: Long, amount: Double = 20.0) = SmsItem(
-        id = "i", certainty = Certainty.ESTIMATED, reason = SmsReason.FX_ESTIMATE, kind = SmsKind.EXPENSE, bank = "COMBANK",
-        sender = "COMBANK", template = "purchase", amount = amount, currency = "USD", occurredAt = occurredAt, smsAt = occurredAt,
+        id = "i",
+        certainty = Certainty.ESTIMATED,
+        reason = SmsReason.FX_ESTIMATE,
+        kind = SmsKind.EXPENSE,
+        bank = "COMBANK",
+        sender = "COMBANK",
+        template = "purchase",
+        amount = amount,
+        currency = "USD",
+        occurredAt = occurredAt,
+        smsAt = occurredAt,
         capturedAt = occurredAt, dedupeKey = "k", text = "", updatedAt = occurredAt,
     )
 
@@ -115,8 +139,15 @@ class FxTest {
         fx.store(listOf(FxSnapshot(captured - 3 * day, "combank", "USD", 327.0, 335.0)))
         fx.store(FxRatesNetworkDataSource.parse(sample))
         // Same rates a day later add nothing to the history.
-        fx.store(FxRatesNetworkDataSource.parse(sample).map { it.copy(capturedAt = it.capturedAt + day) })
-        val rows = db.query("SELECT COUNT(*) FROM fx_snapshots", null).use { it.moveToFirst(); it.getInt(0) }
+        fx.store(
+            FxRatesNetworkDataSource.parse(sample).map {
+                it.copy(capturedAt = it.capturedAt + day)
+            },
+        )
+        val rows = db.query("SELECT COUNT(*) FROM fx_snapshots", null).use {
+            it.moveToFirst()
+            it.getInt(0)
+        }
         assertEquals(5, rows)
 
         val today = fx.estimate(usdItem(captured + 3600_000))
@@ -139,7 +170,23 @@ class FxTest {
     fun withoutSnapshotsTheCurrencySettingsRateIsUsed() = runBlocking {
         val (db, fx, refs) = repo()
         assertNull(fx.estimate(usdItem(captured)).estimatedAmount)
-        db.currencyDao().upsert(listOf(CurrencyEntity("USD", "USD", "US Dollar", "$", SymbolPosition.PREFIX, 2, 330.0, false, true, 1, 0)))
+        db.currencyDao().upsert(
+            listOf(
+                CurrencyEntity(
+                    "USD",
+                    "USD",
+                    "US Dollar",
+                    "$",
+                    SymbolPosition.PREFIX,
+                    2,
+                    330.0,
+                    false,
+                    true,
+                    1,
+                    0,
+                ),
+            ),
+        )
         val ref = refs.getRefDataStream().first { r -> r.currencies.any { it.id == "USD" } }
         val manual = fx.estimate(usdItem(captured), ref)
         assertEquals(RateChoice.MANUAL, manual.fxSource)

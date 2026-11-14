@@ -85,5 +85,13 @@ class MemoEditorViewModelTest {
         assertFalse(vm.uiState.value.closed)
     }
 
-    private fun memo() = Memo(id = "m1", title = "Groceries", content = "milk\n", date = "2026-11-01", dateTime = 0, orderSeq = 3, updatedAt = 0)
+    private fun memo() = Memo(
+        id = "m1",
+        title = "Groceries",
+        content = "milk\n",
+        date = "2026-11-01",
+        dateTime = 0,
+        orderSeq = 3,
+        updatedAt = 0,
+    )
 }

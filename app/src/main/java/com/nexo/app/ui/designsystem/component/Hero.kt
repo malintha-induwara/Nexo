@@ -23,9 +23,22 @@ data class HeroStat(val label: String, val value: Double, val color: Color)
 
 /** A screen's one large number under its label, with a row of smaller labelled figures beneath. */
 @Composable
-fun HeroSummary(label: String, value: Double, currency: Currency?, stats: List<HeroStat>, modifier: Modifier = Modifier) {
+fun HeroSummary(
+    label: String,
+    value: Double,
+    currency: Currency?,
+    stats: List<HeroStat>,
+    modifier: Modifier = Modifier,
+) {
     val colors = LocalNexoColors.current
-    Column(modifier.fillMaxWidth().padding(start = Space.gutter, end = Space.gutter, top = Space.xs, bottom = Space.m)) {
+    Column(
+        modifier.fillMaxWidth().padding(
+            start = Space.gutter,
+            end = Space.gutter,
+            top = Space.xs,
+            bottom = Space.m,
+        ),
+    ) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         RollingAmount(value, currency, Modifier.shrinkToFit(), color = colors.text)
         if (stats.isNotEmpty()) {
@@ -33,9 +46,19 @@ fun HeroSummary(label: String, value: Double, currency: Currency?, stats: List<H
             Row(horizontalArrangement = Arrangement.spacedBy(Space.xl)) {
                 stats.forEach { s ->
                     Column {
-                        Text(s.label.uppercase(Locale.getDefault()), style = NexoType.Caps, color = colors.textTertiary)
+                        Text(
+                            s.label.uppercase(Locale.getDefault()),
+                            style = NexoType.Caps,
+                            color = colors.textTertiary,
+                        )
                         Spacer(Modifier.height(Space.xxs))
-                        RollingAmount(s.value, currency, style = NexoType.Amount, color = s.color, minorScale = 0.8f)
+                        RollingAmount(
+                            s.value,
+                            currency,
+                            style = NexoType.Amount,
+                            color = s.color,
+                            minorScale = 0.8f,
+                        )
                     }
                 }
             }

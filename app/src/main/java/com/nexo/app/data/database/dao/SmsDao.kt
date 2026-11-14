@@ -30,7 +30,9 @@ interface SmsDao {
     @Query("SELECT * FROM sms_items WHERE id IN (:ids)")
     suspend fun items(ids: List<String>): List<SmsItemEntity>
 
-    @Query("SELECT * FROM sms_items WHERE status IN (:statuses) ORDER BY occurredAt DESC, smsAt DESC")
+    @Query(
+        "SELECT * FROM sms_items WHERE status IN (:statuses) ORDER BY occurredAt DESC, smsAt DESC",
+    )
     fun observeByStatus(statuses: List<SmsStatus>): Flow<List<SmsItemEntity>>
 
     @Query("SELECT * FROM sms_items WHERE status = 'PENDING' ORDER BY occurredAt DESC, smsAt DESC")
@@ -56,26 +58,46 @@ interface SmsDao {
     suspend fun existingKeys(keys: List<String>): List<String>
 
     @Query(
-        "SELECT * FROM sms_items WHERE status = 'PENDING' AND bank = :bank AND template = 'transfer_code' AND route = :route " +
+        "SELECT * FROM sms_items WHERE status = 'PENDING' AND bank = :bank AND template = " +
+            "'transfer_code' AND route = :route " +
             "AND amount = :amount AND currency = :currency AND smsAt >= :since ORDER BY smsAt DESC LIMIT 1",
     )
-    suspend fun pendingRetry(bank: String, route: String, amount: Double, currency: String, since: Long): SmsItemEntity?
+    suspend fun pendingRetry(
+        bank: String,
+        route: String,
+        amount: Double,
+        currency: String,
+        since: Long,
+    ): SmsItemEntity?
 
     @Query(
-        "SELECT * FROM sms_items WHERE status = 'PENDING' AND bank = :bank AND kind = 'TRANSFER_OUT' AND certainty = 'UNVERIFIED' " +
+        "SELECT * FROM sms_items WHERE status = 'PENDING' AND bank = :bank AND kind = " +
+            "'TRANSFER_OUT' AND certainty = 'UNVERIFIED' " +
             "AND amount = :amount AND currency = :currency AND smsAt >= :since ORDER BY smsAt DESC LIMIT 1",
     )
-    suspend fun upgradeCandidate(bank: String, amount: Double, currency: String, since: Long): SmsItemEntity?
+    suspend fun upgradeCandidate(
+        bank: String,
+        amount: Double,
+        currency: String,
+        since: Long,
+    ): SmsItemEntity?
 
     @Query(
-        "SELECT * FROM sms_items WHERE bank = :bank AND template = 'purchase' AND cardLast4 = :cardLast4 " +
+        "SELECT * FROM sms_items WHERE bank = :bank AND template = 'purchase' AND cardLast4 = " +
+            ":cardLast4 " +
             "AND smsAt BETWEEN :since AND :until ORDER BY smsAt DESC",
     )
-    suspend fun purchasesOnCard(bank: String, cardLast4: String, since: Long, until: Long): List<SmsItemEntity>
+    suspend fun purchasesOnCard(
+        bank: String,
+        cardLast4: String,
+        since: Long,
+        until: Long,
+    ): List<SmsItemEntity>
 
     /** Pending items on cards that aren't mapped to an account yet. */
     @Query(
-        "SELECT * FROM sms_items WHERE status = 'PENDING' AND cardLast4 IS NOT NULL AND accountId IS NULL " +
+        "SELECT * FROM sms_items WHERE status = 'PENDING' AND cardLast4 IS NOT NULL AND " +
+            "accountId IS NULL " +
             "ORDER BY smsAt DESC",
     )
     fun observeUnmappedCards(): Flow<List<SmsItemEntity>>
@@ -90,7 +112,9 @@ interface SmsDao {
     suspend fun updateAll(items: List<SmsItemEntity>)
 
     /** Pending items captured before [before] leave the queue without touching the ledger. */
-    @Query("UPDATE sms_items SET status = 'EXPIRED', decidedAt = :now, updatedAt = :now WHERE status = 'PENDING' AND capturedAt < :before")
+    @Query(
+        "UPDATE sms_items SET status = 'EXPIRED', decidedAt = :now, updatedAt = :now WHERE status = 'PENDING' AND capturedAt < :before",
+    )
     suspend fun expire(before: Long, now: Long): Int
 
     @Query("DELETE FROM sms_items WHERE status = :status AND decidedAt < :before")
@@ -109,16 +133,29 @@ interface SmsDao {
     suspend fun putHint(hint: SmsOtpHintEntity)
 
     @Query(
-        "SELECT * FROM sms_otp_hints WHERE bank = :bank AND amount = :amount AND currency = :currency " +
+        "SELECT * FROM sms_otp_hints WHERE bank = :bank AND amount = :amount AND currency = " +
+            ":currency " +
             "AND at BETWEEN :since AND :until ORDER BY at DESC LIMIT 1",
     )
-    suspend fun findHint(bank: String, amount: Double, currency: String, since: Long, until: Long): SmsOtpHintEntity?
+    suspend fun findHint(
+        bank: String,
+        amount: Double,
+        currency: String,
+        since: Long,
+        until: Long,
+    ): SmsOtpHintEntity?
 
     @Query("DELETE FROM sms_otp_hints WHERE id = :id")
     suspend fun deleteHint(id: String)
 
     @Transaction
-    suspend fun takeHint(bank: String, amount: Double, currency: String, since: Long, until: Long): SmsOtpHintEntity? =
+    suspend fun takeHint(
+        bank: String,
+        amount: Double,
+        currency: String,
+        since: Long,
+        until: Long,
+    ): SmsOtpHintEntity? =
         findHint(bank, amount, currency, since, until)?.also { deleteHint(it.id) }
 
     @Query("DELETE FROM sms_otp_hints WHERE at < :before")
@@ -171,19 +208,23 @@ interface SmsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSnapshots(rows: List<FxSnapshotEntity>)
 
-    @Query("SELECT * FROM fx_snapshots WHERE bank = :bank AND ccy = :ccy ORDER BY capturedAt DESC LIMIT 1")
+    @Query(
+        "SELECT * FROM fx_snapshots WHERE bank = :bank AND ccy = :ccy ORDER BY capturedAt DESC LIMIT 1",
+    )
     suspend fun latestRate(bank: String, ccy: String): FxSnapshotEntity?
 
     /** Each bank's latest board for [ccy] captured at or before [at]. */
     @Query(
-        "SELECT f.* FROM fx_snapshots f JOIN (SELECT bank, MAX(capturedAt) AS m FROM fx_snapshots WHERE ccy = :ccy AND capturedAt <= :at GROUP BY bank) l " +
+        "SELECT f.* FROM fx_snapshots f JOIN (SELECT bank, MAX(capturedAt) AS m FROM " +
+            "fx_snapshots WHERE ccy = :ccy AND capturedAt <= :at GROUP BY bank) l " +
             "ON f.bank = l.bank AND f.capturedAt = l.m WHERE f.ccy = :ccy",
     )
     suspend fun boardAtOrBefore(ccy: String, at: Long): List<FxSnapshotEntity>
 
     /** Each bank's earliest board for [ccy]: for transactions older than Nexo's rate history. */
     @Query(
-        "SELECT f.* FROM fx_snapshots f JOIN (SELECT bank, MIN(capturedAt) AS m FROM fx_snapshots WHERE ccy = :ccy GROUP BY bank) l " +
+        "SELECT f.* FROM fx_snapshots f JOIN (SELECT bank, MIN(capturedAt) AS m FROM " +
+            "fx_snapshots WHERE ccy = :ccy GROUP BY bank) l " +
             "ON f.bank = l.bank AND f.capturedAt = l.m WHERE f.ccy = :ccy",
     )
     suspend fun earliestBoard(ccy: String): List<FxSnapshotEntity>

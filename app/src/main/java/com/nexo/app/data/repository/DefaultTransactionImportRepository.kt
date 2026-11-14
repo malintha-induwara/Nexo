@@ -47,7 +47,10 @@ class DefaultTransactionImportRepository @Inject constructor(
     private val photos: PhotosRepository,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) : TransactionImportRepository {
-    override fun files(): List<File> = dirs.imports.listFiles()?.filter { it.name.endsWith(".tsv", true) || it.name.endsWith(".txt", true) }
+    override fun files(): List<File> = dirs.imports.listFiles()?.filter {
+        it.name.endsWith(".tsv", true) ||
+            it.name.endsWith(".txt", true)
+    }
         ?.sortedByDescending { it.lastModified() }.orEmpty()
 
     override fun file(name: String) = File(dirs.imports, name)
@@ -61,17 +64,35 @@ class DefaultTransactionImportRepository @Inject constructor(
         var target = File(dirs.imports, name)
         var n = 1
         while (target.exists()) target = File(dirs.imports, "$base (${n++}).$ext")
-        context.contentResolver.openInputStream(uri)?.use { input -> target.outputStream().use { input.copyTo(it) } } ?: return@withContext null
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            target.outputStream().use { input.copyTo(it) }
+        }
+            ?: return@withContext null
         target
     }
 
     private fun readLines(file: File): List<String> {
         val bytes = file.readBytes()
         val text = when {
-            bytes.size >= 2 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xFE.toByte() -> String(bytes, 2, bytes.size - 2, Charsets.UTF_16LE)
-            bytes.size >= 2 && bytes[0] == 0xFE.toByte() && bytes[1] == 0xFF.toByte() -> String(bytes, 2, bytes.size - 2, Charsets.UTF_16BE)
-            bytes.size >= 3 && bytes[0] == 0xEF.toByte() && bytes[1] == 0xBB.toByte() && bytes[2] == 0xBF.toByte() -> String(bytes, 3, bytes.size - 3, Charsets.UTF_8)
+            bytes.size >= 2 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xFE.toByte() -> String(
+                bytes,
+                2,
+                bytes.size - 2,
+                Charsets.UTF_16LE,
+            )
+
+            bytes.size >= 2 && bytes[0] == 0xFE.toByte() && bytes[1] == 0xFF.toByte() -> String(
+                bytes,
+                2,
+                bytes.size - 2,
+                Charsets.UTF_16BE,
+            )
+
+            bytes.size >= 3 && bytes[0] == 0xEF.toByte() && bytes[1] == 0xBB.toByte() &&
+                bytes[2] == 0xBF.toByte() -> String(bytes, 3, bytes.size - 3, Charsets.UTF_8)
+
             file.name.endsWith(".txt", true) -> String(bytes, Charsets.UTF_16LE)
+
             else -> String(bytes, Charsets.UTF_8)
         }
         return text.split(Regex("\r\n|\n|\r"))
@@ -90,8 +111,13 @@ class DefaultTransactionImportRepository @Inject constructor(
             return
         }
         val text = (listOf(header) + lines).joinToString("\n")
-        if (file.name.endsWith(".txt", true)) file.writeBytes(byteArrayOf(0xFF.toByte(), 0xFE.toByte()) + text.toByteArray(Charsets.UTF_16LE))
-        else file.writeText(text, Charsets.UTF_8)
+        if (file.name.endsWith(".txt", true)) {
+            file.writeBytes(
+                byteArrayOf(0xFF.toByte(), 0xFE.toByte()) + text.toByteArray(Charsets.UTF_16LE),
+            )
+        } else {
+            file.writeText(text, Charsets.UTF_8)
+        }
     }
 
     override suspend fun removeLine(fileName: String, index: Int) = withContext(ioDispatcher) {
@@ -102,7 +128,10 @@ class DefaultTransactionImportRepository @Inject constructor(
     }
 
     override fun deviceDateOrder(): DateOrder {
-        val p = DateFormat.getBestDateTimePattern(Locale.getDefault(), "yyyyMMdd").filter { it in "yMd" }.toList().distinct().joinToString("")
+        val p = DateFormat.getBestDateTimePattern(Locale.getDefault(), "yyyyMMdd").filter {
+            it in
+                "yMd"
+        }.toList().distinct().joinToString("")
         return when (p) {
             "yMd" -> DateOrder.YMD
             "ydM" -> DateOrder.YDM
@@ -112,31 +141,44 @@ class DefaultTransactionImportRepository @Inject constructor(
         }
     }
 
-    override suspend fun load(fileName: String, order: DateOrder?): ImportPreview = withContext(ioDispatcher) {
-        val f = file(fileName)
-        if (!f.exists()) return@withContext ImportPreview(emptyList(), false)
-        val (header, lines) = dataLines(f)
-        val wide = header.split('\t').size >= 12
-        val ref = refs.getRefData()
-        val o = order ?: deviceDateOrder()
-        ImportPreview(lines.mapIndexed { i, line -> parse(ref, i, line, wide, o) }, wide)
-    }
+    override suspend fun load(fileName: String, order: DateOrder?): ImportPreview =
+        withContext(ioDispatcher) {
+            val f = file(fileName)
+            if (!f.exists()) return@withContext ImportPreview(emptyList(), false)
+            val (header, lines) = dataLines(f)
+            val wide = header.split('\t').size >= 12
+            val ref = refs.getRefData()
+            val o = order ?: deviceDateOrder()
+            ImportPreview(lines.mapIndexed { i, line -> parse(ref, i, line, wide, o) }, wide)
+        }
 
     private fun typeOf(s: String): TxKind? {
         val t = s.trim().lowercase(Locale.ROOT)
         return when (t) {
             "income", context.getString(R.string.income).lowercase() -> TxKind.INCOME
+
             "expense", "expenses", context.getString(R.string.expense).lowercase() -> TxKind.EXPENSE
-            "transfer-out", context.getString(R.string.transfer_out).lowercase() -> TxKind.TRANSFER_OUT
+
+            "transfer-out", context.getString(R.string.transfer_out).lowercase(),
+            -> TxKind.TRANSFER_OUT
+
             "transfer-in", context.getString(R.string.transfer_in).lowercase() -> TxKind.TRANSFER_IN
+
             else -> null
         }
     }
 
-    private fun parse(ref: RefData, index: Int, line: String, wide: Boolean, order: DateOrder): ImportRow {
+    private fun parse(
+        ref: RefData,
+        index: Int,
+        line: String,
+        wide: Boolean,
+        order: DateOrder,
+    ): ImportRow {
         val cells = line.split('\t').map { it.trim() }
         if (cells.size < 6) return ImportRow(index, line, cells, null, null)
         fun c(i: Int) = cells.getOrElse(i) { "" }
+
         // 12-column files carry Tag at index 7: shift the later columns.
         fun col(i: Int) = if (wide && i >= 7) c(i + 1) else c(i)
         val size = if (wide) cells.size - 1 else cells.size
@@ -148,7 +190,10 @@ class DefaultTransactionImportRepository @Inject constructor(
         val currency = if (size >= 10) matchCurrency(ref, col(9)) else ref.mainCurrency.id
         val amount = if (size >= 10 && col(8).isNotBlank()) parseNumber(col(8)) else main
         val accountAmount = if (size >= 11 && col(10).isNotBlank()) parseNumber(col(10)) else null
-        val activeAccounts = ref.accounts.filter { it.status != AccountStatus.DELETED && it.status != AccountStatus.PURGED }
+        val activeAccounts = ref.accounts.filter {
+            it.status != AccountStatus.DELETED &&
+                it.status != AccountStatus.PURGED
+        }
         fun account(name: String) = activeAccounts.firstOrNull { it.name == name }?.id
         var error: ImportError? = null
         var categoryId: String? = null
@@ -156,28 +201,76 @@ class DefaultTransactionImportRepository @Inject constructor(
         var counterpart: String? = null
         when {
             dt == null -> error = ImportError(ImportErrorType.DATE)
+
             kind == null -> error = ImportError(ImportErrorType.TYPE)
+
             kind == TxKind.INCOME || kind == TxKind.EXPENSE -> {
                 val ck = if (kind == TxKind.INCOME) CategoryKind.INCOME else CategoryKind.EXPENSE
                 val m = ref.mainCategories(ck).firstOrNull { it.name == other }
-                if (m == null) error = ImportError(if (ck == CategoryKind.INCOME) ImportErrorType.INCOME_CATEGORY else ImportErrorType.EXPENSE_CATEGORY, other)
-                else {
+                if (m == null) {
+                    error =
+                        ImportError(
+                            if (ck == CategoryKind.INCOME) {
+                                ImportErrorType.INCOME_CATEGORY
+                            } else {
+                                ImportErrorType.EXPENSE_CATEGORY
+                            },
+                            other,
+                        )
+                } else {
                     val subName = col(3)
                     categoryId = if (subName.isNotBlank()) {
                         ref.subCategories(m.id).firstOrNull { it.name == subName }?.id
-                            ?: run { error = ImportError(if (ck == CategoryKind.INCOME) ImportErrorType.INCOME_SUB else ImportErrorType.EXPENSE_SUB, subName, m.name); null }
-                    } else m.id
+                            ?: run {
+                                error =
+                                    ImportError(
+                                        if (ck == CategoryKind.INCOME) {
+                                            ImportErrorType.INCOME_SUB
+                                        } else {
+                                            ImportErrorType.EXPENSE_SUB
+                                        },
+                                        subName,
+                                        m.name,
+                                    )
+                                null
+                            }
+                    } else {
+                        m.id
+                    }
                 }
                 if (error == null) {
-                    accountId = account(accountName) ?: run { error = ImportError(ImportErrorType.ACCOUNT, accountName); null }
+                    accountId =
+                        account(accountName)
+                            ?: run {
+                                error = ImportError(ImportErrorType.ACCOUNT, accountName)
+                                null
+                            }
                 }
             }
+
             else -> {
-                counterpart = account(other) ?: run { error = ImportError(ImportErrorType.ACCOUNT, other); null }
-                if (error == null) accountId = account(accountName) ?: run { error = ImportError(ImportErrorType.ACCOUNT, accountName); null }
+                counterpart =
+                    account(other)
+                        ?: run {
+                            error = ImportError(ImportErrorType.ACCOUNT, other)
+                            null
+                        }
+                if (error == null) {
+                    accountId =
+                        account(accountName)
+                            ?: run {
+                                error = ImportError(ImportErrorType.ACCOUNT, accountName)
+                                null
+                            }
+                }
             }
         }
-        val parsed = ParsedRow(dt, kind, accountId, counterpart, categoryId, col(4), col(7), main, amount, currency, accountAmount, if (wide) c(7) else "")
+        val parsed =
+            ParsedRow(
+                dt, kind, accountId, counterpart, categoryId,
+                col(4),
+                col(7), main, amount, currency, accountAmount, if (wide) c(7) else "",
+            )
         return ImportRow(index, line, cells, error, parsed)
     }
 
@@ -192,14 +285,26 @@ class DefaultTransactionImportRepository @Inject constructor(
     fun parseNumber(raw: String): Double {
         var s = raw.trim()
         if (Regex(",\\d{1,2}$").containsMatchIn(s)) s = s.replace(".", "").replace(',', '.')
-        val cleaned = s.replace(",", "").replace("\"", "").replace(Regex("\\s"), "").replace("₩", "").replace("¥", "")
+        val cleaned = s.replace(
+            ",",
+            "",
+        ).replace("\"", "").replace(Regex("\\s"), "").replace("₩", "").replace("¥", "")
         val first = cleaned.toBigDecimalOrNull()
         val value = first ?: run {
             var t = raw.trim().replace("\"", "").replace(Regex("\\s"), "")
             val dots = t.split('.')
-            t = if (dots.size > 2 && dots.last().length <= 2) dots.dropLast(1).joinToString("") + "." + dots.last() else t.replace(".", "")
+            t =
+                if (dots.size > 2 && dots.last().length <= 2) {
+                    dots.dropLast(1).joinToString("") + "." + dots.last()
+                } else {
+                    t.replace(".", "")
+                }
             val sym = DecimalFormatSymbols.getInstance()
-            t.replace(sym.groupingSeparator.toString(), "").replace(sym.decimalSeparator, '.').toBigDecimalOrNull() ?: BigDecimal.ZERO
+            t.replace(
+                sym.groupingSeparator.toString(),
+                "",
+            ).replace(sym.decimalSeparator, '.').toBigDecimalOrNull()
+                ?: BigDecimal.ZERO
         }
         return value.setScale(2, RoundingMode.HALF_UP).toDouble()
     }
@@ -231,63 +336,102 @@ class DefaultTransactionImportRepository @Inject constructor(
     }.getOrNull()
 
     /** Saves every valid row; failing rows stay in the file. Returns (saved, failed). */
-    override suspend fun saveAll(fileName: String, order: DateOrder?): Pair<Int, Int> = withContext(ioDispatcher) {
-        val f = file(fileName)
-        val preview = load(fileName, order)
-        val (header, _) = dataLines(f)
-        val ref = refs.getRefData()
-        val zone = ZoneId.systemDefault()
-        val failed = ArrayList<String>()
-        val rows = ArrayList<TransactionEntity>()
-        val consumed = HashSet<Int>()
-        var saved = 0
-        val now = System.currentTimeMillis()
-        for (row in preview.rows) {
-            if (row.index in consumed) continue
-            if (row.skippable) continue
-            val p = row.parsed
-            if (row.error != null || p?.dateTime == null || p.kind == null) {
-                failed += row.raw
-                continue
-            }
-            val dt = p.dateTime
-            val txCur = ref.currency(p.currencyId)
-            fun accountAmount(accountId: String?, given: Double?): Double {
-                val accCur = ref.accountCurrency(accountId)
-                return if (accCur.id != ref.mainCurrency.id) Money.round(Money.divide(Money.round(p.main, accCur.decimals), Conversion.effectiveRate(accCur)), accCur.decimals)
-                else given ?: p.main
-            }
-            val base = TransactionEntity(
-                id = UUID.randomUUID().toString(), kind = p.kind, accountId = p.accountId, categoryId = p.categoryId,
-                dateTime = dt.atZone(zone).toInstant().toEpochMilli(), date = dt.toLocalDate().toIsoText(),
-                amount = p.amount, amountMain = p.main, amountAccount = accountAmount(p.accountId, p.accountAmount),
-                currencyId = txCur.id, note = p.note, description = p.description, createdAt = now + saved, updatedAt = now + saved,
-            )
-            if (p.kind.isTransfer) {
-                val group = UUID.randomUUID().toString()
-                val mirrorKind = if (p.kind == TxKind.TRANSFER_OUT) TxKind.TRANSFER_IN else TxKind.TRANSFER_OUT
-                // The next line may be this transfer's counterpart: consume it for the mirror's account amount.
-                val next = preview.rows.getOrNull(preview.rows.indexOf(row) + 1)?.takeIf { n ->
-                    val np = n.parsed
-                    n.error == null && np != null && np.kind == mirrorKind && n.cells.size >= 11 && np.amount == p.amount && np.currencyId == p.currencyId
+    override suspend fun saveAll(fileName: String, order: DateOrder?): Pair<Int, Int> =
+        withContext(ioDispatcher) {
+            val f = file(fileName)
+            val preview = load(fileName, order)
+            val (header, _) = dataLines(f)
+            val ref = refs.getRefData()
+            val zone = ZoneId.systemDefault()
+            val failed = ArrayList<String>()
+            val rows = ArrayList<TransactionEntity>()
+            val consumed = HashSet<Int>()
+            var saved = 0
+            val now = System.currentTimeMillis()
+            for (row in preview.rows) {
+                if (row.index in consumed) continue
+                if (row.skippable) continue
+                val p = row.parsed
+                if (row.error != null || p?.dateTime == null || p.kind == null) {
+                    failed += row.raw
+                    continue
                 }
-                if (next != null) consumed += next.index
-                val first = base.copy(counterpartAccountId = p.counterpartId, categoryId = null, transferGroupId = group)
-                val mirror = first.copy(
-                    id = UUID.randomUUID().toString(), kind = mirrorKind, accountId = p.counterpartId, counterpartAccountId = p.accountId,
-                    amountAccount = accountAmount(p.counterpartId, next?.parsed?.accountAmount ?: p.accountAmount),
+                val dt = p.dateTime
+                val txCur = ref.currency(p.currencyId)
+                fun accountAmount(accountId: String?, given: Double?): Double {
+                    val accCur = ref.accountCurrency(accountId)
+                    return if (accCur.id != ref.mainCurrency.id) {
+                        Money.round(
+                            Money.divide(
+                                Money.round(p.main, accCur.decimals),
+                                Conversion.effectiveRate(accCur),
+                            ),
+                            accCur.decimals,
+                        )
+                    } else {
+                        given ?: p.main
+                    }
+                }
+                val base = TransactionEntity(
+                    id = UUID.randomUUID().toString(),
+                    kind = p.kind,
+                    accountId = p.accountId,
+                    categoryId = p.categoryId,
+                    dateTime = dt.atZone(zone).toInstant().toEpochMilli(),
+                    date = dt.toLocalDate().toIsoText(),
+                    amount = p.amount, amountMain = p.main,
+                    amountAccount = accountAmount(p.accountId, p.accountAmount),
+                    currencyId = txCur.id, note = p.note, description = p.description,
+                    createdAt =
+                        now + saved,
+                    updatedAt = now + saved,
                 )
-                rows += first
-                rows += mirror
-            } else {
-                rows += base
+                if (p.kind.isTransfer) {
+                    val group = UUID.randomUUID().toString()
+                    val mirrorKind = if (p.kind == TxKind.TRANSFER_OUT) {
+                        TxKind.TRANSFER_IN
+                    } else {
+                        TxKind.TRANSFER_OUT
+                    }
+                    // The next line may be this transfer's counterpart: consume it for the mirror's account amount.
+                    val next = preview.rows.getOrNull(preview.rows.indexOf(row) + 1)?.takeIf { n ->
+                        val np = n.parsed
+                        n.error == null &&
+                            np != null &&
+                            np.kind == mirrorKind &&
+                            n.cells.size >= 11 &&
+                            np.amount == p.amount &&
+                            np.currencyId == p.currencyId
+                    }
+                    if (next != null) consumed += next.index
+                    val first = base.copy(
+                        counterpartAccountId = p.counterpartId,
+                        categoryId = null,
+                        transferGroupId = group,
+                    )
+                    val mirror = first.copy(
+                        id = UUID.randomUUID().toString(),
+                        kind = mirrorKind,
+                        accountId = p.counterpartId,
+                        counterpartAccountId = p.accountId,
+                        amountAccount = accountAmount(
+                            p.counterpartId,
+                            next?.parsed?.accountAmount ?: p.accountAmount,
+                        ),
+                    )
+                    rows += first
+                    rows += mirror
+                } else {
+                    rows += base
+                }
+                saved++
             }
-            saved++
+            db.withTransaction { rows.chunked(500).forEach { db.transactionDao().insertAll(it) } }
+            write(f, header, failed)
+            saved to failed.size
         }
-        db.withTransaction { rows.chunked(500).forEach { db.transactionDao().insertAll(it) } }
-        write(f, header, failed)
-        saved to failed.size
-    }
 
-    override suspend fun delete(names: Collection<String>) = withContext(ioDispatcher) { names.forEach { file(it).delete() } }
+    override suspend fun delete(names: Collection<String>) = withContext(ioDispatcher) {
+        names.forEach { file(it).delete() }
+    }
 }

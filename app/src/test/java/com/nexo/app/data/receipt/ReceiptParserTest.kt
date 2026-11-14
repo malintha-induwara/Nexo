@@ -52,13 +52,27 @@ class ReceiptParserTest {
 
     @Test
     fun strongLabelBeatsPlainTotal() {
-        val r = read("Total  4,000.00", "Service Charge 10%  400.00", "Net Total  4,400.00", "Total Savings  120.00")
+        val r =
+            read(
+                "Total  4,000.00",
+                "Service Charge 10%  400.00",
+                "Net Total  4,400.00",
+                "Total Savings  120.00",
+            )
         assertEquals(amount("4400"), r.total)
     }
 
     @Test
     fun cashLessChangeSettlesBetweenTwoTotals() {
-        val r = read("TOTAL  4,250.00", "Discount  250.00", "TOTAL  4,000.00 ", "TOTAL  4,250.00", "CASH  5,000.00", "CHANGE  1,000.00")
+        val r =
+            read(
+                "TOTAL  4,250.00",
+                "Discount  250.00",
+                "TOTAL  4,000.00 ",
+                "TOTAL  4,250.00",
+                "CASH  5,000.00",
+                "CHANGE  1,000.00",
+            )
         assertEquals(amount("4000"), r.total)
     }
 
@@ -113,7 +127,15 @@ class ReceiptParserTest {
 
     @Test
     fun countsTaxesAndDiscountsAreNeverTheTotal() {
-        val r = read("Bread  250.00", "Total Items  12", "Total Qty  12", "Total Discount  50.00", "Total VAT  45.00", "Total  245.00")
+        val r =
+            read(
+                "Bread  250.00",
+                "Total Items  12",
+                "Total Qty  12",
+                "Total Discount  50.00",
+                "Total VAT  45.00",
+                "Total  245.00",
+            )
         assertEquals(amount("245"), r.total)
         assertFalse(r.guessed)
     }
@@ -125,8 +147,14 @@ class ReceiptParserTest {
 
     @Test
     fun inclusiveAndExclusiveTaxWording() {
-        assertEquals(amount("4250"), read("Total excl. VAT  3,950.00", "Total incl. VAT  4,250.00").total)
-        assertEquals(amount("4250"), read("Grand Total (Incl. S/C)  4,250.00", "Total S/C  250.00").total)
+        assertEquals(
+            amount("4250"),
+            read("Total excl. VAT  3,950.00", "Total incl. VAT  4,250.00").total,
+        )
+        assertEquals(
+            amount("4250"),
+            read("Grand Total (Incl. S/C)  4,250.00", "Total S/C  250.00").total,
+        )
     }
 
     @Test
@@ -138,7 +166,8 @@ class ReceiptParserTest {
 
     @Test
     fun noLabelFallsBackToTheLargestOrdinaryAmountAsAGuess() {
-        val r = read("Coffee  450.00", "Cake  600.00", "1,050.00", "Cash  2,000.00", "Change  950.00")
+        val r =
+            read("Coffee  450.00", "Cake  600.00", "1,050.00", "Cash  2,000.00", "Change  950.00")
         assertEquals(amount("1050"), r.total)
         assertFalse("cash less change confirms it", r.guessed)
 
@@ -173,7 +202,11 @@ class ReceiptParserTest {
         assertEquals(LocalDate.of(2026, 11, 3), date("03-NOV-26"))
         assertEquals(LocalDate.of(2026, 11, 3), date("3rd November, 2026"))
         assertEquals(LocalDate.of(2026, 11, 3), date("Nov 3, 2026"))
-        assertEquals("month first when the day cannot be a month", LocalDate.of(2026, 10, 31), date("10/31/2026"))
+        assertEquals(
+            "month first when the day cannot be a month",
+            LocalDate.of(2026, 10, 31),
+            date("10/31/2026"),
+        )
     }
 
     @Test
@@ -181,7 +214,10 @@ class ReceiptParserTest {
         assertNull(read("Exp 12/12/2030").date)
         assertNull(read("31/02/2026").date)
         assertNull(read("Market 12 24").date)
-        assertEquals(LocalDate.of(2026, 11, 1), read("Valid till 01/01/2027", "Date 01/11/2026").date)
+        assertEquals(
+            LocalDate.of(2026, 11, 1),
+            read("Valid till 01/01/2027", "Date 01/11/2026").date,
+        )
     }
 
     @Test
@@ -194,9 +230,15 @@ class ReceiptParserTest {
 
     @Test
     fun merchantSkipsReceiptWordsContactsAndNumbers() {
-        assertEquals("Cargills Food City", read("TAX INVOICE", "Welcome to CARGILLS FOOD CITY", "Tel 0112 345 678").merchant)
+        assertEquals(
+            "Cargills Food City",
+            read("TAX INVOICE", "Welcome to CARGILLS FOOD CITY", "Tel 0112 345 678").merchant,
+        )
         assertEquals("Café Mocha", read("*** Café Mocha ***", "Bill No 1234").merchant)
-        assertEquals("Pizza Hut", read("14/11/2026", "www.example.lk", "PIZZA HUT", "Total 1,200.00").merchant)
+        assertEquals(
+            "Pizza Hut",
+            read("14/11/2026", "www.example.lk", "PIZZA HUT", "Total 1,200.00").merchant,
+        )
         assertNull(read("TOTAL 1,200.00", "CASH 2,000.00").merchant)
     }
 }

@@ -5,7 +5,11 @@ import androidx.room.Index
 import com.nexo.app.core.model.FxSnapshot
 
 /** One bank's board rate for one currency at one fetch. Kept to build a local rate history. */
-@Entity(tableName = "fx_snapshots", primaryKeys = ["capturedAt", "bank", "ccy"], indices = [Index("ccy", "capturedAt")])
+@Entity(
+    tableName = "fx_snapshots",
+    primaryKeys = ["capturedAt", "bank", "ccy"],
+    indices = [Index("ccy", "capturedAt")],
+)
 data class FxSnapshotEntity(
     val capturedAt: Long,
     /** API bank code, e.g. "combank". */

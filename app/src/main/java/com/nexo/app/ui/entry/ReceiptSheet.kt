@@ -79,11 +79,22 @@ fun ColumnScope.ReceiptSheetContent(
 
     if (scan is ScanUi.Reading) {
         Column(Modifier.fillMaxWidth().weight(1f).padding(horizontal = Space.gutter)) {
-            Text(stringResource(R.string.receipt_reading), style = MaterialTheme.typography.titleMedium, color = colors.text)
+            Text(
+                stringResource(R.string.receipt_reading),
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.text,
+            )
             Spacer(Modifier.height(Space.l))
-            LinearProgressIndicator(Modifier.fillMaxWidth().clip(CircleShape), color = colors.primary, trackColor = colors.raised)
+            LinearProgressIndicator(
+                Modifier.fillMaxWidth().clip(CircleShape),
+                color = colors.primary,
+                trackColor = colors.raised,
+            )
         }
-        TextButton(onClick = onCancel, modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = Space.m)) {
+        TextButton(
+            onClick = onCancel,
+            modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = Space.m),
+        ) {
             Text(stringResource(R.string.action_cancel), color = colors.textSecondary)
         }
         return
@@ -94,37 +105,74 @@ fun ColumnScope.ReceiptSheetContent(
     var useDate by remember(scan) { mutableStateOf(true) }
     var useMerchant by remember(scan) { mutableStateOf(true) }
     var editing by remember(scan) { mutableStateOf(false) }
-    val choices = remember(scan) { (listOfNotNull(read.total) + read.others).distinct().map { it.toDouble() } }
+    val choices =
+        remember(scan) {
+            (listOfNotNull(read.total) + read.others).distinct().map { it.toDouble() }
+        }
 
-    Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = Space.gutter)) {
-        Text(stringResource(R.string.receipt_title), style = MaterialTheme.typography.titleMedium, color = colors.text)
+    Column(
+        Modifier.fillMaxWidth().weight(
+            1f,
+        ).verticalScroll(rememberScrollState()).padding(horizontal = Space.gutter),
+    ) {
+        Text(
+            stringResource(R.string.receipt_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.text,
+        )
         val note = when {
             read.total == null && read.others.isEmpty() -> R.string.receipt_nothing
             read.guessed -> R.string.receipt_guessed
             else -> null
         }
         if (note != null) {
-            Text(stringResource(note), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary, modifier = Modifier.padding(top = Space.xxs))
+            Text(
+                stringResource(note),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = Space.xxs),
+            )
         }
         Spacer(Modifier.height(Space.l))
         Row(
-            Modifier.fillMaxWidth().clip(NexoShapes.control).background(colors.raised).clickable { editing = true }
+            Modifier.fillMaxWidth().clip(NexoShapes.control).background(colors.raised).clickable {
+                editing = true
+            }
                 .heightIn(min = 56.dp).padding(horizontal = Space.l),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(stringResource(R.string.receipt_total), style = MaterialTheme.typography.bodyLarge, color = colors.textSecondary, modifier = Modifier.weight(1f))
+            Text(
+                stringResource(R.string.receipt_total),
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textSecondary,
+                modifier = Modifier.weight(1f),
+            )
             val a = amount
-            if (a != null) AmountText(a, currency, sign = AmountParts.Sign.NONE) else Text("—", style = NexoType.Amount, color = colors.textTertiary)
+            if (a != null) {
+                AmountText(a, currency, sign = AmountParts.Sign.NONE)
+            } else {
+                Text("—", style = NexoType.Amount, color = colors.textTertiary)
+            }
             Spacer(Modifier.width(Space.s))
-            Icon(Icons.Rounded.Edit, stringResource(R.string.action_edit), tint = colors.textTertiary, modifier = Modifier.size(18.dp))
+            Icon(
+                Icons.Rounded.Edit,
+                stringResource(R.string.action_edit),
+                tint = colors.textTertiary,
+                modifier = Modifier.size(18.dp),
+            )
         }
 
         if (choices.size > 1 || (choices.size == 1 && choices[0] != amount)) {
             Text(
                 stringResource(R.string.receipt_other_amounts).uppercase(Locale.getDefault()),
-                style = NexoType.Caps, color = colors.textTertiary, modifier = Modifier.padding(top = Space.l, bottom = Space.s),
+                style = NexoType.Caps,
+                color = colors.textTertiary,
+                modifier = Modifier.padding(top = Space.l, bottom = Space.s),
             )
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(Space.s), verticalArrangement = Arrangement.spacedBy(Space.s)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Space.s),
+                verticalArrangement = Arrangement.spacedBy(Space.s),
+            ) {
                 choices.forEach { v ->
                     val selected = v == amount
                     Text(
@@ -133,9 +181,22 @@ fun ColumnScope.ReceiptSheetContent(
                         color = if (selected) colors.primary else colors.text,
                         maxLines = 1,
                         modifier = Modifier.clip(CircleShape)
-                            .background(if (selected) colors.tint(colors.primary, colors.raised) else colors.raised)
-                            .border(1.5.dp, if (selected) colors.primary else Color.Transparent, CircleShape)
-                            .clickable { haptics.tick(); amount = v }
+                            .background(
+                                if (selected) {
+                                    colors.tint(colors.primary, colors.raised)
+                                } else {
+                                    colors.raised
+                                },
+                            )
+                            .border(
+                                1.5.dp,
+                                if (selected) colors.primary else Color.Transparent,
+                                CircleShape,
+                            )
+                            .clickable {
+                                haptics.tick()
+                                amount = v
+                            }
                             .padding(horizontal = Space.m, vertical = Space.s),
                     )
                 }
@@ -145,13 +206,19 @@ fun ColumnScope.ReceiptSheetContent(
         Spacer(Modifier.height(Space.m))
         val merchant = read.merchant
         if (merchant != null && noteEmpty) {
-            TickRow(stringResource(R.string.receipt_use_note, merchant), useMerchant) { haptics.tick(); useMerchant = !useMerchant }
+            TickRow(stringResource(R.string.receipt_use_note, merchant), useMerchant) {
+                haptics.tick()
+                useMerchant = !useMerchant
+            }
         }
         val date = read.date
         if (date != null) {
             val time = read.time?.let { Formats.time(it, DateFormat.is24HourFormat(context)) }
             val shown = Formats.mediumDate(date) + (time?.let { ", $it" } ?: "")
-            TickRow(stringResource(R.string.receipt_use_date, shown), useDate) { haptics.tick(); useDate = !useDate }
+            TickRow(stringResource(R.string.receipt_use_date, shown), useDate) {
+                haptics.tick()
+                useDate = !useDate
+            }
         }
     }
 
@@ -162,15 +229,36 @@ fun ColumnScope.ReceiptSheetContent(
         Button(
             onClick = onCancel,
             modifier = Modifier.weight(1f).height(52.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = colors.raised, contentColor = colors.text),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colors.raised,
+                contentColor = colors.text,
+            ),
             contentPadding = PaddingValues(horizontal = Space.s),
-        ) { Text(stringResource(R.string.action_cancel), style = MaterialTheme.typography.labelLarge, maxLines = 1) }
+        ) {
+            Text(
+                stringResource(R.string.action_cancel),
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+            )
+        }
         Button(
-            onClick = { haptics.confirm(); onUse(amount, useDate, useMerchant) },
+            onClick = {
+                haptics.confirm()
+                onUse(amount, useDate, useMerchant)
+            },
             modifier = Modifier.weight(1.3f).height(52.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colors.primary,
+                contentColor = colors.onPrimary,
+            ),
             contentPadding = PaddingValues(horizontal = Space.s),
-        ) { Text(stringResource(R.string.receipt_use), style = MaterialTheme.typography.titleSmall, maxLines = 1) }
+        ) {
+            Text(
+                stringResource(R.string.receipt_use),
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+            )
+        }
     }
 
     if (editing) {
@@ -189,14 +277,26 @@ fun ColumnScope.ReceiptSheetContent(
 private fun TickRow(text: String, checked: Boolean, onToggle: () -> Unit) {
     val colors = LocalNexoColors.current
     Row(
-        Modifier.fillMaxWidth().clip(NexoShapes.control).clickable(onClick = onToggle).padding(vertical = Space.xxs),
+        Modifier.fillMaxWidth().clip(
+            NexoShapes.control,
+        ).clickable(onClick = onToggle).padding(vertical = Space.xxs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(
             checked = checked,
             onCheckedChange = { onToggle() },
-            colors = CheckboxDefaults.colors(checkedColor = colors.primary, uncheckedColor = colors.textTertiary, checkmarkColor = colors.onPrimary),
+            colors = CheckboxDefaults.colors(
+                checkedColor = colors.primary,
+                uncheckedColor = colors.textTertiary,
+                checkmarkColor = colors.onPrimary,
+            ),
         )
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = colors.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.text,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

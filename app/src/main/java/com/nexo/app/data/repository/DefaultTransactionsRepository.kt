@@ -70,47 +70,73 @@ class DefaultTransactionsRepository @Inject constructor(
 
     private fun ledger(rows: Flow<List<TransactionEntity>>): Flow<Ledger> =
         combine(rows, db.tagDao().observeLinks(), db.photoDao().observeAll()) { r, links, photos ->
-            Ledger(r.map(TransactionEntity::asExternalModel), groupLinks(links), photos.mapTo(HashSet()) { it.transactionId })
+            Ledger(
+                r.map(TransactionEntity::asExternalModel),
+                groupLinks(links),
+                photos.mapTo(HashSet()) {
+                    it.transactionId
+                },
+            )
         }
 
     override fun getChangeStampStream(): Flow<Long> = dao.observeStamp()
 
-    override fun getAggregatesUpToStream(end: String): Flow<List<TxAggregate>> = dao.observeAggregatesUpTo(end)
+    override fun getAggregatesUpToStream(end: String): Flow<List<TxAggregate>> =
+        dao.observeAggregatesUpTo(end)
 
-    override suspend fun getTransaction(id: String): Transaction? = dao.getById(id)?.asExternalModel()
+    override suspend fun getTransaction(id: String): Transaction? =
+        dao.getById(id)?.asExternalModel()
 
-    override suspend fun getTransferLegs(transferGroupId: String): List<Transaction> = dao.getByTransferGroup(transferGroupId).map(TransactionEntity::asExternalModel)
+    override suspend fun getTransferLegs(transferGroupId: String): List<Transaction> =
+        dao.getByTransferGroup(transferGroupId).map(TransactionEntity::asExternalModel)
 
-    override suspend fun getInstallmentGroup(installmentGroupId: String): List<Transaction> = dao.getByInstallmentGroup(installmentGroupId).map(TransactionEntity::asExternalModel)
+    override suspend fun getInstallmentGroup(installmentGroupId: String): List<Transaction> =
+        dao.getByInstallmentGroup(installmentGroupId).map(TransactionEntity::asExternalModel)
 
-    override suspend fun getFeeRow(feeGroupId: String): Transaction? = dao.getFeeRow(feeGroupId)?.asExternalModel()
+    override suspend fun getFeeRow(feeGroupId: String): Transaction? =
+        dao.getFeeRow(feeGroupId)?.asExternalModel()
 
     override suspend fun getTagIds(transactionId: String): List<String> =
         db.tagDao().linksForTransaction(transactionId).sortedBy { it.position }.map { it.tagId }
 
-    override suspend fun getPhotos(transactionId: String): List<Photo> = db.photoDao().forTransaction(transactionId).map(PhotoEntity::asExternalModel)
+    override suspend fun getPhotos(transactionId: String): List<Photo> =
+        db.photoDao().forTransaction(transactionId).map(PhotoEntity::asExternalModel)
 
-    override suspend fun getLastTransferWithFee(fromAccountId: String, toAccountId: String): Transaction? =
-        dao.lastTransferWithFee(fromAccountId, toAccountId)?.asExternalModel()
+    override suspend fun getLastTransferWithFee(
+        fromAccountId: String,
+        toAccountId: String,
+    ): Transaction? = dao.lastTransferWithFee(fromAccountId, toAccountId)?.asExternalModel()
 
-    override suspend fun getAllForAccounts(accountIds: List<String>): List<Transaction> = dao.getAllForAccounts(accountIds).map(TransactionEntity::asExternalModel)
+    override suspend fun getAllForAccounts(accountIds: List<String>): List<Transaction> =
+        dao.getAllForAccounts(accountIds).map(TransactionEntity::asExternalModel)
 
-    override suspend fun getWithoutAccount(): List<Transaction> = dao.noAccount().map(TransactionEntity::asExternalModel)
+    override suspend fun getWithoutAccount(): List<Transaction> =
+        dao.noAccount().map(TransactionEntity::asExternalModel)
 
-    override suspend fun getUnassigned(upTo: String): List<Transaction> = dao.unassigned(upTo).map(TransactionEntity::asExternalModel)
+    override suspend fun getUnassigned(upTo: String): List<Transaction> =
+        dao.unassigned(upTo).map(TransactionEntity::asExternalModel)
 
-    override suspend fun getRange(start: String, end: String): List<Transaction> = dao.getRange(start, end).map(TransactionEntity::asExternalModel)
+    override suspend fun getRange(start: String, end: String): List<Transaction> =
+        dao.getRange(start, end).map(TransactionEntity::asExternalModel)
 
-    override suspend fun search(start: String, end: String, pattern: String, includeSource: Boolean): List<Transaction> =
+    override suspend fun search(
+        start: String,
+        end: String,
+        pattern: String,
+        includeSource: Boolean,
+    ): List<Transaction> =
         dao.search(start, end, pattern, includeSource).map(TransactionEntity::asExternalModel)
 
-    override suspend fun getNoteUsage(cutDate: String, cutMillis: Long): List<NoteUsage> = dao.noteUsage(cutDate, cutMillis)
+    override suspend fun getNoteUsage(cutDate: String, cutMillis: Long): List<NoteUsage> =
+        dao.noteUsage(cutDate, cutMillis)
 
     override suspend fun getAggregatesUpTo(end: String): List<TxAggregate> = dao.aggregatesUpTo(end)
 
-    override suspend fun getAggregatesBetween(start: String, end: String): List<TxAggregate> = dao.aggregatesBetween(start, end)
+    override suspend fun getAggregatesBetween(start: String, end: String): List<TxAggregate> =
+        dao.aggregatesBetween(start, end)
 
-    override suspend fun getAggregatesBefore(before: String): List<TxAggregate> = dao.aggregatesBefore(before)
+    override suspend fun getAggregatesBefore(before: String): List<TxAggregate> =
+        dao.aggregatesBefore(before)
 
     override suspend fun getLedgerFor(rows: List<Transaction>): Ledger {
         val ids = rows.map { it.id }
@@ -120,7 +146,9 @@ class DefaultTransactionsRepository @Inject constructor(
     }
 
     private fun groupLinks(links: List<TransactionTagEntity>): Map<String, List<String>> =
-        links.groupBy { it.transactionId }.mapValues { (_, l) -> l.sortedBy { it.position }.map { it.tagId } }
+        links.groupBy {
+            it.transactionId
+        }.mapValues { (_, l) -> l.sortedBy { it.position }.map { it.tagId } }
 
     override suspend fun save(draft: TxDraft): String {
         val d = draft
@@ -130,19 +158,23 @@ class DefaultTransactionsRepository @Inject constructor(
         val ref = refs.getRefData()
         val id = db.withTransaction {
             val original = d.editingId?.let { dao.getById(it) }
-            if (d.type == EntryType.TRANSFER) saveTransfer(ref, d, original, stored, cleanup)
-            else saveSingle(ref, d, original, stored, cleanup)
+            if (d.type == EntryType.TRANSFER) {
+                saveTransfer(ref, d, original, stored, cleanup)
+            } else {
+                saveSingle(ref, d, original, stored, cleanup)
+            }
         }
         photos.deleteUnreferenced(cleanup)
         return id
     }
 
-    private suspend fun resolvePhotos(items: List<PhotoItem>): List<StoredPhoto> = items.mapNotNull {
-        when (it) {
-            is PhotoItem.Stored -> StoredPhoto(it.fileName, it.size, it.checksum)
-            is PhotoItem.Picked -> photos.importPhoto(it.uri.toUri())
+    private suspend fun resolvePhotos(items: List<PhotoItem>): List<StoredPhoto> =
+        items.mapNotNull {
+            when (it) {
+                is PhotoItem.Stored -> StoredPhoto(it.fileName, it.size, it.checksum)
+                is PhotoItem.Picked -> photos.importPhoto(it.uri.toUri())
+            }
         }
-    }
 
     private suspend fun saveSingle(
         ref: RefData,
@@ -154,11 +186,17 @@ class DefaultTransactionsRepository @Inject constructor(
         val now = now()
         if (original != null && original.kind.isTransfer) {
             // Transfer → income/expense: drop the partner leg and the fee row.
-            val partners = original.transferGroupId?.let { g -> dao.getByTransferGroup(g).filter { it.id != original.id } }.orEmpty()
+            val partners = original.transferGroupId?.let { g ->
+                dao.getByTransferGroup(g).filter {
+                    it.id !=
+                        original.id
+                }
+            }.orEmpty()
             val fee = original.feeGroupId?.let { dao.getFeeRow(it) }
             removeRows((partners + listOfNotNull(fee)).map { it.id }, cleanup)
         }
-        val kind = d.balanceKind ?: if (d.type == EntryType.INCOME) TxKind.INCOME else TxKind.EXPENSE
+        val kind =
+            d.balanceKind ?: if (d.type == EntryType.INCOME) TxKind.INCOME else TxKind.EXPENSE
         val txCur = ref.currency(d.currencyId)
         val accCur = ref.accountCurrency(d.accountId)
         val rate = d.rate ?: Conversion.effectiveRate(txCur)
@@ -176,9 +214,14 @@ class DefaultTransactionsRepository @Inject constructor(
                 TransactionEntity(
                     id = uuid(), kind = kind, accountId = d.accountId, categoryId = d.categoryId,
                     dateTime = millis(day), date = day.toLocalDate().toIsoText(),
-                    amount = a.amount, amountMain = a.main, amountAccount = a.account, currencyId = txCur.id,
+                    amount = a.amount,
+                    amountMain = a.main,
+                    amountAccount = a.account,
+                    currencyId = txCur.id,
                     note = d.note.trim(), description = d.description,
-                    installmentGroupId = group, installmentIndex = i + 1, installmentCount = d.installments,
+                    installmentGroupId = group,
+                    installmentIndex = i + 1,
+                    installmentCount = d.installments,
                     sourceText = d.sourceText, createdAt = now + i, updatedAt = now,
                 )
             }
@@ -235,8 +278,17 @@ class DefaultTransactionsRepository @Inject constructor(
                 categoryId = edited.categoryId,
                 note = edited.note,
                 description = edited.description,
-                amountAccount = if (r.accountId == edited.accountId) r.amountAccount
-                else Conversion.accountAmount(r.amount, r.amountMain, txCur, accCur, ref.mainCurrency),
+                amountAccount = if (r.accountId == edited.accountId) {
+                    r.amountAccount
+                } else {
+                    Conversion.accountAmount(
+                        r.amount,
+                        r.amountMain,
+                        txCur,
+                        accCur,
+                        ref.mainCurrency,
+                    )
+                },
                 installmentIndex = if (renumber) i + 1 else r.installmentIndex,
                 installmentCount = if (renumber) group.size else r.installmentCount,
                 updatedAt = now(),
@@ -264,14 +316,41 @@ class DefaultTransactionsRepository @Inject constructor(
 
         val wasTransfer = original != null && original.kind.isTransfer
         val groupId = (if (wasTransfer) original?.transferGroupId else null) ?: uuid()
-        val existingIn = if (wasTransfer) dao.getByTransferGroup(groupId).firstOrNull { it.kind == TxKind.TRANSFER_IN } else null
-        val outCross = crossRate(ref, original, d.currencyId, from)
-        val outAmounts = Conversion.compute(d.amount, txCur, fromCur, ref.mainCurrency, rate, outCross)
-        val inCross = existingIn?.let { e ->
-            if (e.currencyId == d.currencyId && e.accountId == to && e.amount != 0.0) Money.divide(e.amountAccount, e.amount) else null
+        val existingIn = if (wasTransfer) {
+            dao.getByTransferGroup(groupId).firstOrNull {
+                it.kind ==
+                    TxKind.TRANSFER_IN
+            }
+        } else {
+            null
         }
-        val inAccount = if (inCross != null) Money.round(Money.multiply(outAmounts.amount, inCross), toCur.decimals)
-        else Conversion.accountAmount(outAmounts.amount, outAmounts.main, txCur, toCur, ref.mainCurrency)
+        val outCross = crossRate(ref, original, d.currencyId, from)
+        val outAmounts = Conversion.compute(
+            d.amount,
+            txCur,
+            fromCur,
+            ref.mainCurrency,
+            rate,
+            outCross,
+        )
+        val inCross = existingIn?.let { e ->
+            if (e.currencyId == d.currencyId && e.accountId == to && e.amount != 0.0) {
+                Money.divide(e.amountAccount, e.amount)
+            } else {
+                null
+            }
+        }
+        val inAccount = if (inCross != null) {
+            Money.round(Money.multiply(outAmounts.amount, inCross), toCur.decimals)
+        } else {
+            Conversion.accountAmount(
+                outAmounts.amount,
+                outAmounts.main,
+                txCur,
+                toCur,
+                ref.mainCurrency,
+            )
+        }
 
         val existingFee = original?.feeGroupId?.let { dao.getFeeRow(it) }
         var feeGroupId: String? = null
@@ -279,8 +358,20 @@ class DefaultTransactionsRepository @Inject constructor(
         if (fee != null) {
             feeGroupId = original?.feeGroupId ?: uuid()
             val feeCur = ref.currency(fee.currencyId)
-            val fa = Conversion.compute(fee.amount, feeCur, fromCur, ref.mainCurrency, fee.rate ?: Conversion.effectiveRate(feeCur))
-            val feeDateTime = d.dateTime.plusNanos(1_000_000).let { if (it.toLocalDate() == d.dateTime.toLocalDate()) it else d.dateTime }
+            val fa = Conversion.compute(
+                fee.amount,
+                feeCur,
+                fromCur,
+                ref.mainCurrency,
+                fee.rate ?: Conversion.effectiveRate(feeCur),
+            )
+            val feeDateTime = d.dateTime.plusNanos(1_000_000).let {
+                if (it.toLocalDate() == d.dateTime.toLocalDate()) {
+                    it
+                } else {
+                    d.dateTime
+                }
+            }
             val feeRow = TransactionEntity(
                 id = existingFee?.id ?: uuid(),
                 kind = TxKind.EXPENSE,
@@ -288,7 +379,10 @@ class DefaultTransactionsRepository @Inject constructor(
                 categoryId = existingFee?.categoryId ?: fee.categoryId ?: feeCategory(ref)?.id,
                 dateTime = millis(feeDateTime),
                 date = feeDateTime.toLocalDate().toIsoText(),
-                amount = fa.amount, amountMain = fa.main, amountAccount = fa.account, currencyId = feeCur.id,
+                amount = fa.amount,
+                amountMain = fa.main,
+                amountAccount = fa.account,
+                currencyId = feeCur.id,
                 note = existingFee?.note ?: context.getString(R.string.cat_fees),
                 description = existingFee?.description ?: "",
                 feeGroupId = feeGroupId,
@@ -307,7 +401,9 @@ class DefaultTransactionsRepository @Inject constructor(
             counterpartAccountId = to,
             categoryId = null,
             dateTime = dt, date = date,
-            amount = outAmounts.amount, amountMain = outAmounts.main, amountAccount = outAmounts.account,
+            amount = outAmounts.amount,
+            amountMain = outAmounts.main,
+            amountAccount = outAmounts.account,
             currencyId = txCur.id,
             note = d.note.trim(), description = d.description,
             transferGroupId = groupId, feeGroupId = feeGroupId,
@@ -330,17 +426,29 @@ class DefaultTransactionsRepository @Inject constructor(
     }
 
     /** Original account/transaction ratio, kept when neither currency changed. */
-    private fun crossRate(ref: RefData, original: TransactionEntity?, currencyId: String, accountId: String?): Double? {
+    private fun crossRate(
+        ref: RefData,
+        original: TransactionEntity?,
+        currencyId: String,
+        accountId: String?,
+    ): Double? {
         if (original == null || original.amount == 0.0) return null
         if (original.currencyId != currencyId) return null
-        if (ref.accountCurrency(original.accountId).id != ref.accountCurrency(accountId).id) return null
+        if (ref.accountCurrency(original.accountId).id != ref.accountCurrency(accountId).id) {
+            return null
+        }
         return Money.divide(original.amountAccount, original.amount)
     }
 
     /** Fee category: the system Bank fee category once it exists, else "Fees", else "Other", else the last expense category. */
     private fun feeCategory(ref: RefData): Category? {
         val expense = ref.categories.filter { it.kind == CategoryKind.EXPENSE && !it.isDeleted }
-        ref.settings.bankFeeCategoryId.takeIf { it.isNotEmpty() }?.let { id -> expense.firstOrNull { it.id == id } }?.let { return it }
+        ref.settings.bankFeeCategoryId.takeIf { it.isNotEmpty() }?.let { id ->
+            expense.firstOrNull {
+                it.id ==
+                    id
+            }
+        }?.let { return it }
         val fees = context.getString(R.string.cat_fees)
         val other = context.getString(R.string.cat_other)
         return expense.firstOrNull { it.name.equals(fees, true) }
@@ -355,15 +463,26 @@ class DefaultTransactionsRepository @Inject constructor(
     override suspend fun bankFeeCategory(): String {
         val ref = refs.getRefData()
         ref.settings.bankFeeCategoryId.takeIf { it.isNotEmpty() }
-            ?.let { id -> ref.categoryById[id]?.takeIf { !it.isDeleted && it.kind == CategoryKind.EXPENSE }?.id }
+            ?.let { id ->
+                ref.categoryById[id]?.takeIf {
+                    !it.isDeleted &&
+                        it.kind == CategoryKind.EXPENSE
+                }?.id
+            }
             ?.let { return it }
         val now = now()
         val id = uuid()
         db.categoryDao().upsert(
             listOf(
                 CategoryEntity(
-                    id, context.getString(R.string.cat_bank_fee), CategoryKind.EXPENSE, null, db.categoryDao().maxOrder() + 1,
-                    createdAt = now, updatedAt = now, emoji = "🏦",
+                    id,
+                    context.getString(R.string.cat_bank_fee),
+                    CategoryKind.EXPENSE,
+                    null,
+                    db.categoryDao().maxOrder() + 1,
+                    createdAt = now,
+                    updatedAt = now,
+                    emoji = "🏦",
                 ),
             ),
         )
@@ -385,12 +504,24 @@ class DefaultTransactionsRepository @Inject constructor(
             val cur = ref.accountCurrency(parent.accountId)
             val a = Conversion.compute(amount, cur, cur, ref.mainCurrency)
             val parentAt = localDateTime(parent.dateTime)
-            val at = parentAt.plusNanos(1_000_000).let { if (it.toLocalDate() == parentAt.toLocalDate()) it else parentAt }
+            val at = parentAt.plusNanos(1_000_000).let {
+                if (it.toLocalDate() == parentAt.toLocalDate()) {
+                    it
+                } else {
+                    parentAt
+                }
+            }
             val now = now()
             val row = TransactionEntity(
-                id = uuid(), kind = TxKind.EXPENSE, accountId = parent.accountId, categoryId = categoryId,
+                id = uuid(),
+                kind = TxKind.EXPENSE,
+                accountId = parent.accountId,
+                categoryId = categoryId,
                 dateTime = millis(at), date = at.toLocalDate().toIsoText(),
-                amount = a.amount, amountMain = a.main, amountAccount = a.account, currencyId = cur.id,
+                amount = a.amount,
+                amountMain = a.main,
+                amountAccount = a.account,
+                currencyId = cur.id,
                 note = feeNote, feeParentId = parent.id, createdAt = now + 1, updatedAt = now + 1,
             )
             dao.insertAll(listOf(row))
@@ -402,10 +533,20 @@ class DefaultTransactionsRepository @Inject constructor(
     private suspend fun setTags(txIds: List<String>, tagIds: List<String>) {
         db.tagDao().deleteLinksFor(txIds)
         if (tagIds.isEmpty()) return
-        db.tagDao().insertLinks(txIds.flatMap { tx -> tagIds.mapIndexed { i, tag -> TransactionTagEntity(tx, tag, i + 1) } })
+        db.tagDao().insertLinks(
+            txIds.flatMap { tx ->
+                tagIds.mapIndexed { i, tag ->
+                    TransactionTagEntity(tx, tag, i + 1)
+                }
+            },
+        )
     }
 
-    private suspend fun setPhotos(txIds: List<String>, stored: List<StoredPhoto>, cleanup: MutableSet<String>) {
+    private suspend fun setPhotos(
+        txIds: List<String>,
+        stored: List<StoredPhoto>,
+        cleanup: MutableSet<String>,
+    ) {
         val old = db.photoDao().forTransactions(txIds)
         cleanup += old.map { it.fileName }
         db.photoDao().deleteForTransactions(txIds)
@@ -429,13 +570,23 @@ class DefaultTransactionsRepository @Inject constructor(
     }
 
     /** All row ids that belong with [rows]: transfer partners and fee rows. */
-    private suspend fun expand(rows: List<TransactionEntity>, wholeInstallment: Boolean): Set<String> {
+    private suspend fun expand(
+        rows: List<TransactionEntity>,
+        wholeInstallment: Boolean,
+    ): Set<String> {
         val ids = LinkedHashSet<String>()
         for (r in rows) {
             ids += r.id
             r.transferGroupId?.let { g -> dao.getByTransferGroup(g).forEach { ids += it.id } }
             if (r.kind.isTransfer) r.feeGroupId?.let { f -> dao.getFeeRow(f)?.let { ids += it.id } }
-            if (wholeInstallment) r.installmentGroupId?.let { g -> dao.getByInstallmentGroup(g).forEach { ids += it.id } }
+            if (wholeInstallment) {
+                r.installmentGroupId?.let { g ->
+                    dao.getByInstallmentGroup(g).forEach {
+                        ids +=
+                            it.id
+                    }
+                }
+            }
         }
         // Bank fees go with the row they were charged on.
         if (ids.isNotEmpty()) dao.feeChildren(ids.toList()).forEach { ids += it.id }
@@ -449,10 +600,19 @@ class DefaultTransactionsRepository @Inject constructor(
             val all = expand(rows, wholeInstallmentGroup)
             // A fee deleted on its own unlinks from its transfer.
             rows.filter { it.kind == TxKind.EXPENSE && it.feeGroupId != null }.forEach { fee ->
-                val legs = db.query("SELECT id FROM transactions WHERE feeGroupId = ? AND kind != 'EXPENSE'", arrayOf(fee.feeGroupId)).use { c ->
+                val legs = db.query(
+                    "SELECT id FROM transactions WHERE feeGroupId = ? AND kind != 'EXPENSE'",
+                    arrayOf(fee.feeGroupId),
+                ).use { c ->
                     buildList { while (c.moveToNext()) add(c.getString(0)) }
                 }
-                if (legs.isNotEmpty()) dao.updateAll(dao.getByIds(legs).filter { it.id !in all }.map { it.copy(feeGroupId = null, updatedAt = now()) })
+                if (legs.isNotEmpty()) {
+                    dao.updateAll(
+                        dao.getByIds(legs).filter {
+                            it.id !in all
+                        }.map { it.copy(feeGroupId = null, updatedAt = now()) },
+                    )
+                }
             }
             removeRows(all.toList(), cleanup)
         }
@@ -479,7 +639,9 @@ class DefaultTransactionsRepository @Inject constructor(
     override suspend fun setNote(ids: Collection<String>, note: String) {
         db.withTransaction {
             val rows = dao.getByIds(ids.toList())
-            val partners = rows.flatMap { r -> r.transferGroupId?.let { dao.getByTransferGroup(it) }.orEmpty() }
+            val partners = rows.flatMap { r ->
+                r.transferGroupId?.let { dao.getByTransferGroup(it) }.orEmpty()
+            }
             val all = (rows + partners).distinctBy { it.id }
             dao.updateAll(all.map { it.copy(note = note.trim(), updatedAt = now()) })
         }
@@ -495,15 +657,26 @@ class DefaultTransactionsRepository @Inject constructor(
             val rows = dao.getByIds(ids.toList())
             for (r in rows) {
                 if (r.kind.isTransfer) {
-                    val drop = r.transferGroupId?.let { g -> dao.getByTransferGroup(g).filter { it.id != r.id } }.orEmpty() +
-                        listOfNotNull(r.feeGroupId?.let { dao.getFeeRow(it) })
+                    val drop =
+                        r.transferGroupId?.let { g ->
+                            dao.getByTransferGroup(g).filter {
+                                it.id !=
+                                    r.id
+                            }
+                        }.orEmpty() +
+                            listOfNotNull(r.feeGroupId?.let { dao.getFeeRow(it) })
                     removeRows(drop.map { it.id }, cleanup)
                 }
                 dao.updateAll(
                     listOf(
                         r.copy(
-                            kind = kind, categoryId = categoryId, isBalanceAdjustment = false, counterpartAccountId = null,
-                            transferGroupId = null, feeGroupId = if (r.kind.isTransfer) null else r.feeGroupId, updatedAt = now(),
+                            kind = kind,
+                            categoryId = categoryId,
+                            isBalanceAdjustment = false,
+                            counterpartAccountId = null,
+                            transferGroupId = null,
+                            feeGroupId = if (r.kind.isTransfer) null else r.feeGroupId,
+                            updatedAt = now(),
                         ),
                     ),
                 )
@@ -522,10 +695,21 @@ class DefaultTransactionsRepository @Inject constructor(
                 val txCur = ref.currency(r.currencyId)
                 val updated = r.copy(
                     accountId = accountId,
-                    amountAccount = Conversion.accountAmount(r.amount, r.amountMain, txCur, accCur, ref.mainCurrency),
+                    amountAccount = Conversion.accountAmount(
+                        r.amount,
+                        r.amountMain,
+                        txCur,
+                        accCur,
+                        ref.mainCurrency,
+                    ),
                     updatedAt = now(),
                 )
-                val partners = r.transferGroupId?.let { g -> dao.getByTransferGroup(g).filter { it.id != r.id } }.orEmpty()
+                val partners = r.transferGroupId?.let { g ->
+                    dao.getByTransferGroup(g).filter {
+                        it.id !=
+                            r.id
+                    }
+                }.orEmpty()
                     .map { it.copy(counterpartAccountId = accountId, updatedAt = now()) }
                 dao.updateAll(listOf(updated) + partners)
             }
@@ -543,16 +727,40 @@ class DefaultTransactionsRepository @Inject constructor(
                 val group = r.transferGroupId ?: uuid()
                 val now = now()
                 val out = r.copy(
-                    kind = TxKind.TRANSFER_OUT, accountId = from, counterpartAccountId = to, categoryId = null,
+                    kind = TxKind.TRANSFER_OUT,
+                    accountId = from,
+                    counterpartAccountId = to,
+                    categoryId = null,
                     isBalanceAdjustment = false, transferGroupId = group,
-                    amountAccount = Conversion.accountAmount(r.amount, r.amountMain, txCur, fromCur, ref.mainCurrency),
-                    installmentGroupId = null, installmentIndex = 0, installmentCount = 0, updatedAt = now,
+                    amountAccount = Conversion.accountAmount(
+                        r.amount,
+                        r.amountMain,
+                        txCur,
+                        fromCur,
+                        ref.mainCurrency,
+                    ),
+                    installmentGroupId = null,
+                    installmentIndex = 0,
+                    installmentCount = 0,
+                    updatedAt = now,
                 )
                 val existing = dao.getByTransferGroup(group).firstOrNull { it.id != r.id }
                 val inRow = (existing ?: out.copy(id = uuid(), createdAt = now)).copy(
-                    kind = TxKind.TRANSFER_IN, accountId = to, counterpartAccountId = from, categoryId = null,
-                    dateTime = out.dateTime, date = out.date, amount = out.amount, amountMain = out.amountMain,
-                    amountAccount = Conversion.accountAmount(r.amount, r.amountMain, txCur, toCur, ref.mainCurrency),
+                    kind = TxKind.TRANSFER_IN,
+                    accountId = to,
+                    counterpartAccountId = from,
+                    categoryId = null,
+                    dateTime = out.dateTime,
+                    date = out.date,
+                    amount = out.amount,
+                    amountMain = out.amountMain,
+                    amountAccount = Conversion.accountAmount(
+                        r.amount,
+                        r.amountMain,
+                        txCur,
+                        toCur,
+                        ref.mainCurrency,
+                    ),
                     currencyId = out.currencyId, note = out.note, description = out.description,
                     transferGroupId = group, feeGroupId = out.feeGroupId, updatedAt = now,
                 )
@@ -568,7 +776,12 @@ class DefaultTransactionsRepository @Inject constructor(
         }
     }
 
-    override suspend fun recordBalanceDifference(accountId: String, difference: Double, asIncomeExpense: Boolean, description: String) {
+    override suspend fun recordBalanceDifference(
+        accountId: String,
+        difference: Double,
+        asIncomeExpense: Boolean,
+        description: String,
+    ) {
         if (difference == 0.0) return
         val ref = refs.getRefData()
         db.withTransaction {
@@ -580,7 +793,10 @@ class DefaultTransactionsRepository @Inject constructor(
                 difference > 0 -> TxKind.BALANCE_INCREASE
                 else -> TxKind.BALANCE_DECREASE
             }
-            val main = Money.round(Money.multiply(amount, Conversion.effectiveRate(cur)), ref.mainCurrency.decimals)
+            val main = Money.round(
+                Money.multiply(amount, Conversion.effectiveRate(cur)),
+                ref.mainCurrency.decimals,
+            )
             val nowDt = LocalDateTime.now()
             val now = now()
             dao.insertAll(
@@ -588,8 +804,16 @@ class DefaultTransactionsRepository @Inject constructor(
                     TransactionEntity(
                         id = uuid(), kind = kind, accountId = accountId, isBalanceAdjustment = true,
                         dateTime = millis(nowDt), date = nowDt.toLocalDate().toIsoText(),
-                        amount = amount, amountMain = if (cur.id == ref.mainCurrency.id) amount else main, amountAccount = amount,
-                        currencyId = cur.id, note = context.getString(R.string.tx_difference), description = description,
+                        amount = amount,
+                        amountMain = if (cur.id == ref.mainCurrency.id) {
+                            amount
+                        } else {
+                            main
+                        },
+                        amountAccount = amount,
+                        currencyId = cur.id,
+                        note = context.getString(R.string.tx_difference),
+                        description = description,
                         createdAt = now, updatedAt = now,
                     ),
                 ),

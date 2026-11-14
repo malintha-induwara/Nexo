@@ -103,74 +103,169 @@ fun TagSelectSheet(
     var error by remember { mutableStateOf<String?>(null) }
     val exists = stringResource(R.string.tag_exists)
     val live = tags.filter { !it.isDeleted }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.select_tag), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                IconButton(onClick = { adding = true }) { Icon(Icons.Filled.Add, stringResource(R.string.add_tag)) }
-                IconButton(onClick = { editMode = !editMode }) { Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit)) }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.select_tag),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = {
+                    adding = true
+                }) { Icon(Icons.Filled.Add, stringResource(R.string.add_tag)) }
+                IconButton(onClick = {
+                    editMode = !editMode
+                }) { Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit)) }
             }
-            if (live.isEmpty()) Text(stringResource(R.string.no_tags), modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.outline)
+            if (live.isEmpty()) {
+                Text(
+                    stringResource(R.string.no_tags),
+                    modifier = Modifier.padding(16.dp),
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
             LazyColumn(Modifier.heightIn(max = 420.dp)) {
                 itemsIndexed(live, key = { _, t -> t.id }) { index, tag ->
                     Row(
                         Modifier.fillMaxWidth().clickable {
-                            if (editMode) renaming = tag
-                            else selected = if (tag.id in selected) selected - tag.id else selected + tag.id
+                            if (editMode) {
+                                renaming = tag
+                            } else {
+                                selected =
+                                    if (tag.id in selected) selected - tag.id else selected + tag.id
+                            }
                         }.padding(horizontal = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        if (!editMode) Checkbox(checked = tag.id in selected, onCheckedChange = null, modifier = Modifier.padding(8.dp))
-                        Text(tag.name, modifier = Modifier.weight(1f).padding(vertical = 14.dp, horizontal = 8.dp))
-                        if (!editMode && tag.id in selected) Text("${selected.indexOf(tag.id) + 1}", color = MaterialTheme.nexo.primaryText, modifier = Modifier.padding(end = 12.dp))
+                        if (!editMode) {
+                            Checkbox(
+                                checked = tag.id in selected,
+                                onCheckedChange = null,
+                                modifier = Modifier.padding(8.dp),
+                            )
+                        }
+                        Text(
+                            tag.name,
+                            modifier = Modifier.weight(
+                                1f,
+                            ).padding(vertical = 14.dp, horizontal = 8.dp),
+                        )
+                        if (!editMode && tag.id in selected) {
+                            Text(
+                                "${selected.indexOf(tag.id) + 1}",
+                                color = MaterialTheme.nexo.primaryText,
+                                modifier = Modifier.padding(end = 12.dp),
+                            )
+                        }
                         if (editMode) {
-                            IconButton(onClick = { scope.launch { actions.reorder(live.map { it.id }.toMutableList().apply { if (index > 0) add(index - 1, removeAt(index)) }) } }, enabled = index > 0) {
+                            IconButton(onClick = {
+                                scope.launch {
+                                    actions.reorder(
+                                        live.map { it.id }.toMutableList().apply {
+                                            if (index > 0) {
+                                                add(index - 1, removeAt(index))
+                                            }
+                                        },
+                                    )
+                                }
+                            }, enabled = index > 0) {
                                 Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up))
                             }
-                            IconButton(onClick = { scope.launch { actions.reorder(live.map { it.id }.toMutableList().apply { if (index < size - 1) add(index + 1, removeAt(index)) }) } }, enabled = index < live.size - 1) {
+                            IconButton(
+                                onClick = {
+                                    scope.launch {
+                                        actions.reorder(
+                                            live.map { it.id }.toMutableList().apply {
+                                                if (index < size - 1) {
+                                                    add(index + 1, removeAt(index))
+                                                }
+                                            },
+                                        )
+                                    }
+                                },
+                                enabled =
+                                    index < live.size - 1,
+                            ) {
                                 Icon(Icons.Filled.ArrowDownward, stringResource(R.string.move_down))
                             }
-                            IconButton(onClick = { deleting = tag }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
+                            IconButton(onClick = {
+                                deleting = tag
+                            }) {
+                                Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete))
+                            }
                         }
                     }
                 }
             }
             Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-                TextButton(onClick = { onDone(selected.filter { id -> live.any { it.id == id } }); onDismiss() }) { Text(stringResource(R.string.action_ok)) }
+                TextButton(onClick = {
+                    onDone(selected.filter { id -> live.any { it.id == id } })
+                    onDismiss()
+                }) { Text(stringResource(R.string.action_ok)) }
             }
         }
     }
     if (adding) {
         TextFieldDialog(
-            title = stringResource(R.string.add_tag), initial = "", maxLength = TagsRepository.MAX_LENGTH, error = error,
+            title = stringResource(R.string.add_tag),
+            initial = "",
+            maxLength = TagsRepository.MAX_LENGTH,
+            error = error,
             filter = TagsRepository::filter,
             onConfirm = { name ->
                 scope.launch {
                     when (val r = actions.add(name)) {
-                        is TagResult.Ok -> { adding = false; error = null; selected = selected + r.id }
+                        is TagResult.Ok -> {
+                            adding = false
+                            error = null
+                            selected = selected + r.id
+                        }
+
                         TagResult.Exists -> error = exists
+
                         TagResult.Empty -> adding = false
                     }
                 }
             },
-            onDismiss = { adding = false; error = null },
+            onDismiss = {
+                adding = false
+                error = null
+            },
         )
     }
     renaming?.let { tag ->
         TextFieldDialog(
-            title = stringResource(R.string.rename_tag), initial = tag.name, maxLength = TagsRepository.MAX_LENGTH, error = error,
+            title = stringResource(R.string.rename_tag),
+            initial = tag.name,
+            maxLength = TagsRepository.MAX_LENGTH,
+            error = error,
             filter = TagsRepository::filter,
             onConfirm = { name ->
                 scope.launch {
                     when (actions.rename(tag.id, name)) {
-                        is TagResult.Ok -> { renaming = null; error = null }
+                        is TagResult.Ok -> {
+                            renaming = null
+                            error = null
+                        }
+
                         TagResult.Exists -> error = exists
+
                         TagResult.Empty -> renaming = null
                     }
                 }
             },
-            onDismiss = { renaming = null; error = null },
+            onDismiss = {
+                renaming = null
+                error = null
+            },
         )
     }
     deleting?.let { tag ->
@@ -178,14 +273,21 @@ fun TagSelectSheet(
         LaunchedEffect(tag.id) { used = actions.usageCount(tag.id) }
         when (used) {
             null -> Unit
+
             0 -> LaunchedEffect(Unit) {
                 actions.delete(tag.id)
                 selected = selected - tag.id
                 deleting = null
             }
+
             else -> ConfirmDialog(
                 message = stringResource(R.string.tag_in_use_delete),
-                onConfirm = { scope.launch { actions.delete(tag.id); selected = selected - tag.id } },
+                onConfirm = {
+                    scope.launch {
+                        actions.delete(tag.id)
+                        selected = selected - tag.id
+                    }
+                },
                 onDismiss = { deleting = null },
                 confirmText = stringResource(R.string.action_ok),
                 dismissText = stringResource(R.string.action_cancel),
@@ -214,12 +316,21 @@ fun PhotoThumbs(
                     },
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small)
+                    modifier = Modifier.fillMaxSize().background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        MaterialTheme.shapes.small,
+                    )
                         .clickable { onOpen(i) },
                 )
                 if (removable) {
                     Box(
-                        Modifier.align(Alignment.TopEnd).size(22.dp).background(Color.Black.copy(alpha = 0.6f), CircleShape).clickable { onRemove(i) },
+                        Modifier.align(
+                            Alignment.TopEnd,
+                        ).size(
+                            22.dp,
+                        ).background(Color.Black.copy(alpha = 0.6f), CircleShape).clickable {
+                            onRemove(i)
+                        },
                         contentAlignment = Alignment.Center,
                     ) { Text("×", color = Color.White) }
                 }
@@ -230,12 +341,21 @@ fun PhotoThumbs(
 
 /** Full-screen photo pager with export for saved photos. */
 @Composable
-fun PhotoViewer(photos: List<PhotoItem>, start: Int, photoFile: (String) -> File, onExport: suspend (String) -> Boolean, onDismiss: () -> Unit) {
+fun PhotoViewer(
+    photos: List<PhotoItem>,
+    start: Int,
+    photoFile: (String) -> File,
+    onExport: suspend (String) -> Boolean,
+    onDismiss: () -> Unit,
+) {
     val pager = rememberPagerState(initialPage = start) { photos.size }
     val scope = rememberCoroutineScope()
     var savedMessage by remember { mutableStateOf<Boolean?>(null) }
     LocalContext.current
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
         Box(Modifier.fillMaxSize().background(Color.Black).systemBarsPadding()) {
             HorizontalPager(pager, Modifier.fillMaxSize()) { page ->
                 val p = photos[page]
@@ -252,20 +372,47 @@ fun PhotoViewer(photos: List<PhotoItem>, start: Int, photoFile: (String) -> File
             Row(Modifier.align(Alignment.TopEnd)) {
                 val current = photos.getOrNull(pager.currentPage)
                 if (current is PhotoItem.Stored) {
-                    IconButton(onClick = { scope.launch { savedMessage = onExport(current.fileName) } }) {
-                        Icon(Icons.Outlined.Download, stringResource(R.string.save_to_gallery), tint = Color.White)
+                    IconButton(onClick = {
+                        scope.launch { savedMessage = onExport(current.fileName) }
+                    }) {
+                        Icon(
+                            Icons.Outlined.Download,
+                            stringResource(R.string.save_to_gallery),
+                            tint = Color.White,
+                        )
                     }
                 }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close), color = Color.White) }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.action_close), color = Color.White)
+                }
             }
             if (photos.size > 1) {
-                Row(Modifier.align(Alignment.BottomCenter).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    Modifier.align(Alignment.BottomCenter).padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     repeat(photos.size) { i ->
-                        Box(Modifier.size(8.dp).background(if (i == pager.currentPage) Color.White else Color.Gray, CircleShape))
+                        Box(
+                            Modifier.size(8.dp).background(
+                                if (i == pager.currentPage) {
+                                    Color.White
+                                } else {
+                                    Color.Gray
+                                },
+                                CircleShape,
+                            ),
+                        )
                     }
                 }
             }
         }
     }
-    savedMessage?.let { ok -> MessageDialog(stringResource(if (ok) R.string.saved else R.string.save_failed), onDismiss = { savedMessage = null }) }
+    savedMessage?.let { ok ->
+        MessageDialog(
+            stringResource(if (ok) R.string.saved else R.string.save_failed),
+            onDismiss = {
+                savedMessage = null
+            },
+        )
+    }
 }

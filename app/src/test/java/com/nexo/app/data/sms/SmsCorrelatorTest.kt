@@ -25,7 +25,13 @@ class SmsCorrelatorTest {
         correlator.accept(msg, parser.parse(msg), body, at)
     }
 
-    private fun purchase(merchant: String, amount: String, cur: String = "LKR", card: String = "9876", date: String = "03/11/26 07:45 PM") =
+    private fun purchase(
+        merchant: String,
+        amount: String,
+        cur: String = "LKR",
+        card: String = "9876",
+        date: String = "03/11/26 07:45 PM",
+    ) =
         "Dear Cardholder, Purchase at $merchant for $cur $amount on $date has been authorised on your debit card ending #$card."
 
     private fun otp(merchant: String, amount: String, cur: String = "LKR") =
@@ -44,8 +50,16 @@ class SmsCorrelatorTest {
 
     @Test
     fun longerOtpNameReplacesTheDescriptor() {
-        assertEquals(Outcome.HintStored, send(otp("Lakeside University Online Payments", "9,000.00"), base))
-        val item = (send(purchase("HTTPS://WWW.PAY.LAKE 0000000 GB", "9,000.00"), base + minute) as Outcome.Created).item
+        assertEquals(
+            Outcome.HintStored,
+            send(otp("Lakeside University Online Payments", "9,000.00"), base),
+        )
+        val item = (
+            send(
+                purchase("HTTPS://WWW.PAY.LAKE 0000000 GB", "9,000.00"),
+                base + minute,
+            ) as Outcome.Created
+            ).item
         assertEquals("Lakeside University Online Payments", item.merchant)
         assertEquals("lakeside university online payments", item.merchantKey)
         assertEquals("HTTPS://WWW.PAY.LAKE 0000000 GB", item.merchantRaw)
@@ -56,7 +70,9 @@ class SmsCorrelatorTest {
     @Test
     fun shorterOtpNameIsIgnored() {
         send(otp("NINEPINES", "5,000.00"), base)
-        val item = (send(purchase("NINE PINES COLOMBO 05 LK", "5,000.00"), base + minute) as Outcome.Created).item
+        val item = (
+            send(purchase("NINE PINES COLOMBO 05 LK", "5,000.00"), base + minute) as Outcome.Created
+            ).item
         assertEquals("NINE PINES", item.merchant)
         assertFalse(item.merchantFromOtp)
     }
@@ -64,14 +80,25 @@ class SmsCorrelatorTest {
     @Test
     fun otpOlderThanFifteenMinutesIsNotUsed() {
         send(otp("Lakeside University Online Payments", "9,000.00"), base)
-        val item = (send(purchase("HTTPS://WWW.PAY.LAKE 0000000 GB", "9,000.00"), base + 16 * minute) as Outcome.Created).item
+        val item = (
+            send(
+                purchase("HTTPS://WWW.PAY.LAKE 0000000 GB", "9,000.00"),
+                base + 16 * minute,
+            ) as Outcome.Created
+            ).item
         assertEquals("PAY.LAKE", item.merchant)
     }
 
     @Test
     fun cancellationOfAPendingPurchaseCancelsIt() {
-        val created = (send(purchase("Mega*Store Singapore SG", "1.00", cur = "USD"), base) as Outcome.Created).item
-        val cancelled = send("YOUR TRANSACTION AT Mega*Store ON YOUR CARD ENDING WITH 9876 HAS BEEN CANCELLED.", base + 2 * 24 * 60 * minute)
+        val created = (
+            send(purchase("Mega*Store Singapore SG", "1.00", cur = "USD"), base) as Outcome.Created
+            ).item
+        val cancelled =
+            send(
+                "YOUR TRANSACTION AT Mega*Store ON YOUR CARD ENDING WITH 9876 HAS BEEN CANCELLED.",
+                base + 2 * 24 * 60 * minute,
+            )
         cancelled as Outcome.Cancelled
         assertEquals(created.id, cancelled.item.id)
         assertEquals(SmsStatus.CANCELLED, store.items.getValue(created.id).status)
@@ -79,9 +106,21 @@ class SmsCorrelatorTest {
 
     @Test
     fun cancellationOfAnApprovedPurchaseQueuesMoneyBack() = runBlocking {
-        val created = (send(purchase("Mega*Store Singapore SG", "4.00", cur = "USD"), base) as Outcome.Created).item
-        store.update(created.copy(status = SmsStatus.APPROVED, accountId = "acc", categoryId = "cat", transactionId = "tx"))
-        val o = send("YOUR TRANSACTION AT Mega*Store ON YOUR CARD ENDING WITH 9876 HAS BEEN CANCELLED.", base + minute) as Outcome.Reversal
+        val created = (
+            send(purchase("Mega*Store Singapore SG", "4.00", cur = "USD"), base) as Outcome.Created
+            ).item
+        store.update(
+            created.copy(
+                status = SmsStatus.APPROVED,
+                accountId = "acc",
+                categoryId = "cat",
+                transactionId = "tx",
+            ),
+        )
+        val o = send(
+            "YOUR TRANSACTION AT Mega*Store ON YOUR CARD ENDING WITH 9876 HAS BEEN CANCELLED.",
+            base + minute,
+        ) as Outcome.Reversal
         assertEquals(SmsKind.INCOME, o.item.kind)
         assertEquals(SmsStatus.PENDING, o.item.status)
         assertEquals(created.id, o.item.linkedItemId)
@@ -89,22 +128,41 @@ class SmsCorrelatorTest {
         assertEquals(null, o.item.categoryId)
         assertEquals(null, o.item.transactionId)
         // The bank repeating the cancellation doesn't queue a second refund.
-        assertTrue(send("YOUR TRANSACTION AT Mega*Store ON YOUR CARD ENDING WITH 9876 HAS BEEN CANCELLED.", base + 2 * minute) is Outcome.Duplicate)
+        assertTrue(
+            send(
+                "YOUR TRANSACTION AT Mega*Store ON YOUR CARD ENDING WITH 9876 HAS BEEN CANCELLED.",
+                base + 2 * minute,
+            ) is Outcome.Duplicate,
+        )
     }
 
     @Test
     fun cancellationWithoutAPurchaseIsAnOrphan() {
-        val o = send("YOUR TRANSACTION AT Mega*Store ON YOUR CARD ENDING WITH 9876 HAS BEEN CANCELLED.", base)
+        val o =
+            send(
+                "YOUR TRANSACTION AT Mega*Store ON YOUR CARD ENDING WITH 9876 HAS BEEN CANCELLED.",
+                base,
+            )
         assertEquals(IgnoreReason.ORPHAN_CANCEL, (o as Outcome.Skipped).reason)
         // A purchase arriving afterwards is not cancelled retroactively.
-        val later = (send(purchase("Mega*Store Singapore SG", "1.00", cur = "USD"), base + minute) as Outcome.Created).item
+        val later = (
+            send(
+                purchase("Mega*Store Singapore SG", "1.00", cur = "USD"),
+                base + minute,
+            ) as Outcome.Created
+            ).item
         assertEquals(SmsStatus.PENDING, store.items.getValue(later.id).status)
     }
 
     @Test
     fun cancellationOnAnotherCardDoesNotMatch() {
         send(purchase("Mega*Store Singapore SG", "1.00", cur = "USD", card = "1111"), base)
-        assertTrue(send("YOUR TRANSACTION AT Mega*Store ON YOUR CARD ENDING WITH 9876 HAS BEEN CANCELLED.", base + minute) is Outcome.Skipped)
+        assertTrue(
+            send(
+                "YOUR TRANSACTION AT Mega*Store ON YOUR CARD ENDING WITH 9876 HAS BEEN CANCELLED.",
+                base + minute,
+            ) is Outcome.Skipped,
+        )
     }
 
     @Test
@@ -116,13 +174,22 @@ class SmsCorrelatorTest {
         // Twenty minutes later it is a new attempt.
         assertTrue(send(transferCode("7,500.00"), base + 25 * minute) is Outcome.Created)
         // Same amount on the other route is a different transfer.
-        assertTrue(send(transferCode("7,500.00", route = "within ComBank"), base + 26 * minute) is Outcome.Created)
+        assertTrue(
+            send(
+                transferCode("7,500.00", route = "within ComBank"),
+                base + 26 * minute,
+            ) is Outcome.Created,
+        )
     }
 
     @Test
     fun completionMessageUpgradesTheApprovalCodeItem() {
         val pending = (send(transferCode("2,500.00"), base) as Outcome.Created).item
-        val o = send("Fund transfer request WT00001234 P 2026-11-03 at 19:45:10 via Combank Online to J Silva for LKR 2500.00 Inquiries+94110000000.", base + 30 * minute)
+        val o =
+            send(
+                "Fund transfer request WT00001234 P 2026-11-03 at 19:45:10 via Combank Online to J Silva for LKR 2500.00 Inquiries+94110000000.",
+                base + 30 * minute,
+            )
         o as Outcome.Upgraded
         assertEquals(pending.id, o.item.id)
         assertEquals(Certainty.EXACT, o.item.certainty)

@@ -11,7 +11,10 @@ interface BookRepository {
     suspend fun photoFileCount(): Int
 
     /** Everything goes and a fresh book starts with [main] as its main currency. */
-    suspend fun completeReset(deletePhotos: Boolean, main: CatalogCurrency = CurrencyCatalog.forLocale())
+    suspend fun completeReset(
+        deletePhotos: Boolean,
+        main: CatalogCurrency = CurrencyCatalog.forLocale(),
+    )
 
     /** Transactions, memos and their links go; accounts, categories and settings stay. */
     suspend fun contentsReset(deletePhotos: Boolean)

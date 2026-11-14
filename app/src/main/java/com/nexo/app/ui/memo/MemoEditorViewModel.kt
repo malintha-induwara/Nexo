@@ -64,9 +64,23 @@ class MemoEditorViewModel @AssistedInject constructor(
             val m = key.memoId?.let { memos.getMemo(it) }
             original = m
             _uiState.value = if (m != null) {
-                MemoEditorUiState(true, m.id, m.title, m.content.trimEnd('\n'), LocalDate.parse(m.date), m.color, m.pinned, m.pinnedAt)
+                MemoEditorUiState(
+                    true,
+                    m.id,
+                    m.title,
+                    m.content.trimEnd('\n'),
+                    LocalDate.parse(m.date),
+                    m.color,
+                    m.pinned,
+                    m.pinnedAt,
+                )
             } else {
-                MemoEditorUiState(loaded = true, date = key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now())
+                MemoEditorUiState(
+                    loaded = true,
+                    date =
+                        key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                            ?: LocalDate.now(),
+                )
             }
         }
     }
@@ -75,7 +89,13 @@ class MemoEditorViewModel @AssistedInject constructor(
     fun setContent(v: String) = _uiState.update { it.copy(content = v) }
     fun setDate(d: LocalDate) = _uiState.update { it.copy(date = d) }
     fun setColor(c: MemoColor) = _uiState.update { it.copy(color = c) }
-    fun togglePin() = _uiState.update { if (it.pinned) it.copy(pinned = false, pinnedAt = 0) else it.copy(pinned = true, pinnedAt = System.currentTimeMillis()) }
+    fun togglePin() = _uiState.update {
+        if (it.pinned) {
+            it.copy(pinned = false, pinnedAt = 0)
+        } else {
+            it.copy(pinned = true, pinnedAt = System.currentTimeMillis())
+        }
+    }
 
     /** Saved on back; an emptied existing memo is deleted. */
     fun saveAndClose() = viewModelScope.launch {
@@ -84,16 +104,26 @@ class MemoEditorViewModel @AssistedInject constructor(
         val o = original
         when {
             empty && o != null -> memos.delete(o.id)
+
             empty -> Unit
+
             else -> {
                 val now = System.currentTimeMillis()
-                val time = o?.let { Instant.ofEpochMilli(it.dateTime.toLong()).atZone(ZoneId.systemDefault()).toLocalTime() } ?: LocalTime.now()
+                val time =
+                    o?.let {
+                        Instant.ofEpochMilli(
+                            it.dateTime.toLong(),
+                        ).atZone(ZoneId.systemDefault()).toLocalTime()
+                    }
+                        ?: LocalTime.now()
                 val row = Memo(
                     id = o?.id ?: UUID.randomUUID().toString(),
                     title = s.title.trim(),
                     content = if (s.content.isBlank()) "" else s.content.trimEnd() + "\n",
                     date = s.date.toIsoText(),
-                    dateTime = s.date.atTime(time).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                    dateTime = s.date.atTime(
+                        time,
+                    ).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
                     pinned = s.pinned,
                     pinnedAt = if (s.pinned) s.pinnedAt else 0,
                     orderSeq = o?.orderSeq ?: memos.nextOrder(),

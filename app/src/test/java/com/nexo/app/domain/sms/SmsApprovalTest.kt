@@ -54,13 +54,23 @@ class SmsApprovalTest {
     @Before
     fun setUp() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
+        db =
+            Room.inMemoryDatabaseBuilder(
+                context,
+                NexoDatabase::class.java,
+            ).allowMainThreadQueries().build()
         BookSeeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val refs = referenceDataRepository(db, scope)
         transactions = transactionsRepository(context, db, refs)
         sms = smsRepository(context, db, refs)
-        approveSms = ApproveSmsUseCase(sms, refs, transactions, GetSmsDraftUseCase(GetSmsLedgerAmountUseCase()))
+        approveSms =
+            ApproveSmsUseCase(
+                sms,
+                refs,
+                transactions,
+                GetSmsDraftUseCase(GetSmsLedgerAmountUseCase()),
+            )
         getFeePlan = GetSmsFeePlanUseCase(sms, refs)
     }
 
@@ -82,11 +92,26 @@ class SmsApprovalTest {
         estimated: Double? = null,
     ): SmsItem {
         val e = SmsItemEntity(
-            id = UUID.randomUUID().toString(), certainty = certainty, kind = kind, bank = "COMBANK", sender = "COMBANK",
+            id = UUID.randomUUID().toString(),
+            certainty = certainty,
+            kind = kind,
+            bank = "COMBANK",
+            sender = "COMBANK",
             template = "purchase", amount = amount, currency = currency, merchant = merchant,
-            merchantKey = merchant.lowercase(), cardLast4 = card, payee = payee, occurredAt = at, smsAt = at, capturedAt = at,
-            dedupeKey = UUID.randomUUID().toString(), text = "Purchase at GREEN LEAF CAFE", accountId = accountId,
-            toAccountId = toAccountId, categoryId = categoryId, feeRoute = feeRoute, estimatedAmount = estimated, updatedAt = at,
+            merchantKey = merchant.lowercase(),
+            cardLast4 = card,
+            payee = payee,
+            occurredAt = at,
+            smsAt = at,
+            capturedAt = at,
+            dedupeKey = UUID.randomUUID().toString(),
+            text = "Purchase at GREEN LEAF CAFE",
+            accountId = accountId,
+            toAccountId = toAccountId,
+            categoryId = categoryId,
+            feeRoute = feeRoute,
+            estimatedAmount = estimated,
+            updatedAt = at,
         )
         db.smsDao().insert(e)
         return e.asExternalModel()
@@ -124,7 +149,14 @@ class SmsApprovalTest {
 
     @Test
     fun withdrawalBecomesATransferToCash() = runBlocking {
-        val i = item(kind = SmsKind.TRANSFER_TO_CASH, amount = 6000.0, toAccountId = "11", categoryId = null, merchant = "MATARA-2 BR")
+        val i =
+            item(
+                kind = SmsKind.TRANSFER_TO_CASH,
+                amount = 6000.0,
+                toAccountId = "11",
+                categoryId = null,
+                merchant = "MATARA-2 BR",
+            )
         approveSms(i.id) as ApproveResult.Done
         val rows = db.transactionDao().getAll()
         assertEquals(setOf(TxKind.TRANSFER_OUT, TxKind.TRANSFER_IN), rows.map { it.kind }.toSet())
@@ -134,7 +166,13 @@ class SmsApprovalTest {
 
     @Test
     fun transferFeeIsWrittenWithTheTransfer() = runBlocking {
-        val i = item(kind = SmsKind.TRANSFER_TO_CASH, amount = 5000.0, toAccountId = "11", categoryId = null)
+        val i =
+            item(
+                kind = SmsKind.TRANSFER_TO_CASH,
+                amount = 5000.0,
+                toAccountId = "11",
+                categoryId = null,
+            )
         approveSms(i.id, FeeChoice(30.0)) as ApproveResult.Done
         val fee = db.transactionDao().getAll().single { it.kind == TxKind.EXPENSE }
         assertEquals(30.0, fee.amount, 0.0)
@@ -143,7 +181,15 @@ class SmsApprovalTest {
 
     @Test
     fun paymentToAPayeeWithACategoryIsAnExpense() = runBlocking {
-        val i = item(kind = SmsKind.TRANSFER_OUT, amount = 1500.0, categoryId = "7", merchant = "", payee = "J Silva", card = null)
+        val i =
+            item(
+                kind = SmsKind.TRANSFER_OUT,
+                amount = 1500.0,
+                categoryId = "7",
+                merchant = "",
+                payee = "J Silva",
+                card = null,
+            )
         val r = approveSms(i.id) as ApproveResult.Done
         val tx = db.transactionDao().getById(r.transactionId)!!
         assertEquals(TxKind.EXPENSE, tx.kind)
@@ -195,7 +241,14 @@ class SmsApprovalTest {
 
     @Test
     fun unverifiedStaysUnverifiedWhenEdited() = runBlocking {
-        val i = item(kind = SmsKind.TRANSFER_OUT, certainty = Certainty.UNVERIFIED, categoryId = null, card = null, merchant = "")
+        val i =
+            item(
+                kind = SmsKind.TRANSFER_OUT,
+                certainty = Certainty.UNVERIFIED,
+                categoryId = null,
+                card = null,
+                merchant = "",
+            )
         sms.setAmount(i.id, 3500.0)
         val edited = db.smsDao().item(i.id)!!
         assertEquals(Certainty.UNVERIFIED, edited.certainty)
@@ -216,7 +269,16 @@ class SmsApprovalTest {
 
     @Test
     fun feeOnAnExpenseIsALinkedBankFeeRowThatGoesWithItsParent() = runBlocking {
-        val i = item(kind = SmsKind.TRANSFER_OUT, amount = 3600.0, categoryId = "7", card = null, merchant = "", payee = "J Silva", feeRoute = FeeRoute.INTERBANK_TRANSFER)
+        val i =
+            item(
+                kind = SmsKind.TRANSFER_OUT,
+                amount = 3600.0,
+                categoryId = "7",
+                card = null,
+                merchant = "",
+                payee = "J Silva",
+                feeRoute = FeeRoute.INTERBANK_TRANSFER,
+            )
         val r = approveSms(i.id, FeeChoice(30.0)) as ApproveResult.Done
         val fee = db.transactionDao().getById(r.feeId!!)!!
         assertEquals(TxKind.EXPENSE, fee.kind)
@@ -244,7 +306,14 @@ class SmsApprovalTest {
 
     @Test
     fun transferFeeUsesTheBankFeeCategory() = runBlocking {
-        val i = item(kind = SmsKind.TRANSFER_TO_CASH, amount = 5000.0, toAccountId = "11", categoryId = null, feeRoute = FeeRoute.OTHER_BANK_ATM)
+        val i =
+            item(
+                kind = SmsKind.TRANSFER_TO_CASH,
+                amount = 5000.0,
+                toAccountId = "11",
+                categoryId = null,
+                feeRoute = FeeRoute.OTHER_BANK_ATM,
+            )
         val r = approveSms(i.id, FeeChoice(30.0)) as ApproveResult.Done
         val fee = db.transactionDao().getById(r.feeId!!)!!
         assertEquals("Bank fee", db.categoryDao().getById(fee.categoryId!!)!!.name)
@@ -258,11 +327,17 @@ class SmsApprovalTest {
         assertEquals(FeePlan.None, getFeePlan(item(feeRoute = FeeRoute.OWN_BANK_TRANSFER)))
 
         approveSms(first.id, FeeChoice(30.0))
-        assertEquals(FeePlan.Ask(FeeRoute.INTERBANK_TRANSFER, 30.0), getFeePlan(item(feeRoute = FeeRoute.INTERBANK_TRANSFER)))
+        assertEquals(
+            FeePlan.Ask(FeeRoute.INTERBANK_TRANSFER, 30.0),
+            getFeePlan(item(feeRoute = FeeRoute.INTERBANK_TRANSFER)),
+        )
 
         val remembered = item(feeRoute = FeeRoute.INTERBANK_TRANSFER)
         approveSms(remembered.id, FeeChoice(35.0, remember = true))
-        assertEquals(FeePlan.Auto(FeeRoute.INTERBANK_TRANSFER, 35.0), getFeePlan(item(feeRoute = FeeRoute.INTERBANK_TRANSFER)))
+        assertEquals(
+            FeePlan.Auto(FeeRoute.INTERBANK_TRANSFER, 35.0),
+            getFeePlan(item(feeRoute = FeeRoute.INTERBANK_TRANSFER)),
+        )
 
         val never = item(feeRoute = FeeRoute.INTERBANK_TRANSFER)
         approveSms(never.id, FeeChoice(null, remember = true))
@@ -272,7 +347,14 @@ class SmsApprovalTest {
 
     @Test
     fun fxDifferenceIsAskedOnlyAboveTheTolerance() = runBlocking {
-        val close = item(amount = 20.0, currency = "USD", certainty = Certainty.ESTIMATED, feeRoute = FeeRoute.FX_CARD_PURCHASE, estimated = 6730.0)
+        val close =
+            item(
+                amount = 20.0,
+                currency = "USD",
+                certainty = Certainty.ESTIMATED,
+                feeRoute = FeeRoute.FX_CARD_PURCHASE,
+                estimated = 6730.0,
+            )
         assertEquals(FeePlan.None, getFeePlan(close))
         sms.setAmount(close.id, 6760.0)
         assertEquals(FeePlan.None, getFeePlan(sms.getItem(close.id)!!))
@@ -284,7 +366,14 @@ class SmsApprovalTest {
 
     @Test
     fun fxDifferenceRecordedAsAFeeKeepsThePurchaseAtTheEstimate() = runBlocking {
-        val i = item(amount = 20.0, currency = "USD", certainty = Certainty.ESTIMATED, feeRoute = FeeRoute.FX_CARD_PURCHASE, estimated = 6730.0)
+        val i =
+            item(
+                amount = 20.0,
+                currency = "USD",
+                certainty = Certainty.ESTIMATED,
+                feeRoute = FeeRoute.FX_CARD_PURCHASE,
+                estimated = 6730.0,
+            )
         sms.setAmount(i.id, 6912.4)
         val r = approveSms(i.id, FeeChoice(182.4)) as ApproveResult.Done
         assertEquals(6730.0, db.transactionDao().getById(r.transactionId)!!.amount, 0.0)
@@ -295,7 +384,14 @@ class SmsApprovalTest {
 
     @Test
     fun fxDifferenceIncludedInThePurchaseHasNoFeeRow() = runBlocking {
-        val i = item(amount = 20.0, currency = "USD", certainty = Certainty.ESTIMATED, feeRoute = FeeRoute.FX_CARD_PURCHASE, estimated = 6730.0)
+        val i =
+            item(
+                amount = 20.0,
+                currency = "USD",
+                certainty = Certainty.ESTIMATED,
+                feeRoute = FeeRoute.FX_CARD_PURCHASE,
+                estimated = 6730.0,
+            )
         sms.setAmount(i.id, 6912.4)
         val r = approveSms(i.id, FeeChoice(182.4, includeInPurchase = true)) as ApproveResult.Done
         assertNull(r.feeId)

@@ -70,7 +70,8 @@ fun LockScreen(
     var forgot by remember { mutableIntStateOf(0) }
     val wrongPin = stringResource(R.string.lock_wrong_pin)
     val invalidated = stringResource(R.string.biometric_invalidated)
-    val promptTitle = stringResource(R.string.biometric_prompt_title, stringResource(R.string.app_name))
+    val promptTitle =
+        stringResource(R.string.biometric_prompt_title, stringResource(R.string.app_name))
     val usePin = stringResource(R.string.use_pin)
 
     BackHandler { activity?.moveTaskToBack(true) }
@@ -98,10 +99,22 @@ fun LockScreen(
     fun submit(value: String) = scope.launch {
         when (val r = onVerifyPin(value)) {
             PinResult.Success -> Unit
+
             is PinResult.Wrong -> {
                 shake++
-                message = if (r.triesBeforeWait in 1..2) wrongPin + " " + resources.getQuantityString(R.plurals.tries_left, r.triesBeforeWait, r.triesBeforeWait) else wrongPin
+                message =
+                    if (r.triesBeforeWait in 1..2) {
+                        wrongPin + " " +
+                            resources.getQuantityString(
+                                R.plurals.tries_left,
+                                r.triesBeforeWait,
+                                r.triesBeforeWait,
+                            )
+                    } else {
+                        wrongPin
+                    }
             }
+
             is PinResult.Waiting -> {
                 shake++
                 waitUntil = r.untilMillis
@@ -113,28 +126,49 @@ fun LockScreen(
 
     Box(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) {},
     ) {
         Column(
             Modifier.fillMaxSize().systemBarsPadding().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Box(Modifier.size(72.dp).background(MaterialTheme.colorScheme.primary, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.Lock, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(36.dp))
+            Box(
+                Modifier.size(72.dp).background(MaterialTheme.colorScheme.primary, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.Lock,
+                    null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(36.dp),
+                )
             }
             Spacer(Modifier.height(16.dp))
-            Text(stringResource(R.string.lock_enter_pin), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.lock_enter_pin),
+                style = MaterialTheme.typography.titleMedium,
+            )
             Spacer(Modifier.height(20.dp))
             PinDots(pin.length, shake)
             Spacer(Modifier.height(12.dp))
             val remaining = ((waitUntil - now) / 1000).coerceAtLeast(0)
             Text(
                 when {
-                    remaining > 0 -> stringResource(R.string.lock_wait, remaining / 60, remaining % 60)
+                    remaining > 0 -> stringResource(
+                        R.string.lock_wait,
+                        remaining / 60,
+                        remaining % 60,
+                    )
+
                     else -> message ?: ""
                 },
-                color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center, modifier = Modifier.height(40.dp),
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.height(40.dp),
             )
             PinKeypad(
                 onDigit = { d ->
@@ -158,6 +192,7 @@ fun LockScreen(
             onConfirm = { forgot = 2 },
             onDismiss = { if (forgot == 1) forgot = 0 },
         )
+
         2 -> {
             val word = stringResource(R.string.lock_erase_word)
             var error by remember { mutableStateOf<String?>(null) }
@@ -167,7 +202,14 @@ fun LockScreen(
                 label = stringResource(R.string.lock_erase_type, word),
                 initial = "",
                 error = error,
-                onConfirm = { if (it.trim().equals(word, ignoreCase = true)) { forgot = 0; onEraseAll() } else error = mismatch },
+                onConfirm = {
+                    if (it.trim().equals(word, ignoreCase = true)) {
+                        forgot = 0
+                        onEraseAll()
+                    } else {
+                        error = mismatch
+                    }
+                },
                 onDismiss = { forgot = 0 },
             )
         }

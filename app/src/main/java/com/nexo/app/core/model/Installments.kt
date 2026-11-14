@@ -15,5 +15,6 @@ object Installments {
     }
 
     /** Row k falls k−1 months after [start] on the same day, clamped to short months. */
-    fun dates(start: LocalDate, count: Int): List<LocalDate> = (0 until count).map { start.plusMonths(it.toLong()) }
+    fun dates(start: LocalDate, count: Int): List<LocalDate> =
+        (0 until count).map { start.plusMonths(it.toLong()) }
 }

@@ -94,68 +94,143 @@ fun ColumnScope.FeePromptContent(prompt: FeePrompt, ref: RefData, onAnswer: (Fee
 
     Column(Modifier.fillMaxWidth().weight(1f).padding(horizontal = Space.gutter)) {
         Text(
-            if (plan.fxDifference) stringResource(R.string.fee_ask_fx_title, AmountFormatter.format(plan.prefill ?: 0.0, currency))
-            else stringResource(R.string.fee_ask_title, bankName(item)),
-            style = MaterialTheme.typography.titleMedium, color = colors.text,
+            if (plan.fxDifference) {
+                stringResource(
+                    R.string.fee_ask_fx_title,
+                    AmountFormatter.format(plan.prefill ?: 0.0, currency),
+                )
+            } else {
+                stringResource(R.string.fee_ask_title, bankName(item))
+            },
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.text,
         )
-        val sub = if (plan.fxDifference) stringResource(R.string.fee_ask_fx_sub) else feeRouteQuestion(plan.route)?.let { stringResource(it) }
-        if (sub != null) Text(sub, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary, modifier = Modifier.padding(top = Space.xxs))
+        val sub = if (plan.fxDifference) {
+            stringResource(R.string.fee_ask_fx_sub)
+        } else {
+            feeRouteQuestion(plan.route)?.let {
+                stringResource(it)
+            }
+        }
+        if (sub != null) {
+            Text(
+                sub,
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = Space.xxs),
+            )
+        }
         if (prompt.items.size > 1) {
             Text(
                 pluralStringResource(R.plurals.fee_batch, prompt.items.size, prompt.items.size),
-                style = NexoType.Meta, color = colors.textTertiary, modifier = Modifier.padding(top = Space.xs),
+                style = NexoType.Meta,
+                color = colors.textTertiary,
+                modifier = Modifier.padding(top = Space.xs),
             )
         }
         Spacer(Modifier.height(Space.l))
         Row(
-            Modifier.fillMaxWidth().clip(NexoShapes.control).background(colors.raised).clickable { editing = true }
+            Modifier.fillMaxWidth().clip(NexoShapes.control).background(colors.raised).clickable {
+                editing = true
+            }
                 .heightIn(min = 56.dp).padding(horizontal = Space.l),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(stringResource(R.string.fee_amount), style = MaterialTheme.typography.bodyLarge, color = colors.textSecondary, modifier = Modifier.weight(1f))
-            if (amount != null) AmountText(amount!!, currency, sign = AmountParts.Sign.NONE)
-            else Text("—", style = NexoType.Amount, color = colors.textTertiary)
+            Text(
+                stringResource(R.string.fee_amount),
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textSecondary,
+                modifier = Modifier.weight(1f),
+            )
+            if (amount != null) {
+                AmountText(amount!!, currency, sign = AmountParts.Sign.NONE)
+            } else {
+                Text("—", style = NexoType.Amount, color = colors.textTertiary)
+            }
         }
         if (confirmLarge && tooLarge) {
-            Text(stringResource(R.string.fee_too_large), style = NexoType.Meta, color = colors.textSecondary, modifier = Modifier.padding(top = Space.s))
+            Text(
+                stringResource(R.string.fee_too_large),
+                style = NexoType.Meta,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = Space.s),
+            )
         }
         val account = ref.accountById[item.accountId]?.name.orEmpty()
         Row(
-            Modifier.fillMaxWidth().padding(top = Space.s).clip(NexoShapes.control).clickable { haptics.tick(); remember = !remember }.padding(vertical = Space.xs),
+            Modifier.fillMaxWidth().padding(top = Space.s).clip(NexoShapes.control).clickable {
+                haptics.tick()
+                remember = !remember
+            }.padding(vertical = Space.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Checkbox(
                 checked = remember,
                 onCheckedChange = { remember = it },
-                colors = CheckboxDefaults.colors(checkedColor = colors.primary, uncheckedColor = colors.textTertiary, checkmarkColor = colors.onPrimary),
+                colors = CheckboxDefaults.colors(
+                    checkedColor = colors.primary,
+                    uncheckedColor = colors.textTertiary,
+                    checkmarkColor = colors.onPrimary,
+                ),
             )
             Text(
-                stringResource(R.string.fee_remember, stringResource(feeRouteInline(plan.route)), account),
-                style = MaterialTheme.typography.bodyMedium, color = colors.text, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                stringResource(
+                    R.string.fee_remember,
+                    stringResource(feeRouteInline(plan.route)),
+                    account,
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.text,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
 
-    Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = Space.gutter, vertical = Space.m)) {
+    Column(
+        Modifier.fillMaxWidth().navigationBarsPadding().padding(
+            horizontal = Space.gutter,
+            vertical = Space.m,
+        ),
+    ) {
         Row(horizontalArrangement = Arrangement.spacedBy(Space.s)) {
             Button(
                 onClick = {
                     haptics.confirm()
-                    onAnswer(if (plan.fxDifference) FeeChoice(amount, remember, includeInPurchase = true) else FeeChoice(null, remember))
+                    onAnswer(
+                        if (plan.fxDifference) {
+                            FeeChoice(amount, remember, includeInPurchase = true)
+                        } else {
+                            FeeChoice(null, remember)
+                        },
+                    )
                 },
                 modifier = Modifier.weight(1f).height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = colors.raised, contentColor = colors.text),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.raised,
+                    contentColor = colors.text,
+                ),
                 contentPadding = PaddingValues(horizontal = Space.s),
-            ) { Text(stringResource(if (plan.fxDifference) R.string.fee_include else R.string.fee_none), style = MaterialTheme.typography.labelLarge, maxLines = 1) }
+            ) {
+                Text(
+                    stringResource(
+                        if (plan.fxDifference) R.string.fee_include else R.string.fee_none,
+                    ),
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
+                )
+            }
             Button(
                 onClick = {
                     val a = amount
                     when {
                         a == null || a <= 0 -> onAnswer(FeeChoice(null, remember))
+
                         tooLarge && !confirmLarge -> {
                             haptics.reject()
                             confirmLarge = true
                         }
+
                         else -> {
                             haptics.confirm()
                             onAnswer(FeeChoice(a, remember))
@@ -163,11 +238,24 @@ fun ColumnScope.FeePromptContent(prompt: FeePrompt, ref: RefData, onAnswer: (Fee
                     }
                 },
                 modifier = Modifier.weight(1.3f).height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.primary,
+                    contentColor = colors.onPrimary,
+                ),
                 contentPadding = PaddingValues(horizontal = Space.s),
-            ) { Text(stringResource(if (plan.fxDifference) R.string.fee_record_difference else R.string.fee_add), style = MaterialTheme.typography.titleSmall, maxLines = 1) }
+            ) {
+                Text(
+                    stringResource(
+                        if (plan.fxDifference) R.string.fee_record_difference else R.string.fee_add,
+                    ),
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                )
+            }
         }
-        TextButton(onClick = { onAnswer(null) }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+        TextButton(onClick = {
+            onAnswer(null)
+        }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text(stringResource(R.string.action_cancel), color = colors.textSecondary)
         }
     }

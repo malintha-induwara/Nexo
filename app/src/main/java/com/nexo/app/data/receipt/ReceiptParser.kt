@@ -28,7 +28,8 @@ object ReceiptParser {
     private const val MERCHANT_LENGTH = 40
     private val EARLIEST = LocalDate.of(2000, 1, 1)
 
-    fun read(lines: List<OcrLine>, today: LocalDate): ReceiptRead = parse(ReceiptRows.build(lines), today)
+    fun read(lines: List<OcrLine>, today: LocalDate): ReceiptRead =
+        parse(ReceiptRows.build(lines), today)
 
     fun parse(rows: List<String>, today: LocalDate): ReceiptRead {
         if (rows.isEmpty()) return ReceiptRead.EMPTY
@@ -49,24 +50,39 @@ object ReceiptParser {
     private fun pickTotal(rows: List<Row>): Pair<BigDecimal?, Boolean> {
         val checks = arithmetic(rows)
         data class Candidate(val row: Row, val amount: BigDecimal)
-        val candidates = rows.filter { it.isTotal }.mapNotNull { r -> amountFor(r, rows)?.let { Candidate(r, it) } }
+        val candidates = rows.filter {
+            it.isTotal
+        }.mapNotNull { r -> amountFor(r, rows)?.let { Candidate(r, it) } }
         if (candidates.isNotEmpty()) {
             val best = candidates.sortedWith(
-                compareByDescending<Candidate> { it.amount in checks }.thenByDescending { it.row.strength }.thenByDescending { it.row.index },
+                compareByDescending<Candidate> {
+                    it.amount in checks
+                }.thenByDescending { it.row.strength }.thenByDescending { it.row.index },
             ).first()
             return best.amount to false
         }
         val open = rows.filter { !it.excluded }
         checks.firstOrNull { c -> open.any { c in it.amounts } }?.let { return it to false }
-        return open.flatMap { it.amounts }.filter { it.signum() > 0 }.maxOrNull()?.let { it to true } ?: (null to false)
+        return open.flatMap {
+            it.amounts
+        }.filter { it.signum() > 0 }.maxOrNull()?.let { it to true }
+            ?: (null to false)
     }
 
     /** The right-most amount on a total row; failing that, the amount on the next row when that row carries no label. */
     private fun amountFor(row: Row, rows: List<Row>): BigDecimal? {
-        (row.amounts.lastOrNull() ?: row.wholeAmounts.lastOrNull())?.takeIf { it.signum() > 0 }?.let { return it }
+        (row.amounts.lastOrNull() ?: row.wholeAmounts.lastOrNull())?.takeIf {
+            it.signum() > 0
+        }?.let { return it }
         val next = rows.getOrNull(row.index + 1) ?: return null
         if (next.excluded || next.strength > 0) return null
-        return (next.amounts.lastOrNull() ?: next.wholeAmounts.lastOrNull()?.takeIf { !next.hasLetters })?.takeIf { it.signum() > 0 }
+        return (
+            next.amounts.lastOrNull()
+                ?: next.wholeAmounts.lastOrNull()?.takeIf { !next.hasLetters }
+            )?.takeIf {
+            it.signum() >
+                0
+        }
     }
 
     /** Totals the receipt states on its own: cash less change, and subtotal plus tax and charges less discounts. */
@@ -76,8 +92,12 @@ object ReceiptParser {
         if (cash != null && change != null && cash > change) add(cash - change)
         val subtotal = rows.lastOrNull { it.subtotal && it.amounts.isNotEmpty() }?.amounts?.last()
         if (subtotal != null) {
-            val extras = rows.filter { it.extra }.mapNotNull { it.amounts.lastOrNull() }.fold(BigDecimal.ZERO, BigDecimal::add)
-            val discounts = rows.filter { it.discount }.mapNotNull { it.amounts.lastOrNull() }.fold(BigDecimal.ZERO, BigDecimal::add)
+            val extras = rows.filter {
+                it.extra
+            }.mapNotNull { it.amounts.lastOrNull() }.fold(BigDecimal.ZERO, BigDecimal::add)
+            val discounts = rows.filter {
+                it.discount
+            }.mapNotNull { it.amounts.lastOrNull() }.fold(BigDecimal.ZERO, BigDecimal::add)
             val sum = subtotal + extras - discounts
             if (sum.signum() > 0) add(sum.setScale(2, RoundingMode.HALF_UP))
         }
@@ -89,10 +109,14 @@ object ReceiptParser {
         private val words = cleanWords(raw)
 
         /** Amounts with decimals, left to right. */
-        val amounts: List<BigDecimal> = amount.findAll(numbers).mapNotNull { toAmount(it.value) }.toList()
+        val amounts: List<BigDecimal> = amount.findAll(numbers).mapNotNull {
+            toAmount(it.value)
+        }.toList()
 
         /** Amounts that may be whole numbers, left to right; read only on a total row. */
-        val wholeAmounts: List<BigDecimal> = wholeAmount.findAll(numbers).mapNotNull { toAmount(it.value) }.toList()
+        val wholeAmounts: List<BigDecimal> = wholeAmount.findAll(numbers).mapNotNull {
+            toAmount(it.value)
+        }.toList()
         val hasLetters = words.any { it.isLetter() }
 
         val strength = when {
@@ -119,7 +143,11 @@ object ReceiptParser {
     private fun dateAndTime(rows: List<String>, today: LocalDate): Pair<LocalDate?, LocalTime?> {
         for ((i, row) in rows.withIndex()) {
             val date = dateIn(row, today) ?: continue
-            val time = listOfNotNull(row, rows.getOrNull(i + 1), rows.getOrNull(i - 1)).firstNotNullOfOrNull(::timeIn)
+            val time = listOfNotNull(
+                row,
+                rows.getOrNull(i + 1),
+                rows.getOrNull(i - 1),
+            ).firstNotNullOfOrNull(::timeIn)
             return date to time
         }
         return null to null
@@ -133,12 +161,19 @@ object ReceiptParser {
                 // Day first; a "month" over 12 means the receipt printed month first.
                 yield(if (b > 12 && a <= 12) Triple(b, a, m.int(4)) else Triple(a, b, m.int(4)))
             }
-            dayMonthYear.findAll(row).forEach { m -> yield(Triple(m.int(1), monthOf(m.groupValues[2]), m.int(3))) }
-            monthDayYear.findAll(row).forEach { m -> yield(Triple(m.int(2), monthOf(m.groupValues[1]), m.int(3))) }
+            dayMonthYear.findAll(row).forEach { m ->
+                yield(Triple(m.int(1), monthOf(m.groupValues[2]), m.int(3)))
+            }
+            monthDayYear.findAll(row).forEach { m ->
+                yield(Triple(m.int(2), monthOf(m.groupValues[1]), m.int(3)))
+            }
         }
         return found.firstNotNullOfOrNull { (day, month, y) ->
             val year = if (y < 100) 2000 + y else y
-            runCatching { LocalDate.of(year, month, day) }.getOrNull()?.takeIf { !it.isAfter(today) && !it.isBefore(EARLIEST) }
+            runCatching { LocalDate.of(year, month, day) }.getOrNull()?.takeIf {
+                !it.isAfter(today) &&
+                    !it.isBefore(EARLIEST)
+            }
         }
     }
 
@@ -164,18 +199,26 @@ object ReceiptParser {
     // ---- Merchant ----
 
     /** The first of the top rows that reads as a name: mostly letters, no amount, date, phone, web or receipt words. */
-    private fun merchant(rows: List<String>): String? = rows.take(MERCHANT_ROWS).firstNotNullOfOrNull { raw ->
-        val row = raw.replace(welcomeTo, "").replace(spaces, " ").trim().trim(*EDGE_MARKS).trim()
-        val letters = row.count { it.isLetter() }
-        val others = row.count { !it.isLetter() && !it.isWhitespace() }
-        val bad = letters < 3 || letters <= others || notMerchant.containsMatchIn(row) ||
-            amount.containsMatchIn(cleanNumbers(row)) || dateIn(row, LocalDate.MAX) != null
-        if (bad) null else titleCase(row).take(MERCHANT_LENGTH).trim()
-    }
+    private fun merchant(rows: List<String>): String? =
+        rows.take(MERCHANT_ROWS).firstNotNullOfOrNull { raw ->
+            val row = raw.replace(
+                welcomeTo,
+                "",
+            ).replace(spaces, " ").trim().trim(*EDGE_MARKS).trim()
+            val letters = row.count { it.isLetter() }
+            val others = row.count { !it.isLetter() && !it.isWhitespace() }
+            val bad = letters < 3 || letters <= others || notMerchant.containsMatchIn(row) ||
+                amount.containsMatchIn(cleanNumbers(row)) || dateIn(row, LocalDate.MAX) != null
+            if (bad) null else titleCase(row).take(MERCHANT_LENGTH).trim()
+        }
 
-    private fun titleCase(s: String): String =
-        if (s.any { it.isLowerCase() }) s
-        else s.split(' ').joinToString(" ") { w -> w.lowercase().replaceFirstChar { it.titlecase() } }
+    private fun titleCase(s: String): String = if (s.any { it.isLowerCase() }) {
+        s
+    } else {
+        s.split(' ').joinToString(" ") { w ->
+            w.lowercase().replaceFirstChar { it.titlecase() }
+        }
+    }
 }
 
 // ---- Cleaning ----
@@ -192,10 +235,14 @@ private fun cleanNumbers(raw: String): String {
                 append(
                     when (c) {
                         'O', 'o' -> '0'
+
                         'I', 'l', '|' -> '1'
+
                         // A leading S is more often a dollar sign than a five.
                         'S' -> if (i == 0) c else '5'
+
                         'B' -> if (i == 0) c else '8'
+
                         else -> c
                     },
                 )
@@ -223,16 +270,22 @@ private fun toAmount(raw: String): BigDecimal? {
     val decimals = if (last >= 0) raw.length - last - 1 else 0
     val whole = if (decimals in 1..2) raw.substring(0, last) else raw
     val fraction = if (decimals in 1..2) "." + raw.substring(last + 1) else ""
-    return (whole.filter(Char::isDigit).ifEmpty { "0" } + fraction).toBigDecimalOrNull()?.setScale(2, RoundingMode.HALF_UP)
+    return (
+        whole.filter(Char::isDigit).ifEmpty {
+            "0"
+        } + fraction
+        ).toBigDecimalOrNull()?.setScale(2, RoundingMode.HALF_UP)
 }
 
-private val MONTHS = listOf("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
+private val MONTHS =
+    listOf("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
 private val EDGE_MARKS = charArrayOf('-', '*', '#', '=', '_', '~', '|', '.', ',', ':')
 
 private fun rx(p: String) = Regex(p, RegexOption.IGNORE_CASE)
 
 /** A label or labels as whole words: "total" never matches inside "subtotal". */
-private fun label(vararg alternatives: String) = Regex("""(?<![a-z])(?:${alternatives.joinToString("|")})(?![a-z])""")
+private fun label(vararg alternatives: String) =
+    Regex("""(?<![a-z])(?:${alternatives.joinToString("|")})(?![a-z])""")
 
 // ---- Number patterns ----
 
@@ -254,13 +307,21 @@ private val digitEndingWord = Regex("""(?<=[a-z]{3})1(?![\da-z])""")
 
 private val strongTotal = label(
     """grand\s*total""", """g\.?\s*total""", """net+\s*(?:total|amount|payable|value)""",
-    """total\s*(?:due|payable|amount|bill|value)""", """amount\s*(?:due|payable|to\s*pay)""", """balance\s*due""",
-    """payable\s*amount""", """to\s*pay""", """bill\s*(?:total|amount)""", """invoice\s*(?:total|amount)""",
+    """total\s*(?:due|payable|amount|bill|value)""",
+    """amount\s*(?:due|payable|to\s*pay)""",
+    """balance\s*due""",
+    """payable\s*amount""",
+    """to\s*pay""",
+    """bill\s*(?:total|amount)""",
+    """invoice\s*(?:total|amount)""",
     """final\s*(?:total|amount)""",
 )
 private val plainTotal = label("total", "ttl")
 private val subtotalWord = label(
-    """sub\s*-?\s*total""", """gross\s*(?:total|amount|value)""", """total\s*before""", """before\s*(?:tax|vat|discount)""",
+    """sub\s*-?\s*total""",
+    """gross\s*(?:total|amount|value)""",
+    """total\s*before""",
+    """before\s*(?:tax|vat|discount)""",
     """excl\.?""", "excluding", "exclusive", "without", "w/o",
 )
 private val cashWord = label("cash", "tendered", "tender")
@@ -270,12 +331,30 @@ private val paymentWord = label(
     """auth(?:ori[sz]ation)?""", "approval", "ref", "terminal", "tid", "mid", "trace", "rrn",
 )
 private val discountWord = label(
-    "discounts?", "disc", "savings?", "saved", "coupons?", "vouchers?", "promo(?:tion)?s?", "loyalty", "points?",
+    "discounts?",
+    "disc",
+    "savings?",
+    "saved",
+    "coupons?",
+    "vouchers?",
+    "promo(?:tion)?s?",
+    "loyalty",
+    "points?",
     "cashback", "rebate", "offers?",
 )
-private val countWord = label("items?", "qty", "quantity", "pcs", """no\.?\s*of\s*items""", "lines", "count")
+private val countWord =
+    label("items?", "qty", "quantity", "pcs", """no\.?\s*of\s*items""", "lines", "count")
 private val extraWord = label(
-    "tax(?:es)?", "vat", "gst", "nbt", "sscl", "svat", "cess", """service\s*(?:charge|chg|fee)""", "svc", """s\s*/\s*c""",
+    "tax(?:es)?",
+    "vat",
+    "gst",
+    "nbt",
+    "sscl",
+    "svat",
+    "cess",
+    """service\s*(?:charge|chg|fee)""",
+    "svc",
+    """s\s*/\s*c""",
     "tips?", "gratuity", "delivery", "packing", "packaging",
 )
 private val inclusiveWord = label("""incl\.?""", "including", "inclusive", """inc\.?""", "with")
@@ -285,14 +364,24 @@ private val inclusiveWord = label("""incl\.?""", "including", "inclusive", """in
 private const val MONTH_NAME =
     """(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"""
 private val isoDate = Regex("""(?<!\d)(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)""")
-private val numericDate = Regex("""(?<![\d.,/-])(\d{1,2})([/.-])(\d{1,2})\2(\d{4}|\d{2})(?![\d.,]?\d)""")
-private val dayMonthYear = rx("""(?<!\d)(\d{1,2})(?:st|nd|rd|th)?[\s\-/.,]*$MONTH_NAME(?![a-z])\.?[\s\-/.,]*(\d{4}|\d{2})(?!\d)""")
-private val monthDayYear = rx("""(?<![a-z])$MONTH_NAME(?![a-z])\.?[\s\-/.,]*(\d{1,2})(?:st|nd|rd|th)?[\s\-/.,]+(\d{4}|\d{2})(?!\d)""")
-private val clock = rx("""(?<![\d:])(\d{1,2}):(\d{2})(?::\d{2})?(?!\d)(?:\s*([ap])\.?\s*m(?![a-z])\.?)?""")
+private val numericDate =
+    Regex("""(?<![\d.,/-])(\d{1,2})([/.-])(\d{1,2})\2(\d{4}|\d{2})(?![\d.,]?\d)""")
+private val dayMonthYear =
+    rx(
+        """(?<!\d)(\d{1,2})(?:st|nd|rd|th)?[\s\-/.,]*$MONTH_NAME(?![a-z])\.?[\s\-/.,]*(\d{4}|\d{2})(?!\d)""",
+    )
+private val monthDayYear =
+    rx(
+        """(?<![a-z])$MONTH_NAME(?![a-z])\.?[\s\-/.,]*(\d{1,2})(?:st|nd|rd|th)?[\s\-/.,]+(\d{4}|\d{2})(?!\d)""",
+    )
+private val clock =
+    rx("""(?<![\d:])(\d{1,2}):(\d{2})(?::\d{2})?(?!\d)(?:\s*([ap])\.?\s*m(?![a-z])\.?)?""")
 
 private val welcomeTo = rx("""^\s*welcome\s+to\s+""")
 private val spaces = Regex("""\s+""")
 private val notMerchant = rx(
-    """(?<![a-z])(?:receipt|invoice|tax|bill|welcome|thank|thanks|tel|phone|hotline|fax|e-?mail|cashier|vat|reg|gstin|date|time|table|order|counter|terminal|pos|no\.?)(?![a-z])""" +
+    """(?<![a-z])(?:receipt|invoice|tax|bill|welcome|thank|thanks|tel|phone|hotline|fax|""" +
+        """e-?mail|cashier|vat|reg|gstin|date|time|table|order|counter|terminal|pos|""" +
+        """no\.?)(?![a-z])""" +
         """|www\.|\.com|\.lk|@|\d{3}[-\s.]?\d{3,4}""",
 )

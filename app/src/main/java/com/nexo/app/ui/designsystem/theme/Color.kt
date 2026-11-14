@@ -42,7 +42,8 @@ data class NexoColors(
     val isDark: Boolean,
 ) {
     /** Tile tint for a category hue: the hue at low strength over the bare background. */
-    fun tint(hue: Color, over: Color = background): Color = hue.copy(alpha = if (isDark) 0.18f else 0.16f).compositeOver(over)
+    fun tint(hue: Color, over: Color = background): Color =
+        hue.copy(alpha = if (isDark) 0.18f else 0.16f).compositeOver(over)
 }
 
 /** Graphite dark base. */

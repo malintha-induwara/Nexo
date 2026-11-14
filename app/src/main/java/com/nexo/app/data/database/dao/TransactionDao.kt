@@ -13,10 +13,14 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TransactionDao {
-    @Query("SELECT * FROM transactions WHERE date BETWEEN :start AND :end ORDER BY date DESC, dateTime DESC")
+    @Query(
+        "SELECT * FROM transactions WHERE date BETWEEN :start AND :end ORDER BY date DESC, dateTime DESC",
+    )
     fun observeRange(start: String, end: String): Flow<List<TransactionEntity>>
 
-    @Query("SELECT * FROM transactions WHERE date BETWEEN :start AND :end ORDER BY date DESC, dateTime DESC")
+    @Query(
+        "SELECT * FROM transactions WHERE date BETWEEN :start AND :end ORDER BY date DESC, dateTime DESC",
+    )
     suspend fun getRange(start: String, end: String): List<TransactionEntity>
 
     @Query("SELECT * FROM transactions ORDER BY date DESC, dateTime DESC")
@@ -26,9 +30,15 @@ interface TransactionDao {
         "SELECT * FROM transactions WHERE accountId IN (:accountIds) " +
             "AND date BETWEEN :start AND :end ORDER BY date DESC, dateTime DESC",
     )
-    fun observeForAccounts(accountIds: List<String>, start: String, end: String): Flow<List<TransactionEntity>>
+    fun observeForAccounts(
+        accountIds: List<String>,
+        start: String,
+        end: String,
+    ): Flow<List<TransactionEntity>>
 
-    @Query("SELECT * FROM transactions WHERE accountId IN (:accountIds) ORDER BY date ASC, dateTime ASC")
+    @Query(
+        "SELECT * FROM transactions WHERE accountId IN (:accountIds) ORDER BY date ASC, dateTime ASC",
+    )
     suspend fun getAllForAccounts(accountIds: List<String>): List<TransactionEntity>
 
     @Query("SELECT * FROM transactions WHERE accountId IS NULL ORDER BY date DESC, dateTime DESC")
@@ -49,7 +59,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE transferGroupId = :groupId")
     suspend fun getByTransferGroup(groupId: String): List<TransactionEntity>
 
-    @Query("SELECT * FROM transactions WHERE installmentGroupId = :groupId ORDER BY date ASC, dateTime ASC")
+    @Query(
+        "SELECT * FROM transactions WHERE installmentGroupId = :groupId ORDER BY date ASC, dateTime ASC",
+    )
     suspend fun getByInstallmentGroup(groupId: String): List<TransactionEntity>
 
     @Query("SELECT * FROM transactions WHERE feeGroupId = :feeGroupId AND kind = 'EXPENSE' LIMIT 1")
@@ -61,31 +73,36 @@ interface TransactionDao {
 
     /** Most recent transfer between two accounts that carried a fee (for prefill). */
     @Query(
-        "SELECT * FROM transactions WHERE kind = 'TRANSFER_OUT' AND accountId = :from AND counterpartAccountId = :to " +
+        "SELECT * FROM transactions WHERE kind = 'TRANSFER_OUT' AND accountId = :from AND " +
+            "counterpartAccountId = :to " +
             "AND feeGroupId IS NOT NULL ORDER BY dateTime DESC LIMIT 1",
     )
     suspend fun lastTransferWithFee(from: String, to: String): TransactionEntity?
 
     @Query(
-        "SELECT accountId, counterpartAccountId, kind, isBalanceAdjustment, SUM(amountMain) AS main, SUM(amountAccount) AS account, COUNT(*) AS count " +
+        "SELECT accountId, counterpartAccountId, kind, isBalanceAdjustment, SUM(amountMain) AS " +
+            "main, SUM(amountAccount) AS account, COUNT(*) AS count " +
             "FROM transactions WHERE date <= :end GROUP BY accountId, counterpartAccountId, kind, isBalanceAdjustment",
     )
     fun observeAggregatesUpTo(end: String): Flow<List<TxAggregate>>
 
     @Query(
-        "SELECT accountId, counterpartAccountId, kind, isBalanceAdjustment, SUM(amountMain) AS main, SUM(amountAccount) AS account, COUNT(*) AS count " +
+        "SELECT accountId, counterpartAccountId, kind, isBalanceAdjustment, SUM(amountMain) AS " +
+            "main, SUM(amountAccount) AS account, COUNT(*) AS count " +
             "FROM transactions WHERE date <= :end GROUP BY accountId, counterpartAccountId, kind, isBalanceAdjustment",
     )
     suspend fun aggregatesUpTo(end: String): List<TxAggregate>
 
     @Query(
-        "SELECT accountId, counterpartAccountId, kind, isBalanceAdjustment, SUM(amountMain) AS main, SUM(amountAccount) AS account, COUNT(*) AS count " +
+        "SELECT accountId, counterpartAccountId, kind, isBalanceAdjustment, SUM(amountMain) AS " +
+            "main, SUM(amountAccount) AS account, COUNT(*) AS count " +
             "FROM transactions WHERE date BETWEEN :start AND :end GROUP BY accountId, counterpartAccountId, kind, isBalanceAdjustment",
     )
     suspend fun aggregatesBetween(start: String, end: String): List<TxAggregate>
 
     @Query(
-        "SELECT accountId, counterpartAccountId, kind, isBalanceAdjustment, SUM(amountMain) AS main, SUM(amountAccount) AS account, COUNT(*) AS count " +
+        "SELECT accountId, counterpartAccountId, kind, isBalanceAdjustment, SUM(amountMain) AS " +
+            "main, SUM(amountAccount) AS account, COUNT(*) AS count " +
             "FROM transactions WHERE date < :before GROUP BY accountId, counterpartAccountId, kind, isBalanceAdjustment",
     )
     suspend fun aggregatesBefore(before: String): List<TxAggregate>
@@ -98,10 +115,16 @@ interface TransactionDao {
 
     @Query(
         "SELECT * FROM transactions WHERE kind != 'TRANSFER_IN' AND date BETWEEN :start AND :end " +
-            "AND (note LIKE :pattern ESCAPE '\\' OR description LIKE :pattern ESCAPE '\\' OR (:includeSource AND sourceText LIKE :pattern ESCAPE '\\')) " +
+            "AND (note LIKE :pattern ESCAPE '\\' OR description LIKE :pattern ESCAPE '\\' OR " +
+            "(:includeSource AND sourceText LIKE :pattern ESCAPE '\\')) " +
             "ORDER BY date DESC, dateTime DESC",
     )
-    suspend fun search(start: String, end: String, pattern: String, includeSource: Boolean): List<TransactionEntity>
+    suspend fun search(
+        start: String,
+        end: String,
+        pattern: String,
+        includeSource: Boolean,
+    ): List<TransactionEntity>
 
     @Query("SELECT COUNT(*) FROM transactions")
     suspend fun count(): Int
@@ -110,19 +133,27 @@ interface TransactionDao {
     @Query("SELECT COALESCE(MAX(updatedAt), 0) + COUNT(*) FROM transactions")
     fun observeStamp(): Flow<Long>
 
-    @Query("SELECT MIN(date) FROM transactions WHERE accountId IN (:ids) OR counterpartAccountId IN (:ids)")
+    @Query(
+        "SELECT MIN(date) FROM transactions WHERE accountId IN (:ids) OR counterpartAccountId IN (:ids)",
+    )
     suspend fun minDateForAccounts(ids: List<String>): String?
 
-    @Query("SELECT MAX(date) FROM transactions WHERE accountId IN (:ids) OR counterpartAccountId IN (:ids)")
+    @Query(
+        "SELECT MAX(date) FROM transactions WHERE accountId IN (:ids) OR counterpartAccountId IN (:ids)",
+    )
     suspend fun maxDateForAccounts(ids: List<String>): String?
 
-    @Query("SELECT COUNT(*) FROM transactions WHERE accountId IN (:ids) AND date > :after AND date < '2050-01-01'")
+    @Query(
+        "SELECT COUNT(*) FROM transactions WHERE accountId IN (:ids) AND date > :after AND date < '2050-01-01'",
+    )
     suspend fun countAfter(ids: List<String>, after: String): Int
 
     @Query("SELECT * FROM transactions WHERE sourceText = :text LIMIT 1")
     suspend fun findBySourceText(text: String): TransactionEntity?
 
-    @Query("SELECT * FROM transactions WHERE kind IN ('INCOME','EXPENSE') AND (categoryId IS NULL AND isBalanceAdjustment = 0 OR accountId IS NULL) AND date <= :upTo ORDER BY date DESC, dateTime DESC")
+    @Query(
+        "SELECT * FROM transactions WHERE kind IN ('INCOME','EXPENSE') AND (categoryId IS NULL AND isBalanceAdjustment = 0 OR accountId IS NULL) AND date <= :upTo ORDER BY date DESC, dateTime DESC",
+    )
     suspend fun unassigned(upTo: String): List<TransactionEntity>
 
     @Insert(onConflict = OnConflictStrategy.ABORT)

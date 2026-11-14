@@ -21,13 +21,22 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @HiltAndroidApp
-class NexoApplication : Application(), Configuration.Provider {
+class NexoApplication :
+    Application(),
+    Configuration.Provider {
     @Inject lateinit var workerFactory: HiltWorkerFactory
+
     @Inject lateinit var lock: AppLockRepository
+
     @Inject lateinit var prefs: UserPreferencesRepository
+
     @Inject lateinit var repeats: RepeatRulesRepository
-    @Inject @ApplicationScope lateinit var scope: CoroutineScope
+
+    @Inject @ApplicationScope
+    lateinit var scope: CoroutineScope
+
     @Inject lateinit var refs: ReferenceDataRepository
+
     @Inject lateinit var smsInbox: SmsInboxRepository
 
     override val workManagerConfiguration: Configuration
@@ -42,14 +51,19 @@ class NexoApplication : Application(), Configuration.Provider {
                     if (prefs.getDeviceSettings().setupDone) {
                         repeats.generateIfNewDay()
                         // The quick-add notification is refreshed on every resume.
-                        Notifications.updateQuickAdd(this@NexoApplication, refs.getRefData().settings.quickAddNotification)
+                        Notifications.updateQuickAdd(
+                            this@NexoApplication,
+                            refs.getRefData().settings.quickAddNotification,
+                        )
                     }
                 }
                 // SMS catch-up and expiry run at app start and on every foreground; rates refresh at most every 6 hours.
                 scope.launch {
                     smsInbox.refresh()
                     val s = prefs.getDeviceSettings()
-                    if (s.setupDone && s.smsCaptureEnabled) FxSyncWorker.enqueue(this@NexoApplication)
+                    if (s.setupDone && s.smsCaptureEnabled) {
+                        FxSyncWorker.enqueue(this@NexoApplication)
+                    }
                 }
             }
 
@@ -57,12 +71,16 @@ class NexoApplication : Application(), Configuration.Provider {
                 lock.onBackground()
                 scope.launch {
                     val s = prefs.getDeviceSettings()
-                    if (s.setupDone && System.currentTimeMillis() - s.lastAutoBackup > DAY_MS) AutoBackupWorker.enqueue(this@NexoApplication)
+                    if (s.setupDone && System.currentTimeMillis() - s.lastAutoBackup > DAY_MS) {
+                        AutoBackupWorker.enqueue(this@NexoApplication)
+                    }
                 }
             }
         })
         // Repeats are generated at every cold start, then once per calendar day.
-        scope.launch { if (prefs.getDeviceSettings().setupDone) repeats.generateIfNewDay(force = true) }
+        scope.launch {
+            if (prefs.getDeviceSettings().setupDone) repeats.generateIfNewDay(force = true)
+        }
     }
 
     companion object {

@@ -7,7 +7,8 @@ enum class TxKind {
     TRANSFER_OUT,
     TRANSFER_IN,
     BALANCE_INCREASE,
-    BALANCE_DECREASE;
+    BALANCE_DECREASE,
+    ;
 
     val isInflow: Boolean get() = this == INCOME || this == TRANSFER_IN || this == BALANCE_INCREASE
     val isOutflow: Boolean get() = !isInflow
@@ -39,7 +40,32 @@ enum class CategoryKind { INCOME, EXPENSE }
 
 enum class SymbolPosition { PREFIX, SUFFIX }
 
-enum class MemoColor { WHITE, RED, ORANGE, YELLOW, GREEN, CYAN, BLUE, DARKBLUE, PURPLE, PINK, BROWN, GRAY }
+enum class MemoColor {
+
+    WHITE,
+
+    RED,
+
+    ORANGE,
+
+    YELLOW,
+
+    GREEN,
+
+    CYAN,
+
+    BLUE,
+
+    DARKBLUE,
+
+    PURPLE,
+
+    PINK,
+
+    BROWN,
+
+    GRAY,
+}
 
 /** Repeat schedule. [code] matches the original interop codes so imports map directly. */
 enum class RepeatType(val code: Int) {
@@ -56,7 +82,8 @@ enum class RepeatType(val code: Int) {
     QUARTERLY(3),
     FOUR_MONTHLY(4),
     SEMIANNUAL(16),
-    ANNUAL(17);
+    ANNUAL(17),
+    ;
 
     val monthStep: Int?
         get() = when (this) {
@@ -71,6 +98,7 @@ enum class RepeatType(val code: Int) {
 
     companion object {
         fun fromCode(code: Int): RepeatType? = entries.firstOrNull { it.code == code }
+
         /** Display order of the repeat picker. */
         val pickerOrder: List<RepeatType> = entries.toList()
     }
@@ -85,13 +113,20 @@ enum class SwipeMode { CHANGE_TAB, CHANGE_DATE, NONE }
 enum class ColorSet { A, B }
 
 /** Time input / list order setting. */
-enum class TimeDisplay(val code: Int, val timeInput: Boolean, val showOnList: Boolean, val descending: Boolean, val byTime: Boolean) {
+enum class TimeDisplay(
+    val code: Int,
+    val timeInput: Boolean,
+    val showOnList: Boolean,
+    val descending: Boolean,
+    val byTime: Boolean,
+) {
     NONE_DESC(5, false, false, true, false),
     NONE_ASC(0, false, false, false, false),
     SHOW_DESC(1, true, true, true, true),
     SHOW_ASC(3, true, true, false, true),
     INPUT_DESC(2, true, false, true, true),
-    INPUT_ASC(4, true, false, false, true);
+    INPUT_ASC(4, true, false, false, true),
+    ;
 
     companion object {
         fun fromCode(code: Int?): TimeDisplay = entries.firstOrNull { it.code == code } ?: NONE_DESC

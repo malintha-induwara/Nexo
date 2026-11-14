@@ -78,32 +78,90 @@ private val PanelHeight = 320.dp
 @Composable
 private fun PanelFrame(content: @Composable () -> Unit) {
     val colors = LocalNexoColors.current
-    Column(Modifier.fillMaxWidth().clip(NexoShapes.sheet).background(colors.surface).navigationBarsPadding().height(PanelHeight)) { content() }
+    Column(
+        Modifier.fillMaxWidth().clip(
+            NexoShapes.sheet,
+        ).background(colors.surface).navigationBarsPadding().height(PanelHeight),
+    ) {
+        content()
+    }
 }
 
 @Composable
-private fun PanelHeader(title: String, onClose: () -> Unit, onTitleClick: (() -> Unit)? = null, extra: @Composable () -> Unit = {}) {
+private fun PanelHeader(
+    title: String,
+    onClose: () -> Unit,
+    onTitleClick: (() -> Unit)? = null,
+    extra: @Composable () -> Unit = {},
+) {
     val colors = LocalNexoColors.current
-    Row(Modifier.fillMaxWidth().height(52.dp).padding(start = Space.s, end = Space.s), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        Modifier.fillMaxWidth().height(52.dp).padding(start = Space.s, end = Space.s),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Row(
-            Modifier.weight(1f).clip(CircleShape).then(if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier).padding(horizontal = Space.s, vertical = Space.s),
+            Modifier.weight(1f).clip(CircleShape).then(
+                if (onTitleClick != null) {
+                    Modifier.clickable(onClick = onTitleClick)
+                } else {
+                    Modifier
+                },
+            ).padding(horizontal = Space.s, vertical = Space.s),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (onTitleClick != null) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, null, tint = colors.text, modifier = Modifier.size(20.dp))
-            Text(title.uppercase(Locale.getDefault()), style = NexoType.Caps, color = if (onTitleClick != null) colors.text else colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (onTitleClick != null) {
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
+                    null,
+                    tint = colors.text,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Text(
+                title.uppercase(Locale.getDefault()),
+                style = NexoType.Caps,
+                color = if (onTitleClick != null) {
+                    colors.text
+                } else {
+                    colors.textTertiary
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         extra()
-        RoundIconButton(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_close), onClose, size = 36.dp, tint = colors.textSecondary, container = Color.Transparent)
+        RoundIconButton(
+            Icons.Rounded.KeyboardArrowDown,
+            stringResource(R.string.action_close),
+            onClose,
+            size = 36.dp,
+            tint = colors.textSecondary,
+            container = Color.Transparent,
+        )
     }
 }
 
 /** A name in a rounded cell; selection fills it with the entry's colour at low strength and rings it. */
 @Composable
-private fun NameCell(text: String, selected: Boolean, accent: Color, dimmed: Boolean = false, onClick: () -> Unit) {
+private fun NameCell(
+    text: String,
+    selected: Boolean,
+    accent: Color,
+    dimmed: Boolean = false,
+    onClick: () -> Unit,
+) {
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
-    val bg by animateColorAsState(if (selected) colors.tint(accent, colors.raised) else colors.raised, NexoMotion.standard(), label = "cellBg")
-    val ring by animateColorAsState(if (selected) accent else Color.Transparent, NexoMotion.standard(), label = "cellRing")
+    val bg by animateColorAsState(
+        if (selected) colors.tint(accent, colors.raised) else colors.raised,
+        NexoMotion.standard(),
+        label = "cellBg",
+    )
+    val ring by animateColorAsState(
+        if (selected) accent else Color.Transparent,
+        NexoMotion.standard(),
+        label = "cellRing",
+    )
     Box(
         Modifier
             .padding(Space.xs)
@@ -112,29 +170,66 @@ private fun NameCell(text: String, selected: Boolean, accent: Color, dimmed: Boo
             .clip(NexoShapes.control)
             .background(bg)
             .border(1.5.dp, ring, NexoShapes.control)
-            .clickable(role = Role.RadioButton) { haptics.tick(); onClick() },
+            .clickable(role = Role.RadioButton) {
+                haptics.tick()
+                onClick()
+            },
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = Space.s),
+            text,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.padding(horizontal = Space.s),
             color = if (dimmed) colors.textTertiary else colors.text,
         )
     }
 }
 
 @Composable
-private fun ListCell(text: String, selected: Boolean, accent: Color, chevron: Boolean = false, dimmed: Boolean = false, onClick: () -> Unit) {
+private fun ListCell(
+    text: String,
+    selected: Boolean,
+    accent: Color,
+    chevron: Boolean = false,
+    dimmed: Boolean = false,
+    onClick: () -> Unit,
+) {
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
-    val bg by animateColorAsState(if (selected) colors.tint(accent, colors.surface) else Color.Transparent, NexoMotion.standard(), label = "listCell")
+    val bg by animateColorAsState(
+        if (selected) colors.tint(accent, colors.surface) else Color.Transparent,
+        NexoMotion.standard(),
+        label = "listCell",
+    )
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = Space.xs).clip(NexoShapes.control).background(bg)
-            .clickable { haptics.tick(); onClick() }.padding(horizontal = Space.m, vertical = Space.m),
+        Modifier.fillMaxWidth().padding(
+            horizontal = Space.xs,
+        ).clip(NexoShapes.control).background(bg)
+            .clickable {
+                haptics.tick()
+                onClick()
+            }.padding(horizontal = Space.m, vertical = Space.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (dimmed) colors.textTertiary else colors.text)
-        if (chevron) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = colors.textTertiary, modifier = Modifier.size(18.dp))
+        Text(
+            text,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = if (dimmed) colors.textTertiary else colors.text,
+        )
+        if (chevron) {
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                null,
+                tint = colors.textTertiary,
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 
@@ -155,15 +250,34 @@ fun AccountPanel(
     val colors = LocalNexoColors.current
     PanelFrame {
         PanelHeader(title, onClose) {
-            RoundIconButton(if (grouped) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda, stringResource(R.string.toggle_grouping), onToggleGrouped, size = 36.dp, tint = colors.textSecondary, container = Color.Transparent)
-            RoundIconButton(Icons.Outlined.Edit, stringResource(R.string.action_edit), onEdit, size = 36.dp, tint = colors.textSecondary, container = Color.Transparent)
+            RoundIconButton(
+                if (grouped) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda,
+                stringResource(R.string.toggle_grouping),
+                onToggleGrouped,
+                size = 36.dp,
+                tint = colors.textSecondary,
+                container = Color.Transparent,
+            )
+            RoundIconButton(
+                Icons.Outlined.Edit,
+                stringResource(R.string.action_edit),
+                onEdit,
+                size = 36.dp,
+                tint = colors.textSecondary,
+                container = Color.Transparent,
+            )
         }
         val visible = ref.orderedAccounts().filter { a ->
             val g = ref.groupById[a.groupId]
-            g != null && g.status == GroupStatus.ACTIVE && (a.status == AccountStatus.ACTIVE || (grouped && a.status == AccountStatus.HIDDEN))
+            g != null && g.status == GroupStatus.ACTIVE &&
+                (a.status == AccountStatus.ACTIVE || (grouped && a.status == AccountStatus.HIDDEN))
         }
         if (!grouped) {
-            LazyVerticalGrid(GridCells.Fixed(3), Modifier.padding(horizontal = Space.s), contentPadding = PaddingValues(bottom = Space.s)) {
+            LazyVerticalGrid(
+                GridCells.Fixed(3),
+                Modifier.padding(horizontal = Space.s),
+                contentPadding = PaddingValues(bottom = Space.s),
+            ) {
                 items(visible.filter { it.status == AccountStatus.ACTIVE }, key = { it.id }) { a ->
                     NameCell(a.name, a.id == selectedId, accent) { onSelect(a.id) }
                 }
@@ -171,7 +285,9 @@ fun AccountPanel(
             }
         } else {
             val groups = ref.groups.filter { g -> visible.any { it.groupId == g.id } }
-            var group by remember(selectedId) { mutableStateOf(ref.accountById[selectedId]?.groupId ?: groups.firstOrNull()?.id) }
+            var group by remember(selectedId) {
+                mutableStateOf(ref.accountById[selectedId]?.groupId ?: groups.firstOrNull()?.id)
+            }
             Row(Modifier.fillMaxHeight()) {
                 LazyColumn(Modifier.weight(1f)) {
                     items(groups, key = { it.id }) { g ->
@@ -179,11 +295,27 @@ fun AccountPanel(
                     }
                 }
                 LazyColumn(Modifier.weight(1.4f)) {
-                    val inGroup: List<Account> = visible.filter { it.groupId == group }.sortedBy { if (it.status == AccountStatus.HIDDEN) 1 else 0 }
-                    items(inGroup, key = { it.id }) { a ->
-                        ListCell(a.name, a.id == selectedId, accent, dimmed = a.status == AccountStatus.HIDDEN) { onSelect(a.id) }
+                    val inGroup: List<Account> = visible.filter { it.groupId == group }.sortedBy {
+                        if (it.status == AccountStatus.HIDDEN) {
+                            1
+                        } else {
+                            0
+                        }
                     }
-                    item { ListCell("+ " + stringResource(R.string.add_account), false, accent) { onAdd() } }
+                    items(inGroup, key = { it.id }) { a ->
+                        ListCell(
+                            a.name,
+                            a.id == selectedId,
+                            accent,
+                            dimmed =
+                                a.status == AccountStatus.HIDDEN,
+                        ) { onSelect(a.id) }
+                    }
+                    item {
+                        ListCell("+ " + stringResource(R.string.add_account), false, accent) {
+                            onAdd()
+                        }
+                    }
                 }
             }
         }
@@ -202,32 +334,83 @@ private fun AddCell(onAdd: () -> Unit) {
 
 /** An emoji tile with its name beneath, ringed in the entry's colour when chosen. */
 @Composable
-private fun CategoryCell(category: Category, ref: RefData, selected: Boolean, accent: Color, hasChildren: Boolean, label: String = category.name, onClick: () -> Unit) {
+private fun CategoryCell(
+    category: Category,
+    ref: RefData,
+    selected: Boolean,
+    accent: Color,
+    hasChildren: Boolean,
+    label: String = category.name,
+    onClick: () -> Unit,
+) {
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
     val v = ref.visual(category.id)
-    val ring by animateColorAsState(if (selected) accent else Color.Transparent, NexoMotion.standard(), label = "catRing")
-    val scale by animateFloatAsState(if (selected) 1.06f else 1f, NexoMotion.snappy(), label = "catScale")
+    val ring by animateColorAsState(
+        if (selected) accent else Color.Transparent,
+        NexoMotion.standard(),
+        label = "catRing",
+    )
+    val scale by animateFloatAsState(
+        if (selected) 1.06f else 1f,
+        NexoMotion.snappy(),
+        label = "catScale",
+    )
     Column(
         Modifier
             .padding(horizontal = Space.xxs, vertical = Space.xs)
             .clip(NexoShapes.control)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, role = Role.RadioButton) { haptics.tick(); onClick() }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                role = Role.RadioButton,
+            ) {
+                haptics.tick()
+                onClick()
+            }
             .padding(vertical = Space.xs),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.graphicsLayer { scaleX = scale; scaleY = scale }.border(2.dp, ring, NexoShapes.tile).padding(3.dp)) {
-            if (v != null) CategoryTile(v.emoji, v.monogram, CategoryHues.of(v.colorIndex, colors.isDark), size = 44.dp, over = colors.surface)
+        Box(
+            Modifier.graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }.border(2.dp, ring, NexoShapes.tile).padding(3.dp),
+        ) {
+            if (v != null) {
+                CategoryTile(
+                    v.emoji,
+                    v.monogram,
+                    CategoryHues.of(v.colorIndex, colors.isDark),
+                    size = 44.dp,
+                    over = colors.surface,
+                )
+            }
             if (hasChildren) {
-                Box(Modifier.align(Alignment.BottomEnd).size(16.dp).clip(CircleShape).background(colors.raisedHigh), contentAlignment = Alignment.Center) {
-                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = colors.textSecondary, modifier = Modifier.size(12.dp))
+                Box(
+                    Modifier.align(
+                        Alignment.BottomEnd,
+                    ).size(16.dp).clip(CircleShape).background(colors.raisedHigh),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        null,
+                        tint = colors.textSecondary,
+                        modifier = Modifier.size(12.dp),
+                    )
                 }
             }
         }
         Spacer(Modifier.height(Space.xs))
         Text(
-            label, style = MaterialTheme.typography.labelMedium, color = if (selected) colors.text else colors.textSecondary,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().heightIn(min = 16.dp),
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) colors.text else colors.textSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 16.dp),
         )
     }
 }
@@ -250,11 +433,36 @@ fun CategoryPanel(
     val colors = LocalNexoColors.current
     val subsOn = ref.settings.subcategories
     val selectedMain = ref.mainCategoryId(selectedId)
-    var open by remember(selectedId) { mutableStateOf(if (subsOn) selectedMain?.takeIf { ref.subCategories(it).isNotEmpty() } else null) }
+    var open by remember(selectedId) {
+        mutableStateOf(
+            if (subsOn) {
+                selectedMain?.takeIf {
+                    ref.subCategories(it).isNotEmpty()
+                }
+            } else {
+                null
+            },
+        )
+    }
     val openCategory = open?.let { ref.categoryById[it] }
     PanelFrame {
-        PanelHeader(openCategory?.name ?: stringResource(R.string.category), onClose, onTitleClick = if (openCategory != null) ({ open = null }) else null) {
-            RoundIconButton(Icons.Outlined.Edit, stringResource(R.string.action_edit), onEdit, size = 36.dp, tint = colors.textSecondary, container = Color.Transparent)
+        PanelHeader(
+            openCategory?.name ?: stringResource(R.string.category),
+            onClose,
+            onTitleClick = if (openCategory != null) {
+                ({ open = null })
+            } else {
+                null
+            },
+        ) {
+            RoundIconButton(
+                Icons.Outlined.Edit,
+                stringResource(R.string.action_edit),
+                onEdit,
+                size = 36.dp,
+                tint = colors.textSecondary,
+                container = Color.Transparent,
+            )
         }
         AnimatedContent(
             targetState = open,
@@ -262,18 +470,42 @@ fun CategoryPanel(
             modifier = Modifier.fillMaxSize(),
             label = "categoryLevel",
         ) { o ->
-            LazyVerticalGrid(GridCells.Fixed(4), Modifier.fillMaxSize().padding(horizontal = Space.s), contentPadding = PaddingValues(bottom = Space.s)) {
+            LazyVerticalGrid(
+                GridCells.Fixed(4),
+                Modifier.fillMaxSize().padding(horizontal = Space.s),
+                contentPadding = PaddingValues(bottom = Space.s),
+            ) {
                 if (o == null) {
                     items(ref.mainCategories(kind), key = { it.id }) { c ->
                         val subs = if (subsOn) ref.subCategories(c.id) else emptyList()
-                        CategoryCell(c, ref, c.id == selectedMain, accent, hasChildren = subs.isNotEmpty()) {
+                        CategoryCell(
+                            c,
+                            ref,
+                            c.id == selectedMain,
+                            accent,
+                            hasChildren = subs.isNotEmpty(),
+                        ) {
                             if (subs.isEmpty()) onSelect(c.id) else open = c.id
                         }
                     }
                 } else {
                     val main = ref.categoryById[o]
-                    if (main != null) item(key = "main_$o") { CategoryCell(main, ref, selectedId == o, accent, hasChildren = false) { onSelect(o) } }
-                    items(ref.subCategories(o), key = { it.id }) { c -> CategoryCell(c, ref, c.id == selectedId, accent, hasChildren = false) { onSelect(c.id) } }
+                    if (main != null) {
+                        item(key = "main_$o") {
+                            CategoryCell(main, ref, selectedId == o, accent, hasChildren = false) {
+                                onSelect(o)
+                            }
+                        }
+                    }
+                    items(ref.subCategories(o), key = { it.id }) { c ->
+                        CategoryCell(
+                            c,
+                            ref,
+                            c.id == selectedId,
+                            accent,
+                            hasChildren = false,
+                        ) { onSelect(c.id) }
+                    }
                 }
             }
         }

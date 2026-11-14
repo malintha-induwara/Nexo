@@ -35,7 +35,11 @@ class LegacyImporterTest {
     @Before
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
+        db =
+            Room.inMemoryDatabaseBuilder(
+                context,
+                NexoDatabase::class.java,
+            ).allowMainThreadQueries().build()
         file = File(context.cacheDir, "legacy.mmbak").apply { delete() }
         SQLiteDatabase.openOrCreateDatabase(file, null).use { src ->
             src.version = 19
@@ -46,7 +50,8 @@ class LegacyImporterTest {
                 "CREATE TABLE ASSETGROUP (DEVICE_ID INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, IS_DEL INTEGER, USETIME INTEGER, ACC_GROUP_NAME VARCHAR, TYPE INTEGER, ORDERSEQ INTEGER)",
                 "INSERT INTO ASSETGROUP (uid, IS_DEL, ACC_GROUP_NAME, TYPE, ORDERSEQ) VALUES ('11',0,'Cash',11,1), ('1',0,'Accounts',1,2), ('2',0,'Card',2,3), ('g9',1,'Old',0,9)",
                 "CREATE TABLE ASSETS (ID INTEGER PRIMARY KEY AUTOINCREMENT, CARD_DAY_FIN varchar, CARD_DAY_PAY varchar, NIC_NAME varchar, ORDERSEQ integer, ZDATA varchar, ZDATA1 varchar, ZDATA2 varchar, IS_TRANS_EXPENSE INTEGER, uid TEXT, currencyUid TEXT, cardAssetUid TEXT, groupUid TEXT)",
-                "INSERT INTO ASSETS (NIC_NAME, ORDERSEQ, ZDATA, ZDATA1, ZDATA2, uid, currencyUid, groupUid, CARD_DAY_FIN, CARD_DAY_PAY, cardAssetUid) VALUES " +
+                "INSERT INTO ASSETS (NIC_NAME, ORDERSEQ, ZDATA, ZDATA1, ZDATA2, uid, currencyUid," +
+                    " groupUid, CARD_DAY_FIN, CARD_DAY_PAY, cardAssetUid) VALUES " +
                     "('Cash',1,'0','','0','11','USD_USD','11','1','1','')," +
                     "('Bank',2,'','','0','1','USD_USD','1','1','1','')," +
                     "('Visa',3,'3','my card','1','2','USD_USD','2','15일','25','1')," +
@@ -54,17 +59,30 @@ class LegacyImporterTest {
                 "CREATE TABLE ZCATEGORY (ID INTEGER PRIMARY KEY AUTOINCREMENT, C_IS_DEL integer, uid TEXT, NAME varchar, ORDERSEQ integer, TYPE integer, STATUS integer, pUid TEXT)",
                 "INSERT INTO ZCATEGORY (C_IS_DEL, uid, NAME, ORDERSEQ, TYPE, STATUS, pUid) VALUES (0,'2','Salary',2,0,0,'0'), (0,'6','Food',6,1,0,'0'), (0,'18','Lunch',18,1,2,'6'), (1,'99','Gone',99,1,0,'')",
                 "CREATE TABLE INOUTCOME (AID INTEGER PRIMARY KEY, uid TEXT, assetUid TEXT, CARDDIVIDMONTH VARCHAR, ctgUid TEXT, toAssetUid TEXT, ZCONTENT VARCHAR, ZDATE VARCHAR, WDATE VARCHAR, DO_TYPE VARCHAR, ZMONEY VARCHAR, txUidTrans TEXT, ZDATA VARCHAR, IN_ZMONEY VARCHAR, cardDivideUid TEXT, CARD_DIVIDE_MONTH_STR VARCHAR, txUidFee TEXT, SMS_ORIGIN VARCHAR, IS_DEL INTEGER, UTIME INTEGER, currencyUid TEXT, AMOUNT_ACCOUNT REAL, isSynced INTEGER)",
-                "INSERT INTO INOUTCOME (AID, uid, assetUid, ctgUid, toAssetUid, ZCONTENT, ZDATE, WDATE, DO_TYPE, ZMONEY, IN_ZMONEY, AMOUNT_ACCOUNT, currencyUid, IS_DEL, txUidTrans, txUidFee, cardDivideUid, CARD_DIVIDE_MONTH_STR, CARDDIVIDMONTH) VALUES " +
-                    "(1,'t1','1','2','','pay','1714550400000','2024-05-01','0','1000.0','1000.0',1000,'USD_USD',0,'','0','','','0')," +
-                    "(2,'t2','11','18','','lunch','1714640000000','2024-05-02','1','12.5','12.5',12.5,'USD_USD',0,'','','','','0')," +
-                    "(3,'t3a','1','','2','card pay','1714726400000','2024-05-03','3','300.0','300.0',300,'USD_USD',0,'tr1','fee1','','','0')," +
-                    "(4,'t3b','2','','1','card pay','1714726400000','2024-05-03','4','300.0','300.0',300,'USD_USD',0,'tr1','fee1','','','0')," +
-                    "(5,'t3f','1','6','','Fees','1714726400001','2024-05-03','1','2.0','2.0',2,'USD_USD',0,'','fee1','','','0')," +
-                    "(6,'i1','2','6','','tv (1/3)','1714812800000','2024-05-04','1','33.34','33.34',33.34,'USD_USD',0,'','','1714812800000','(1/3)','10001')," +
-                    "(7,'r1_2024-05-05_1','11','6','','rent','1714867200000','2024-05-05','1','1.25E7','1.25E7',1.25E7,'USD_USD',0,'','','','','1')," +
-                    "(8,'gone','11','6','','deleted','1714867200000','2024-05-05','1','5','5',5,'USD_USD',1,'','','','','0')," +
-                    "(9,'sms','-2','-2','','shop','1714867200000','2024-05-05','1','7','7',7,'USD_USD',0,'','','','','0')," +
-                    "(10,'adj','1','-4','','Difference','1714867200000','2024-05-05','7','50','50',50,'USD_USD',0,'','','','','0')," +
+                "INSERT INTO INOUTCOME (AID, uid, assetUid, ctgUid, toAssetUid, ZCONTENT, ZDATE, " +
+                    "WDATE, DO_TYPE, ZMONEY, IN_ZMONEY, AMOUNT_ACCOUNT, currencyUid, IS_DEL, " +
+                    "txUidTrans, txUidFee, cardDivideUid, CARD_DIVIDE_MONTH_STR, CARDDIVIDMONTH) " +
+                    "VALUES " +
+                    "(1,'t1','1','2','','pay','1714550400000','2024-05-01','0','1000.0','1000.0'," +
+                    "1000,'USD_USD',0,'','0','','','0')," +
+                    "(2,'t2','11','18','','lunch','1714640000000','2024-05-02','1','12.5','12.5'," +
+                    "12.5,'USD_USD',0,'','','','','0')," +
+                    "(3,'t3a','1','','2','card pay','1714726400000','2024-05-03','3','300.0'," +
+                    "'300.0',300,'USD_USD',0,'tr1','fee1','','','0')," +
+                    "(4,'t3b','2','','1','card pay','1714726400000','2024-05-03','4','300.0'," +
+                    "'300.0',300,'USD_USD',0,'tr1','fee1','','','0')," +
+                    "(5,'t3f','1','6','','Fees','1714726400001','2024-05-03','1','2.0','2.0',2," +
+                    "'USD_USD',0,'','fee1','','','0')," +
+                    "(6,'i1','2','6','','tv (1/3)','1714812800000','2024-05-04','1','33.34'," +
+                    "'33.34',33.34,'USD_USD',0,'','','1714812800000','(1/3)','10001')," +
+                    "(7,'r1_2024-05-05_1','11','6','','rent','1714867200000','2024-05-05','1'," +
+                    "'1.25E7','1.25E7',1.25E7,'USD_USD',0,'','','','','1')," +
+                    "(8,'gone','11','6','','deleted','1714867200000','2024-05-05','1','5','5',5," +
+                    "'USD_USD',1,'','','','','0')," +
+                    "(9,'sms','-2','-2','','shop','1714867200000','2024-05-05','1','7','7',7," +
+                    "'USD_USD',0,'','','','','0')," +
+                    "(10,'adj','1','-4','','Difference','1714867200000','2024-05-05','7','50'," +
+                    "'50',50,'USD_USD',0,'','','','','0')," +
                     "(11,'eur','e1','6','','croissant','1714867200000','2024-05-05','1','2.2','2.0',2,'USD_EUR',0,'','','','','0')",
                 "CREATE TABLE REPEATTRANSACTION (DEVICE_ID INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, IS_DEL INTEGER, USETIME INTEGER, MARK INTEGER, END_DATE INTEGER, NEXT_DATE INTEGER, DO_TYPE INTEGER, REPEAT_TYPE INTEGER, assetUid TEXT, toAssetUid TEXT, ctgUid TEXT, currencyUid TEXT, AMOUNT_SUB REAL, MEMO VARCHAR, PAYEE VARCHAR)",
                 "INSERT INTO REPEATTRANSACTION (uid, IS_DEL, END_DATE, NEXT_DATE, DO_TYPE, REPEAT_TYPE, assetUid, toAssetUid, ctgUid, currencyUid, AMOUNT_SUB, MEMO, PAYEE) VALUES ('r1',0,0,1717545600000,1,1,'11','','6','USD_USD',1250,'','rent')",
@@ -82,7 +100,12 @@ class LegacyImporterTest {
                 "INSERT INTO ZETC (uid, ZDATATYPE, ZDATA, ZZDATA, isDel) VALUES ('s1',-23459,'25','',0), ('s2',-8457,'1234','60',0), ('s3',19810,'1','',0), ('s4',-6179,'1','',0), ('s5',10012,'2','',0)",
             ).forEach { src.execSQL(it) }
         }
-        runBlocking { assertEquals(RestoreResult.Success, LegacyImporter(db, BookSeeder(context, db), Dispatchers.IO).import(file)) }
+        runBlocking {
+            assertEquals(
+                RestoreResult.Success,
+                LegacyImporter(db, BookSeeder(context, db), Dispatchers.IO).import(file),
+            )
+        }
     }
 
     @After

@@ -45,15 +45,29 @@ import kotlinx.coroutines.runBlocking
 /** Real repositories over an in-memory [NexoDatabase], wired the way Hilt wires them. */
 fun referenceDataRepository(db: NexoDatabase, scope: CoroutineScope): ReferenceDataRepository =
     DefaultReferenceDataRepository(
-        db.accountGroupDao(), db.accountDao(), db.categoryDao(), db.currencyDao(), db.tagDao(),
-        DefaultBookSettingsRepository(db.settingDao()), scope,
+        db.accountGroupDao(),
+        db.accountDao(),
+        db.categoryDao(),
+        db.currencyDao(),
+        db.tagDao(),
+        DefaultBookSettingsRepository(db.settingDao()),
+        scope,
     )
 
-fun transactionsRepository(context: Context, db: NexoDatabase, refs: ReferenceDataRepository): TransactionsRepository =
-    DefaultTransactionsRepository(
-        context, db, refs, DefaultBookSettingsRepository(db.settingDao()),
-        DefaultPhotosRepository(PhotoFileDataSource(context, AppDirs(context), Dispatchers.IO), db.photoDao()),
-    )
+fun transactionsRepository(
+    context: Context,
+    db: NexoDatabase,
+    refs: ReferenceDataRepository,
+): TransactionsRepository = DefaultTransactionsRepository(
+    context,
+    db,
+    refs,
+    DefaultBookSettingsRepository(db.settingDao()),
+    DefaultPhotosRepository(
+        PhotoFileDataSource(context, AppDirs(context), Dispatchers.IO),
+        db.photoDao(),
+    ),
+)
 
 fun userPreferencesRepository(context: Context): UserPreferencesRepository =
     DefaultUserPreferencesRepository(DevicePreferencesDataSource(context))
@@ -63,7 +77,8 @@ fun fxRatesRepository(
     db: NexoDatabase,
     refs: ReferenceDataRepository,
     prefs: UserPreferencesRepository = userPreferencesRepository(context),
-): FxRatesRepository = DefaultFxRatesRepository(db, refs, prefs, FxRatesNetworkDataSource(Dispatchers.IO))
+): FxRatesRepository =
+    DefaultFxRatesRepository(db, refs, prefs, FxRatesNetworkDataSource(Dispatchers.IO))
 
 fun smsRepository(
     context: Context,
@@ -71,14 +86,24 @@ fun smsRepository(
     refs: ReferenceDataRepository,
     prefs: UserPreferencesRepository = userPreferencesRepository(context),
     fx: FxRatesRepository = fxRatesRepository(context, db, refs, prefs),
-): DefaultSmsRepository = DefaultSmsRepository(context, db.smsDao(), prefs, refs, SmsSuggester(db.smsDao(), refs, fx), FakeNotifier())
+): DefaultSmsRepository = DefaultSmsRepository(
+    context,
+    db.smsDao(),
+    prefs,
+    refs,
+    SmsSuggester(db.smsDao(), refs, fx),
+    FakeNotifier(),
+)
 
 /**
  * A fresh book (seeded in [currency]) in an in-memory database, with the repositories a ViewModel needs wired as Hilt
  * wires them. The seeded LKR book has accounts "1" (bank) and "11" (cash) and category "6" (Food).
  */
 class TestBook(val context: Context, scope: CoroutineScope, currency: String = "LKR") : Closeable {
-    val db: NexoDatabase = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
+    val db: NexoDatabase = Room.inMemoryDatabaseBuilder(
+        context,
+        NexoDatabase::class.java,
+    ).allowMainThreadQueries().build()
 
     init {
         runBlocking { BookSeeder(context, db).seedFresh(CurrencyCatalog.find(currency)!!) }
@@ -86,21 +111,48 @@ class TestBook(val context: Context, scope: CoroutineScope, currency: String = "
 
     val prefs = userPreferencesRepository(context)
     val refs = referenceDataRepository(db, scope)
-    val photos = DefaultPhotosRepository(PhotoFileDataSource(context, AppDirs(context), Dispatchers.IO), db.photoDao())
+    val photos =
+        DefaultPhotosRepository(
+            PhotoFileDataSource(context, AppDirs(context), Dispatchers.IO),
+            db.photoDao(),
+        )
     val transactions = transactionsRepository(context, db, refs)
     val fx = fxRatesRepository(context, db, refs, prefs)
     val sms = smsRepository(context, db, refs, prefs, fx)
-    val inbox = DefaultSmsInboxRepository(context, prefs, refs, sms, fx, transactions, SmsInboxDataSource(context, Dispatchers.IO), Dispatchers.IO)
+    val inbox =
+        DefaultSmsInboxRepository(
+            context,
+            prefs,
+            refs,
+            sms,
+            fx,
+            transactions,
+            SmsInboxDataSource(context, Dispatchers.IO),
+            Dispatchers.IO,
+        )
     val accounts = DefaultAccountsRepository(db, refs)
     val memos = DefaultMemosRepository(db.memoDao())
     val repeats = DefaultRepeatRulesRepository(db, refs, prefs)
     val budgets = DefaultBudgetsRepository(db)
     val favorites = DefaultFavoritesRepository(db)
     val tags = DefaultTagsRepository(db)
-    val importer = DefaultTransactionImportRepository(context, db, refs, AppDirs(context), photos, Dispatchers.IO)
-    val receipts = DefaultReceiptRepository(ReceiptTextDataSource(context, Dispatchers.IO), Dispatchers.Default)
+    val importer =
+        DefaultTransactionImportRepository(
+            context,
+            db,
+            refs,
+            AppDirs(context),
+            photos,
+            Dispatchers.IO,
+        )
+    val receipts =
+        DefaultReceiptRepository(
+            ReceiptTextDataSource(context, Dispatchers.IO),
+            Dispatchers.Default,
+        )
     val getFeePlan = GetSmsFeePlanUseCase(sms, refs)
-    val approveSms = ApproveSmsUseCase(sms, refs, transactions, GetSmsDraftUseCase(GetSmsLedgerAmountUseCase()))
+    val approveSms =
+        ApproveSmsUseCase(sms, refs, transactions, GetSmsDraftUseCase(GetSmsLedgerAmountUseCase()))
 
     override fun close() = db.close()
 }

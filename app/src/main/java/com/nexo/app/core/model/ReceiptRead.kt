@@ -16,6 +16,14 @@ data class ReceiptRead(
     val merchant: String?,
 ) {
     companion object {
-        val EMPTY = ReceiptRead(null, guessed = false, others = emptyList(), date = null, time = null, merchant = null)
+        val EMPTY =
+            ReceiptRead(
+                null,
+                guessed = false,
+                others = emptyList(),
+                date = null,
+                time = null,
+                merchant = null,
+            )
     }
 }

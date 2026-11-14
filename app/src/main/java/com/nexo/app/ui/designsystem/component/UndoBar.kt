@@ -37,7 +37,12 @@ class UndoMessage(val text: String, val action: String? = null, val onAction: ()
  * Hides itself after [durationMs]; place it last in a full-size Box, aligned to the bottom.
  */
 @Composable
-fun UndoBar(message: UndoMessage?, onDismiss: () -> Unit, modifier: Modifier = Modifier, durationMs: Long = 5_000) {
+fun UndoBar(
+    message: UndoMessage?,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    durationMs: Long = 5_000,
+) {
     val colors = LocalNexoColors.current
     val dismiss by rememberUpdatedState(onDismiss)
     LaunchedEffect(message) {
@@ -64,9 +69,19 @@ fun UndoBar(message: UndoMessage?, onDismiss: () -> Unit, modifier: Modifier = M
                 .padding(start = Space.l, end = Space.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(m.text, Modifier.weight(1f).padding(vertical = Space.s), style = MaterialTheme.typography.bodyMedium, color = colors.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                m.text,
+                Modifier.weight(1f).padding(vertical = Space.s),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.text,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
             if (m.action != null) {
-                TextButton(onClick = { m.onAction(); dismiss() }) {
+                TextButton(onClick = {
+                    m.onAction()
+                    dismiss()
+                }) {
                     Text(m.action, style = MaterialTheme.typography.labelLarge, color = colors.text)
                 }
             }

@@ -29,7 +29,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         splash.setKeepOnScreenCondition { app.uiState.value.device == null }
         lifecycleScope.launch {
-            app.uiState.mapNotNull { it.device?.themeMode }.distinctUntilChanged().collect(::syncSystemNightMode)
+            app.uiState.mapNotNull {
+                it.device?.themeMode
+            }.distinctUntilChanged().collect(::syncSystemNightMode)
         }
         if (savedInstanceState == null) app.setPending(IntentRouter.route(intent))
         setContent {

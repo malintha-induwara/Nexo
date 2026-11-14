@@ -25,17 +25,30 @@ data class AmountParts(
     val suffix: String,
 ) {
     /** Plain text for accessibility and copying. */
-    val text: String get() = sign + (if (prefix.isNotEmpty()) "$prefix " else "") + integer + fraction + suffix
+    val text: String get() = sign + (if (prefix.isNotEmpty()) "$prefix " else "") + integer +
+        fraction +
+        suffix
 
     enum class Sign { NONE, NEGATIVE, ALWAYS }
 
     companion object {
         const val MINUS = "−"
 
-        fun of(value: Double, currency: Currency?, sign: Sign = Sign.NEGATIVE): AmountParts =
-            of(value, currency?.symbol ?: "", currency?.symbolPosition ?: SymbolPosition.PREFIX, currency?.decimals ?: 2, sign)
+        fun of(value: Double, currency: Currency?, sign: Sign = Sign.NEGATIVE): AmountParts = of(
+            value,
+            currency?.symbol ?: "",
+            currency?.symbolPosition ?: SymbolPosition.PREFIX,
+            currency?.decimals ?: 2,
+            sign,
+        )
 
-        fun of(value: Double, symbol: String, position: SymbolPosition, decimals: Int, sign: Sign = Sign.NEGATIVE): AmountParts {
+        fun of(
+            value: Double,
+            symbol: String,
+            position: SymbolPosition,
+            decimals: Int,
+            sign: Sign = Sign.NEGATIVE,
+        ): AmountParts {
             val scale = decimals.coerceIn(0, 10)
             val signum = BigDecimal.valueOf(value).setScale(scale, RoundingMode.HALF_UP).signum()
             val body = AmountFormatter.number(abs(value), scale)

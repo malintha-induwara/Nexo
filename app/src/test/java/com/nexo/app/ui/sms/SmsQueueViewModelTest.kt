@@ -52,10 +52,25 @@ class SmsQueueViewModelTest {
 
     private suspend fun pendingItem(categoryId: String? = "6"): String {
         val e = SmsItemEntity(
-            id = UUID.randomUUID().toString(), certainty = Certainty.EXACT, kind = SmsKind.EXPENSE, bank = "COMBANK", sender = "COMBANK",
-            template = "purchase", amount = 2450.0, currency = "LKR", merchant = "Green Leaf Cafe", merchantKey = "green leaf cafe",
-            cardLast4 = "4321", occurredAt = at, smsAt = at, capturedAt = at, dedupeKey = UUID.randomUUID().toString(),
-            text = "Purchase at GREEN LEAF CAFE", accountId = "1", categoryId = categoryId, updatedAt = at,
+            id = UUID.randomUUID().toString(),
+            certainty = Certainty.EXACT,
+            kind = SmsKind.EXPENSE,
+            bank = "COMBANK",
+            sender = "COMBANK",
+            template = "purchase",
+            amount = 2450.0,
+            currency = "LKR",
+            merchant = "Green Leaf Cafe",
+            merchantKey = "green leaf cafe",
+            cardLast4 = "4321",
+            occurredAt = at,
+            smsAt = at,
+            capturedAt = at,
+            dedupeKey = UUID.randomUUID().toString(),
+            text = "Purchase at GREEN LEAF CAFE",
+            accountId = "1",
+            categoryId = categoryId,
+            updatedAt = at,
         )
         book.db.smsDao().insert(e)
         return e.id
@@ -63,7 +78,16 @@ class SmsQueueViewModelTest {
 
     private suspend fun TestScope.openQueue(waitFor: String): SmsQueueViewModel {
         val b = book
-        val vm = SmsQueueViewModel(b.sms, b.refs, b.prefs, b.getFeePlan, b.approveSms, b.transactions, b.inbox)
+        val vm =
+            SmsQueueViewModel(
+                b.sms,
+                b.refs,
+                b.prefs,
+                b.getFeePlan,
+                b.approveSms,
+                b.transactions,
+                b.inbox,
+            )
         backgroundScope.launch { vm.uiState.collect {} }
         vm.uiState.first { s -> s.pending.any { it.id == waitFor } }
         return vm

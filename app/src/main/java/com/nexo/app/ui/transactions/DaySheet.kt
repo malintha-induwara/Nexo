@@ -95,14 +95,23 @@ fun DaySheet(
         val factory = remember(ref) { TransactionRowMapper(ref) }
         fun groupOf(d: LocalDate): DayGroup? {
             val rows = data.gridRows.filter { it.date == d.toString() }
-            val carry = if (data.period?.start == d && data.carryOver != 0.0) d to data.carryOver else null
+            val carry = if (data.period?.start == d && data.carryOver != 0.0) {
+                d to data.carryOver
+            } else {
+                null
+            }
             return factory.dayGroups(rows, data.ledger, carryOver = carry).firstOrNull()
         }
-        fun memosOf(d: LocalDate) = data.memos.filter { it.pinned }.sortedByDescending { it.pinnedAt } + data.memos.filter { !it.pinned && it.date == d.toString() }
+        fun memosOf(d: LocalDate) =
+            data.memos.filter { it.pinned }.sortedByDescending { it.pinnedAt } +
+                data.memos.filter { !it.pinned && it.date == d.toString() }
         val group = groupOf(shown)
         val panel = showMemos || (group == null && memosOf(shown).any { !it.pinned })
 
-        Row(Modifier.fillMaxWidth().padding(start = Space.xs, end = Space.m), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = Space.xs, end = Space.m),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             PeriodNavigator(
                 title = Formats.weekdayMonthDay(shown),
                 onPrevious = { onDate(shown.minusDays(1)) },
@@ -111,27 +120,58 @@ fun DaySheet(
             )
             Spacer(Modifier.weight(1f))
             RoundIconButton(
-                Icons.AutoMirrored.Outlined.StickyNote2, stringResource(R.string.memos), { onShowMemos(!panel) },
+                Icons.AutoMirrored.Outlined.StickyNote2,
+                stringResource(R.string.memos),
+                {
+                    onShowMemos(!panel)
+                },
                 tint = if (panel) colors.text else colors.textSecondary,
                 container = if (panel) colors.raisedHigh else Color.Transparent,
             )
             Spacer(Modifier.width(Space.xs))
             RoundIconButton(Icons.Rounded.Close, stringResource(R.string.action_close), onDismiss)
         }
-        Row(Modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.xs), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.xs),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                (if (shown == LocalDate.now()) stringResource(R.string.today) else shown.year.toString()).uppercase(Locale.getDefault()),
-                style = NexoType.Caps, color = colors.textTertiary, modifier = Modifier.weight(1f),
+                (
+                    if (shown == LocalDate.now()) {
+                        stringResource(R.string.today)
+                    } else {
+                        shown.year.toString()
+                    }
+                    ).uppercase(Locale.getDefault()),
+                style = NexoType.Caps,
+                color = colors.textTertiary,
+                modifier = Modifier.weight(1f),
             )
-            AmountText(group?.income ?: 0.0, ref.mainCurrency, style = NexoType.AmountSmall, color = money.income, sign = AmountParts.Sign.ALWAYS)
+            AmountText(
+                group?.income ?: 0.0,
+                ref.mainCurrency,
+                style = NexoType.AmountSmall,
+                color = money.income,
+                sign = AmountParts.Sign.ALWAYS,
+            )
             Spacer(Modifier.width(Space.m))
-            AmountText(-(group?.expense ?: 0.0), ref.mainCurrency, style = NexoType.AmountSmall, color = money.expense)
+            AmountText(
+                -(group?.expense ?: 0.0),
+                ref.mainCurrency,
+                style = NexoType.AmountSmall,
+                color = money.expense,
+            )
         }
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
             AnimatedContent(
                 targetState = shown to panel,
-                transitionSpec = { NavMotion.lateral(this, targetState.first.compareTo(initialState.first).coerceIn(-1, 1)) },
+                transitionSpec = {
+                    NavMotion.lateral(
+                        this,
+                        targetState.first.compareTo(initialState.first).coerceIn(-1, 1),
+                    )
+                },
                 modifier = Modifier.fillMaxSize(),
                 label = "daySheet",
             ) { (day, memoPanel) ->
@@ -140,27 +180,60 @@ fun DaySheet(
                 when {
                     memoPanel -> {
                         if (memos.isEmpty()) EmptyState(stringResource(R.string.no_memos))
-                        LazyColumn(contentPadding = PaddingValues(start = Space.l, end = Space.l, top = Space.s, bottom = 140.dp), verticalArrangement = Arrangement.spacedBy(Space.s)) {
+                        LazyColumn(
+                            contentPadding = PaddingValues(
+                                start = Space.l,
+                                end = Space.l,
+                                top = Space.s,
+                                bottom = 140.dp,
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(Space.s),
+                        ) {
                             items(memos, key = { it.id }) { m ->
                                 Card(
                                     onClick = { nav.navigate(MemoEditorKey(memoId = m.id)) },
-                                    colors = CardDefaults.cardColors(containerColor = NexoPalette.memo(m.color, dark)),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = NexoPalette.memo(m.color, dark),
+                                    ),
                                     modifier = Modifier.animateItem().fillMaxWidth(),
                                 ) {
                                     Column(Modifier.padding(Space.m)) {
-                                        if (m.title.isNotBlank()) Text(m.title, fontWeight = FontWeight.Bold)
-                                        if (m.content.isNotBlank()) Text(m.content.trimEnd(), maxLines = 4, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+                                        if (m.title.isNotBlank()) {
+                                            Text(m.title, fontWeight = FontWeight.Bold)
+                                        }
+                                        if (m.content.isNotBlank()) {
+                                            Text(
+                                                m.content.trimEnd(),
+                                                maxLines = 4,
+                                                overflow = TextOverflow.Ellipsis,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                    dayGroup == null -> EmptyState(modifier = Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onShowMemos(true) })
-                    else -> LazyColumn(contentPadding = PaddingValues(top = Space.xs, bottom = 140.dp)) {
+
+                    dayGroup == null -> EmptyState(
+                        modifier = Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { onShowMemos(true) },
+                    )
+
+                    else -> LazyColumn(
+                        contentPadding = PaddingValues(top = Space.xs, bottom = 140.dp),
+                    ) {
                         items(dayGroup.rows, key = { it.id }) { row ->
                             TxRow(
-                                row, selected = false,
-                                onClick = { if (!row.isCarryOver) nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id)) },
+                                row,
+                                selected = false,
+                                onClick = {
+                                    if (!row.isCarryOver) {
+                                        nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
+                                    }
+                                },
                                 onLongClick = null,
                                 modifier = Modifier.animateItem(),
                                 highlight = row.id == highlightId,
@@ -169,11 +242,19 @@ fun DaySheet(
                     }
                 }
             }
-            Column(Modifier.align(Alignment.BottomEnd).padding(Space.gutter), horizontalAlignment = Alignment.End) {
+            Column(
+                Modifier.align(Alignment.BottomEnd).padding(Space.gutter),
+                horizontalAlignment = Alignment.End,
+            ) {
                 RoundIconButton(
-                    Icons.AutoMirrored.Outlined.StickyNote2, stringResource(R.string.new_memo),
-                    onClick = { onShowMemos(true); nav.navigate(MemoEditorKey(date = shown.toString())) },
-                    size = 44.dp, container = colors.raisedHigh,
+                    Icons.AutoMirrored.Outlined.StickyNote2,
+                    stringResource(R.string.new_memo),
+                    onClick = {
+                        onShowMemos(true)
+                        nav.navigate(MemoEditorKey(date = shown.toString()))
+                    },
+                    size = 44.dp,
+                    container = colors.raisedHigh,
                 )
                 Spacer(Modifier.height(Space.m))
                 val interactions = remember { MutableInteractionSource() }
@@ -184,14 +265,23 @@ fun DaySheet(
                         .size(56.dp)
                         .clip(CircleShape)
                         .background(colors.primary)
-                        .clickable(interactionSource = interactions, indication = null, role = Role.Button) {
+                        .clickable(
+                            interactionSource = interactions,
+                            indication = null,
+                            role = Role.Button,
+                        ) {
                             onShowMemos(false)
                             nav.navigate(EntryKey(date = shown.toString(), fromAdd = true))
                         }
                         .semantics { contentDescription = addLabel },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Rounded.Add, null, tint = colors.onPrimary, modifier = Modifier.size(28.dp))
+                    Icon(
+                        Icons.Rounded.Add,
+                        null,
+                        tint = colors.onPrimary,
+                        modifier = Modifier.size(28.dp),
+                    )
                 }
             }
         }

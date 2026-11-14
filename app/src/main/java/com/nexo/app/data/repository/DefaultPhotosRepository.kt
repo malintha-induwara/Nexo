@@ -21,7 +21,12 @@ class DefaultPhotosRepository @Inject constructor(
         val bytes = files.readBytes(uri) ?: return null
         val checksum = PhotoFileDataSource.md5(bytes)
         photoDao.byChecksum(checksum)?.let { existing ->
-            if (files.file(existing.fileName).exists()) return StoredPhoto(existing.fileName, existing.fileSize, checksum)
+            if (files.file(
+                    existing.fileName,
+                ).exists()
+            ) {
+                return StoredPhoto(existing.fileName, existing.fileSize, checksum)
+            }
         }
         return files.write(bytes, files.extensionOf(uri), checksum)
     }
@@ -32,5 +37,6 @@ class DefaultPhotosRepository @Inject constructor(
         }
     }
 
-    override suspend fun exportToGallery(fileName: String): Boolean = files.exportToGallery(fileName)
+    override suspend fun exportToGallery(fileName: String): Boolean =
+        files.exportToGallery(fileName)
 }

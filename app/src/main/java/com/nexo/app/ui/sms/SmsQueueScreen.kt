@@ -115,7 +115,9 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
     val undoLabel = stringResource(R.string.sms_undo)
     val undo = state.notice?.let { notice ->
         val text = notice.text.asString()
-        remember(notice.id) { UndoMessage(text, undoLabel.takeIf { notice.undo != null }) { vm.undo(notice) } }
+        remember(notice.id) {
+            UndoMessage(text, undoLabel.takeIf { notice.undo != null }) { vm.undo(notice) }
+        }
     }
     // Keeps the last question drawn while the sheet slides away.
     val shownPrompt = remember { arrayOfNulls<FeePrompt>(1) }
@@ -145,24 +147,50 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
 
     Box(Modifier.fillMaxSize().background(colors.background)) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
-            AnimatedContent(selecting, transitionSpec = { fadeIn(NexoMotion.enter()) togetherWith fadeOut(NexoMotion.exit()) }, label = "queueHeader") { sel ->
+            AnimatedContent(selecting, transitionSpec = {
+                fadeIn(NexoMotion.enter()) togetherWith
+                    fadeOut(NexoMotion.exit())
+            }, label = "queueHeader") { sel ->
                 if (sel) {
                     SelectionHeader(
                         count = selection.size,
                         onClose = vm::clearSelection,
                         onAssign = { open(QueueSheet.Assign) },
                         onDeny = { open(QueueSheet.Deny(selection)) },
-                        onApprove = { haptics.confirm(); vm.approveSelected() },
+                        onApprove = {
+                            haptics.confirm()
+                            vm.approveSelected()
+                        },
                     )
                 } else {
-                    Row(Modifier.fillMaxWidth().height(56.dp).padding(start = Space.m, end = Space.gutter), verticalAlignment = Alignment.CenterVertically) {
-                        RoundIconButton(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.action_back), { nav.back() })
+                    Row(
+                        Modifier.fillMaxWidth().height(
+                            56.dp,
+                        ).padding(start = Space.m, end = Space.gutter),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RoundIconButton(
+                            Icons.AutoMirrored.Rounded.ArrowBack,
+                            stringResource(R.string.action_back),
+                            {
+                                nav.back()
+                            },
+                        )
                         Spacer(Modifier.width(Space.m))
-                        Text(stringResource(R.string.sms_queue_title), style = MaterialTheme.typography.titleLarge, color = colors.text, modifier = Modifier.weight(1f))
+                        Text(
+                            stringResource(R.string.sms_queue_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = colors.text,
+                            modifier = Modifier.weight(1f),
+                        )
                         CapturePill(
                             label = when {
-                                device?.smsCaptureEnabled == false -> stringResource(R.string.sms_capture_off)
+                                device?.smsCaptureEnabled == false -> stringResource(
+                                    R.string.sms_capture_off,
+                                )
+
                                 !permitted -> stringResource(R.string.sms_capture_needs_permission)
+
                                 else -> stringResource(R.string.sms_capture_on)
                             },
                             on = device?.smsCaptureEnabled != false && permitted,
@@ -174,7 +202,10 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                 selected = filter,
                 pendingCount = pending.size,
                 attentionCount = pending.count { it.needsAttention },
-                onSelect = { haptics.tick(); vm.setFilter(it) },
+                onSelect = {
+                    haptics.tick()
+                    vm.setFilter(it)
+                },
             )
             val list = items
             val queueView = filter.status == SmsStatus.PENDING && !selecting
@@ -183,36 +214,64 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
             val gapUntil = device?.smsGapUntil ?: 0L
             val showGap = queueView && gapFrom > 0
             val showOffer = queueView && !showGap && permitted &&
-                device?.smsHistoryImport.let { it == SmsHistoryImport.NOT_OFFERED || it == SmsHistoryImport.OFFERED }
+                device?.smsHistoryImport.let {
+                    it == SmsHistoryImport.NOT_OFFERED ||
+                        it == SmsHistoryImport.OFFERED
+                }
             when {
                 list == null -> Unit
+
                 list.isEmpty() && !showCards && !showGap && !showOffer -> EmptyState(
-                    stringResource(if (filter == QueueFilter.ALL) R.string.sms_empty else R.string.sms_empty_filter),
+                    stringResource(
+                        if (filter == QueueFilter.ALL) {
+                            R.string.sms_empty
+                        } else {
+                            R.string.sms_empty_filter
+                        },
+                    ),
                     Modifier.padding(top = Space.xxxl),
                 )
-                else -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 120.dp)) {
+
+                else -> LazyColumn(
+                    Modifier.weight(1f),
+                    contentPadding = PaddingValues(bottom = 120.dp),
+                ) {
                     if (showGap) {
                         item(key = "gap") {
                             SmsPromptCard(
-                                stringResource(R.string.sms_gap_hint), null, stringResource(R.string.sms_history_title),
-                                { nav.navigate(SmsHistoryKey(gapFrom, gapUntil)) }, Modifier.animateItem(),
-                                stringResource(R.string.sms_history_not_now), vm::clearGap,
+                                stringResource(R.string.sms_gap_hint),
+                                null,
+                                stringResource(R.string.sms_history_title),
+                                {
+                                    nav.navigate(SmsHistoryKey(gapFrom, gapUntil))
+                                },
+                                Modifier.animateItem(),
+                                stringResource(R.string.sms_history_not_now),
+                                vm::clearGap,
                             )
                         }
                     }
                     if (showOffer) {
                         item(key = "offer") {
                             SmsPromptCard(
-                                stringResource(R.string.sms_history_offer_title), stringResource(R.string.sms_history_offer_text),
-                                stringResource(R.string.sms_history_choose), { nav.navigate(SmsHistoryKey()) }, Modifier.animateItem(),
-                                stringResource(R.string.sms_history_not_now), vm::skipHistory,
+                                stringResource(R.string.sms_history_offer_title),
+                                stringResource(R.string.sms_history_offer_text),
+                                stringResource(R.string.sms_history_choose),
+                                {
+                                    nav.navigate(SmsHistoryKey())
+                                },
+                                Modifier.animateItem(),
+                                stringResource(R.string.sms_history_not_now),
+                                vm::skipHistory,
                             )
                         }
                     }
                     if (showCards) {
                         val card = unmapped.first()
                         item(key = "card_${card.bank}_${card.last4}") {
-                            CardQuestion(card, Modifier.animateItem()) { open(QueueSheet.MapCard(card)) }
+                            CardQuestion(card, Modifier.animateItem()) {
+                                open(QueueSheet.MapCard(card))
+                            }
                         }
                     }
                     items(list, key = { it.id }) { item ->
@@ -227,13 +286,25 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                                 if (selecting) {
                                     vm.toggleSelect(item.id)
                                 } else if (item.status == SmsStatus.PENDING) {
-                                    nav.navigate(EntryKey(mode = EntryMode.SMS, smsItemId = item.id, fromAdd = true))
+                                    nav.navigate(
+                                        EntryKey(
+                                            mode = EntryMode.SMS,
+                                            smsItemId = item.id,
+                                            fromAdd = true,
+                                        ),
+                                    )
                                 }
                             },
-                            onSelect = { haptics.longPress(); vm.toggleSelect(item.id) },
+                            onSelect = {
+                                haptics.longPress()
+                                vm.toggleSelect(item.id)
+                            },
                             onApprove = { vm.approve(item.id) },
                             onDeny = { vm.deny(listOf(item.id)) },
-                            onRestore = { haptics.confirm(); vm.restore(listOf(item.id)) },
+                            onRestore = {
+                                haptics.confirm()
+                                vm.restore(listOf(item.id))
+                            },
                             onAmount = { editAmount = item },
                         )
                     }
@@ -241,16 +312,25 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                         item(key = "fx_attribution") {
                             Text(
                                 stringResource(R.string.fx_attribution),
-                                Modifier.fillMaxWidth().clickable { openRatesAttribution(context) }.padding(horizontal = Space.xxl, vertical = Space.m),
-                                style = NexoType.Meta, color = colors.textSecondary, textAlign = TextAlign.Center,
+                                Modifier.fillMaxWidth().clickable {
+                                    openRatesAttribution(context)
+                                }.padding(horizontal = Space.xxl, vertical = Space.m),
+                                style = NexoType.Meta,
+                                color = colors.textSecondary,
+                                textAlign = TextAlign.Center,
                             )
                         }
                     }
                     item(key = "privacy") {
                         Text(
                             stringResource(R.string.sms_privacy_line),
-                            Modifier.fillMaxWidth().padding(horizontal = Space.xxl, vertical = Space.xl),
-                            style = NexoType.Meta, color = colors.textTertiary, textAlign = TextAlign.Center,
+                            Modifier.fillMaxWidth().padding(
+                                horizontal = Space.xxl,
+                                vertical = Space.xl,
+                            ),
+                            style = NexoType.Meta,
+                            color = colors.textTertiary,
+                            textAlign = TextAlign.Center,
                         )
                     }
                 }
@@ -267,7 +347,11 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
             when (val s = sheet) {
                 is QueueSheet.MapCard -> {
                     SheetTitle(
-                        stringResource(R.string.sms_card_question, Banks.byName(s.card.bank)?.displayName.orEmpty(), s.card.last4),
+                        stringResource(
+                            R.string.sms_card_question,
+                            Banks.byName(s.card.bank)?.displayName.orEmpty(),
+                            s.card.last4,
+                        ),
                         stringResource(R.string.sms_card_hint),
                     )
                     AccountPickList(ref, null) { id ->
@@ -275,6 +359,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                         sheetOpen = false
                     }
                 }
+
                 QueueSheet.Assign -> {
                     SheetTitle(stringResource(R.string.sms_assign_account))
                     AccountPickList(ref, null) { id ->
@@ -282,18 +367,25 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
                         sheetOpen = false
                     }
                 }
+
                 is QueueSheet.Deny -> {
-                    SheetTitle(stringResource(R.string.sms_deny_title), stringResource(R.string.sms_deny_hint))
+                    SheetTitle(
+                        stringResource(R.string.sms_deny_title),
+                        stringResource(R.string.sms_deny_hint),
+                    )
                     DenyReasonList { reason ->
                         vm.deny(s.ids, reason)
                         sheetOpen = false
                     }
                 }
+
                 null -> Unit
             }
         }
 
-        InlineBottomSheet(visible = feePrompt != null, onDismiss = { vm.answerFee(null) }, heightFraction = 0.6f) {
+        InlineBottomSheet(visible = feePrompt != null, onDismiss = {
+            vm.answerFee(null)
+        }, heightFraction = 0.6f) {
             shownPrompt[0]?.let { p -> FeePromptContent(p, ref) { vm.answerFee(it) } }
         }
     }
@@ -302,7 +394,11 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
         val foreign = item.certainty == Certainty.ESTIMATED || item.actualAmount != null
         val account = ref.accountCurrency(item.accountId)
         AmountSheet(
-            title = if (foreign) stringResource(R.string.sms_actual_amount_title, account.isoCode ?: account.symbol) else stringResource(R.string.sms_amount_title),
+            title = if (foreign) {
+                stringResource(R.string.sms_actual_amount_title, account.isoCode ?: account.symbol)
+            } else {
+                stringResource(R.string.sms_amount_title)
+            },
             subtitle = if (foreign) stringResource(R.string.sms_actual_amount_sub) else null,
             initial = if (foreign) item.actualAmount ?: item.estimatedAmount else item.amount,
             decimals = if (foreign) account.decimals else 2,
@@ -345,8 +441,14 @@ private fun QueueItem(
             onLongClick = if (pending) onSelect else null,
             onAmountClick = if (pending && !selecting) onAmount else null,
             trailing = if (restorable) {
-                { TextButton(onClick = onRestore) { Text(stringResource(R.string.sms_restore), color = colors.text) } }
-            } else null,
+                {
+                    TextButton(onClick = onRestore) {
+                        Text(stringResource(R.string.sms_restore), color = colors.text)
+                    }
+                }
+            } else {
+                null
+            },
         )
     }
     if (!pending) {
@@ -354,26 +456,64 @@ private fun QueueItem(
         return
     }
     SwipeActionRow(
-        start = SwipeAction(Icons.Rounded.Check, stringResource(R.string.sms_approve), enabled = !item.needsDetails, onTrigger = onApprove),
-        end = SwipeAction(Icons.Rounded.Block, stringResource(R.string.sms_deny), onTrigger = onDeny),
+        start = SwipeAction(
+            Icons.Rounded.Check,
+            stringResource(R.string.sms_approve),
+            enabled = !item.needsDetails,
+            onTrigger = onApprove,
+        ),
+        end = SwipeAction(
+            Icons.Rounded.Block,
+            stringResource(R.string.sms_deny),
+            onTrigger = onDeny,
+        ),
         modifier = modifier,
         enabled = !selecting,
     ) { row() }
 }
 
 @Composable
-private fun SelectionHeader(count: Int, onClose: () -> Unit, onAssign: () -> Unit, onDeny: () -> Unit, onApprove: () -> Unit) {
+private fun SelectionHeader(
+    count: Int,
+    onClose: () -> Unit,
+    onAssign: () -> Unit,
+    onDeny: () -> Unit,
+    onApprove: () -> Unit,
+) {
     val colors = LocalNexoColors.current
-    Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = Space.m), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        Modifier.fillMaxWidth().height(56.dp).padding(horizontal = Space.m),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         RoundIconButton(Icons.Rounded.Close, stringResource(R.string.action_close), onClose)
         Spacer(Modifier.width(Space.m))
-        Text(count.toString(), style = MaterialTheme.typography.titleLarge, color = colors.text, modifier = Modifier.weight(1f))
-        RoundIconButton(Icons.Rounded.AccountBalanceWallet, stringResource(R.string.sms_assign_account), onAssign, tint = colors.textSecondary, container = Color.Transparent)
-        RoundIconButton(Icons.Rounded.Block, stringResource(R.string.sms_deny), onDeny, tint = colors.textSecondary, container = Color.Transparent)
+        Text(
+            count.toString(),
+            style = MaterialTheme.typography.titleLarge,
+            color = colors.text,
+            modifier = Modifier.weight(1f),
+        )
+        RoundIconButton(
+            Icons.Rounded.AccountBalanceWallet,
+            stringResource(R.string.sms_assign_account),
+            onAssign,
+            tint = colors.textSecondary,
+            container = Color.Transparent,
+        )
+        RoundIconButton(
+            Icons.Rounded.Block,
+            stringResource(R.string.sms_deny),
+            onDeny,
+            tint = colors.textSecondary,
+            container = Color.Transparent,
+        )
         Spacer(Modifier.width(Space.xs))
         Button(
             onClick = onApprove,
-            colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colors.primary,
+                contentColor = colors.onPrimary,
+            ),
             contentPadding = PaddingValues(horizontal = Space.l),
         ) {
             Icon(Icons.Rounded.DoneAll, null, Modifier.size(18.dp))
@@ -388,29 +528,58 @@ private fun SelectionHeader(count: Int, onClose: () -> Unit, onAssign: () -> Uni
 private fun CapturePill(label: String, on: Boolean, onClick: () -> Unit) {
     val colors = LocalNexoColors.current
     Row(
-        Modifier.clip(NexoShapes.pill).background(colors.raised).clickable(onClick = onClick).padding(horizontal = Space.m, vertical = Space.s),
+        Modifier.clip(
+            NexoShapes.pill,
+        ).background(
+            colors.raised,
+        ).clickable(onClick = onClick).padding(horizontal = Space.m, vertical = Space.s),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             Modifier.size(8.dp).clip(CircleShape)
-                .then(if (on) Modifier.background(colors.primary) else Modifier.border(1.5.dp, colors.textTertiary, CircleShape)),
+                .then(
+                    if (on) {
+                        Modifier.background(colors.primary)
+                    } else {
+                        Modifier.border(1.5.dp, colors.textTertiary, CircleShape)
+                    },
+                ),
         )
         Spacer(Modifier.width(Space.s))
-        Text(label, style = MaterialTheme.typography.labelMedium, color = if (on) colors.text else colors.textSecondary)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (on) colors.text else colors.textSecondary,
+        )
     }
 }
 
 @Composable
-private fun FilterChips(selected: QueueFilter, pendingCount: Int, attentionCount: Int, onSelect: (QueueFilter) -> Unit) {
+private fun FilterChips(
+    selected: QueueFilter,
+    pendingCount: Int,
+    attentionCount: Int,
+    onSelect: (QueueFilter) -> Unit,
+) {
     val colors = LocalNexoColors.current
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = Space.gutter, vertical = Space.s),
+        Modifier.fillMaxWidth().horizontalScroll(
+            rememberScrollState(),
+        ).padding(horizontal = Space.gutter, vertical = Space.s),
         horizontalArrangement = Arrangement.spacedBy(Space.s),
     ) {
         QueueFilter.entries.forEach { f ->
             val on = f == selected
-            val container by animateColorAsState(if (on) colors.primarySoft else colors.raised, NexoMotion.standard(), label = "chip")
-            val content by animateColorAsState(if (on) colors.primaryText else colors.textSecondary, NexoMotion.standard(), label = "chipText")
+            val container by animateColorAsState(
+                if (on) colors.primarySoft else colors.raised,
+                NexoMotion.standard(),
+                label = "chip",
+            )
+            val content by animateColorAsState(
+                if (on) colors.primaryText else colors.textSecondary,
+                NexoMotion.standard(),
+                label = "chipText",
+            )
             val count = when (f) {
                 QueueFilter.ALL -> pendingCount
                 QueueFilter.ATTENTION -> attentionCount
@@ -418,8 +587,12 @@ private fun FilterChips(selected: QueueFilter, pendingCount: Int, attentionCount
             }
             Text(
                 if (count > 0) "${stringResource(f.label)}  $count" else stringResource(f.label),
-                Modifier.clip(NexoShapes.pill).background(container).clickable { onSelect(f) }.padding(horizontal = Space.m + Space.xxs, vertical = Space.s),
-                style = MaterialTheme.typography.labelLarge, color = content, maxLines = 1,
+                Modifier.clip(NexoShapes.pill).background(container).clickable {
+                    onSelect(f)
+                }.padding(horizontal = Space.m + Space.xxs, vertical = Space.s),
+                style = MaterialTheme.typography.labelLarge,
+                color = content,
+                maxLines = 1,
             )
         }
     }

@@ -63,10 +63,21 @@ fun RoundIconButton(
             .size(size)
             .clip(CircleShape)
             .background(container)
-            .clickable(interactionSource = interactions, indication = null, enabled = enabled, role = Role.Button, onClick = onClick),
+            .clickable(
+                interactionSource = interactions,
+                indication = null,
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription, tint = tint.copy(alpha = if (enabled) tint.alpha else 0.4f), modifier = Modifier.size(size * 0.5f))
+        Icon(
+            icon,
+            contentDescription,
+            tint = tint.copy(alpha = if (enabled) tint.alpha else 0.4f),
+            modifier = Modifier.size(size * 0.5f),
+        )
     }
 }
 
@@ -82,8 +93,16 @@ fun NexoTopBar(
 ) {
     TopAppBar(
         title = {
-            if (titleContent != null) titleContent()
-            else Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleLarge)
+            if (titleContent != null) {
+                titleContent()
+            } else {
+                Text(
+                    title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
         },
         navigationIcon = {
             if (onBack != null) {
@@ -122,7 +141,11 @@ fun PeriodNavigator(
 ) {
     val haptics = rememberHaptics()
     var direction by remember { mutableIntStateOf(0) }
-    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+    Row(
+        modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
         StepButton(Icons.Rounded.ChevronLeft, stringResource(R.string.action_previous), color) {
             direction = -1
             haptics.tick()
@@ -130,19 +153,32 @@ fun PeriodNavigator(
         }
         AnimatedContent(
             targetState = title,
-            transitionSpec = { NavMotion.lateral(this, direction) using SizeTransform(clip = false) },
+            transitionSpec = {
+                NavMotion.lateral(this, direction) using SizeTransform(clip = false)
+            },
             label = "period",
         ) { t ->
             Row(
                 Modifier
                     .clip(CircleShape)
-                    .then(if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier)
+                    .then(
+                        if (onTitleClick != null) {
+                            Modifier.clickable(onClick = onTitleClick)
+                        } else {
+                            Modifier
+                        },
+                    )
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(t, color = color, style = MaterialTheme.typography.titleMedium, maxLines = 1)
                 if (onTitleClick != null) {
-                    Icon(Icons.Rounded.KeyboardArrowDown, null, tint = color.copy(alpha = 0.55f), modifier = Modifier.size(18.dp))
+                    Icon(
+                        Icons.Rounded.KeyboardArrowDown,
+                        null,
+                        tint = color.copy(alpha = 0.55f),
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
             }
         }
@@ -162,7 +198,12 @@ private fun StepButton(icon: ImageVector, description: String, color: Color, onC
             .pressScale(interactions, 0.85f)
             .size(40.dp)
             .clip(CircleShape)
-            .clickable(interactionSource = interactions, indication = null, role = Role.Button, onClick = onClick),
+            .clickable(
+                interactionSource = interactions,
+                indication = null,
+                role = Role.Button,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, description, tint = color, modifier = Modifier.size(22.dp))
@@ -180,11 +221,21 @@ fun ModePill(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) 
             .height(36.dp)
             .clip(CircleShape)
             .background(colors.raised)
-            .clickable(interactionSource = interactions, indication = null, role = Role.Button, onClick = onClick)
+            .clickable(
+                interactionSource = interactions,
+                indication = null,
+                role = Role.Button,
+                onClick = onClick,
+            )
             .padding(start = 14.dp, end = Space.s),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.labelLarge, color = colors.text)
-        Icon(Icons.Rounded.KeyboardArrowDown, null, tint = colors.textSecondary, modifier = Modifier.size(18.dp))
+        Icon(
+            Icons.Rounded.KeyboardArrowDown,
+            null,
+            tint = colors.textSecondary,
+            modifier = Modifier.size(18.dp),
+        )
     }
 }

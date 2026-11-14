@@ -30,18 +30,33 @@ object GroupVisuals {
     /** Seeded groups get a fixed look; the user's own groups take a stable hue from their id. */
     fun of(group: AccountGroup): GroupVisual = when (group.builtinId) {
         11 -> GroupVisual(Icons.Rounded.Payments, 3)
+
         1 -> GroupVisual(Icons.Rounded.AccountBalance, 5)
+
         2 -> GroupVisual(Icons.Rounded.CreditCard, 7)
+
         3 -> GroupVisual(Icons.Rounded.CreditCard, 6)
+
         4 -> GroupVisual(Icons.Rounded.Savings, 2)
+
         6 -> GroupVisual(Icons.Rounded.PhoneAndroid, 1)
+
         8 -> GroupVisual(Icons.Rounded.TrendingUp, 4)
+
         9 -> GroupVisual(Icons.Rounded.SwapVert, 8)
+
         5 -> GroupVisual(Icons.Rounded.RequestQuote, 0)
+
         10 -> GroupVisual(Icons.Rounded.Shield, 6)
+
         7 -> GroupVisual(Icons.Rounded.Category, 9)
+
         else -> GroupVisual(
-            if (group.type == GroupType.NORMAL) Icons.Rounded.AccountBalanceWallet else Icons.Rounded.CreditCard,
+            if (group.type == GroupType.NORMAL) {
+                Icons.Rounded.AccountBalanceWallet
+            } else {
+                Icons.Rounded.CreditCard
+            },
             CategoryVisuals.stableColor(group.id),
         )
     }

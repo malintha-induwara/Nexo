@@ -63,7 +63,10 @@ import com.nexo.app.ui.navigation.MemoEditorKey
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MemoEditorScreen(key: MemoEditorKey) {
-    val vm = hiltViewModel<MemoEditorViewModel, MemoEditorViewModel.Factory>(creationCallback = { it.create(key) })
+    val vm =
+        hiltViewModel<MemoEditorViewModel, MemoEditorViewModel.Factory>(creationCallback = {
+            it.create(key)
+        })
     val s by vm.uiState.collectAsStateWithLifecycle()
     val nav = LocalNavigator.current
     LaunchedEffect(Unit) { vm.initialize() }
@@ -79,7 +82,11 @@ fun MemoEditorScreen(key: MemoEditorKey) {
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     val close = { vm.saveAndClose() }
     val titleFocus = remember { FocusRequester() }
-    LaunchedEffect(s.loaded) { if (s.loaded && s.id == null) runCatching { titleFocus.requestFocus() } }
+    LaunchedEffect(s.loaded) {
+        if (s.loaded && s.id == null) {
+            runCatching { titleFocus.requestFocus() }
+        }
+    }
     BackHandler { close() }
     if (!s.loaded) return
     val bg = NexoPalette.memo(s.color, dark)
@@ -87,9 +94,20 @@ fun MemoEditorScreen(key: MemoEditorKey) {
         containerColor = bg,
         topBar = {
             NexoTopBar(stringResource(R.string.note), onBack = { close() }, container = bg) {
-                IconButton(onClick = { palette = true }) { Icon(Icons.Outlined.Palette, stringResource(R.string.color)) }
-                IconButton(onClick = vm::togglePin) { Icon(if (s.pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin, stringResource(R.string.pin)) }
-                if (s.id != null) IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
+                IconButton(onClick = {
+                    palette = true
+                }) { Icon(Icons.Outlined.Palette, stringResource(R.string.color)) }
+                IconButton(onClick = vm::togglePin) {
+                    Icon(
+                        if (s.pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                        stringResource(R.string.pin),
+                    )
+                }
+                if (s.id != null) {
+                    IconButton(onClick = {
+                        confirmDelete = true
+                    }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
+                }
             }
         },
     ) { padding ->
@@ -100,22 +118,53 @@ fun MemoEditorScreen(key: MemoEditorKey) {
                 color = MaterialTheme.nexo.primaryText,
             )
             val colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
             )
-            TextField(s.title, vm::setTitle, placeholder = { Text(stringResource(R.string.title)) }, singleLine = true, colors = colors,
-                textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.fillMaxWidth().then(Modifier.focusRequester(titleFocus)))
-            TextField(s.content, vm::setContent, placeholder = { Text(stringResource(R.string.note)) }, colors = colors, modifier = Modifier.fillMaxWidth().weight(1f))
+            TextField(
+                s.title,
+                vm::setTitle,
+                placeholder = {
+                    Text(stringResource(R.string.title))
+                },
+                singleLine = true,
+                colors = colors,
+                textStyle = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.SemiBold,
+                ),
+                modifier = Modifier.fillMaxWidth().then(Modifier.focusRequester(titleFocus)),
+            )
+            TextField(s.content, vm::setContent, placeholder = {
+                Text(stringResource(R.string.note))
+            }, colors = colors, modifier = Modifier.fillMaxWidth().weight(1f))
         }
     }
     if (palette) {
         ModalBottomSheet(onDismissRequest = { palette = false }) {
-            LazyVerticalGrid(GridCells.Fixed(6), Modifier.padding(16.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            LazyVerticalGrid(
+                GridCells.Fixed(6),
+                Modifier.padding(16.dp).navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 items(MemoColor.entries) { c ->
                     Box(Modifier.padding(4.dp), contentAlignment = Alignment.Center) {
                         Box(
                             Modifier.size(40.dp).background(NexoPalette.memo(c, dark), CircleShape)
-                                .border(if (c == s.color) 3.dp else 1.dp, if (c == s.color) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                                .border(
+                                    if (c == s.color) {
+                                        3.dp
+                                    } else {
+                                        1.dp
+                                    },
+                                    if (c == s.color) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.outlineVariant
+                                    },
+                                    CircleShape,
+                                )
                                 .clickable { vm.setColor(c) },
                         )
                     }
@@ -123,6 +172,16 @@ fun MemoEditorScreen(key: MemoEditorKey) {
             }
         }
     }
-    if (pickDate) NexoDatePickerDialog(s.date, onPick = vm::setDate, onDismiss = { pickDate = false })
-    if (confirmDelete) ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.delete() }, onDismiss = { confirmDelete = false })
+    if (pickDate) {
+        NexoDatePickerDialog(s.date, onPick = vm::setDate, onDismiss = {
+            pickDate = false
+        })
+    }
+    if (confirmDelete) {
+        ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
+            vm.delete()
+        }, onDismiss = {
+            confirmDelete = false
+        })
+    }
 }

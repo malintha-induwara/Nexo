@@ -51,19 +51,42 @@ class MemoListViewModel @AssistedInject constructor(
         fun create(key: MemoListKey): MemoListViewModel
     }
 
-    private val date = MutableStateFlow(key.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now())
+    private val date =
+        MutableStateFlow(
+            key.date?.let {
+                runCatching { LocalDate.parse(it) }.getOrNull()
+            } ?: LocalDate.now(),
+        )
 
     /** Kept for event handlers that need the reference data synchronously. */
-    private val ref = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val ref = refs.getRefDataStream().stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        RefData(),
+    )
 
-    private val memos = combine(ref, date) { r, d -> r.settings.periods.monthPeriodContaining(d) }.flatMapLatest { p ->
+    private val memos = combine(ref, date) { r, d ->
+        r.settings.periods.monthPeriodContaining(d)
+    }.flatMapLatest { p ->
         memosRepository.getMemosStream(p.startText(), p.endText()).map { list ->
             list.filter { it.pinned }.sortedByDescending { it.pinnedAt } +
-                list.filter { !it.pinned && LocalDate.parse(it.date) in p.range }.sortedWith(compareByDescending<Memo> { it.date }.thenByDescending { it.dateTime })
+                list.filter {
+                    !it.pinned && LocalDate.parse(it.date) in p.range
+                }.sortedWith(compareByDescending<Memo> { it.date }.thenByDescending { it.dateTime })
         }
     }
 
-    val uiState: StateFlow<MemoListUiState> = combine(ref, date, prefs.getDeviceSettingsStream(), memos) { r, d, device, list ->
+    val uiState: StateFlow<MemoListUiState> = combine(
+        ref,
+        date,
+        prefs.getDeviceSettingsStream(),
+        memos,
+    ) {
+            r,
+            d,
+            device,
+            list,
+        ->
         MemoListUiState(r, d, r.settings.periods.monthPeriodContaining(d), device, list)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MemoListUiState())
 
@@ -80,6 +103,8 @@ class MemoListViewModel @AssistedInject constructor(
         date.value = (if (forward) e.next(p) else e.previous(p)).end
     }
 
-    fun setMemoButton(v: Boolean) = viewModelScope.launch { bookSettings.updateBookSettings { it.copy(memoButton = v) } }
+    fun setMemoButton(v: Boolean) = viewModelScope.launch {
+        bookSettings.updateBookSettings { it.copy(memoButton = v) }
+    }
     fun setHelpHidden(v: Boolean) = viewModelScope.launch { prefs.setMemoHelpHidden(v) }
 }

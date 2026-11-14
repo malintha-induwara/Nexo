@@ -50,7 +50,11 @@ class SmsIntakeTest {
     @Before
     fun setUp() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
+        db =
+            Room.inMemoryDatabaseBuilder(
+                context,
+                NexoDatabase::class.java,
+            ).allowMainThreadQueries().build()
         BookSeeder(context, db).seedFresh(CurrencyCatalog.find("LKR")!!)
         refs = referenceDataRepository(db, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
         intake = smsRepository(context, db, refs)
@@ -59,11 +63,23 @@ class SmsIntakeTest {
     @After
     fun tearDown() = db.close()
 
-    private fun purchase(amount: String = "2,450.00", cur: String = "LKR", card: String = "4321", merchant: String = "GREEN LEAF CAFE Kandy LK") =
+    private fun purchase(
+        amount: String = "2,450.00",
+        cur: String = "LKR",
+        card: String = "4321",
+        merchant: String = "GREEN LEAF CAFE Kandy LK",
+    ) =
         "Dear Cardholder, Purchase at $merchant for $cur $amount on 03/11/26 07:45 PM has been authorised on your debit card ending #$card."
 
-    private suspend fun send(body: String, receivedAt: Long = start + 1_000, s: DeviceSettings = active) =
-        intake.receive(listOf(IncomingSms(SmsMessage("COMBANK", body, receivedAt), receivedAt)), s, notify = false)
+    private suspend fun send(
+        body: String,
+        receivedAt: Long = start + 1_000,
+        s: DeviceSettings = active,
+    ) = intake.receive(
+        listOf(IncomingSms(SmsMessage("COMBANK", body, receivedAt), receivedAt)),
+        s,
+        notify = false,
+    )
 
     private suspend fun only() = db.smsDao().pending().single().asExternalModel()
 
@@ -104,7 +120,9 @@ class SmsIntakeTest {
 
     @Test
     fun withdrawalGoesToTheCashAccount() = runBlocking {
-        send("Withdrawal at MATARA-2 BR MATARA SPLK for LKR 6,000.00 on 03/11/26 07:45 PM from card ending #4321.")
+        send(
+            "Withdrawal at MATARA-2 BR MATARA SPLK for LKR 6,000.00 on 03/11/26 07:45 PM from card ending #4321.",
+        )
         val item = only()
         assertEquals(SmsKind.TRANSFER_TO_CASH, item.kind)
         assertEquals("11", item.toAccountId)
@@ -114,8 +132,36 @@ class SmsIntakeTest {
     @Test
     fun foreignPurchaseOnAnAccountInThatCurrencyIsExact() = runBlocking {
         val now = System.currentTimeMillis()
-        db.currencyDao().upsert(listOf(CurrencyEntity("USD", "USD", "US Dollar", "$", SymbolPosition.PREFIX, 2, 330.0, false, true, 1, now)))
-        db.accountDao().upsert(listOf(AccountEntity("usd", "Dollar card", "1", "USD", 9, createdAt = now, updatedAt = now)))
+        db.currencyDao().upsert(
+            listOf(
+                CurrencyEntity(
+                    "USD",
+                    "USD",
+                    "US Dollar",
+                    "$",
+                    SymbolPosition.PREFIX,
+                    2,
+                    330.0,
+                    false,
+                    true,
+                    1,
+                    now,
+                ),
+            ),
+        )
+        db.accountDao().upsert(
+            listOf(
+                AccountEntity(
+                    "usd",
+                    "Dollar card",
+                    "1",
+                    "USD",
+                    9,
+                    createdAt = now,
+                    updatedAt = now,
+                ),
+            ),
+        )
         db.smsDao().upsertSource(SmsSourceEntity("COMBANK", "1111", "usd", 0))
         send(purchase(amount = "20.00", cur = "USD", card = "1111"))
         val item = only()
@@ -123,7 +169,12 @@ class SmsIntakeTest {
         assertNull(item.feeRoute)
 
         send(purchase(amount = "5.00", cur = "USD", card = "4321"))
-        assertEquals(Certainty.ESTIMATED, db.smsDao().pending().first { it.cardLast4 == "4321" }.certainty)
+        assertEquals(
+            Certainty.ESTIMATED,
+            db.smsDao().pending().first {
+                it.cardLast4 == "4321"
+            }.certainty,
+        )
     }
 
     @Test
@@ -137,7 +188,10 @@ class SmsIntakeTest {
 
     @Test
     fun approvalCodeIsNeverStored() = runBlocking {
-        send("ComBank Digital-Transfer to Other Banks LKR 7,500.00 attempted. Please use code 987654 to approve. Do NOT share this number with anyone.", s = active.copy(smsStoreFullText = true))
+        send(
+            "ComBank Digital-Transfer to Other Banks LKR 7,500.00 attempted. Please use code 987654 to approve. Do NOT share this number with anyone.",
+            s = active.copy(smsStoreFullText = true),
+        )
         val item = only()
         assertEquals(Certainty.UNVERIFIED, item.certainty)
         assertFalse(item.text.contains("987654"))

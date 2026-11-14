@@ -62,29 +62,47 @@ class TransactionRowMapper(private val ref: RefData) {
     private val zone = ZoneId.systemDefault()
     private val timeFormat = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 
-    fun accountName(id: String?): UiText = id?.let { ref.accountById[it]?.name }?.let(UiText::Raw) ?: NONE
+    fun accountName(id: String?): UiText =
+        id?.let { ref.accountById[it]?.name }?.let(UiText::Raw) ?: NONE
 
-    fun categoryLabels(tx: Transaction): Pair<UiText, String?> = when (val label = ref.categoryLabel(tx)) {
-        CategoryLabel.Transfer -> UiText.of(R.string.transfer) to null
-        CategoryLabel.ModifiedBalance -> UiText.of(R.string.modified_balance) to null
-        is CategoryLabel.Category -> (label.main?.let(UiText::Raw) ?: NONE) to label.sub
-    }
+    fun categoryLabels(tx: Transaction): Pair<UiText, String?> =
+        when (val label = ref.categoryLabel(tx)) {
+            CategoryLabel.Transfer -> UiText.of(R.string.transfer) to null
+            CategoryLabel.ModifiedBalance -> UiText.of(R.string.modified_balance) to null
+            is CategoryLabel.Category -> (label.main?.let(UiText::Raw) ?: NONE) to label.sub
+        }
 
-    fun flow(tx: Transaction): CashFlow = classifier.classify(tx.kind, tx.accountId, tx.counterpartAccountId)
+    fun flow(tx: Transaction): CashFlow =
+        classifier.classify(tx.kind, tx.accountId, tx.counterpartAccountId)
 
     fun row(tx: Transaction, ledger: Ledger): TxRowUi {
         val (cat, sub) = categoryLabels(tx)
-        var accountText = if (tx.kind == TxKind.TRANSFER_OUT) transferText(tx.accountId, tx.counterpartAccountId)
-        else accountName(tx.accountId)
+        var accountText = if (tx.kind == TxKind.TRANSFER_OUT) {
+            transferText(tx.accountId, tx.counterpartAccountId)
+        } else {
+            accountName(tx.accountId)
+        }
         var note = tx.note
         if (tx.installmentGroupId != null && tx.installmentCount > 0) {
             note = "$note (${tx.installmentIndex}/${tx.installmentCount})".trim()
-            accountText = UiText.join(accountText, UiText.Raw(" ("), UiText.plural(R.plurals.n_months, tx.installmentCount), UiText.Raw(")"))
+            accountText =
+                UiText.join(
+                    accountText,
+                    UiText.Raw(" ("),
+                    UiText.plural(R.plurals.n_months, tx.installmentCount),
+                    UiText.Raw(")"),
+                )
         }
         val titleIsNote = note.isNotBlank()
         val dt = Instant.ofEpochMilli(tx.dateTime).atZone(zone).toLocalTime()
-        val time = if (ref.settings.timeDisplay.showOnList && dt != LocalTime.MIDNIGHT) dt.format(timeFormat) else null
-        val tagNames = ledger.tagsByTx[tx.id].orEmpty().mapNotNull { id -> ref.tagById[id]?.takeIf { !it.isDeleted }?.name }
+        val time = if (ref.settings.timeDisplay.showOnList && dt != LocalTime.MIDNIGHT) {
+            dt.format(timeFormat)
+        } else {
+            null
+        }
+        val tagNames = ledger.tagsByTx[tx.id].orEmpty().mapNotNull { id ->
+            ref.tagById[id]?.takeIf { !it.isDeleted }?.name
+        }
         val currency = ref.currency(tx.currencyId)
         return TxRowUi(
             id = tx.id,
@@ -96,13 +114,23 @@ class TransactionRowMapper(private val ref: RefData) {
             accountText = accountText,
             time = time,
             tags = tagNames.takeIf { it.isNotEmpty() }?.joinToString(", "),
-            descriptionLine = if (ref.settings.showDescription) tx.description.lineSequence().firstOrNull()?.takeIf { it.isNotBlank() } else null,
+            descriptionLine = if (ref.settings.showDescription) {
+                tx.description.lineSequence().firstOrNull()?.takeIf {
+                    it.isNotBlank()
+                }
+            } else {
+                null
+            },
             hasPhoto = tx.id in ledger.photoTx,
             flow = flow(tx),
             amount = tx.amount,
             amountText = AmountFormatter.format(tx.amount, currency),
             amountMain = tx.amountMain,
-            visual = if (tx.kind.isTransfer || tx.kind.isBalance || tx.isBalanceAdjustment) null else ref.visual(tx.categoryId),
+            visual = if (tx.kind.isTransfer || tx.kind.isBalance || tx.isBalanceAdjustment) {
+                null
+            } else {
+                ref.visual(tx.categoryId)
+            },
             currency = currency,
         )
     }
@@ -115,9 +143,17 @@ class TransactionRowMapper(private val ref: RefData) {
         }
         val label = UiText.of(R.string.carry_over)
         return TxRowUi(
-            id = "carry_over", tx = null, category = label, subCategory = null, title = label, titleIsNote = true, accountText = UiText.Empty,
-            time = null, tags = null, descriptionLine = null, hasPhoto = false, flow = flow, amount = abs(amount),
-            amountText = AmountFormatter.format(abs(amount), ref.mainCurrency), amountMain = abs(amount), isCarryOver = true,
+            id = "carry_over",
+            tx = null,
+            category = label,
+            subCategory = null,
+            title = label,
+            titleIsNote = true,
+            accountText = UiText.Empty,
+            time = null, tags = null, descriptionLine = null, hasPhoto = false, flow = flow,
+            amount = abs(amount),
+            amountText = AmountFormatter.format(abs(amount), ref.mainCurrency),
+            amountMain = abs(amount), isCarryOver = true,
             currency = ref.mainCurrency,
         )
     }
@@ -135,12 +171,20 @@ class TransactionRowMapper(private val ref: RefData) {
         includeBalance: Boolean = false,
         rowMapper: (Transaction) -> TxRowUi = { row(it, ledger) },
     ): List<DayGroup> {
-        val byDay = rows.filter { listable(it, includeBalance) }.groupBy { LocalDate.parse(it.date) }
-        val days = (byDay.keys + memos.keys + listOfNotNull(carryOver?.first)).toSortedSet(compareByDescending { it })
+        val byDay = rows.filter {
+            listable(it, includeBalance)
+        }.groupBy { LocalDate.parse(it.date) }
+        val days = (byDay.keys + memos.keys + listOfNotNull(carryOver?.first)).toSortedSet(
+            compareByDescending {
+                it
+            },
+        )
         return days.map { day ->
             val sorted = sortDay(byDay[day].orEmpty(), ref.settings.timeDisplay)
             val mapped = sorted.map(rowMapper).toMutableList()
-            if (carryOver != null && carryOver.first == day && carryOver.second != 0.0) mapped.add(0, carryOver(carryOver.second))
+            if (carryOver != null && carryOver.first == day && carryOver.second != 0.0) {
+                mapped.add(0, carryOver(carryOver.second))
+            }
             var inc = 0.0
             var exp = 0.0
             for (r in mapped) {
@@ -155,11 +199,13 @@ class TransactionRowMapper(private val ref: RefData) {
     }
 
     /** "From → To" for a transfer. */
-    fun transferText(fromId: String?, toId: String?): UiText = UiText.join(accountName(fromId), UiText.Raw(" → "), accountName(toId))
+    fun transferText(fromId: String?, toId: String?): UiText =
+        UiText.join(accountName(fromId), UiText.Raw(" → "), accountName(toId))
 
     companion object {
         private val NONE = UiText.of(R.string.none)
 
-        fun sortDay(rows: List<Transaction>, order: TimeDisplay): List<Transaction> = rows.sortedForDay(order)
+        fun sortDay(rows: List<Transaction>, order: TimeDisplay): List<Transaction> =
+            rows.sortedForDay(order)
     }
 }

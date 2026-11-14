@@ -66,13 +66,14 @@ import kotlinx.coroutines.launch
 enum class BulkAction { DATE, CATEGORY, ACCOUNT, NOTE }
 
 /** Σ selected income − Σ selected expense in main currency. */
-fun selectedNet(rows: List<TxRowUi>, ids: Set<String>): Double = rows.filter { it.id in ids }.fold(0.0) { acc, r ->
-    when (r.flow) {
-        CashFlow.INCOME -> Money.add(acc, r.amountMain)
-        CashFlow.EXPENSE -> Money.subtract(acc, r.amountMain)
-        CashFlow.NEUTRAL -> acc
+fun selectedNet(rows: List<TxRowUi>, ids: Set<String>): Double =
+    rows.filter { it.id in ids }.fold(0.0) { acc, r ->
+        when (r.flow) {
+            CashFlow.INCOME -> Money.add(acc, r.amountMain)
+            CashFlow.EXPENSE -> Money.subtract(acc, r.amountMain)
+            CashFlow.NEUTRAL -> acc
+        }
     }
-}
 
 /** Edit bar shown during multi-select. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,30 +90,67 @@ fun SelectionBar(
     var menu by remember { mutableStateOf(false) }
     Column {
         TopAppBar(
-            title = { Text(if (count == 0) stringResource(R.string.please_select_item) else stringResource(R.string.n_selected, count), style = MaterialTheme.typography.titleLarge) },
+            title = {
+                Text(
+                    if (count == 0) {
+                        stringResource(R.string.please_select_item)
+                    } else {
+                        stringResource(R.string.n_selected, count)
+                    },
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            },
             navigationIcon = {
                 RoundIconButton(
-                    Icons.Rounded.Close, stringResource(R.string.action_back), onClose,
+                    Icons.Rounded.Close,
+                    stringResource(R.string.action_back),
+                    onClose,
                     modifier = Modifier.padding(start = 12.dp, end = 4.dp),
                 )
             },
             actions = {
-                IconButton(onClick = { onAction(null) }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
+                IconButton(onClick = {
+                    onAction(null)
+                }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
                 Box {
-                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.action_more)) }
-                NexoMenu(menu, onDismissRequest = { menu = false }) {
-                    listOf(
-                        Triple(BulkAction.DATE, R.string.edit_all_dates, Icons.Rounded.Event),
-                        Triple(BulkAction.CATEGORY, R.string.edit_all_categories, Icons.Rounded.Category),
-                        Triple(BulkAction.ACCOUNT, R.string.edit_all_assets, Icons.Rounded.AccountBalanceWallet),
-                        Triple(BulkAction.NOTE, R.string.edit_all_notes, Icons.Rounded.EditNote),
-                    ).forEach { (a, label, icon) -> NexoMenuItem(stringResource(label), { menu = false; onAction(a) }, icon) }
-                }
+                    IconButton(onClick = {
+                        menu = true
+                    }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.action_more)) }
+                    NexoMenu(menu, onDismissRequest = { menu = false }) {
+                        listOf(
+                            Triple(BulkAction.DATE, R.string.edit_all_dates, Icons.Rounded.Event),
+                            Triple(
+                                BulkAction.CATEGORY,
+                                R.string.edit_all_categories,
+                                Icons.Rounded.Category,
+                            ),
+                            Triple(
+                                BulkAction.ACCOUNT,
+                                R.string.edit_all_assets,
+                                Icons.Rounded.AccountBalanceWallet,
+                            ),
+                            Triple(
+                                BulkAction.NOTE,
+                                R.string.edit_all_notes,
+                                Icons.Rounded.EditNote,
+                            ),
+                        ).forEach { (a, label, icon) ->
+                            NexoMenuItem(stringResource(label), {
+                                menu = false
+                                onAction(a)
+                            }, icon)
+                        }
+                    }
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background,
+            ),
         )
-        Row(Modifier.fillMaxWidth().padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth().padding(end = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             TriStateCheckbox(
                 state = when {
                     count == 0 -> ToggleableState.Off
@@ -121,7 +159,12 @@ fun SelectionBar(
                 },
                 onClick = onToggleAll,
             )
-            Text(stringResource(R.string.action_select_all), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                stringResource(R.string.action_select_all),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             RollingAmount(net, main, style = NexoType.Amount, minorScale = 0.8f)
         }
     }
@@ -152,12 +195,23 @@ fun BulkDialogs(
             onConfirm = { run(actions.delete) },
             onDismiss = onDismiss,
         )
-        BulkAction.DATE -> NexoDatePickerDialog(LocalDate.now(), onPick = { d -> run { actions.setDate(d) } }, onDismiss = onDismiss)
+
+        BulkAction.DATE -> NexoDatePickerDialog(LocalDate.now(), onPick = { d ->
+            run { actions.setDate(d) }
+        }, onDismiss = onDismiss)
+
         BulkAction.NOTE -> TextFieldDialog(
-            title = stringResource(R.string.edit_all_notes), initial = "", label = stringResource(R.string.note),
-            onConfirm = { n -> run { actions.setNote(n) } }, onDismiss = onDismiss,
+            title = stringResource(R.string.edit_all_notes),
+            initial = "",
+            label = stringResource(R.string.note),
+            onConfirm = { n -> run { actions.setNote(n) } },
+            onDismiss = onDismiss,
         )
-        BulkAction.CATEGORY -> CategoryPickerDialog(ref, onPick = { id -> run { actions.setCategory(id) } }, onDismiss = onDismiss)
+
+        BulkAction.CATEGORY -> CategoryPickerDialog(ref, onPick = { id ->
+            run { actions.setCategory(id) }
+        }, onDismiss = onDismiss)
+
         BulkAction.ACCOUNT -> AccountPickerDialog(
             ref,
             onAccount = { id -> run { actions.setAccount(id) } },
@@ -168,7 +222,14 @@ fun BulkDialogs(
 }
 
 @Composable
-fun CategoryPickerDialog(ref: RefData, onPick: (String) -> Unit, onDismiss: () -> Unit, allowAll: Boolean = false, onAll: (() -> Unit)? = null, kinds: List<CategoryKind> = listOf(CategoryKind.INCOME, CategoryKind.EXPENSE)) {
+fun CategoryPickerDialog(
+    ref: RefData,
+    onPick: (String) -> Unit,
+    onDismiss: () -> Unit,
+    allowAll: Boolean = false,
+    onAll: (() -> Unit)? = null,
+    kinds: List<CategoryKind> = listOf(CategoryKind.INCOME, CategoryKind.EXPENSE),
+) {
     var tab by remember { mutableIntStateOf(if (kinds.size == 1) 0 else 1) }
     var expanded by remember { mutableStateOf<String?>(null) }
     AlertDialog(
@@ -177,22 +238,56 @@ fun CategoryPickerDialog(ref: RefData, onPick: (String) -> Unit, onDismiss: () -
         text = {
             Column {
                 if (kinds.size > 1) {
-                    IncomeExpensePill(tab, onSelect = { tab = it }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                    IncomeExpensePill(tab, onSelect = {
+                        tab = it
+                    }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
                 }
-                val kind = if (kinds.size == 1) kinds[0] else if (tab == 0) CategoryKind.INCOME else CategoryKind.EXPENSE
+                val kind = if (kinds.size == 1) {
+                    kinds[0]
+                } else if (tab == 0) {
+                    CategoryKind.INCOME
+                } else {
+                    CategoryKind.EXPENSE
+                }
                 LazyColumn(Modifier.height(380.dp)) {
-                    if (allowAll && onAll != null) item {
-                        Text(stringResource(R.string.all), Modifier.fillMaxWidth().clickable { onAll() }.padding(vertical = 12.dp), fontWeight = FontWeight.SemiBold)
+                    if (allowAll && onAll != null) {
+                        item {
+                            Text(
+                                stringResource(R.string.all),
+                                Modifier.fillMaxWidth().clickable {
+                                    onAll()
+                                }.padding(vertical = 12.dp),
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     }
                     items(ref.mainCategories(kind), key = { it.id }) { c ->
-                        val subs = if (ref.settings.subcategories) ref.subCategories(c.id) else emptyList()
+                        val subs = if (ref.settings.subcategories) {
+                            ref.subCategories(c.id)
+                        } else {
+                            emptyList()
+                        }
                         Column {
                             Text(
                                 c.name + if (subs.isNotEmpty()) "  ›" else "",
-                                Modifier.fillMaxWidth().clickable { if (subs.isEmpty() || expanded == c.id) onPick(c.id) else expanded = c.id }.padding(vertical = 12.dp),
+                                Modifier.fillMaxWidth().clickable {
+                                    if (subs.isEmpty() || expanded == c.id) {
+                                        onPick(c.id)
+                                    } else {
+                                        expanded = c.id
+                                    }
+                                }.padding(vertical = 12.dp),
                             )
-                            if (expanded == c.id) subs.forEach { sub ->
-                                Text(sub.name, Modifier.fillMaxWidth().clickable { onPick(sub.id) }.padding(start = 24.dp, top = 10.dp, bottom = 10.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (expanded == c.id) {
+                                subs.forEach { sub ->
+                                    Text(
+                                        sub.name,
+                                        Modifier.fillMaxWidth().clickable {
+                                            onPick(sub.id)
+                                        }.padding(start = 24.dp, top = 10.dp, bottom = 10.dp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
                         }
                     }
@@ -200,23 +295,47 @@ fun CategoryPickerDialog(ref: RefData, onPick: (String) -> Unit, onDismiss: () -
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }
 
 /** One account, or a From/To pair that turns the selection into transfers. */
 @Composable
-fun AccountPickerDialog(ref: RefData, onAccount: (String) -> Unit, onTransfer: ((String, String) -> Unit)?, onDismiss: () -> Unit) {
+fun AccountPickerDialog(
+    ref: RefData,
+    onAccount: (String) -> Unit,
+    onTransfer: ((String, String) -> Unit)?,
+    onDismiss: () -> Unit,
+) {
     var pair by remember { mutableStateOf(false) }
     var from by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(if (!pair) R.string.account else if (from == null) R.string.from else R.string.to), Modifier.weight(1f))
+                Text(
+                    stringResource(
+                        if (!pair) {
+                            R.string.account
+                        } else if (from == null) {
+                            R.string.from
+                        } else {
+                            R.string.to
+                        },
+                    ),
+                    Modifier.weight(1f),
+                )
                 if (onTransfer != null) {
-                    Text(stringResource(R.string.transfer), style = MaterialTheme.typography.bodyMedium)
-                    Switch(pair, { pair = it; from = null }, Modifier.padding(start = 8.dp))
+                    Text(
+                        stringResource(R.string.transfer),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Switch(pair, {
+                        pair = it
+                        from = null
+                    }, Modifier.padding(start = 8.dp))
                 }
             }
         },
@@ -227,7 +346,12 @@ fun AccountPickerDialog(ref: RefData, onAccount: (String) -> Unit, onTransfer: (
                     if (a.groupId != lastGroup) {
                         lastGroup = a.groupId
                         item(key = "g_${a.groupId}") {
-                            Text(ref.groupById[a.groupId]?.name ?: "", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.nexo.primaryText, modifier = Modifier.padding(top = 10.dp))
+                            Text(
+                                ref.groupById[a.groupId]?.name ?: "",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.nexo.primaryText,
+                                modifier = Modifier.padding(top = 10.dp),
+                            )
                         }
                     }
                     item(key = a.id) {
@@ -240,13 +364,19 @@ fun AccountPickerDialog(ref: RefData, onAccount: (String) -> Unit, onTransfer: (
                                     from != a.id -> onTransfer?.invoke(from!!, a.id)
                                 }
                             }.padding(vertical = 12.dp),
-                            color = if (a.id == from) MaterialTheme.nexo.primaryText else Color.Unspecified,
+                            color = if (a.id == from) {
+                                MaterialTheme.nexo.primaryText
+                            } else {
+                                Color.Unspecified
+                            },
                         )
                     }
                 }
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }

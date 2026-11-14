@@ -9,8 +9,10 @@ import javax.crypto.Cipher
 
 /** Shows the system biometric prompt for a keystore-bound cipher. */
 object BiometricPrompter {
-    fun isAvailable(context: Context): Boolean =
-        BiometricManager.from(context).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+    fun isAvailable(context: Context): Boolean = BiometricManager.from(
+        context,
+    ).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) ==
+        BiometricManager.BIOMETRIC_SUCCESS
 
     fun prompt(
         activity: FragmentActivity,
@@ -24,8 +26,11 @@ object BiometricPrompter {
             activity,
             ContextCompat.getMainExecutor(activity),
             object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) = onSuccess()
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) = onError(errorCode)
+                override fun onAuthenticationSucceeded(
+                    result: BiometricPrompt.AuthenticationResult,
+                ) = onSuccess()
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) =
+                    onError(errorCode)
             },
         )
         val info = BiometricPrompt.PromptInfo.Builder()

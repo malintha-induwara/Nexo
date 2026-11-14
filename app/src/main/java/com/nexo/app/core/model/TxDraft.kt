@@ -4,11 +4,17 @@ import java.time.LocalDateTime
 
 sealed interface PhotoItem {
     data class Stored(val fileName: String, val checksum: String, val size: Long) : PhotoItem
+
     /** A picture the user just picked, by its content URI, not yet copied into the photo folder. */
     data class Picked(val uri: String) : PhotoItem
 }
 
-data class FeeDraft(val amount: Double, val currencyId: String, val rate: Double? = null, val categoryId: String? = null)
+data class FeeDraft(
+    val amount: Double,
+    val currencyId: String,
+    val rate: Double? = null,
+    val categoryId: String? = null,
+)
 
 /** Everything the entry form saves. */
 data class TxDraft(

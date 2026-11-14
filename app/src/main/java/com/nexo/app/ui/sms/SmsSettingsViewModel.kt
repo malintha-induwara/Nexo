@@ -51,7 +51,11 @@ class SmsSettingsViewModel @Inject constructor(
         combine(sms.getSourcesStream(), sms.getFeePresetsStream(), ::Pair),
     ) { ref, device, permitted, pending, (sources, presets) ->
         SmsSettingsUiState(ref, device, permitted, pending, sources, presets)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SmsSettingsUiState(permitted = inbox.hasPermission()))
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        SmsSettingsUiState(permitted = inbox.hasPermission()),
+    )
 
     /** Coming back from the permission dialog or App info. */
     fun refresh() = viewModelScope.launch {
@@ -64,24 +68,40 @@ class SmsSettingsViewModel @Inject constructor(
         permitted.value = inbox.hasPermission()
     }
 
-    fun offerHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(SmsHistoryImport.OFFERED) }
+    fun offerHistory() = viewModelScope.launch {
+        prefs.setSmsHistoryImport(SmsHistoryImport.OFFERED)
+    }
 
-    fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(SmsHistoryImport.SKIPPED) }
+    fun skipHistory() = viewModelScope.launch {
+        prefs.setSmsHistoryImport(SmsHistoryImport.SKIPPED)
+    }
 
     fun addSender(raw: String) = viewModelScope.launch {
         val id = Banks.normalizeSender(raw)
-        if (id.isNotEmpty()) prefs.setSmsCustomSenders(prefs.getDeviceSettings().smsCustomSenders + id)
+        if (id.isNotEmpty()) {
+            prefs.setSmsCustomSenders(prefs.getDeviceSettings().smsCustomSenders + id)
+        }
     }
 
-    fun removeSender(id: String) = viewModelScope.launch { prefs.setSmsCustomSenders(prefs.getDeviceSettings().smsCustomSenders - id) }
+    fun removeSender(id: String) = viewModelScope.launch {
+        prefs.setSmsCustomSenders(prefs.getDeviceSettings().smsCustomSenders - id)
+    }
 
     fun setFullText(on: Boolean) = viewModelScope.launch { prefs.setSmsStoreFullText(on) }
 
-    fun setCashAccount(id: String) = viewModelScope.launch { bookSettings.updateBookSettings { it.copy(smsCashAccountId = id) } }
+    fun setCashAccount(id: String) = viewModelScope.launch {
+        bookSettings.updateBookSettings { it.copy(smsCashAccountId = id) }
+    }
 
-    fun mapSource(source: SmsSource, accountId: String) = viewModelScope.launch { sms.mapCard(source.bank, source.last4, accountId) }
+    fun mapSource(source: SmsSource, accountId: String) = viewModelScope.launch {
+        sms.mapCard(source.bank, source.last4, accountId)
+    }
 
-    fun removeSource(source: SmsSource) = viewModelScope.launch { sms.unmapCard(source.bank, source.last4) }
+    fun removeSource(source: SmsSource) = viewModelScope.launch {
+        sms.unmapCard(source.bank, source.last4)
+    }
 
-    fun setFeeMode(preset: FeePreset, mode: FeeMode) = viewModelScope.launch { sms.setFeeMode(preset.accountId, preset.route, mode) }
+    fun setFeeMode(preset: FeePreset, mode: FeeMode) = viewModelScope.launch {
+        sms.setFeeMode(preset.accountId, preset.route, mode)
+    }
 }

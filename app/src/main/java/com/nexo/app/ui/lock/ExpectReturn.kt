@@ -15,5 +15,8 @@ interface AppLockEntryPoint {
 
 /** Tells the app lock the user is being sent to another app for a moment. See [AppLockRepository.expectReturn]. */
 fun Context.expectReturn() {
-    EntryPointAccessors.fromApplication(applicationContext, AppLockEntryPoint::class.java).appLock().expectReturn()
+    EntryPointAccessors.fromApplication(
+        applicationContext,
+        AppLockEntryPoint::class.java,
+    ).appLock().expectReturn()
 }

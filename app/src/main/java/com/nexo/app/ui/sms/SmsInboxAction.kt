@@ -43,7 +43,13 @@ data class QueueBadge(val count: Int = 0, val attention: Boolean = false)
 fun SmsInboxAction(badge: QueueBadge) {
     val nav = LocalNavigator.current
     val colors = LocalNexoColors.current
-    AnimatedVisibility(badge.count > 0, enter = fadeIn(NexoMotion.enter()) + scaleIn(NexoMotion.snappy(), 0.6f), exit = fadeOut(NexoMotion.exit()) + scaleOut(NexoMotion.exit(), 0.6f)) {
+    AnimatedVisibility(
+        badge.count > 0,
+        enter =
+            fadeIn(NexoMotion.enter()) + scaleIn(NexoMotion.snappy(), 0.6f),
+        exit =
+            fadeOut(NexoMotion.exit()) + scaleOut(NexoMotion.exit(), 0.6f),
+    ) {
         Box {
             RoundIconButton(
                 Icons.Rounded.Inbox,
@@ -70,7 +76,9 @@ fun SmsInboxAction(badge: QueueBadge) {
                 // A hollow dot: something isn't exact or still needs details.
                 Box(
                     Modifier.align(Alignment.BottomEnd).offset(x = (-6).dp, y = (-6).dp).size(7.dp)
-                        .clip(CircleShape).background(colors.background).border(1.5.dp, colors.text, CircleShape),
+                        .clip(
+                            CircleShape,
+                        ).background(colors.background).border(1.5.dp, colors.text, CircleShape),
                 )
             }
         }

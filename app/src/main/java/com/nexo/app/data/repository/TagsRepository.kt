@@ -25,10 +25,14 @@ interface TagsRepository {
 
     companion object {
         const val MAX_LENGTH = 15
-        private val forbidden = setOf('{', '}', '[', ']', '(', ')', '"', '\'', '‘', '’', '“', '”', '@', '#', ',')
+        private val forbidden =
+            setOf('{', '}', '[', ']', '(', ')', '"', '\'', '‘', '’', '“', '”', '@', '#', ',')
 
         /** Removes forbidden characters and every kind of whitespace. */
-        fun filter(input: String): String = input.filterNot { it in forbidden || it.isWhitespace() || Character.isSpaceChar(it) }.take(MAX_LENGTH)
+        fun filter(input: String): String = input.filterNot {
+            it in forbidden || it.isWhitespace() ||
+                Character.isSpaceChar(it)
+        }.take(MAX_LENGTH)
 
         fun normalize(input: String): String = filter(input.trim())
     }

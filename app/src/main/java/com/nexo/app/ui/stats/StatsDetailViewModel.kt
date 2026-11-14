@@ -73,37 +73,88 @@ class StatsDetailViewModel @AssistedInject constructor(
     }
 
     /** Kept for event handlers that need the reference data synchronously. */
-    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
-    private val query = MutableStateFlow(StatsQuery(key.scope, LocalDate.parse(key.end), LocalDate.parse(key.start), LocalDate.parse(key.end)))
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        RefData(),
+    )
+    private val query =
+        MutableStateFlow(
+            StatsQuery(
+                key.scope,
+                LocalDate.parse(key.end),
+                LocalDate.parse(key.start),
+                LocalDate.parse(key.end),
+            ),
+        )
     private val selected = MutableStateFlow("all")
     private val selection = MutableStateFlow<Set<String>>(emptySet())
     val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, selection)
 
-    private val isTransfer = key.kind == StatsDetailKind.TRANSFER_EXPENSE_GROUP || key.kind == StatsDetailKind.TRANSFER_INCOME_GROUP
+    private val isTransfer =
+        key.kind == StatsDetailKind.TRANSFER_EXPENSE_GROUP ||
+            key.kind == StatsDetailKind.TRANSFER_INCOME_GROUP
 
-    private val content = combine(ref, query, selected) { r, q, s -> Triple(r, q, s) }.flatMapLatest { (r, q, sel) ->
+    private val content = combine(ref, query, selected) { r, q, s ->
+        Triple(r, q, s)
+    }.flatMapLatest { (r, q, sel) ->
         val e = r.settings.periods
         val range = scopeRange(e, q)
         val buckets: List<Pair<String, DateRange>> = when (q.scope) {
             StatsScope.WEEKLY -> {
                 val week = e.weekContaining(range.start)
-                (7 downTo 0).map { i -> week.start.minusDays(7L * i).let { s -> "${s.monthValue}/${s.dayOfMonth}" to DateRange(s, s.plusDays(6)) } }
+                (7 downTo 0).map { i ->
+                    week.start.minusDays(7L * i).let { s ->
+                        "${s.monthValue}/${s.dayOfMonth}" to
+                            DateRange(s, s.plusDays(6))
+                    }
+                }
             }
-            StatsScope.ANNUALLY -> e.yearPeriods(e.yearOf(q.anchor)).map { Formats.monthShort(it.label.monthValue) to it.range }
+
+            StatsScope.ANNUALLY -> e.yearPeriods(e.yearOf(q.anchor)).map {
+                Formats.monthShort(it.label.monthValue) to
+                    it.range
+            }
+
             else -> {
                 var p = e.monthPeriodContaining(range.end)
                 val list = ArrayList<Pair<String, DateRange>>()
-                repeat(8) { list.add(0, Formats.monthShort(p.label.monthValue) to p.range); p = e.previous(p) }
+                repeat(8) {
+                    list.add(0, Formats.monthShort(p.label.monthValue) to p.range)
+                    p = e.previous(p)
+                }
                 list
             }
         }
-        val loadRange = DateRange(minOf(range.start, buckets.first().second.start), maxOf(range.end, buckets.last().second.end))
-        combine(transactions.getLedgerStream(loadRange), memos.getMemosStream(range.startText, range.endText)) { l, memos -> build(r, range, buckets, l, sel, memos) }
+        val loadRange =
+            DateRange(
+                minOf(range.start, buckets.first().second.start),
+                maxOf(range.end, buckets.last().second.end),
+            )
+        combine(
+            transactions.getLedgerStream(loadRange),
+            memos.getMemosStream(range.startText, range.endText),
+        ) {
+                l,
+                memos,
+            ->
+            build(r, range, buckets, l, sel, memos)
+        }
     }
 
-    val uiState: StateFlow<StatsDetailUiState> = combine(content, ref, query, selected, selection) { c, r, q, sel, ids ->
+    val uiState: StateFlow<StatsDetailUiState> = combine(content, ref, query, selected, selection) {
+            c,
+            r,
+            q,
+            sel,
+            ids,
+        ->
         c.copy(ref = r, query = q, selected = sel, selection = ids)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StatsDetailUiState(color = key.colorIndex))
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        StatsDetailUiState(color = key.colorIndex),
+    )
 
     private fun matches(r: RefData, c: Classifier, t: Transaction): Boolean = when (key.kind) {
         StatsDetailKind.INCOME, StatsDetailKind.EXPENSE -> {
@@ -114,10 +165,16 @@ class StatsDetailViewModel @AssistedInject constructor(
                 else -> !t.isBalanceAdjustment && r.mainCategoryId(t.categoryId) == key.targetId
             }
         }
-        StatsDetailKind.TRANSFER_EXPENSE_GROUP -> t.kind == TxKind.TRANSFER_OUT && c.transferStatsFlow(t.accountId, t.counterpartAccountId) == CashFlow.EXPENSE &&
-            r.accountById[t.counterpartAccountId]?.groupId == key.targetId
-        StatsDetailKind.TRANSFER_INCOME_GROUP -> t.kind == TxKind.TRANSFER_OUT && c.transferStatsFlow(t.accountId, t.counterpartAccountId) == CashFlow.INCOME &&
-            r.accountById[t.accountId]?.groupId == key.targetId
+
+        StatsDetailKind.TRANSFER_EXPENSE_GROUP ->
+            t.kind == TxKind.TRANSFER_OUT &&
+                c.transferStatsFlow(t.accountId, t.counterpartAccountId) == CashFlow.EXPENSE &&
+                r.accountById[t.counterpartAccountId]?.groupId == key.targetId
+
+        StatsDetailKind.TRANSFER_INCOME_GROUP ->
+            t.kind == TxKind.TRANSFER_OUT &&
+                c.transferStatsFlow(t.accountId, t.counterpartAccountId) == CashFlow.INCOME &&
+                r.accountById[t.accountId]?.groupId == key.targetId
     }
 
     /** Breakdown key of a row: subcategory / "other", or the account for transfer groups. */
@@ -127,23 +184,56 @@ class StatsDetailViewModel @AssistedInject constructor(
         else -> r.subCategoryId(t.categoryId) ?: "other"
     }
 
-    private fun build(r: RefData, range: DateRange, buckets: List<Pair<String, DateRange>>, l: Ledger, sel: String, memos: List<Memo>): StatsDetailUiState {
+    private fun build(
+        r: RefData,
+        range: DateRange,
+        buckets: List<Pair<String, DateRange>>,
+        l: Ledger,
+        sel: String,
+        memos: List<Memo>,
+    ): StatsDetailUiState {
         val c = Classifier(r)
         val all = l.rows.filter { matches(r, c, it) }
         val inRange = all.filter { LocalDate.parse(it.date) in range }
         val showBreakdown = isTransfer || r.settings.subcategories
-        val groups = inRange.groupBy { subKey(r, it) }.mapValues { (_, v) -> v.sumOf { it.amountMain } }
+        val groups = inRange.groupBy {
+            subKey(r, it)
+        }.mapValues { (_, v) -> v.sumOf { it.amountMain } }
         val base = if (isTransfer) groups.values.sum() else groups.values.filter { it >= 0 }.sum()
         fun pct(a: Double) = if (base == 0.0) null else Math.round(a * 100 / base).toInt()
-        val subs = groups.filterKeys { it != "other" }.toList().sortedByDescending { it.second }.map { (k, v) ->
+        val subs = groups.filterKeys {
+            it != "other"
+        }.toList().sortedByDescending { it.second }.map { (k, v) ->
             val name = if (isTransfer) r.accountById[k]?.name ?: "" else r.categoryName(k) ?: ""
             Breakdown(k, UiText.Raw(name), v, pct(v))
         }
-        val other = groups["other"]?.takeIf { it != 0.0 }?.let { Breakdown("other", UiText.of(R.string.other), it, pct(it)) }
-        val breakdown = if (showBreakdown) listOf(Breakdown("all", UiText.of(R.string.all), groups.values.sum(), null)) + subs + listOfNotNull(other) else emptyList()
+        val other = groups["other"]?.takeIf {
+            it != 0.0
+        }?.let { Breakdown("other", UiText.of(R.string.other), it, pct(it)) }
+        val breakdown = if (showBreakdown) {
+            listOf(Breakdown("all", UiText.of(R.string.all), groups.values.sum(), null)) +
+                subs +
+                listOfNotNull(other)
+        } else {
+            emptyList()
+        }
         val visibleBreakdown = if (!isTransfer && breakdown.size < 2) emptyList() else breakdown
-        val filtered = { list: List<Transaction> -> if (sel == "all") list else list.filter { subKey(r, it) == sel } }
-        val trend = buckets.map { (_, br) -> Money.round(filtered(all).filter { LocalDate.parse(it.date) in br }.sumOf { it.amountMain }, r.mainCurrency.decimals) }
+        val filtered = { list: List<Transaction> ->
+            if (sel == "all") {
+                list
+            } else {
+                list.filter { subKey(r, it) == sel }
+            }
+        }
+        val trend = buckets.map { (_, br) ->
+            Money.round(
+                filtered(all).filter {
+                    LocalDate.parse(it.date) in
+                        br
+                }.sumOf { it.amountMain },
+                r.mainCurrency.decimals,
+            )
+        }
         val listRows = filtered(inRange)
         val title = when {
             sel != "all" -> visibleBreakdown.firstOrNull { it.key == sel }?.name ?: UiText.Empty
@@ -152,21 +242,44 @@ class StatsDetailViewModel @AssistedInject constructor(
             key.targetId == KEY_MODIFIED -> UiText.of(R.string.modified_balance)
             else -> UiText.Raw(r.categoryName(key.targetId) ?: "")
         }
-        val color = if (sel != "all" && visibleBreakdown.size > 2) (visibleBreakdown.indexOfFirst { it.key == sel } - 1).coerceAtLeast(0) % 11 else key.colorIndex
+        val color = if (sel != "all" && visibleBreakdown.size > 2) {
+            (visibleBreakdown.indexOfFirst { it.key == sel } - 1).coerceAtLeast(0) %
+                11
+        } else {
+            key.colorIndex
+        }
         return StatsDetailUiState(
-            title = title, range = range, total = listRows.sumOf { it.amountMain }, breakdown = visibleBreakdown,
-            trendLabels = buckets.map { it.first }, trend = trend, color = color,
-            days = TransactionRowMapper(r).dayGroups(listRows, l, memos = memos.filter { LocalDate.parse(it.date) in range }.groupBy { LocalDate.parse(it.date) }),
+            title = title,
+            range = range,
+            total = listRows.sumOf {
+                it.amountMain
+            },
+            breakdown = visibleBreakdown,
+            trendLabels = buckets.map { it.first },
+            trend = trend,
+            color = color,
+            days = TransactionRowMapper(r).dayGroups(
+                listRows,
+                l,
+                memos = memos.filter {
+                    LocalDate.parse(it.date) in
+                        range
+                }.groupBy { LocalDate.parse(it.date) },
+            ),
         )
     }
 
-    fun step(forward: Boolean) = query.update { it.copy(anchor = stepAnchor(ref.value.settings.periods, it.scope, it.anchor, forward)) }
+    fun step(forward: Boolean) = query.update {
+        it.copy(anchor = stepAnchor(ref.value.settings.periods, it.scope, it.anchor, forward))
+    }
     fun setRange(f: LocalDate, t: LocalDate) = query.update { it.copy(from = f, to = t) }
     fun select(k: String) {
         selected.value = k
     }
 
-    fun setMonth(month: YearMonth) = query.update { it.copy(anchor = ref.value.settings.periods.monthPeriodFor(month).end) }
+    fun setMonth(month: YearMonth) = query.update {
+        it.copy(anchor = ref.value.settings.periods.monthPeriodFor(month).end)
+    }
 
     fun toggleSelect(id: String) = selection.update { if (id in it) it - id else it + id }
 

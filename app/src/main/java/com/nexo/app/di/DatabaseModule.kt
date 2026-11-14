@@ -32,16 +32,28 @@ object DatabaseModule {
         Room.databaseBuilder(context, NexoDatabase::class.java, NexoDatabase.FILE_NAME).build()
 
     @Provides fun accountGroupDao(db: NexoDatabase): AccountGroupDao = db.accountGroupDao()
+
     @Provides fun accountDao(db: NexoDatabase): AccountDao = db.accountDao()
+
     @Provides fun categoryDao(db: NexoDatabase): CategoryDao = db.categoryDao()
+
     @Provides fun currencyDao(db: NexoDatabase): CurrencyDao = db.currencyDao()
+
     @Provides fun transactionDao(db: NexoDatabase): TransactionDao = db.transactionDao()
+
     @Provides fun tagDao(db: NexoDatabase): TagDao = db.tagDao()
+
     @Provides fun photoDao(db: NexoDatabase): PhotoDao = db.photoDao()
+
     @Provides fun repeatRuleDao(db: NexoDatabase): RepeatRuleDao = db.repeatRuleDao()
+
     @Provides fun favoriteDao(db: NexoDatabase): FavoriteDao = db.favoriteDao()
+
     @Provides fun budgetDao(db: NexoDatabase): BudgetDao = db.budgetDao()
+
     @Provides fun memoDao(db: NexoDatabase): MemoDao = db.memoDao()
+
     @Provides fun settingDao(db: NexoDatabase): SettingDao = db.settingDao()
+
     @Provides fun smsDao(db: NexoDatabase): SmsDao = db.smsDao()
 }

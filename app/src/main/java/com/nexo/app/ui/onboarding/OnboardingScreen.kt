@@ -71,21 +71,41 @@ fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
     val onFinished: () -> Unit = { vm.complete() }
     val state by vm.uiState.collectAsStateWithLifecycle()
     var askPermission by rememberSaveable { mutableStateOf(false) }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { onFinished() }
+    val permission =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+            onFinished()
+        }
     LaunchedEffect(state.done) {
         if (state.done) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) askPermission = true else onFinished()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                askPermission = true
+            } else {
+                onFinished()
+            }
         }
     }
     BackHandler(enabled = state.step > 0 && !state.busy) { vm.back() }
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
+    Box(
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding(),
+    ) {
         when (state.step) {
             0 -> Welcome(onStart = vm::next)
-            else -> StartingData(state, onStartFresh = vm::startFresh, onRestore = vm::restore, onPickCurrency = vm::setCurrency)
+
+            else -> StartingData(
+                state,
+                onStartFresh = vm::startFresh,
+                onRestore = vm::restore,
+                onPickCurrency = vm::setCurrency,
+            )
         }
         if (state.busy) {
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.25f)), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            Box(
+                Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.25f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
         }
     }
     state.error?.let { err ->
@@ -117,7 +137,10 @@ fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
 
 @Composable
 private fun Welcome(onStart: () -> Unit) {
-    Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Column(
             Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -125,11 +148,22 @@ private fun Welcome(onStart: () -> Unit) {
         ) {
             AppIcon(96.dp)
             Spacer(Modifier.height(24.dp))
-            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+            Text(
+                stringResource(R.string.app_name),
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+            )
             Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.welcome_text), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                stringResource(R.string.welcome_text),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
-        Button(onClick = onStart, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text(stringResource(R.string.get_started)) }
+        Button(onClick = onStart, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+            Text(stringResource(R.string.get_started))
+        }
     }
 }
 
@@ -153,17 +187,37 @@ private enum class StartChoice { FRESH, RESTORE }
  * the bottom says what happens next (Continue, or Choose backup file) so the way forward is always on screen.
  */
 @Composable
-private fun StartingData(state: OnboardingUiState, onStartFresh: () -> Unit, onRestore: (Uri) -> Unit, onPickCurrency: (CatalogCurrency) -> Unit) {
+private fun StartingData(
+    state: OnboardingUiState,
+    onStartFresh: () -> Unit,
+    onRestore: (Uri) -> Unit,
+    onPickCurrency: (CatalogCurrency) -> Unit,
+) {
     var pickCurrency by rememberSaveable { mutableStateOf(false) }
     var choice by rememberSaveable { mutableStateOf(StartChoice.FRESH) }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(onRestore) }
+    val picker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri?.let(onRestore)
+        }
     Column(Modifier.fillMaxSize().padding(24.dp)) {
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(stringResource(R.string.starting_data_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-            Text(stringResource(R.string.starting_data_text), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(
+            Modifier.weight(1f).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                stringResource(R.string.starting_data_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                stringResource(R.string.starting_data_text),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Spacer(Modifier.height(4.dp))
             ChoiceCard(
-                icon = { Icon(Icons.Outlined.RocketLaunch, null, tint = MaterialTheme.nexo.primaryText) },
+                icon = {
+                    Icon(Icons.Outlined.RocketLaunch, null, tint = MaterialTheme.nexo.primaryText)
+                },
                 title = stringResource(R.string.start_fresh),
                 text = stringResource(R.string.start_fresh_text),
                 selected = choice == StartChoice.FRESH,
@@ -171,19 +225,37 @@ private fun StartingData(state: OnboardingUiState, onStartFresh: () -> Unit, onR
             ) {
                 Spacer(Modifier.height(12.dp))
                 Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { choice = StartChoice.FRESH; pickCurrency = true }.padding(horizontal = 14.dp, vertical = 10.dp),
+                    Modifier.fillMaxWidth().clip(
+                        RoundedCornerShape(12.dp),
+                    ).background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable {
+                            choice = StartChoice.FRESH
+                            pickCurrency = true
+                        }.padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.main_currency), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(state.currency.displayName(), style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            stringResource(R.string.main_currency),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            state.currency.displayName(),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
                     }
-                    Text(stringResource(R.string.action_change), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.nexo.primaryText)
+                    Text(
+                        stringResource(R.string.action_change),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.nexo.primaryText,
+                    )
                 }
             }
             ChoiceCard(
-                icon = { Icon(Icons.Outlined.Restore, null, tint = MaterialTheme.nexo.primaryText) },
+                icon = {
+                    Icon(Icons.Outlined.Restore, null, tint = MaterialTheme.nexo.primaryText)
+                },
                 title = stringResource(R.string.restore_from_file),
                 text = stringResource(R.string.restore_from_file_text),
                 selected = choice == StartChoice.RESTORE,
@@ -192,14 +264,35 @@ private fun StartingData(state: OnboardingUiState, onStartFresh: () -> Unit, onR
         }
         Spacer(Modifier.height(16.dp))
         Button(
-            onClick = { if (choice == StartChoice.FRESH) onStartFresh() else picker.launch(arrayOf("*/*")) },
+            onClick = {
+                if (choice == StartChoice.FRESH) {
+                    onStartFresh()
+                } else {
+                    picker.launch(arrayOf("*/*"))
+                }
+            },
             enabled = !state.busy,
             modifier = Modifier.fillMaxWidth().height(52.dp),
         ) {
-            Text(stringResource(if (choice == StartChoice.FRESH) R.string.action_continue else R.string.choose_backup_file))
+            Text(
+                stringResource(
+                    if (choice == StartChoice.FRESH) {
+                        R.string.action_continue
+                    } else {
+                        R.string.choose_backup_file
+                    },
+                ),
+            )
         }
     }
-    if (pickCurrency) CurrencyPickerDialog(onPick = { onPickCurrency(it); pickCurrency = false }, onDismiss = { pickCurrency = false })
+    if (pickCurrency) {
+        CurrencyPickerDialog(onPick = {
+            onPickCurrency(it)
+            pickCurrency = false
+        }, onDismiss = {
+            pickCurrency = false
+        })
+    }
 }
 
 @Composable
@@ -215,17 +308,30 @@ private fun ChoiceCard(
     ElevatedCard(
         onClick = onClick,
         shape = shape,
-        modifier = Modifier.fillMaxWidth().border(2.dp, if (selected) MaterialTheme.colorScheme.primary else Color.Transparent, shape),
+        modifier = Modifier.fillMaxWidth().border(
+            2.dp,
+            if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+            shape,
+        ),
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 icon()
                 Spacer(Modifier.size(12.dp))
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
                 RadioButton(selected = selected, onClick = null)
             }
             Spacer(Modifier.height(6.dp))
-            Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             extra?.invoke()
         }
     }
@@ -233,28 +339,43 @@ private fun ChoiceCard(
 
 /** Searchable list of built-in currencies. */
 @Composable
-fun CurrencyPickerDialog(onPick: (CatalogCurrency) -> Unit, onDismiss: () -> Unit, exclude: Set<String> = emptySet()) {
+fun CurrencyPickerDialog(
+    onPick: (CatalogCurrency) -> Unit,
+    onDismiss: () -> Unit,
+    exclude: Set<String> = emptySet(),
+) {
     var query by remember { mutableStateOf("") }
     val list = remember(query) {
-        CurrencyCatalog.all.filter { it.code !in exclude }.filter { query.isBlank() || it.displayName().contains(query, ignoreCase = true) }
+        CurrencyCatalog.all.filter { it.code !in exclude }.filter {
+            query.isBlank() ||
+                it.displayName().contains(query, ignoreCase = true)
+        }
     }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.currency)) },
         text = {
             Column {
-                OutlinedTextField(query, { query = it }, singleLine = true, placeholder = { Text(stringResource(R.string.search)) }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(query, {
+                    query = it
+                }, singleLine = true, placeholder = {
+                    Text(stringResource(R.string.search))
+                }, modifier = Modifier.fillMaxWidth())
                 LazyColumn(Modifier.height(380.dp)) {
                     items(list, key = { it.code }) { c ->
                         Text(
                             "${c.displayName()} (${c.mainSymbol})",
-                            modifier = Modifier.fillMaxWidth().clickable { onPick(c) }.padding(vertical = 12.dp),
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                onPick(c)
+                            }.padding(vertical = 12.dp),
                         )
                     }
                 }
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }

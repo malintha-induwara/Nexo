@@ -17,13 +17,29 @@ interface SmsStore {
     suspend fun byDedupeKey(key: String): SmsItem?
 
     /** Pending approval-code item with the same route and amount since [since]. */
-    suspend fun pendingRetry(bank: String, route: String, amount: Double, currency: String, since: Long): SmsItem?
+    suspend fun pendingRetry(
+        bank: String,
+        route: String,
+        amount: Double,
+        currency: String,
+        since: Long,
+    ): SmsItem?
 
     /** Pending unverified transfer-out with the same amount since [since]. */
-    suspend fun upgradeCandidate(bank: String, amount: Double, currency: String, since: Long): SmsItem?
+    suspend fun upgradeCandidate(
+        bank: String,
+        amount: Double,
+        currency: String,
+        since: Long,
+    ): SmsItem?
 
     /** Card purchases on [cardLast4] in [since, until], newest first. */
-    suspend fun purchasesOnCard(bank: String, cardLast4: String, since: Long, until: Long): List<SmsItem>
+    suspend fun purchasesOnCard(
+        bank: String,
+        cardLast4: String,
+        since: Long,
+        until: Long,
+    ): List<SmsItem>
 
     suspend fun insert(item: SmsItem)
     suspend fun update(item: SmsItem)
@@ -31,7 +47,13 @@ interface SmsStore {
     suspend fun putHint(hint: SmsOtpHint)
 
     /** Removes and returns the newest hint with this amount in [since, until]. */
-    suspend fun takeHint(bank: String, amount: Double, currency: String, since: Long, until: Long): SmsOtpHint?
+    suspend fun takeHint(
+        bank: String,
+        amount: Double,
+        currency: String,
+        since: Long,
+        until: Long,
+    ): SmsOtpHint?
 }
 
 /**
@@ -65,13 +87,23 @@ class SmsCorrelator(private val store: SmsStore) {
         prepare: suspend (SmsItem) -> SmsItem = { it },
     ): Outcome = when (parsed) {
         is ParsedSms.Ignored -> Outcome.Skipped(parsed.reason, parsed.detail)
+
         is ParsedSms.OtpHint -> {
             store.putHint(
-                SmsOtpHint(uuid(), parsed.bank.name, parsed.merchant, parsed.amount.toDouble(), parsed.currency, msg.timestamp),
+                SmsOtpHint(
+                    uuid(),
+                    parsed.bank.name,
+                    parsed.merchant,
+                    parsed.amount.toDouble(),
+                    parsed.currency,
+                    msg.timestamp,
+                ),
             )
             Outcome.HintStored
         }
+
         is ParsedSms.Cancel -> cancel(msg, parsed, now)
+
         is ParsedSms.Movement -> movement(msg, parsed, text, now, prepare)
     }
 
@@ -87,18 +119,37 @@ class SmsCorrelator(private val store: SmsStore) {
         val amount = m.amount.toDouble()
 
         if (m.template == TRANSFER_CODE && m.route != null) {
-            store.pendingRetry(bank, m.route, amount, m.currency, msg.timestamp - RETRY_MS)?.let { existing ->
-                val merged = existing.copy(evidenceCount = existing.evidenceCount + 1, updatedAt = now)
+            store.pendingRetry(
+                bank,
+                m.route,
+                amount,
+                m.currency,
+                msg.timestamp - RETRY_MS,
+            )?.let { existing ->
+                val merged = existing.copy(
+                    evidenceCount = existing.evidenceCount + 1,
+                    updatedAt = now,
+                )
                 store.update(merged)
                 return Outcome.Merged(merged)
             }
         }
         if (m.kind == SmsKind.TRANSFER_OUT && m.certainty == Certainty.EXACT) {
-            store.upgradeCandidate(bank, amount, m.currency, msg.timestamp - UPGRADE_MS)?.let { existing ->
+            store.upgradeCandidate(
+                bank,
+                amount,
+                m.currency,
+                msg.timestamp - UPGRADE_MS,
+            )?.let { existing ->
                 val upgraded = existing.copy(
-                    certainty = Certainty.EXACT, reason = null, template = m.template,
-                    payee = m.payee ?: existing.payee, reference = m.reference ?: existing.reference,
-                    occurredAt = m.occurredAt, evidenceCount = existing.evidenceCount + 1, updatedAt = now,
+                    certainty = Certainty.EXACT,
+                    reason = null,
+                    template = m.template,
+                    payee = m.payee ?: existing.payee,
+                    reference = m.reference ?: existing.reference,
+                    occurredAt = m.occurredAt,
+                    evidenceCount = existing.evidenceCount + 1,
+                    updatedAt = now,
                 )
                 store.update(upgraded)
                 return Outcome.Upgraded(upgraded)
@@ -108,7 +159,13 @@ class SmsCorrelator(private val store: SmsStore) {
         var merchant = m.merchant
         var fromOtp = false
         if (m.template == PURCHASE) {
-            store.takeHint(bank, amount, m.currency, msg.timestamp - HINT_MS, msg.timestamp)?.let { hint ->
+            store.takeHint(
+                bank,
+                amount,
+                m.currency,
+                msg.timestamp - HINT_MS,
+                msg.timestamp,
+            )?.let { hint ->
                 val better = MerchantCleaner.purchase(hint.merchant)
                 if (better.name.length > merchant.name.length) {
                     merchant = merchant.copy(name = better.name, key = better.key)
@@ -119,11 +176,27 @@ class SmsCorrelator(private val store: SmsStore) {
 
         val item = prepare(
             SmsItem(
-                id = uuid(), certainty = m.certainty, reason = m.reason, kind = m.kind, bank = bank, sender = msg.sender,
+                id = uuid(),
+                certainty = m.certainty,
+                reason = m.reason,
+                kind = m.kind,
+                bank = bank,
+                sender = msg.sender,
                 template = m.template, amount = amount, currency = m.currency,
-                merchantRaw = merchant.raw, merchant = merchant.name, merchantKey = merchant.key, merchantFromOtp = fromOtp,
-                cardLast4 = m.cardLast4, payee = m.payee, reference = m.reference, route = m.route, feeRoute = m.feeRoute,
-                occurredAt = m.occurredAt, smsAt = msg.timestamp, capturedAt = now, dedupeKey = m.dedupeKey, text = text,
+                merchantRaw = merchant.raw,
+                merchant = merchant.name,
+                merchantKey = merchant.key,
+                merchantFromOtp = fromOtp,
+                cardLast4 = m.cardLast4,
+                payee = m.payee,
+                reference = m.reference,
+                route = m.route,
+                feeRoute = m.feeRoute,
+                occurredAt = m.occurredAt,
+                smsAt = msg.timestamp,
+                capturedAt = now,
+                dedupeKey = m.dedupeKey,
+                text = text,
                 updatedAt = now, statedFee = m.statedFee?.toDouble(),
             ),
         )
@@ -132,22 +205,48 @@ class SmsCorrelator(private val store: SmsStore) {
     }
 
     private suspend fun cancel(msg: SmsMessage, c: ParsedSms.Cancel, now: Long): Outcome {
-        val target = store.purchasesOnCard(c.bank.name, c.cardLast4, msg.timestamp - CANCEL_MS, msg.timestamp)
-            .firstOrNull { it.status != SmsStatus.CANCELLED && it.merchantRaw.startsWith(c.merchant.raw, ignoreCase = true) }
-            ?: return Outcome.Skipped(IgnoreReason.ORPHAN_CANCEL)
+        val target =
+            store.purchasesOnCard(
+                c.bank.name,
+                c.cardLast4,
+                msg.timestamp - CANCEL_MS,
+                msg.timestamp,
+            )
+                .firstOrNull {
+                    it.status != SmsStatus.CANCELLED &&
+                        it.merchantRaw.startsWith(c.merchant.raw, ignoreCase = true)
+                }
+                ?: return Outcome.Skipped(IgnoreReason.ORPHAN_CANCEL)
         return when (target.status) {
             SmsStatus.PENDING -> {
-                val cancelled = target.copy(status = SmsStatus.CANCELLED, decidedAt = now, evidenceCount = target.evidenceCount + 1, updatedAt = now)
+                val cancelled = target.copy(
+                    status = SmsStatus.CANCELLED,
+                    decidedAt = now,
+                    evidenceCount =
+                        target.evidenceCount + 1,
+                    updatedAt = now,
+                )
                 store.update(cancelled)
                 Outcome.Cancelled(cancelled)
             }
+
             SmsStatus.APPROVED -> {
                 val key = DedupeKeys.reversal(target.id)
                 store.byDedupeKey(key)?.let { return Outcome.Duplicate(it) }
                 val reversal = target.copy(
-                    id = uuid(), status = SmsStatus.PENDING, certainty = Certainty.EXACT, reason = null,
-                    kind = SmsKind.INCOME, template = CANCELLED, feeRoute = null, smsAt = msg.timestamp,
-                    occurredAt = msg.timestamp, capturedAt = now, dedupeKey = key, evidenceCount = 1, transactionId = null,
+                    id = uuid(),
+                    status = SmsStatus.PENDING,
+                    certainty = Certainty.EXACT,
+                    reason = null,
+                    kind = SmsKind.INCOME,
+                    template = CANCELLED,
+                    feeRoute = null,
+                    smsAt = msg.timestamp,
+                    occurredAt = msg.timestamp,
+                    capturedAt = now,
+                    dedupeKey = key,
+                    evidenceCount = 1,
+                    transactionId = null,
                     linkedItemId = target.id, decidedAt = null, denyReason = null, updatedAt = now,
                     // Money back is income; the purchase's expense category doesn't apply.
                     categoryId = null, toAccountId = null, actualAmount = null,
@@ -155,6 +254,7 @@ class SmsCorrelator(private val store: SmsStore) {
                 store.insert(reversal)
                 Outcome.Reversal(reversal, target)
             }
+
             // Denied or expired: nothing was recorded, so there is nothing to undo.
             else -> Outcome.Skipped(IgnoreReason.ORPHAN_CANCEL)
         }
@@ -180,22 +280,40 @@ class MemorySmsStore : SmsStore {
 
     override suspend fun byDedupeKey(key: String) = items.values.firstOrNull { it.dedupeKey == key }
 
-    override suspend fun pendingRetry(bank: String, route: String, amount: Double, currency: String, since: Long) =
-        items.values.filter {
-            it.status == SmsStatus.PENDING && it.bank == bank && it.template == SmsCorrelator.TRANSFER_CODE && it.route == route &&
-                it.amount == amount && it.currency == currency && it.smsAt >= since
-        }.maxByOrNull { it.smsAt }
+    override suspend fun pendingRetry(
+        bank: String,
+        route: String,
+        amount: Double,
+        currency: String,
+        since: Long,
+    ) = items.values.filter {
+        it.status == SmsStatus.PENDING && it.bank == bank &&
+            it.template == SmsCorrelator.TRANSFER_CODE &&
+            it.route == route &&
+            it.amount == amount && it.currency == currency && it.smsAt >= since
+    }.maxByOrNull { it.smsAt }
 
-    override suspend fun upgradeCandidate(bank: String, amount: Double, currency: String, since: Long) =
-        items.values.filter {
-            it.status == SmsStatus.PENDING && it.bank == bank && it.kind == SmsKind.TRANSFER_OUT &&
-                it.certainty == Certainty.UNVERIFIED && it.amount == amount && it.currency == currency && it.smsAt >= since
-        }.maxByOrNull { it.smsAt }
+    override suspend fun upgradeCandidate(
+        bank: String,
+        amount: Double,
+        currency: String,
+        since: Long,
+    ) = items.values.filter {
+        it.status == SmsStatus.PENDING && it.bank == bank && it.kind == SmsKind.TRANSFER_OUT &&
+            it.certainty == Certainty.UNVERIFIED && it.amount == amount &&
+            it.currency == currency &&
+            it.smsAt >= since
+    }.maxByOrNull { it.smsAt }
 
-    override suspend fun purchasesOnCard(bank: String, cardLast4: String, since: Long, until: Long) =
-        items.values.filter {
-            it.bank == bank && it.template == SmsCorrelator.PURCHASE && it.cardLast4 == cardLast4 && it.smsAt in since..until
-        }.sortedByDescending { it.smsAt }
+    override suspend fun purchasesOnCard(
+        bank: String,
+        cardLast4: String,
+        since: Long,
+        until: Long,
+    ) = items.values.filter {
+        it.bank == bank && it.template == SmsCorrelator.PURCHASE && it.cardLast4 == cardLast4 &&
+            it.smsAt in since..until
+    }.sortedByDescending { it.smsAt }
 
     override suspend fun insert(item: SmsItem) {
         items[item.id] = item
@@ -209,8 +327,17 @@ class MemorySmsStore : SmsStore {
         hints += hint
     }
 
-    override suspend fun takeHint(bank: String, amount: Double, currency: String, since: Long, until: Long): SmsOtpHint? {
-        val hit = hints.filter { it.bank == bank && it.amount == amount && it.currency == currency && it.at in since..until }.maxByOrNull { it.at }
+    override suspend fun takeHint(
+        bank: String,
+        amount: Double,
+        currency: String,
+        since: Long,
+        until: Long,
+    ): SmsOtpHint? {
+        val hit = hints.filter {
+            it.bank == bank && it.amount == amount && it.currency == currency &&
+                it.at in since..until
+        }.maxByOrNull { it.at }
         if (hit != null) hints.remove(hit)
         return hit
     }

@@ -37,12 +37,24 @@ import com.nexo.app.ui.designsystem.theme.Space
 import java.util.Locale
 
 @Composable
-fun EmptyState(text: String = stringResource(R.string.no_data), modifier: Modifier = Modifier, icon: ImageVector = Icons.Outlined.Inbox) {
+fun EmptyState(
+    text: String = stringResource(R.string.no_data),
+    modifier: Modifier = Modifier,
+    icon: ImageVector = Icons.Outlined.Inbox,
+) {
     val colors = LocalNexoColors.current
-    Column(modifier.fillMaxWidth().padding(horizontal = Space.xxl, vertical = 56.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        modifier.fillMaxWidth().padding(horizontal = Space.xxl, vertical = 56.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Icon(icon, null, tint = colors.textTertiary, modifier = Modifier.size(28.dp))
         Spacer(Modifier.height(Space.m))
-        Text(text, color = colors.textSecondary, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+        Text(
+            text,
+            color = colors.textSecondary,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -53,7 +65,12 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier) {
         text.uppercase(Locale.getDefault()),
         style = NexoType.Caps,
         color = LocalNexoColors.current.textTertiary,
-        modifier = modifier.fillMaxWidth().padding(start = Space.gutter, end = Space.gutter, top = Space.xl, bottom = Space.s),
+        modifier = modifier.fillMaxWidth().padding(
+            start = Space.gutter,
+            end = Space.gutter,
+            top = Space.xl,
+            bottom = Space.s,
+        ),
     )
 }
 
@@ -73,31 +90,74 @@ fun SettingRow(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .then(if (onClick != null && enabled) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(
+                if (onClick != null && enabled) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                },
+            )
             .padding(horizontal = Space.gutter, vertical = Space.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leading != null) {
-            Icon(leading, null, tint = if (enabled) colors.textSecondary else colors.textTertiary, modifier = Modifier.size(22.dp))
+            Icon(
+                leading,
+                null,
+                tint = if (enabled) colors.textSecondary else colors.textTertiary,
+                modifier = Modifier.size(22.dp),
+            )
             Spacer(Modifier.width(Space.l))
         }
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = if (enabled) colors.text else colors.textTertiary)
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (enabled) colors.text else colors.textTertiary,
+            )
             if (!subtitle.isNullOrEmpty()) {
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary,
+                )
             }
         }
-        if (trailing != null) trailing()
-        else if (showChevron) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = colors.textTertiary, modifier = Modifier.size(20.dp))
+        if (trailing != null) {
+            trailing()
+        } else if (showChevron) {
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                null,
+                tint = colors.textTertiary,
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }
 
 @Composable
-fun SwitchRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit, subtitle: String? = null, enabled: Boolean = true) {
+fun SwitchRow(
+    title: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+    subtitle: String? = null,
+    enabled: Boolean = true,
+) {
     val haptics = rememberHaptics()
-    val toggle = { v: Boolean -> haptics.toggle(v); onChange(v) }
-    SettingRow(title, subtitle, onClick = { toggle(!checked) }, showChevron = false, enabled = enabled, trailing = {
-        Switch(checked = checked, onCheckedChange = toggle, enabled = enabled, colors = nexoSwitchColors())
+    val toggle = { v: Boolean ->
+        haptics.toggle(v)
+        onChange(v)
+    }
+    SettingRow(title, subtitle, onClick = {
+        toggle(!checked)
+    }, showChevron = false, enabled = enabled, trailing = {
+        Switch(
+            checked = checked,
+            onCheckedChange = toggle,
+            enabled = enabled,
+            colors = nexoSwitchColors(),
+        )
     })
 }
 
@@ -125,20 +185,46 @@ fun TotalsBar(
     incomeColor: Color,
     expenseColor: Color,
     modifier: Modifier = Modifier,
-    labels: Triple<String, String, String> = Triple(stringResource(R.string.income), stringResource(R.string.expenses), stringResource(R.string.total)),
+    labels: Triple<String, String, String> =
+        Triple(
+            stringResource(R.string.income),
+            stringResource(R.string.expenses),
+            stringResource(R.string.total),
+        ),
     totalValue: Double = income - expense,
 ) {
-    Row(modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.m), horizontalArrangement = Arrangement.spacedBy(Space.m)) {
+    Row(
+        modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.m),
+        horizontalArrangement = Arrangement.spacedBy(Space.m),
+    ) {
         TotalCell(labels.first, income, currency, incomeColor, Modifier.weight(1f))
         TotalCell(labels.second, expense, currency, expenseColor, Modifier.weight(1f))
-        TotalCell(labels.third, totalValue, currency, LocalNexoColors.current.text, Modifier.weight(1f))
+        TotalCell(
+            labels.third,
+            totalValue,
+            currency,
+            LocalNexoColors.current.text,
+            Modifier.weight(1f),
+        )
     }
 }
 
 @Composable
-private fun TotalCell(label: String, value: Double, currency: Currency?, color: Color, modifier: Modifier) {
+private fun TotalCell(
+    label: String,
+    value: Double,
+    currency: Currency?,
+    color: Color,
+    modifier: Modifier,
+) {
     Column(modifier) {
-        Text(label.uppercase(Locale.getDefault()), style = NexoType.Caps, color = LocalNexoColors.current.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            label.uppercase(Locale.getDefault()),
+            style = NexoType.Caps,
+            color = LocalNexoColors.current.textTertiary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
         Spacer(Modifier.height(Space.xs))
         AmountText(value, currency, style = NexoType.Amount, color = color)
     }

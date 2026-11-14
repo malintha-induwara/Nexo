@@ -55,6 +55,7 @@ class OnboardingViewModel @Inject constructor(
                 book.seedFresh(_uiState.value.currency)
                 finish()
             }
+
             else -> _uiState.update { it.copy(busy = false, error = r) }
         }
     }

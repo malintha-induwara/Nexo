@@ -1,6 +1,5 @@
 package com.nexo.app.core.model
 
-
 /** Snapshot of the reference tables and book settings, used to render and classify transactions. */
 data class RefData(
     val groups: List<AccountGroup> = emptyList(),
@@ -18,7 +17,10 @@ data class RefData(
 
     /** Resolved look of every category (emoji or monogram, hue), by id. */
     val visualById: Map<String, CategoryVisual> by lazy {
-        categories.associate { c -> c.id to CategoryVisuals.resolve(c, c.parentId?.let { categoryById[it] }) }
+        categories.associate { c ->
+            c.id to
+                CategoryVisuals.resolve(c, c.parentId?.let { categoryById[it] })
+        }
     }
 
     fun visual(categoryId: String?): CategoryVisual? = categoryId?.let { visualById[it] }
@@ -27,11 +29,14 @@ data class RefData(
 
     /** Main first, then visible sub-currencies in order. */
     val activeCurrencies: List<Currency> =
-        listOf(mainCurrency) + currencies.filter { !it.isMain && it.isVisible }.sortedBy { it.orderSeq }
+        listOf(mainCurrency) +
+            currencies.filter { !it.isMain && it.isVisible }.sortedBy { it.orderSeq }
 
     fun currency(id: String?): Currency = id?.let { currencyById[it] } ?: mainCurrency
 
-    fun groupOf(accountId: String?): AccountGroup? = accountId?.let { accountById[it] }?.let { groupById[it.groupId] }
+    fun groupOf(accountId: String?): AccountGroup? = accountId?.let {
+        accountById[it]
+    }?.let { groupById[it.groupId] }
 
     fun groupType(accountId: String?): GroupType? = groupOf(accountId)?.type
 
@@ -39,13 +44,20 @@ data class RefData(
 
     fun isDebitCard(accountId: String?): Boolean = groupType(accountId) == GroupType.DEBIT_CARD
 
-    fun isFlagged(accountId: String?): Boolean = accountId?.let { accountById[it] }?.transferExpense == true
+    fun isFlagged(accountId: String?): Boolean =
+        accountId?.let { accountById[it] }?.transferExpense == true
 
-    fun accountCurrency(accountId: String?): Currency = currency(accountId?.let { accountById[it] }?.currencyId)
+    fun accountCurrency(accountId: String?): Currency = currency(
+        accountId?.let {
+            accountById[it]
+        }?.currencyId,
+    )
 
     /** Debit cards drawing on [accountId]. */
-    fun linkedDebitCards(accountId: String): List<Account> =
-        accounts.filter { it.linkedAccountId == accountId && groupType(it.id) == GroupType.DEBIT_CARD }
+    fun linkedDebitCards(accountId: String): List<Account> = accounts.filter {
+        it.linkedAccountId == accountId &&
+            groupType(it.id) == GroupType.DEBIT_CARD
+    }
 
     fun isAccountVisible(a: Account): Boolean {
         val g = groupById[a.groupId]
@@ -58,7 +70,10 @@ data class RefData(
     fun orderedAccounts(): List<Account> {
         val groupOrder = groups.withIndex().associate { it.value.id to it.index }
         return accounts.sortedWith(
-            compareBy<Account>({ groupOrder[it.groupId] ?: Int.MAX_VALUE }, { groupById[it.groupId]?.name ?: "" }, { it.orderSeq }, { it.createdAt }),
+            compareBy<Account>({ groupOrder[it.groupId] ?: Int.MAX_VALUE }, {
+                groupById[it.groupId]?.name
+                    ?: ""
+            }, { it.orderSeq }, { it.createdAt }),
         )
     }
 
@@ -82,7 +97,11 @@ data class RefData(
 
     companion object {
         val FALLBACK_MAIN = Currency(
-            id = "USD", isoCode = "USD", name = "USD", symbol = "$", symbolPosition = SymbolPosition.PREFIX,
+            id = "USD",
+            isoCode = "USD",
+            name = "USD",
+            symbol = "$",
+            symbolPosition = SymbolPosition.PREFIX,
             decimals = 2, rate = 1.0, isMain = true, isVisible = true, orderSeq = 0, updatedAt = 0,
         )
     }

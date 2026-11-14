@@ -23,7 +23,11 @@ interface FxRatesRepository {
     suspend fun store(rows: List<FxSnapshot>)
 
     /** [item] with its estimate filled from the closest board, or from Nexo's own rate. */
-    suspend fun estimate(item: SmsItem, ref: RefData? = null, allowNetwork: Boolean = false): SmsItem
+    suspend fun estimate(
+        item: SmsItem,
+        ref: RefData? = null,
+        allowNetwork: Boolean = false,
+    ): SmsItem
 
     /** Fills "Rate pending" queue items; returns how many changed. */
     suspend fun fillPending(allowNetwork: Boolean = false): Int
@@ -35,6 +39,7 @@ interface FxRatesRepository {
         const val REFRESH_MS = 6 * 60 * 60 * 1000L
 
         /** The bank-board day of an instant (boards are dated in Sri Lanka time). */
-        fun dayOf(ms: Long): LocalDate = Instant.ofEpochMilli(ms).atZone(BodyDate.ZONE).toLocalDate()
+        fun dayOf(ms: Long): LocalDate =
+            Instant.ofEpochMilli(ms).atZone(BodyDate.ZONE).toLocalDate()
     }
 }

@@ -52,7 +52,6 @@ import com.nexo.app.ui.shell.LocalShell
 import java.util.Locale
 import kotlin.math.abs
 
-
 @Composable
 private fun AccountUi.hue(): Color = CategoryHues.of(visual.hue, LocalNexoColors.current.isDark)
 
@@ -70,23 +69,56 @@ private fun AccountUi.balanceColor(): Color {
 
 /** Payable and outstanding side by side, each under its label; overdue beneath when there is any. */
 @Composable
-private fun CardSplit(card: CardFigures, currency: Currency, label: Color, value: (Double) -> Color, modifier: Modifier = Modifier) {
+private fun CardSplit(
+    card: CardFigures,
+    currency: Currency,
+    label: Color,
+    value: (Double) -> Color,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier) {
         Row(horizontalArrangement = Arrangement.spacedBy(Space.l)) {
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.payable).uppercase(Locale.getDefault()), style = NexoType.Caps, color = label, maxLines = 1)
-                AmountText(abs(card.payable), currency, Modifier.shrinkToFit(), style = NexoType.Amount, color = value(card.payable))
+                Text(
+                    stringResource(R.string.payable).uppercase(Locale.getDefault()),
+                    style = NexoType.Caps,
+                    color = label,
+                    maxLines = 1,
+                )
+                AmountText(
+                    abs(card.payable),
+                    currency,
+                    Modifier.shrinkToFit(),
+                    style = NexoType.Amount,
+                    color = value(card.payable),
+                )
             }
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.outstanding).uppercase(Locale.getDefault()), style = NexoType.Caps, color = label, maxLines = 1)
-                AmountText(abs(card.outstanding), currency, Modifier.shrinkToFit(), style = NexoType.Amount, color = value(card.outstanding))
+                Text(
+                    stringResource(R.string.outstanding).uppercase(Locale.getDefault()),
+                    style = NexoType.Caps,
+                    color = label,
+                    maxLines = 1,
+                )
+                AmountText(
+                    abs(card.outstanding),
+                    currency,
+                    Modifier.shrinkToFit(),
+                    style = NexoType.Amount,
+                    color = value(card.outstanding),
+                )
             }
         }
         if (card.other < 0) {
             Row(Modifier.padding(top = Space.xs), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.overdue), style = NexoType.Meta, color = label)
                 Spacer(Modifier.width(Space.xs))
-                AmountText(abs(card.other), currency, style = NexoType.AmountSmall, color = value(card.other))
+                AmountText(
+                    abs(card.other),
+                    currency,
+                    style = NexoType.AmountSmall,
+                    color = value(card.other),
+                )
             }
         }
     }
@@ -94,10 +126,24 @@ private fun CardSplit(card: CardFigures, currency: Currency, label: Color, value
 
 /** "↑ Rs 5,000.00" against the previous period. */
 @Composable
-private fun ChangeCaption(change: Double, currency: Currency, color: Color, modifier: Modifier = Modifier) {
+private fun ChangeCaption(
+    change: Double,
+    currency: Currency,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         if (change != 0.0) {
-            Icon(if (change > 0) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward, null, tint = color, modifier = Modifier.size(14.dp))
+            Icon(
+                if (change > 0) {
+                    Icons.Rounded.ArrowUpward
+                } else {
+                    Icons.Rounded.ArrowDownward
+                },
+                null,
+                tint = color,
+                modifier = Modifier.size(14.dp),
+            )
             Spacer(Modifier.width(Space.xxs))
         }
         AmountText(abs(change), currency, style = NexoType.AmountSmall, color = color)
@@ -106,7 +152,12 @@ private fun ChangeCaption(change: Double, currency: Currency, color: Color, modi
 
 /** Group name over its cards, with the group's total; tap to fold the group. */
 @Composable
-private fun SectionLabel(section: AccountSection, main: Currency, onToggle: (String) -> Unit, modifier: Modifier = Modifier) {
+private fun SectionLabel(
+    section: AccountSection,
+    main: Currency,
+    onToggle: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = LocalNexoColors.current
     val total = when {
         section.neutral || section.total >= 0 -> colors.textSecondary
@@ -115,14 +166,39 @@ private fun SectionLabel(section: AccountSection, main: Currency, onToggle: (Str
     Row(
         modifier
             .fillMaxWidth()
-            .then(if (section.collapsible) Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onToggle(section.id) } else Modifier)
+            .then(
+                if (section.collapsible) {
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { onToggle(section.id) }
+                } else {
+                    Modifier
+                },
+            )
             .padding(start = Space.gutter, end = Space.l, top = Space.l, bottom = Space.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(section.title.uppercase(Locale.getDefault()), style = NexoType.Caps, color = colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Text(
+            section.title.uppercase(Locale.getDefault()),
+            style = NexoType.Caps,
+            color = colors.textTertiary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
         AmountText(section.total, main, style = NexoType.AmountSmall, color = total)
         if (section.collapsible) {
-            Icon(if (section.collapsed) Icons.Rounded.KeyboardArrowDown else Icons.Rounded.KeyboardArrowUp, null, tint = colors.textTertiary, modifier = Modifier.padding(start = Space.xs).size(18.dp))
+            Icon(
+                if (section.collapsed) {
+                    Icons.Rounded.KeyboardArrowDown
+                } else {
+                    Icons.Rounded.KeyboardArrowUp
+                },
+                null,
+                tint = colors.textTertiary,
+                modifier = Modifier.padding(start = Space.xs).size(18.dp),
+            )
         }
     }
 }
@@ -131,13 +207,22 @@ private fun SectionLabel(section: AccountSection, main: Currency, onToggle: (Str
 @Composable
 internal fun AccountCards(ui: AccountsUi, onToggle: (String) -> Unit, onOpen: (AccountUi) -> Unit) {
     val money = LocalMoneyColors.current
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalShell.current.bottomInset + Space.m)) {
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = LocalShell.current.bottomInset + Space.m),
+    ) {
         item(key = "hero") {
             HeroSummary(
-                stringResource(R.string.net_worth), ui.summary.total, ui.main,
+                stringResource(R.string.net_worth),
+                ui.summary.total,
+                ui.main,
                 listOf(
                     HeroStat(stringResource(R.string.assets), ui.summary.assets, money.income),
-                    HeroStat(stringResource(R.string.liabilities), ui.summary.liabilities, money.expense),
+                    HeroStat(
+                        stringResource(R.string.liabilities),
+                        ui.summary.liabilities,
+                        money.expense,
+                    ),
                 ),
             )
         }
@@ -145,7 +230,9 @@ internal fun AccountCards(ui: AccountsUi, onToggle: (String) -> Unit, onOpen: (A
             item(key = "g_${s.id}") { SectionLabel(s, ui.main, onToggle, Modifier.animateItem()) }
             if (!s.collapsed) {
                 items(s.accounts, key = { it.key }) { a ->
-                    AccountCard(a, { onOpen(a) }, Modifier.animateItem().padding(horizontal = Space.l, vertical = 3.dp))
+                    AccountCard(a, {
+                        onOpen(a)
+                    }, Modifier.animateItem().padding(horizontal = Space.l, vertical = 3.dp))
                 }
             }
         }
@@ -163,7 +250,12 @@ private fun AccountCard(a: AccountUi, onClick: () -> Unit, modifier: Modifier = 
             .fillMaxWidth()
             .clip(NexoShapes.panel)
             .background(colors.surface)
-            .clickable(interactionSource = interactions, indication = null, role = Role.Button, onClick = onClick)
+            .clickable(
+                interactionSource = interactions,
+                indication = null,
+                role = Role.Button,
+                onClick = onClick,
+            )
             .padding(start = Space.m, top = 10.dp, bottom = 10.dp, end = Space.s),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -171,19 +263,51 @@ private fun AccountCard(a: AccountUi, onClick: () -> Unit, modifier: Modifier = 
         Spacer(Modifier.width(Space.m))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(a.name, style = NexoType.Meta, color = if (a.muted) colors.textTertiary else colors.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(
+                    a.name,
+                    style = NexoType.Meta,
+                    color = if (a.muted) colors.textTertiary else colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
                 if (a.muted) {
-                    Text(" · " + stringResource(R.string.not_in_totals), style = NexoType.Meta, color = colors.textTertiary, maxLines = 1)
+                    Text(
+                        " · " + stringResource(R.string.not_in_totals),
+                        style = NexoType.Meta,
+                        color = colors.textTertiary,
+                        maxLines = 1,
+                    )
                 }
             }
             val card = a.card
             if (card != null) {
-                CardSplit(card, a.currency, colors.textTertiary, { money.signed(it) }, Modifier.padding(top = Space.xs))
+                CardSplit(card, a.currency, colors.textTertiary, {
+                    money.signed(it)
+                }, Modifier.padding(top = Space.xs))
             } else {
-                AmountText(a.balance, a.currency, Modifier.shrinkToFit(), style = NexoType.Balance, color = a.balanceColor())
+                AmountText(
+                    a.balance,
+                    a.currency,
+                    Modifier.shrinkToFit(),
+                    style = NexoType.Balance,
+                    color = a.balanceColor(),
+                )
             }
-            a.change?.let { ChangeCaption(it, a.currency, colors.textSecondary, Modifier.padding(top = Space.xxs)) }
+            a.change?.let {
+                ChangeCaption(
+                    it,
+                    a.currency,
+                    colors.textSecondary,
+                    Modifier.padding(top = Space.xxs),
+                )
+            }
         }
-        Icon(Icons.Rounded.ChevronRight, null, tint = colors.textTertiary, modifier = Modifier.size(18.dp))
+        Icon(
+            Icons.Rounded.ChevronRight,
+            null,
+            tint = colors.textTertiary,
+            modifier = Modifier.size(18.dp),
+        )
     }
 }

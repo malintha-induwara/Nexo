@@ -9,11 +9,17 @@ import java.time.temporal.TemporalAdjusters
 object RepeatSchedule {
     fun next(previous: LocalDate, type: RepeatType, anchorDay: Int): LocalDate? = when (type) {
         RepeatType.NONE -> null
+
         RepeatType.DAILY -> previous.plusDays(1)
+
         RepeatType.WEEKLY -> previous.plusDays(7)
+
         RepeatType.BIWEEKLY -> previous.plusDays(14)
+
         RepeatType.FOUR_WEEKLY -> previous.plusDays(28)
+
         RepeatType.END_OF_MONTH -> previous.plusDays(1).with(TemporalAdjusters.lastDayOfMonth())
+
         RepeatType.WEEKDAYS -> {
             val d = previous.plusDays(1)
             when (d.dayOfWeek) {
@@ -22,11 +28,16 @@ object RepeatSchedule {
                 else -> d
             }
         }
+
         RepeatType.WEEKENDS -> {
             val d = previous.plusDays(1)
-            if (d.dayOfWeek == DayOfWeek.SATURDAY || d.dayOfWeek == DayOfWeek.SUNDAY) d
-            else d.with(TemporalAdjusters.next(DayOfWeek.SATURDAY))
+            if (d.dayOfWeek == DayOfWeek.SATURDAY || d.dayOfWeek == DayOfWeek.SUNDAY) {
+                d
+            } else {
+                d.with(TemporalAdjusters.next(DayOfWeek.SATURDAY))
+            }
         }
+
         else -> {
             val step = type.monthStep ?: return null
             val shifted = previous.withDayOfMonth(1).plusMonths(step.toLong())
@@ -37,13 +48,21 @@ object RepeatSchedule {
     /** Date snapping when a repeat type is chosen on the form. */
     fun snap(date: LocalDate, type: RepeatType): LocalDate = when (type) {
         RepeatType.END_OF_MONTH -> date.with(TemporalAdjusters.lastDayOfMonth())
+
         RepeatType.WEEKDAYS -> when (date.dayOfWeek) {
             DayOfWeek.SATURDAY -> date.plusDays(2)
             DayOfWeek.SUNDAY -> date.plusDays(1)
             else -> date
         }
-        RepeatType.WEEKENDS -> if (date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY) date
-        else date.with(TemporalAdjusters.next(DayOfWeek.SATURDAY))
+
+        RepeatType.WEEKENDS -> if (date.dayOfWeek == DayOfWeek.SATURDAY ||
+            date.dayOfWeek == DayOfWeek.SUNDAY
+        ) {
+            date
+        } else {
+            date.with(TemporalAdjusters.next(DayOfWeek.SATURDAY))
+        }
+
         else -> date
     }
 
@@ -55,9 +74,20 @@ object RepeatSchedule {
     }
 
     /** Occurrences from [first] (inclusive) that fall inside [range], respecting [endDate]. */
-    fun occurrencesIn(first: LocalDate, type: RepeatType, anchorDay: Int, range: DateRange, endDate: LocalDate?, limit: Int = 10_000): List<LocalDate> {
+    fun occurrencesIn(
+        first: LocalDate,
+        type: RepeatType,
+        anchorDay: Int,
+        range: DateRange,
+        endDate: LocalDate?,
+        limit: Int = 10_000,
+    ): List<LocalDate> {
         val out = ArrayList<LocalDate>()
-        var d: LocalDate? = if (type == RepeatType.END_OF_MONTH) first.with(TemporalAdjusters.lastDayOfMonth()) else first
+        var d: LocalDate? = if (type == RepeatType.END_OF_MONTH) {
+            first.with(TemporalAdjusters.lastDayOfMonth())
+        } else {
+            first
+        }
         var steps = 0
         while (d != null && !d.isAfter(range.end) && steps < limit) {
             if (endDate != null && d.isAfter(endDate)) break
@@ -72,7 +102,11 @@ object RepeatSchedule {
 /** Horizon of the materialisation engine. */
 data class RepeatWindow(val lowerExclusive: LocalDate, val horizonExclusive: LocalDate) {
     companion object {
-        fun of(today: LocalDate, firstOfPeriod: Boolean, currentPeriodEnd: LocalDate): RepeatWindow {
+        fun of(
+            today: LocalDate,
+            firstOfPeriod: Boolean,
+            currentPeriodEnd: LocalDate,
+        ): RepeatWindow {
             val horizon = if (firstOfPeriod) currentPeriodEnd.plusDays(1) else today.plusDays(1)
             return RepeatWindow(horizon.minusDays(700), horizon)
         }

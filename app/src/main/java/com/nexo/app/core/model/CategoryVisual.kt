@@ -47,7 +47,12 @@ object CategoryVisuals {
         val words = normalized.split(WORD_BREAK).filter { it.isNotEmpty() }
         fun matches(keyword: String): Boolean = when {
             keyword.any { !it.isLetterOrDigit() } -> normalized.contains(keyword)
-            keyword.length < 4 -> words.any { it == keyword || it == keyword + "s" || it == keyword + "es" }
+
+            keyword.length < 4 -> words.any {
+                it == keyword || it == keyword + "s" ||
+                    it == keyword + "es"
+            }
+
             else -> words.any { it.startsWith(keyword) }
         }
         return KEYWORDS.firstOrNull { (keywords, _) -> keywords.any(::matches) }?.second

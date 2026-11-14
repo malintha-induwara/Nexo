@@ -18,7 +18,12 @@ class GetSmsDraftUseCase @Inject constructor(
         if (item.missing().isNotEmpty()) return null
         val (currency, amount) = getLedgerAmount(item, ref)
         val asTransfer = item.kind.isTransfer && item.toAccountId != null
-        val (from, to) = if (item.kind == SmsKind.TRANSFER_IN) item.toAccountId to item.accountId else item.accountId to item.toAccountId
+        val (from, to) = if (item.kind == SmsKind.TRANSFER_IN) {
+            item.toAccountId to item.accountId
+        } else {
+            item.accountId to
+                item.toAccountId
+        }
         return TxDraft(
             type = when {
                 asTransfer -> EntryType.TRANSFER

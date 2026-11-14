@@ -17,7 +17,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-data class BookmarksUiState(val ref: RefData = RefData(), val favorites: List<Favorite> = emptyList())
+data class BookmarksUiState(
+    val ref: RefData = RefData(),
+    val favorites: List<Favorite> = emptyList(),
+)
 
 @HiltViewModel
 class BookmarksViewModel @Inject constructor(
@@ -25,7 +28,11 @@ class BookmarksViewModel @Inject constructor(
     refs: ReferenceDataRepository,
     private val home: HomeState,
 ) : ViewModel() {
-    val uiState: StateFlow<BookmarksUiState> = combine(refs.getRefDataStream(), repo.getFavoritesStream(), ::BookmarksUiState)
+    val uiState: StateFlow<BookmarksUiState> = combine(
+        refs.getRefDataStream(),
+        repo.getFavoritesStream(),
+        ::BookmarksUiState,
+    )
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BookmarksUiState())
 
     /** Hands the bookmark to the entry form that opened this list. */

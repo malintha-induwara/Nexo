@@ -70,16 +70,31 @@ fun NexoApp(app: AppViewModel) {
             }
             // "What's new" once per release; a first install only stores the marker.
             if (!locked && d.whatsNewVersion < BuildConfig.VERSION_CODE) {
-                if (d.whatsNewVersion == 0) LaunchedEffect(Unit) { app.markWhatsNewSeen() }
-                else AlertDialog(
-                    onDismissRequest = { app.markWhatsNewSeen() },
-                    title = { Text(stringResource(R.string.whats_new)) },
-                    text = { Text(BuildConfig.VERSION_NAME + "\n\n" + stringResource(R.string.whats_new_text)) },
-                    confirmButton = { TextButton(onClick = { app.markWhatsNewSeen() }) { Text(stringResource(R.string.action_close)) } },
-                )
+                if (d.whatsNewVersion == 0) {
+                    LaunchedEffect(Unit) { app.markWhatsNewSeen() }
+                } else {
+                    AlertDialog(
+                        onDismissRequest = { app.markWhatsNewSeen() },
+                        title = { Text(stringResource(R.string.whats_new)) },
+                        text = {
+                            Text(
+                                BuildConfig.VERSION_NAME + "\n\n" + stringResource(
+                                    R.string.whats_new_text,
+                                ),
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                app.markWhatsNewSeen()
+                            }) { Text(stringResource(R.string.action_close)) }
+                        },
+                    )
+                }
             }
             LaunchedEffect(locked, pending) {
-                if (!locked && pending.isNotEmpty()) app.consumePending().forEach(navigator::navigate)
+                if (!locked && pending.isNotEmpty()) {
+                    app.consumePending().forEach(navigator::navigate)
+                }
             }
             if (locked) {
                 LockScreen(

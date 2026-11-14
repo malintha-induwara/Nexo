@@ -49,7 +49,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-private data class Params(val ref: RefData, val date: LocalDate, val tab: SubTab, val filter: FilterCriteria)
+private data class Params(
+    val ref: RefData,
+    val date: LocalDate,
+    val tab: SubTab,
+    val filter: FilterCriteria,
+)
 
 private data class Quad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 
@@ -64,13 +69,20 @@ class TransactionsViewModel @Inject constructor(
     private val home: HomeState,
 ) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
-    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
+    private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        RefData(),
+    )
 
     /** The sub-tab the user picked; null means the book's start screen. */
     private val _tab = MutableStateFlow<SubTab?>(null)
 
     /** Waits for the real reference data, so the start screen never flashes the wrong sub-tab. */
-    private val tab: Flow<SubTab> = combine(_tab, refs.getRefDataStream()) { t, r -> t ?: startTab(r) }.distinctUntilChanged()
+    private val tab: Flow<SubTab> = combine(_tab, refs.getRefDataStream()) { t, r ->
+        t
+            ?: startTab(r)
+    }.distinctUntilChanged()
 
     private val filter = MutableStateFlow(FilterCriteria())
     private val filterOpen = MutableStateFlow(false)
@@ -78,7 +90,14 @@ class TransactionsViewModel @Inject constructor(
 
     val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, selection)
 
-    private val data: StateFlow<HomeData> = combine(ref, home.selectedDate, tab, filter) { r, d, t, f -> Params(r, d, t, f) }
+    private val data: StateFlow<HomeData> = combine(ref, home.selectedDate, tab, filter) {
+            r,
+            d,
+            t,
+            f,
+        ->
+        Params(r, d, t, f)
+    }
         .distinctUntilChanged()
         .flatMapLatest { p -> load(p) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeData())
@@ -87,9 +106,22 @@ class TransactionsViewModel @Inject constructor(
         .map { d -> d.period.takeIf { d.tab == SubTab.TOTAL } }
         .distinctUntilChanged()
         .flatMapLatest { period ->
-            if (period == null) flowOf(null)
-            else combine(ref, budgets.getBudgetsStream(), budgets.getBudgetAmountsStream(), transactions.getLedgerStream(period.range)) { r, b, a, l ->
-                BudgetCalc.compute(r, b, a, l.rows, period.key)
+            if (period == null) {
+                flowOf(null)
+            } else {
+                combine(
+                    ref,
+                    budgets.getBudgetsStream(),
+                    budgets.getBudgetAmountsStream(),
+                    transactions.getLedgerStream(period.range),
+                ) {
+                        r,
+                        b,
+                        a,
+                        l,
+                    ->
+                    BudgetCalc.compute(r, b, a, l.rows, period.key)
+                }
             }
         }
 
@@ -99,10 +131,16 @@ class TransactionsViewModel @Inject constructor(
         combine(home.focus, home.lastSaved, home.savedMemo, ::Triple),
         budgetBlock,
     ) { (r, t, d, date), (filter, filterOpen, selection), (focus, lastSaved, savedMemo), budget ->
-        TransactionsUiState(r, t, d, date, filter, filterOpen, selection, focus, lastSaved, savedMemo, budget)
+        TransactionsUiState(
+            r, t, d, date, filter, filterOpen, selection, focus, lastSaved, savedMemo, budget,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TransactionsUiState())
 
-    private fun startTab(r: RefData) = if (r.settings.startScreen == StartScreen.CALENDAR) SubTab.CALENDAR else SubTab.DAILY
+    private fun startTab(r: RefData) = if (r.settings.startScreen == StartScreen.CALENDAR) {
+        SubTab.CALENDAR
+    } else {
+        SubTab.DAILY
+    }
 
     private fun currentTab(): SubTab = _tab.value ?: startTab(ref.value)
 
@@ -120,17 +158,43 @@ class TransactionsViewModel @Inject constructor(
                 val range = DateRange(yr.start.minusDays(7), yr.end.plusDays(7))
                 transactions.getLedgerStream(range).map { l -> monthly(p, period, year, l.rows) }
             }
-            SubTab.NOTE -> memos.getMemosStream(period.range.startText, period.range.endText).map { memos ->
-                HomeData(loaded = true, tab = p.tab, period = period, year = year, memos = sortMemos(memos, period.range))
+
+            SubTab.NOTE -> memos.getMemosStream(
+                period.range.startText,
+                period.range.endText,
+            ).map { memos ->
+                HomeData(
+                    loaded = true,
+                    tab = p.tab,
+                    period = period,
+                    year = year,
+                    memos = sortMemos(memos, period.range),
+                )
             }
+
             SubTab.TOTAL -> {
                 val prev = engine.previous(period)
-                transactions.getLedgerStream(DateRange(prev.start, period.end)).map { l -> total(p, period, prev, l.rows) }
+                transactions.getLedgerStream(DateRange(prev.start, period.end)).map { l ->
+                    total(p, period, prev, l.rows)
+                }
             }
+
             else -> {
                 val grid = gridRange(period, engine.weekStartDay)
-                combine(transactions.getLedgerStream(grid), memos.getMemosStream(grid.startText, grid.endText), repeats.getRulesStream()) { l, memos, rules ->
-                    val carry = if (p.ref.settings.carryOver && !p.filter.active) carryOverBefore(p.ref, period.start) else 0.0
+                combine(
+                    transactions.getLedgerStream(grid),
+                    memos.getMemosStream(grid.startText, grid.endText),
+                    repeats.getRulesStream(),
+                ) {
+                        l,
+                        memos,
+                        rules,
+                    ->
+                    val carry = if (p.ref.settings.carryOver && !p.filter.active) {
+                        carryOverBefore(p.ref, period.start)
+                    } else {
+                        0.0
+                    }
                     dailyAndCalendar(p, period, year, l, memos, rules, carry, grid)
                 }
             }
@@ -160,9 +224,20 @@ class TransactionsViewModel @Inject constructor(
         val memoByDay = memos.filter { !it.pinned || LocalDate.parse(it.date) in period.range }
             .filter { LocalDate.parse(it.date) in period.range }
             .groupBy { LocalDate.parse(it.date) }
-            .mapValues { (_, v) -> v.sortedWith(compareByDescending<Memo> { it.dateTime }.thenByDescending { it.orderSeq }) }
+            .mapValues { (_, v) ->
+                v.sortedWith(
+                    compareByDescending<Memo> {
+                        it.dateTime
+                    }.thenByDescending { it.orderSeq },
+                )
+            }
         val carryPair = if (carry != 0.0) period.start to carry else null
-        val days = factory.dayGroups(inPeriod, l, if (p.filter.active) emptyMap() else memoByDay, carryPair)
+        val days = factory.dayGroups(
+            inPeriod,
+            l,
+            if (p.filter.active) emptyMap() else memoByDay,
+            carryPair,
+        )
         var totals = InOut()
         days.forEach { totals += InOut(it.income, it.expense) }
 
@@ -181,7 +256,11 @@ class TransactionsViewModel @Inject constructor(
                 }
             }
             if (carryPair != null && d == carryPair.first) {
-                if (carry > 0) inc += BigDecimal.valueOf(carry) else exp += BigDecimal.valueOf(-carry)
+                if (carry > 0) {
+                    inc += BigDecimal.valueOf(carry)
+                } else {
+                    exp += BigDecimal.valueOf(-carry)
+                }
             }
             CalendarCell(
                 date = d,
@@ -189,20 +268,38 @@ class TransactionsViewModel @Inject constructor(
                 income = inc.toDouble(),
                 expense = exp.toDouble(),
                 hasTx = rows.isNotEmpty() || (carryPair?.first == d),
-                memoColors = if (d in period.range) memoByDay[d].orEmpty().map { it.color } else emptyList(),
+                memoColors = if (d in period.range) {
+                    memoByDay[d].orEmpty().map { it.color }
+                } else {
+                    emptyList()
+                },
                 isToday = d == today,
             )
         }
         val preview = if (!p.filter.active) repeatPreview(ref, rules, period) else null
         return HomeData(
-            loaded = true, tab = p.tab, period = period, year = year, days = days, repeatPreview = preview, cells = cells,
-            totals = totals, periodRows = l.rows.filter { LocalDate.parse(it.date) in period.range }, gridRows = filtered, carryOver = carry,
+            loaded = true,
+            tab = p.tab,
+            period = period,
+            year = year,
+            days = days,
+            repeatPreview = preview,
+            cells = cells,
+            totals = totals,
+            periodRows = l.rows.filter {
+                LocalDate.parse(it.date) in period.range
+            },
+            gridRows = filtered, carryOver = carry,
             memos = memos, ledger = l,
         )
     }
 
     /** Upcoming scheduled repeats from today to the period end. */
-    private fun repeatPreview(ref: RefData, rules: List<RepeatRule>, period: MonthPeriod): RepeatPreview? {
+    private fun repeatPreview(
+        ref: RefData,
+        rules: List<RepeatRule>,
+        period: MonthPeriod,
+    ): RepeatPreview? {
         val today = LocalDate.now()
         val from = maxOf(today, period.start)
         if (from.isAfter(period.end)) return null
@@ -213,38 +310,72 @@ class TransactionsViewModel @Inject constructor(
         val c = Classifier(ref)
         for (rule in rules) {
             if (rule.accountId == null) continue
-            if (!rule.kind.isTransfer && ref.categoryById[rule.categoryId]?.isDeleted != false) continue
+            if (!rule.kind.isTransfer && ref.categoryById[rule.categoryId]?.isDeleted != false) {
+                continue
+            }
             val first = runCatching { LocalDate.parse(rule.nextDate) }.getOrNull() ?: continue
-            val occ = RepeatSchedule.occurrencesIn(first, rule.repeatType, rule.anchorDay, range, rule.endDate?.let(LocalDate::parse))
+            val occ = RepeatSchedule.occurrencesIn(
+                first,
+                rule.repeatType,
+                rule.anchorDay,
+                range,
+                rule.endDate?.let(LocalDate::parse),
+            )
             if (occ.isEmpty()) continue
-            val main = BigDecimal.valueOf(if (ref.currency(rule.currencyId).id == ref.mainCurrency.id) rule.amount else rule.amount * ref.currency(rule.currencyId).rate)
+            val main = BigDecimal.valueOf(
+                if (ref.currency(rule.currencyId).id == ref.mainCurrency.id) {
+                    rule.amount
+                } else {
+                    rule.amount *
+                        ref.currency(rule.currencyId).rate
+                },
+            )
             val sign = when (rule.kind) {
                 TxKind.INCOME -> 1
+
                 TxKind.EXPENSE -> -1
-                TxKind.TRANSFER_OUT -> when (c.transferStatsFlow(rule.accountId, rule.toAccountId)) {
+
+                TxKind.TRANSFER_OUT -> when (
+                    c.transferStatsFlow(rule.accountId, rule.toAccountId)
+                ) {
                     CashFlow.INCOME -> 1
                     CashFlow.EXPENSE -> -1
                     CashFlow.NEUTRAL -> 0
                 }
+
                 else -> 0
             }
             total += main.multiply(BigDecimal(sign * occ.size))
             if (rule.repeatType == RepeatType.DAILY) dates += occ.first() else dates += occ
             names += rule.note.ifBlank {
-                if (rule.kind.isTransfer) "${ref.accountById[rule.accountId]?.name} → ${ref.accountById[rule.toAccountId]?.name}"
-                else ref.categoryName(ref.mainCategoryId(rule.categoryId)) ?: ""
+                if (rule.kind.isTransfer) {
+                    "${ref.accountById[rule.accountId]?.name} → ${ref.accountById[rule.toAccountId]?.name}"
+                } else {
+                    ref.categoryName(ref.mainCategoryId(rule.categoryId)) ?: ""
+                }
             }
         }
         if (dates.isEmpty()) return null
         return RepeatPreview(dates.toList(), names.filter { it.isNotBlank() }, total.toDouble())
     }
 
-    private fun monthly(p: Params, period: MonthPeriod, year: Int, rows: List<Transaction>): HomeData {
+    private fun monthly(
+        p: Params,
+        period: MonthPeriod,
+        year: Int,
+        rows: List<Transaction>,
+    ): HomeData {
         val ref = p.ref
         val engine = ref.settings.periods
         val c = Classifier(ref)
         val filtered = rows.filter { !p.filter.active || p.filter.matches(it, ref, c) }
-        fun sum(range: DateRange): InOut = Totals.fromRows(ref, filtered.filter { LocalDate.parse(it.date) in range })
+        fun sum(range: DateRange): InOut = Totals.fromRows(
+            ref,
+            filtered.filter {
+                LocalDate.parse(it.date) in
+                    range
+            },
+        )
         val today = LocalDate.now()
         val todayPeriod = engine.monthPeriodContaining(today)
         val currentYear = todayPeriod.label.year
@@ -256,7 +387,10 @@ class TransactionsViewModel @Inject constructor(
             val hasData = t.income != 0.0 || t.expense != 0.0
             val show = when {
                 year < currentYear -> true
-                year == currentYear -> !mp.label.isAfter(todayPeriod.label) || hasData || shownCurrent
+
+                year == currentYear -> !mp.label.isAfter(todayPeriod.label) || hasData ||
+                    shownCurrent
+
                 else -> hasData
             }
             if (!show) continue
@@ -273,22 +407,43 @@ class TransactionsViewModel @Inject constructor(
         }
         var totals = InOut()
         out.forEach { totals += InOut(it.income, it.expense) }
-        return HomeData(loaded = true, tab = p.tab, period = period, year = year, months = out, totals = totals)
+        return HomeData(
+            loaded = true,
+            tab = p.tab,
+            period = period,
+            year = year,
+            months = out,
+            totals = totals,
+        )
     }
 
-    private fun total(p: Params, period: MonthPeriod, prev: MonthPeriod, rows: List<Transaction>): HomeData {
+    private fun total(
+        p: Params,
+        period: MonthPeriod,
+        prev: MonthPeriod,
+        rows: List<Transaction>,
+    ): HomeData {
         val ref = p.ref
         val cur = rows.filter { LocalDate.parse(it.date) in period.range }
         val before = rows.filter { LocalDate.parse(it.date) in prev.range }
         val s = summary(ref, cur, before)
         return HomeData(
-            loaded = true, tab = p.tab, period = period, year = period.label.year, summary = s,
-            totals = InOut(s.income, s.expense), periodRows = cur,
+            loaded = true,
+            tab = p.tab,
+            period = period,
+            year = period.label.year,
+            summary = s,
+            totals = InOut(s.income, s.expense),
+            periodRows = cur,
         )
     }
 
     /** Total-page summary. */
-    private fun summary(ref: RefData, rows: List<Transaction>, previous: List<Transaction>): TotalSummary {
+    private fun summary(
+        ref: RefData,
+        rows: List<Transaction>,
+        previous: List<Transaction>,
+    ): TotalSummary {
         val c = Classifier(ref)
         fun inOut(list: List<Transaction>, predicate: (Transaction) -> Boolean = { true }): InOut {
             var inc = BigDecimal.ZERO
@@ -305,7 +460,11 @@ class TransactionsViewModel @Inject constructor(
         val main = ref.mainCurrency.decimals
         val now = inOut(rows)
         val prevOut = inOut(previous).expense
-        val compared = if (prevOut == 0.0) 100 else Math.round((now.expense - prevOut) * 100 / prevOut).toInt() + 100
+        val compared = if (prevOut == 0.0) {
+            100
+        } else {
+            Math.round((now.expense - prevOut) * 100 / prevOut).toInt() + 100
+        }
         fun builtin(id: String?) = ref.groupOf(id)?.builtinId
         val cashIds = setOf(1, 11)
         val cash = inOut(rows) { builtin(it.accountId) in cashIds }.expense
@@ -315,17 +474,28 @@ class TransactionsViewModel @Inject constructor(
         var transfer = BigDecimal.ZERO
         rows.forEach { r ->
             if (ref.isCard(r.accountId)) {
-                if (r.kind == TxKind.EXPENSE || r.kind == TxKind.TRANSFER_OUT) cardOut += BigDecimal.valueOf(r.amountMain)
-                if (r.kind == TxKind.INCOME || r.kind == TxKind.TRANSFER_IN) cardIn += BigDecimal.valueOf(r.amountMain)
+                if (r.kind == TxKind.EXPENSE || r.kind == TxKind.TRANSFER_OUT) {
+                    cardOut += BigDecimal.valueOf(r.amountMain)
+                }
+                if (r.kind == TxKind.INCOME || r.kind == TxKind.TRANSFER_IN) {
+                    cardIn += BigDecimal.valueOf(r.amountMain)
+                }
             }
             if (r.kind == TxKind.TRANSFER_OUT && builtin(r.accountId) in cashIds) {
                 val dst = ref.groupOf(r.counterpartAccountId)
                 val dstType = dst?.type
-                if (dst != null && dst.builtinId !in cashIds && dstType == GroupType.NORMAL) transfer += BigDecimal.valueOf(r.amountMain)
+                if (dst != null && dst.builtinId !in cashIds && dstType == GroupType.NORMAL) {
+                    transfer += BigDecimal.valueOf(r.amountMain)
+                }
             }
         }
-        val names = ref.groups.filter { it.builtinId == 11 && it.status == GroupStatus.ACTIVE }.map { it.name } +
-            ref.groups.filter { it.builtinId == 1 && it.status == GroupStatus.ACTIVE }.map { it.name }
+        val names =
+            ref.groups.filter {
+                it.builtinId == 11 && it.status == GroupStatus.ACTIVE
+            }.map { it.name } +
+                ref.groups.filter {
+                    it.builtinId == 1 && it.status == GroupStatus.ACTIVE
+                }.map { it.name }
         return TotalSummary(
             comparedPercent = compared,
             cashLabel = names.joinToString(", "),
@@ -342,7 +512,11 @@ class TransactionsViewModel @Inject constructor(
     private fun sortMemos(memos: List<Memo>, range: DateRange): List<Memo> {
         val pinned = memos.filter { it.pinned }.sortedByDescending { it.pinnedAt }
         val dated = memos.filter { !it.pinned && LocalDate.parse(it.date) in range }
-            .sortedWith(compareByDescending<Memo> { it.date }.thenByDescending { it.dateTime }.thenByDescending { it.orderSeq })
+            .sortedWith(
+                compareByDescending<Memo> {
+                    it.date
+                }.thenByDescending { it.dateTime }.thenByDescending { it.orderSeq },
+            )
         return pinned + dated
     }
 

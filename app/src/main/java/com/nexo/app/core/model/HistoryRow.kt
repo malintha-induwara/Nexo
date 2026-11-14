@@ -1,6 +1,5 @@
 package com.nexo.app.core.model
 
-
 /** A past message the history picker can offer. */
 data class HistoryRow(
     val item: SmsItem,

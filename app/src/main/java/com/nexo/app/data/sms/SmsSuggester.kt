@@ -23,20 +23,34 @@ class SmsSuggester @Inject constructor(
 
     suspend fun prepare(item: SmsItem, ref: RefData? = null): SmsItem {
         val r = ref ?: refs.getRefData()
-        fun live(id: String?) = id?.takeIf { a -> r.accountById[a]?.let(r::isAccountVisible) == true }
-        fun liveCategory(id: String?) = id?.takeIf { c -> r.categoryById[c]?.let { !it.isDeleted && it.kind == item.kind.categoryKind } == true }
+        fun live(id: String?) =
+            id?.takeIf { a -> r.accountById[a]?.let(r::isAccountVisible) == true }
+        fun liveCategory(id: String?) = id?.takeIf { c ->
+            r.categoryById[c]?.let {
+                !it.isDeleted &&
+                    it.kind == item.kind.categoryKind
+            } ==
+                true
+        }
 
         val account = live(item.accountId)
             ?: live(item.cardLast4?.let { dao.source(item.bank, it)?.accountId })
             ?: live(dao.source(item.bank, "")?.accountId)
-        val destination = live(item.toAccountId) ?: if (item.kind == SmsKind.TRANSFER_TO_CASH) r.smsCashAccount() else null
+        val destination =
+            live(item.toAccountId)
+                ?: if (item.kind == SmsKind.TRANSFER_TO_CASH) r.smsCashAccount() else null
         val category = liveCategory(item.categoryId)
-            ?: if (item.kind == SmsKind.TRANSFER_TO_CASH || item.learningKey.isEmpty()) null
-            else liveCategory(dao.merchantRule(item.learningKey)?.categoryId)
+            ?: if (item.kind == SmsKind.TRANSFER_TO_CASH || item.learningKey.isEmpty()) {
+                null
+            } else {
+                liveCategory(dao.merchantRule(item.learningKey)?.categoryId)
+            }
 
         var out = item.copy(accountId = account, toAccountId = destination, categoryId = category)
         // A purchase in the account's own currency is not an estimate.
-        if (out.certainty == Certainty.ESTIMATED && account != null && r.accountCurrency(account).isoCode.equals(out.currency, ignoreCase = true)) {
+        if (out.certainty == Certainty.ESTIMATED && account != null &&
+            r.accountCurrency(account).isoCode.equals(out.currency, ignoreCase = true)
+        ) {
             out = out.copy(certainty = Certainty.EXACT, reason = null, feeRoute = null)
         }
         // Local snapshots only; the sync worker fetches and fills "Rate pending" items later.

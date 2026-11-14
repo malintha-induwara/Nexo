@@ -24,20 +24,35 @@ class ApproveSmsUseCase @Inject constructor(
      * estimate; "include in purchase" books the actual amount with no fee row.
      */
     suspend operator fun invoke(itemId: String, fee: FeeChoice? = null): ApproveResult {
-        val item = sms.getItem(itemId)?.takeIf { it.status == SmsStatus.PENDING } ?: return ApproveResult.Gone
+        val item =
+            sms.getItem(itemId)?.takeIf { it.status == SmsStatus.PENDING }
+                ?: return ApproveResult.Gone
         val ref = refs.getRefData()
         var draft = getDraft(item, ref) ?: return ApproveResult.Incomplete(item.missing())
         val feeAmount = fee?.takeIf { !it.includeInPurchase }?.amount?.takeIf { it > 0 }
         val estimate = item.estimatedAmount
-        if (feeAmount != null && item.feeRoute == FeeRoute.FX_CARD_PURCHASE && estimate != null) draft = draft.copy(amount = estimate)
+        if (feeAmount != null && item.feeRoute == FeeRoute.FX_CARD_PURCHASE && estimate != null) {
+            draft = draft.copy(amount = estimate)
+        }
         val transfer = draft.type == EntryType.TRANSFER
         if (transfer && feeAmount != null) {
-            draft = draft.copy(fee = FeeDraft(feeAmount, ref.accountCurrency(draft.accountId).id, categoryId = transactions.bankFeeCategory()))
+            draft =
+                draft.copy(
+                    fee = FeeDraft(
+                        feeAmount,
+                        ref.accountCurrency(draft.accountId).id,
+                        categoryId = transactions.bankFeeCategory(),
+                    ),
+                )
         }
         val txId = transactions.save(draft)
         val feeId = when {
             feeAmount == null -> null
-            transfer -> transactions.getTransaction(txId)?.feeGroupId?.let { transactions.getFeeRow(it)?.id }
+
+            transfer -> transactions.getTransaction(txId)?.feeGroupId?.let {
+                transactions.getFeeRow(it)?.id
+            }
+
             else -> transactions.addFee(txId, feeAmount)
         }
         sms.markApproved(item, txId, item.accountId, draft.categoryId)
@@ -46,5 +61,6 @@ class ApproveSmsUseCase @Inject constructor(
     }
 
     /** Approves every complete item with [fee]; incomplete ones stay in the queue. Returns how many were approved. */
-    suspend operator fun invoke(ids: Collection<String>, fee: FeeChoice? = null): Int = ids.count { invoke(it, fee) is ApproveResult.Done }
+    suspend operator fun invoke(ids: Collection<String>, fee: FeeChoice? = null): Int =
+        ids.count { invoke(it, fee) is ApproveResult.Done }
 }

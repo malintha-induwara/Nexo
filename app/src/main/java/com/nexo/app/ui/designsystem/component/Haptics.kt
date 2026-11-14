@@ -31,7 +31,9 @@ class Haptics(private val feedback: HapticFeedback) {
     /** Entering a mode by long press (multi-select). */
     fun longPress() = feedback.performHapticFeedback(HapticFeedbackType.LongPress)
 
-    fun toggle(on: Boolean) = feedback.performHapticFeedback(if (on) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
+    fun toggle(on: Boolean) = feedback.performHapticFeedback(
+        if (on) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff,
+    )
 }
 
 @Composable

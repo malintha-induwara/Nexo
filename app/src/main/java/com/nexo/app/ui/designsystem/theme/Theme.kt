@@ -19,7 +19,12 @@ import com.nexo.app.core.model.ThemeMode
 
 /** Colours of screen headers. Soft Tally headers sit on the page background. */
 @Immutable
-data class HeaderColors(val container: Color, val content: Color, val accent: Color, val lightStatusBar: Boolean)
+data class HeaderColors(
+    val container: Color,
+    val content: Color,
+    val accent: Color,
+    val lightStatusBar: Boolean,
+)
 
 /**
  * [income] and [expense] colour amounts as text. [incomeFill] and [expenseFill] colour filled chart
@@ -61,6 +66,7 @@ object NexoPalette {
     val IncomeBlueDark = DarkNexoColors.primaryText
     val ExpenseRed = LightNexoColors.danger
     val ExpenseRedDark = DarkNexoColors.danger
+
     /** Expense bars on the dark ground. */
     val ExpenseFillDark = Color(0xFFE5554D)
 
@@ -69,8 +75,11 @@ object NexoPalette {
 
     /** 11-colour stats palette, red/orange → yellow → green → teal → blue → purple → pink. */
     val Stats = listOf(
-        Color(0xFFF2574B), Color(0xFFF7883A), Color(0xFFF5B83C), Color(0xFFE3D44A), Color(0xFF9ACB4F), Color(0xFF4DBB6E),
-        Color(0xFF34B2A6), Color(0xFF3E9BE0), Color(0xFF5B6FD8), Color(0xFF9061D1), Color(0xFFE066A8),
+        Color(0xFFF2574B),
+        Color(0xFFF7883A),
+        Color(0xFFF5B83C), Color(0xFFE3D44A), Color(0xFF9ACB4F), Color(0xFF4DBB6E),
+        Color(0xFF34B2A6),
+        Color(0xFF3E9BE0), Color(0xFF5B6FD8), Color(0xFF9061D1), Color(0xFFE066A8),
     )
 
     fun memo(color: MemoColor, dark: Boolean): Color = when (color) {
@@ -129,7 +138,11 @@ fun NexoTheme(
     val red = if (dark) NexoPalette.ExpenseRedDark else NexoPalette.ExpenseRed
     val blueFill = if (dark) colors.primary else blue
     val redFill = if (dark) NexoPalette.ExpenseFillDark else red
-    val money = if (colorSet == ColorSet.A) MoneyColors(blue, red, colors.text, blueFill, redFill) else MoneyColors(red, blue, colors.text, redFill, blueFill)
+    val money = if (colorSet == ColorSet.A) {
+        MoneyColors(blue, red, colors.text, blueFill, redFill)
+    } else {
+        MoneyColors(red, blue, colors.text, redFill, blueFill)
+    }
     // Status / navigation bar icons follow the theme brightness.
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -146,7 +159,11 @@ fun NexoTheme(
         LocalMoneyColors provides money,
         LocalIsDark provides dark,
     ) {
-        MaterialTheme(colorScheme = scheme, typography = NexoTypography, shapes = NexoMaterialShapes) {
+        MaterialTheme(
+            colorScheme = scheme,
+            typography = NexoTypography,
+            shapes = NexoMaterialShapes,
+        ) {
             // Screens without a Scaffold or Surface (the tab roots) still get readable text by default.
             CompositionLocalProvider(LocalContentColor provides colors.text, content = content)
         }

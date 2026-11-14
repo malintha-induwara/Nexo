@@ -35,7 +35,8 @@ class FxRatesNetworkDataSource @Inject constructor(
     val hasKey: Boolean get() = key.isNotBlank()
 
     /** The latest boards, or the stored boards for [date] (that day or the nearest of the 5 before). Null on any failure. */
-    suspend fun fetch(date: LocalDate? = null): List<FxSnapshot>? = withContext(ioDispatcher) { fetchBlocking(date) }
+    suspend fun fetch(date: LocalDate? = null): List<FxSnapshot>? =
+        withContext(ioDispatcher) { fetchBlocking(date) }
 
     private fun fetchBlocking(date: LocalDate?): List<FxSnapshot>? {
         if (!hasKey) return null
@@ -71,30 +72,56 @@ class FxRatesNetworkDataSource @Inject constructor(
          * such as "UAE" are dropped, and any rate may be missing.
          */
         fun parse(text: String): List<FxSnapshot> {
-            val root = runCatching { Json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return emptyList()
-            val banks = runCatching { root.getValue("banks").jsonArray }.getOrNull() ?: return emptyList()
+            val root =
+                runCatching { Json.parseToJsonElement(text).jsonObject }.getOrNull()
+                    ?: return emptyList()
+            val banks =
+                runCatching { root.getValue("banks").jsonArray }.getOrNull() ?: return emptyList()
             return banks.flatMap { element ->
                 val bank = element as? JsonObject ?: return@flatMap emptyList()
                 val code = bank.text("bank")?.lowercase(Locale.ROOT) ?: return@flatMap emptyList()
-                val captured = bank.text("captured_at")?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
-                    ?: return@flatMap emptyList()
-                val rates = runCatching { bank.getValue("rates").jsonArray }.getOrNull() ?: return@flatMap emptyList()
+                val captured =
+                    bank.text("captured_at")?.let {
+                        runCatching { Instant.parse(it).toEpochMilli() }.getOrNull()
+                    }
+                        ?: return@flatMap emptyList()
+                val rates =
+                    runCatching { bank.getValue("rates").jsonArray }.getOrNull()
+                        ?: return@flatMap emptyList()
                 rates.mapNotNull { r ->
                     val rate = r as? JsonObject ?: return@mapNotNull null
-                    val ccy = rate.text("ccy")?.uppercase(Locale.ROOT)?.takeIf { isIso(it) && it in CURRENCIES } ?: return@mapNotNull null
+                    val ccy =
+                        rate.text("ccy")?.uppercase(Locale.ROOT)?.takeIf {
+                            isIso(it) &&
+                                it in CURRENCIES
+                        }
+                            ?: return@mapNotNull null
                     FxSnapshot(
-                        capturedAt = captured, bank = code, ccy = ccy,
-                        buy = rate.number("buy"), sell = rate.number("sell"), mid = rate.number("mid"),
-                        official = rate.number("official"), spreadPct = rate.number("spread_pct"),
+                        capturedAt = captured,
+                        bank = code,
+                        ccy = ccy,
+                        buy = rate.number("buy"),
+                        sell = rate.number("sell"),
+                        mid = rate.number("mid"),
+                        official = rate.number("official"),
+                        spreadPct = rate.number("spread_pct"),
                     ).takeIf { it.buy != null || it.sell != null || it.official != null }
                 }
             }
         }
 
-        private fun isIso(code: String) = code.length == 3 && runCatching { Currency.getInstance(code) }.isSuccess
+        private fun isIso(code: String) =
+            code.length == 3 && runCatching { Currency.getInstance(code) }.isSuccess
 
-        private fun JsonObject.text(name: String): String? = (this[name] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
+        private fun JsonObject.text(name: String): String? =
+            (this[name] as? JsonPrimitive)?.contentOrNull?.takeIf {
+                it.isNotBlank()
+            }
 
-        private fun JsonObject.number(name: String): Double? = (this[name] as? JsonPrimitive)?.doubleOrNull?.takeIf { it > 0 }
+        private fun JsonObject.number(name: String): Double? =
+            (this[name] as? JsonPrimitive)?.doubleOrNull?.takeIf {
+                it >
+                    0
+            }
     }
 }

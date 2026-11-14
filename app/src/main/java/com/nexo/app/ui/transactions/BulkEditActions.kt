@@ -17,7 +17,11 @@ class BulkEditActions(
 )
 
 /** Bulk edits of [selection] run in a ViewModel's [scope]; the selection clears once each edit is written. */
-fun bulkEditActions(transactions: TransactionsRepository, scope: CoroutineScope, selection: MutableStateFlow<Set<String>>): BulkEditActions {
+fun bulkEditActions(
+    transactions: TransactionsRepository,
+    scope: CoroutineScope,
+    selection: MutableStateFlow<Set<String>>,
+): BulkEditActions {
     fun run(edit: suspend (Set<String>) -> Unit) {
         val ids = selection.value
         if (ids.isEmpty()) return

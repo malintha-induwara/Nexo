@@ -80,8 +80,10 @@ private fun Context.findActivity(): Activity? {
     return null
 }
 
-private fun appInfoIntent(context: Context) =
-    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+private fun appInfoIntent(context: Context) = Intent(
+    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+    Uri.fromParts("package", context.packageName, null),
+)
 
 /** Settings → Bank SMS (capture switch, card mapping, privacy). */
 @Composable
@@ -103,24 +105,33 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
         vm.refresh()
         onPauseOrDispose {}
     }
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
-        if (result.values.all { it }) {
-            vm.setEnabled(true)
-            // Offered once, right after permission is granted.
-            if (device?.smsHistoryImport == SmsHistoryImport.NOT_OFFERED) dialog = "offer"
-        } else {
-            // No rationale after a denial means Android won't ask again (or the setting is restricted): send them to App info.
-            val activity = context.findActivity()
-            val blocked = activity != null && SmsPermissions.ALL.none { ActivityCompat.shouldShowRequestPermissionRationale(activity, it) }
-            if (blocked) dialog = "settings"
-            vm.refresh()
+    val launcher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { result ->
+            if (result.values.all { it }) {
+                vm.setEnabled(true)
+                // Offered once, right after permission is granted.
+                if (device?.smsHistoryImport == SmsHistoryImport.NOT_OFFERED) dialog = "offer"
+            } else {
+                // No rationale after a denial means Android won't ask again (or the setting is restricted): send them to App info.
+                val activity = context.findActivity()
+                val blocked =
+                    activity != null &&
+                        SmsPermissions.ALL.none {
+                            ActivityCompat.shouldShowRequestPermissionRationale(activity, it)
+                        }
+                if (blocked) dialog = "settings"
+                vm.refresh()
+            }
         }
-    }
     val enabled = device?.smsCaptureEnabled ?: true
     val startedAt = device?.smsCaptureStartedAt ?: 0L
 
     Box(Modifier.fillMaxSize()) {
-        Scaffold(topBar = { NexoTopBar(stringResource(R.string.sms_settings_title), onBack = { nav.back() }) }, containerColor = colors.background) { p ->
+        Scaffold(topBar = {
+            NexoTopBar(stringResource(R.string.sms_settings_title), onBack = { nav.back() })
+        }, containerColor = colors.background) { p ->
             Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
                 SwitchRow(
                     title = stringResource(R.string.sms_capture_title),
@@ -130,17 +141,37 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                     },
                     subtitle = when {
                         !enabled -> stringResource(R.string.sms_capture_sub_off)
+
                         !permitted -> stringResource(R.string.sms_capture_sub_permission)
-                        startedAt > 0 -> stringResource(R.string.sms_capture_sub_on, Formats.dateTime(Instant.ofEpochMilli(startedAt).atZone(ZoneId.systemDefault()).toLocalDateTime()))
+
+                        startedAt > 0 -> stringResource(
+                            R.string.sms_capture_sub_on,
+                            Formats.dateTime(
+                                Instant.ofEpochMilli(
+                                    startedAt,
+                                ).atZone(ZoneId.systemDefault()).toLocalDateTime(),
+                            ),
+                        )
+
                         else -> null
                     },
                 )
                 if (enabled && !permitted) {
-                    SettingRow(stringResource(R.string.sms_permission_title), stringResource(R.string.sms_permission_text), onClick = { dialog = "ask" })
+                    SettingRow(
+                        stringResource(R.string.sms_permission_title),
+                        stringResource(R.string.sms_permission_text),
+                        onClick = {
+                            dialog = "ask"
+                        },
+                    )
                 }
                 SettingRow(
                     stringResource(R.string.sms_queue_row),
-                    if (pending > 0) pluralStringResource(R.plurals.sms_queue_row_sub, pending, pending) else stringResource(R.string.sms_queue_row_empty),
+                    if (pending > 0) {
+                        pluralStringResource(R.plurals.sms_queue_row_sub, pending, pending)
+                    } else {
+                        stringResource(R.string.sms_queue_row_empty)
+                    },
                     onClick = { nav.navigate(SmsQueueKey) },
                 )
 
@@ -154,12 +185,20 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                 SectionHeader(stringResource(R.string.sms_section_accounts))
                 SettingRow(
                     stringResource(R.string.sms_cards),
-                    if (sources.isNotEmpty()) pluralStringResource(R.plurals.sms_cards_sub, sources.size, sources.size) else null,
+                    if (sources.isNotEmpty()) {
+                        pluralStringResource(R.plurals.sms_cards_sub, sources.size, sources.size)
+                    } else {
+                        null
+                    },
                     onClick = { nav.navigate(SmsCardsKey) },
                 )
                 SettingRow(
                     stringResource(R.string.fee_presets_title),
-                    if (presets.isNotEmpty()) pluralStringResource(R.plurals.sms_cards_sub, presets.size, presets.size) else stringResource(R.string.sms_fees_sub_none),
+                    if (presets.isNotEmpty()) {
+                        pluralStringResource(R.plurals.sms_cards_sub, presets.size, presets.size)
+                    } else {
+                        stringResource(R.string.sms_fees_sub_none)
+                    },
                     onClick = { nav.navigate(SmsFeesKey) },
                 )
                 SettingRow(
@@ -179,12 +218,19 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                     stringResource(R.string.sms_full_text),
                     device?.smsStoreFullText == true,
                     vm::setFullText,
-                    subtitle = stringResource(if (device?.smsStoreFullText == true) R.string.sms_full_text_sub_on else R.string.sms_full_text_sub_off),
+                    subtitle = stringResource(
+                        if (device?.smsStoreFullText == true) {
+                            R.string.sms_full_text_sub_on
+                        } else {
+                            R.string.sms_full_text_sub_off
+                        },
+                    ),
                 )
                 Text(
                     stringResource(R.string.sms_privacy_line),
                     Modifier.padding(horizontal = Space.gutter, vertical = Space.xl),
-                    style = NexoType.Meta, color = colors.textTertiary,
+                    style = NexoType.Meta,
+                    color = colors.textTertiary,
                 )
             }
         }
@@ -208,6 +254,7 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
             },
             onDismiss = { dialog = null },
         )
+
         "offer" -> AlertDialog(
             onDismissRequest = { dialog = null },
             title = { Text(stringResource(R.string.sms_history_offer_title)) },
@@ -226,6 +273,7 @@ fun SmsSettingsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                 }) { Text(stringResource(R.string.sms_history_not_now)) }
             },
         )
+
         "settings" -> ConfirmDialog(
             title = stringResource(R.string.sms_permission_title),
             message = stringResource(R.string.sms_permission_denied_text),
@@ -251,21 +299,35 @@ fun SmsCardsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     var sheetOpen by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
-        Scaffold(topBar = { NexoTopBar(stringResource(R.string.sms_cards), onBack = { nav.back() }) }, containerColor = colors.background) { p ->
+        Scaffold(topBar = {
+            NexoTopBar(stringResource(R.string.sms_cards), onBack = { nav.back() })
+        }, containerColor = colors.background) { p ->
             Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
                 if (sources.isEmpty()) EmptyState(stringResource(R.string.sms_cards_empty))
                 sources.groupBy { it.bank }.forEach { (bank, rows) ->
                     SectionHeader(Banks.byName(bank)?.displayName ?: bank)
                     rows.sortedWith(compareBy({ it.last4.isEmpty() }, { it.last4 })).forEach { s ->
                         SettingRow(
-                            title = if (s.last4.isEmpty()) stringResource(R.string.sms_bank_default) else stringResource(R.string.sms_card_row, s.last4),
+                            title = if (s.last4.isEmpty()) {
+                                stringResource(R.string.sms_bank_default)
+                            } else {
+                                stringResource(R.string.sms_card_row, s.last4)
+                            },
                             subtitle = ref.accountById[s.accountId]?.name,
                             onClick = {
                                 editing = s
                                 sheetOpen = true
                             },
                             trailing = {
-                                RoundIconButton(Icons.Outlined.Delete, stringResource(R.string.sms_remove), { vm.removeSource(s) }, tint = colors.textTertiary, container = Color.Transparent)
+                                RoundIconButton(
+                                    Icons.Outlined.Delete,
+                                    stringResource(R.string.sms_remove),
+                                    {
+                                        vm.removeSource(s)
+                                    },
+                                    tint = colors.textTertiary,
+                                    container = Color.Transparent,
+                                )
                             },
                         )
                     }
@@ -276,8 +338,15 @@ fun SmsCardsScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
             val s = editing
             if (s != null) {
                 SheetTitle(
-                    if (s.last4.isEmpty()) stringResource(R.string.sms_bank_default)
-                    else stringResource(R.string.sms_card_question, Banks.byName(s.bank)?.displayName.orEmpty(), s.last4),
+                    if (s.last4.isEmpty()) {
+                        stringResource(R.string.sms_bank_default)
+                    } else {
+                        stringResource(
+                            R.string.sms_card_question,
+                            Banks.byName(s.bank)?.displayName.orEmpty(),
+                            s.last4,
+                        )
+                    },
                 )
                 AccountPickList(ref, s.accountId) { id ->
                     vm.mapSource(s, id)
@@ -311,16 +380,22 @@ fun SmsFeesScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     }
 
     Box(Modifier.fillMaxSize()) {
-        Scaffold(topBar = { NexoTopBar(stringResource(R.string.fee_presets_title), onBack = { nav.back() }) }, containerColor = colors.background) { p ->
+        Scaffold(topBar = {
+            NexoTopBar(stringResource(R.string.fee_presets_title), onBack = { nav.back() })
+        }, containerColor = colors.background) { p ->
             Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
                 if (presets.isEmpty()) EmptyState(stringResource(R.string.fee_presets_empty))
                 presets.groupBy { it.accountId }.forEach { (accountId, rows) ->
                     SectionHeader(ref.accountById[accountId]?.name ?: accountId)
                     rows.forEach { preset ->
-                        SettingRow(stringResource(feeRouteLabel(preset.route)), modeText(preset), onClick = {
-                            editing = preset
-                            sheetOpen = true
-                        })
+                        SettingRow(
+                            stringResource(feeRouteLabel(preset.route)),
+                            modeText(preset),
+                            onClick = {
+                                editing = preset
+                                sheetOpen = true
+                            },
+                        )
                     }
                 }
             }
@@ -328,19 +403,35 @@ fun SmsFeesScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
         InlineBottomSheet(sheetOpen, onDismiss = { sheetOpen = false }, heightFraction = 0.42f) {
             val preset = editing
             if (preset != null) {
-                SheetTitle(stringResource(feeRouteLabel(preset.route)), ref.accountById[preset.accountId]?.name)
-                val last = preset.lastFee?.let { AmountFormatter.format(it, ref.accountCurrency(preset.accountId)) }
+                SheetTitle(
+                    stringResource(feeRouteLabel(preset.route)),
+                    ref.accountById[preset.accountId]?.name,
+                )
+                val last = preset.lastFee?.let {
+                    AmountFormatter.format(it, ref.accountCurrency(preset.accountId))
+                }
                 listOfNotNull(
                     FeeMode.ASK to stringResource(R.string.fee_mode_ask),
                     last?.let { FeeMode.AUTO to stringResource(R.string.fee_mode_auto, it) },
                     FeeMode.NEVER to stringResource(R.string.fee_mode_never),
                 ).forEach { (mode, label) ->
-                    SettingRow(label, onClick = {
-                        vm.setFeeMode(preset, mode)
-                        sheetOpen = false
-                    }, showChevron = false, trailing = if (preset.mode == mode) ({
-                        Icon(Icons.Rounded.Check, null, tint = colors.text)
-                    }) else null)
+                    SettingRow(
+                        label,
+                        onClick = {
+                            vm.setFeeMode(preset, mode)
+                            sheetOpen = false
+                        },
+                        showChevron = false,
+                        trailing = if (preset.mode == mode) {
+                            (
+                                {
+                                    Icon(Icons.Rounded.Check, null, tint = colors.text)
+                                }
+                                )
+                        } else {
+                            null
+                        },
+                    )
                 }
             }
         }
@@ -360,7 +451,9 @@ fun SmsSendersScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
     Scaffold(
         topBar = {
             NexoTopBar(stringResource(R.string.sms_senders_title), onBack = { nav.back() }) {
-                RoundIconButton(Icons.Rounded.Add, stringResource(R.string.sms_senders_add), { adding = true }, modifier = Modifier.padding(end = Space.m))
+                RoundIconButton(Icons.Rounded.Add, stringResource(R.string.sms_senders_add), {
+                    adding = true
+                }, modifier = Modifier.padding(end = Space.m))
             }
         },
         containerColor = colors.background,
@@ -371,18 +464,22 @@ fun SmsSendersScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
                 Text(
                     stringResource(R.string.sms_senders_custom_empty),
                     Modifier.padding(horizontal = Space.gutter),
-                    style = NexoType.Meta, color = colors.textSecondary,
+                    style = NexoType.Meta,
+                    color = colors.textSecondary,
                 )
             }
             custom.forEach { id ->
                 SettingRow(id, trailing = {
-                    RoundIconButton(Icons.Outlined.Delete, stringResource(R.string.sms_remove), { vm.removeSender(id) }, tint = colors.textTertiary, container = Color.Transparent)
+                    RoundIconButton(Icons.Outlined.Delete, stringResource(R.string.sms_remove), {
+                        vm.removeSender(id)
+                    }, tint = colors.textTertiary, container = Color.Transparent)
                 })
             }
             Text(
                 stringResource(R.string.sms_senders_note),
                 Modifier.padding(horizontal = Space.gutter, vertical = Space.s),
-                style = NexoType.Meta, color = colors.textTertiary,
+                style = NexoType.Meta,
+                color = colors.textTertiary,
             )
             SectionHeader(stringResource(R.string.sms_senders_builtin))
             Bank.entries.filter { it.senders.isNotEmpty() }.forEach { bank ->
@@ -396,7 +493,10 @@ fun SmsSendersScreen(vm: SmsSettingsViewModel = hiltViewModel()) {
             initial = "",
             label = stringResource(R.string.sms_senders_hint),
             maxLength = 20,
-            onConfirm = { vm.addSender(it); adding = false },
+            onConfirm = {
+                vm.addSender(it)
+                adding = false
+            },
             onDismiss = { adding = false },
         )
     }

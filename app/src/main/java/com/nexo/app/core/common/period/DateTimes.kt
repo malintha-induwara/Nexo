@@ -9,4 +9,5 @@ fun Long.toLocalDateTime(zone: ZoneId = ZoneId.systemDefault()): LocalDateTime =
     LocalDateTime.ofInstant(Instant.ofEpochMilli(this), zone)
 
 /** This local date-time as epoch millis in [zone]. */
-fun LocalDateTime.toEpochMillis(zone: ZoneId = ZoneId.systemDefault()): Long = atZone(zone).toInstant().toEpochMilli()
+fun LocalDateTime.toEpochMillis(zone: ZoneId = ZoneId.systemDefault()): Long =
+    atZone(zone).toInstant().toEpochMilli()

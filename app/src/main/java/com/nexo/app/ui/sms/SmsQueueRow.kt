@@ -1,5 +1,6 @@
 package com.nexo.app.ui.sms
 
+import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -101,14 +102,25 @@ fun SmsQueueRow(
         AnimatedContent(
             targetState = selected,
             transitionSpec = {
-                (scaleIn(NexoMotion.snappy(), initialScale = 0.6f) + fadeIn(NexoMotion.enter(NexoMotion.SHORT))) togetherWith
+                (
+                    scaleIn(NexoMotion.snappy(), initialScale = 0.6f) +
+                        fadeIn(NexoMotion.enter(NexoMotion.SHORT))
+                    ) togetherWith
                     (scaleOut(NexoMotion.exit(), targetScale = 0.6f) + fadeOut(NexoMotion.exit()))
             },
             label = "smsTile",
         ) { on ->
             if (on) {
-                Box(Modifier.size(Sizes.tile).clip(NexoShapes.tile).background(colors.primary), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Check, null, tint = colors.onPrimary, modifier = Modifier.size(22.dp))
+                Box(
+                    Modifier.size(Sizes.tile).clip(NexoShapes.tile).background(colors.primary),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Rounded.Check,
+                        null,
+                        tint = colors.onPrimary,
+                        modifier = Modifier.size(22.dp),
+                    )
                 }
             } else {
                 ItemTile(item, ref)
@@ -116,8 +128,20 @@ fun SmsQueueRow(
         }
         Spacer(Modifier.width(Space.m))
         Column(Modifier.weight(1f)) {
-            Text(noteFor(item), style = NexoType.RowTitle, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(metaLine(item, ref), style = NexoType.Meta, color = colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                noteFor(item),
+                style = NexoType.RowTitle,
+                color = colors.text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                metaLine(item, ref),
+                style = NexoType.Meta,
+                color = colors.textTertiary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             StatusLine(item, now, note)
         }
         Spacer(Modifier.width(Space.m))
@@ -135,9 +159,16 @@ private fun ItemTile(item: SmsItem, ref: RefData) {
     val v = ref.visual(item.categoryId)
     when {
         v != null -> CategoryTile(v.emoji, v.monogram, CategoryHues.of(v.colorIndex, colors.isDark))
-        item.kind == SmsKind.TRANSFER_TO_CASH -> IconTile(Icons.Rounded.LocalAtm, colors.textSecondary)
+
+        item.kind == SmsKind.TRANSFER_TO_CASH -> IconTile(
+            Icons.Rounded.LocalAtm,
+            colors.textSecondary,
+        )
+
         item.kind.isTransfer -> IconTile(Icons.Rounded.SwapHoriz, colors.textSecondary)
+
         item.kind.isInflow -> IconTile(Icons.Rounded.SouthWest, colors.textSecondary)
+
         else -> IconTile(Icons.Rounded.NorthEast, colors.textSecondary)
     }
 }
@@ -146,14 +177,17 @@ private fun ItemTile(item: SmsItem, ref: RefData) {
 private fun metaLine(item: SmsItem, ref: RefData): String {
     val context = LocalContext.current
     val bank = bankName(item)
-    val account = ref.accountById[item.accountId]?.name ?: item.cardLast4?.let { "$bank ••$it" } ?: bank
+    val account =
+        ref.accountById[item.accountId]?.name ?: item.cardLast4?.let { "$bank ••$it" } ?: bank
     val dt = item.occurredAt.toLocalDateTime()
-    val time = "${Formats.weekdayMonthDay(dt.toLocalDate())} ${Formats.time(dt.toLocalTime(), android.text.format.DateFormat.is24HourFormat(context))}"
+    val day = Formats.weekdayMonthDay(dt.toLocalDate())
+    val time = "$day ${Formats.time(dt.toLocalTime(), DateFormat.is24HourFormat(context))}"
     val where = when {
         item.kind.isTransfer || item.kind == SmsKind.TRANSFER_OUT -> {
             val to = ref.accountById[item.toAccountId]?.name ?: item.payee
             if (to != null) "$account → $to" else account
         }
+
         else -> account
     }
     return "$where · $time"
@@ -170,25 +204,50 @@ private fun StatusLine(item: SmsItem, now: Long, note: String?) {
     }
     val text = note ?: statusText(item, now)
     if (badge == null && text == null) return
-    Row(Modifier.padding(top = Space.xxs), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(Space.s)) {
+    Row(
+        Modifier.padding(top = Space.xxs),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(Space.s),
+    ) {
         if (badge != null) {
             Text(
                 badge,
-                Modifier.clip(NexoShapes.pill).background(colors.raised).padding(horizontal = Space.s, vertical = 1.dp),
-                style = MaterialTheme.typography.labelSmall, color = colors.textSecondary, maxLines = 1,
+                Modifier.clip(
+                    NexoShapes.pill,
+                ).background(colors.raised).padding(horizontal = Space.s, vertical = 1.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+                maxLines = 1,
             )
         }
-        if (text != null) Text(text, style = NexoType.Meta, color = colors.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        if (text != null) {
+            Text(
+                text,
+                style = NexoType.Meta,
+                color = colors.textSecondary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
 @Composable
 private fun statusText(item: SmsItem, now: Long): String? {
     when (item.status) {
-        SmsStatus.DENIED -> return listOfNotNull(stringResource(R.string.sms_denied_label), item.denyReason?.let { stringResource(denyLabel(it)) }).joinToString(" · ")
+        SmsStatus.DENIED -> return listOfNotNull(
+            stringResource(R.string.sms_denied_label),
+            item.denyReason?.let {
+                stringResource(denyLabel(it))
+            },
+        ).joinToString(" · ")
+
         SmsStatus.EXPIRED -> return stringResource(R.string.sms_expired_label)
+
         SmsStatus.CANCELLED -> return stringResource(R.string.sms_cancelled_label)
+
         SmsStatus.APPROVED -> return null
+
         SmsStatus.PENDING -> Unit
     }
     val ageDays = ((now - item.capturedAt) / DAY_MS).toInt()
@@ -196,13 +255,31 @@ private fun statusText(item: SmsItem, now: Long): String? {
     val missing = item.missing().firstOrNull()
     return when {
         missing != null -> stringResource(missingLabel(missing))
-        left <= 5 -> pluralStringResource(R.plurals.sms_expires_in, left.coerceAtLeast(1), left.coerceAtLeast(1))
+
+        left <= 5 -> pluralStringResource(
+            R.plurals.sms_expires_in,
+            left.coerceAtLeast(1),
+            left.coerceAtLeast(1),
+        )
+
         item.linkedItemId != null -> stringResource(R.string.sms_refund)
-        item.certainty == Certainty.ESTIMATED && item.fxRate != null -> fxRateLine(LocalContext.current, item)
+
+        item.certainty == Certainty.ESTIMATED && item.fxRate != null -> fxRateLine(
+            LocalContext.current,
+            item,
+        )
+
         item.reason != null -> stringResource(reasonLabel(item.reason))
+
         ageDays >= 7 -> stringResource(R.string.sms_still_pending)
+
         item.evidenceCount > 1 && item.certainty == Certainty.UNVERIFIED ->
-            pluralStringResource(R.plurals.sms_approval_codes, item.evidenceCount, item.evidenceCount)
+            pluralStringResource(
+                R.plurals.sms_approval_codes,
+                item.evidenceCount,
+                item.evidenceCount,
+            )
+
         else -> null
     }
 }
@@ -212,8 +289,20 @@ private fun ItemAmount(item: SmsItem, ref: RefData, onClick: (() -> Unit)?) {
     val colors = LocalNexoColors.current
     val money = LocalMoneyColors.current
     val foreign = item.certainty == Certainty.ESTIMATED || item.actualAmount != null
-    val account = ref.accountCurrency(if (item.kind == SmsKind.TRANSFER_IN) item.toAccountId else item.accountId)
-    val currency = if (foreign) account else ref.currencies.firstOrNull { it.isoCode.equals(item.currency, true) }
+    val account = ref.accountCurrency(
+        if (item.kind == SmsKind.TRANSFER_IN) {
+            item.toAccountId
+        } else {
+            item.accountId
+        },
+    )
+    val currency = if (foreign) {
+        account
+    } else {
+        ref.currencies.firstOrNull {
+            it.isoCode.equals(item.currency, true)
+        }
+    }
     val value = if (foreign) item.actualAmount ?: item.estimatedAmount else item.amount
     val color = when {
         item.kind.isTransfer -> colors.text
@@ -227,20 +316,38 @@ private fun ItemAmount(item: SmsItem, ref: RefData, onClick: (() -> Unit)?) {
     }
     val signed = if (!item.kind.isTransfer && !item.kind.isInflow) -(value ?: 0.0) else value ?: 0.0
     Column(
-        Modifier.clip(NexoShapes.control).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(Space.xs),
+        Modifier.clip(NexoShapes.control).then(
+            if (onClick != null) {
+                Modifier.clickable(onClick = onClick)
+            } else {
+                Modifier
+            },
+        ).padding(Space.xs),
         horizontalAlignment = Alignment.End,
     ) {
         when {
-            item.status == SmsStatus.CANCELLED || item.status == SmsStatus.DENIED || item.status == SmsStatus.EXPIRED ->
+            item.status == SmsStatus.CANCELLED || item.status == SmsStatus.DENIED ||
+                item.status == SmsStatus.EXPIRED ->
                 Text(
                     "${item.currency} ${AmountFormatter.number(item.amount, 2)}",
-                    style = NexoType.Amount, color = colors.textTertiary, textDecoration = TextDecoration.LineThrough, maxLines = 1,
+                    style = NexoType.Amount,
+                    color = colors.textTertiary,
+                    textDecoration = TextDecoration.LineThrough,
+                    maxLines = 1,
                 )
+
             value != null -> AmountText(signed, currency, color = color, sign = sign)
+
             else -> Text("—", style = NexoType.Amount, color = colors.textTertiary)
         }
         if (foreign && item.status == SmsStatus.PENDING) {
-            Text("${if (item.actualAmount == null) "≈ " else ""}${item.currency} ${AmountFormatter.number(item.amount, 2)}", style = NexoType.Meta, color = colors.textTertiary, maxLines = 1)
+            Text(
+                (if (item.actualAmount == null) "≈ " else "") +
+                    "${item.currency} ${AmountFormatter.number(item.amount, 2)}",
+                style = NexoType.Meta,
+                color = colors.textTertiary,
+                maxLines = 1,
+            )
         }
     }
 }

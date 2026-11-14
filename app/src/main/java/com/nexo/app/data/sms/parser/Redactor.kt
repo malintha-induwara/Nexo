@@ -7,8 +7,10 @@ object Redactor {
     private const val CODE_MASK = "••••"
 
     // Approval / OTP codes are never stored, whatever the settings say.
-    private val codeAfter = Regex("""\b(code|otp|one time password|pin)\b(\D{0,40}?)\b\d{4,8}\b""", ci)
-    private val codeBefore = Regex("""\b\d{4,8}(\s+is\s+(?:your\s+)?(?:otp|one time password)\b)""", ci)
+    private val codeAfter =
+        Regex("""\b(code|otp|one time password|pin)\b(\D{0,40}?)\b\d{4,8}\b""", ci)
+    private val codeBefore =
+        Regex("""\b\d{4,8}(\s+is\s+(?:your\s+)?(?:otp|one time password)\b)""", ci)
 
     private val phone = Regex("""(?<!\d)(?:\+94|0094|0)\d{9}(?!\d)""")
     private val longNumber = Regex("""\b\d{8,}\b""")
@@ -26,5 +28,7 @@ object Redactor {
         .replace(maskedDigits, MASK)
         .replace(cardEnding) { "${it.groupValues[1]}$MASK" }
 
-    fun stored(body: String, keepFullText: Boolean): String = stripCodes(body).let { if (keepFullText) it else redact(it) }
+    fun stored(body: String, keepFullText: Boolean): String = stripCodes(body).let {
+        if (keepFullText) it else redact(it)
+    }
 }

@@ -56,8 +56,14 @@ class DefaultAppLockRepository @Inject constructor(
         scope.launch {
             val s = prefs.getDeviceSettings()
             if (!s.lockEnabled) return@launch
-            val limit = if (s.lockTimeout == LockTimeout.IMMEDIATELY) 5_000L else s.lockTimeout.seconds * 1000L
-            if (shouldLock(SystemClock.elapsedRealtime() - since, limit, handoff)) _locked.value = true
+            val limit = if (s.lockTimeout == LockTimeout.IMMEDIATELY) {
+                5_000L
+            } else {
+                s.lockTimeout.seconds * 1000L
+            }
+            if (shouldLock(SystemClock.elapsedRealtime() - since, limit, handoff)) {
+                _locked.value = true
+            }
         }
     }
 
@@ -113,6 +119,7 @@ class DefaultAppLockRepository @Inject constructor(
 
         /** How soon after [expectReturn] the app must go to the background for the trip to count as the hand-off. */
         const val HANDOFF_START = 10_000L
+
         /** How long a hand-off may last before coming back locks the app after all. */
         const val HANDOFF_GRACE = 5 * 60_000L
 
@@ -121,6 +128,10 @@ class DefaultAppLockRepository @Inject constructor(
             awayMillis > if (handoff) maxOf(limitMillis, HANDOFF_GRACE) else limitMillis
 
         /** From the 5th consecutive failure, 30 s doubling up to 15 min. */
-        fun waitFor(failures: Int): Long = if (failures < FREE_TRIES) 0 else minOf(30_000L shl (failures - FREE_TRIES).coerceAtMost(10), MAX_WAIT)
+        fun waitFor(failures: Int): Long = if (failures < FREE_TRIES) {
+            0
+        } else {
+            minOf(30_000L shl (failures - FREE_TRIES).coerceAtMost(10), MAX_WAIT)
+        }
     }
 }

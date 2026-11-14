@@ -37,18 +37,35 @@ class CategoryViewModel @Inject constructor(
 ) : ViewModel() {
     private val navigation = MutableStateFlow<CategoryNavigation?>(null)
 
-    val uiState: StateFlow<CategoryUiState> = combine(refs.getRefDataStream(), navigation, ::CategoryUiState)
+    val uiState: StateFlow<CategoryUiState> = combine(
+        refs.getRefDataStream(),
+        navigation,
+        ::CategoryUiState,
+    )
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CategoryUiState())
 
-    fun setSubcategories(on: Boolean) = viewModelScope.launch { bookSettings.updateBookSettings { it.copy(subcategories = on) } }
+    fun setSubcategories(on: Boolean) = viewModelScope.launch {
+        bookSettings.updateBookSettings { it.copy(subcategories = on) }
+    }
 
     fun reorder(ids: List<String>) = viewModelScope.launch { repo.reorder(ids) }
 
     fun delete(id: String) = viewModelScope.launch { repo.delete(id) }
 
     /** Adds a category when [existingId] is null, otherwise updates it; then the form closes. */
-    fun save(kind: CategoryKind, existingId: String?, name: String, parentId: String?, emoji: String?, colorIndex: Int?) = viewModelScope.launch {
-        if (existingId == null) repo.add(kind, name, parentId, emoji, colorIndex) else repo.update(existingId, name, parentId, emoji, colorIndex)
+    fun save(
+        kind: CategoryKind,
+        existingId: String?,
+        name: String,
+        parentId: String?,
+        emoji: String?,
+        colorIndex: Int?,
+    ) = viewModelScope.launch {
+        if (existingId == null) {
+            repo.add(kind, name, parentId, emoji, colorIndex)
+        } else {
+            repo.update(existingId, name, parentId, emoji, colorIndex)
+        }
         navigation.value = CategoryNavigation.Back
     }
 

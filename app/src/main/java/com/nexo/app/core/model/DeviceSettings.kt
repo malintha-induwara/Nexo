@@ -7,7 +7,13 @@ enum class ThemeColor { WHITE, RED, PINK, GREEN, BLUE, BLACK }
 /** First-run "Add past transactions" offer. */
 enum class SmsHistoryImport { NOT_OFFERED, OFFERED, DONE, SKIPPED }
 
-enum class LockTimeout(val seconds: Int) { IMMEDIATELY(0), ONE_MINUTE(60), FIVE_MINUTES(300), FIFTEEN_MINUTES(900), ONE_HOUR(3600) }
+enum class LockTimeout(val seconds: Int) {
+    IMMEDIATELY(0),
+    ONE_MINUTE(60),
+    FIVE_MINUTES(300),
+    FIFTEEN_MINUTES(900),
+    ONE_HOUR(3600),
+}
 
 /** Device-level preferences. Never part of a data backup. */
 data class DeviceSettings(

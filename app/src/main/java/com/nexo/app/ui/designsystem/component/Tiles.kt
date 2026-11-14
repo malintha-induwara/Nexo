@@ -35,7 +35,11 @@ fun Tile(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val colors = LocalNexoColors.current
-    val corner = if (size >= Sizes.tile) Radius.tile else (size.value * Radius.tile.value / Sizes.tile.value).dp
+    val corner = if (size >= Sizes.tile) {
+        Radius.tile
+    } else {
+        (size.value * Radius.tile.value / Sizes.tile.value).dp
+    }
     Box(
         modifier.size(size).clip(RoundedCornerShape(corner)).background(colors.tint(hue, over)),
         contentAlignment = Alignment.Center,
@@ -59,14 +63,26 @@ fun CategoryTile(
             val px = with(density) { (size * 0.5f).toPx() }
             Text(
                 emoji,
-                style = TextStyle(fontSize = with(density) { (px / fontScale).toSp() }, textAlign = TextAlign.Center),
+                style = TextStyle(
+                    fontSize = with(density) {
+                        (px / fontScale).toSp()
+                    },
+                    textAlign = TextAlign.Center,
+                ),
                 maxLines = 1,
             )
         } else {
             val px = with(density) { (size * 0.4f).toPx() }
             Text(
                 monogram,
-                style = TextStyle(fontFamily = Figtree, fontWeight = FontWeight.SemiBold, fontSize = with(density) { (px / fontScale).toSp() }, color = hue),
+                style = TextStyle(
+                    fontFamily = Figtree,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = with(density) {
+                        (px / fontScale).toSp()
+                    },
+                    color = hue,
+                ),
                 maxLines = 1,
             )
         }

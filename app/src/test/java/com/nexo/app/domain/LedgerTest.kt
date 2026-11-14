@@ -19,21 +19,52 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class LedgerTest {
-    private val usd = Currency("USD", "USD", "USD", "$", SymbolPosition.PREFIX, 2, 1.0, true, true, 0, 0)
-    private val eur = Currency("EUR", "EUR", "EUR", "€", SymbolPosition.PREFIX, 2, 1.1, false, true, 1, 0)
+    private val usd =
+        Currency("USD", "USD", "USD", "$", SymbolPosition.PREFIX, 2, 1.0, true, true, 0, 0)
+    private val eur =
+        Currency("EUR", "EUR", "EUR", "€", SymbolPosition.PREFIX, 2, 1.1, false, true, 1, 0)
     private val groups = listOf(
         AccountGroup("1", "Accounts", GroupType.NORMAL, 1, 1, updatedAt = 0),
         AccountGroup("2", "Card", GroupType.CREDIT_CARD, 2, 2, updatedAt = 0),
         AccountGroup("3", "Debit", GroupType.DEBIT_CARD, 3, 3, updatedAt = 0),
         AccountGroup("4", "Savings", GroupType.NORMAL, 4, 4, updatedAt = 0),
     )
-    private fun acc(id: String, group: String, flagged: Boolean = false, linked: String? = null, settle: Int = 1) =
-        Account(id, id, group, "USD", 0, transferExpense = flagged, linkedAccountId = linked, settlementDay = settle, createdAt = 0, updatedAt = 0)
-    private val accounts = listOf(acc("bank", "1"), acc("card", "2", linked = "bank", settle = 10), acc("debit", "3", linked = "bank"), acc("save", "4", flagged = true))
+    private fun acc(
+        id: String,
+        group: String,
+        flagged: Boolean = false,
+        linked: String? = null,
+        settle: Int = 1,
+    ) = Account(
+        id,
+        id,
+        group,
+        "USD",
+        0,
+        transferExpense = flagged,
+        linkedAccountId = linked,
+        settlementDay = settle,
+        createdAt = 0,
+        updatedAt = 0,
+    )
+    private val accounts =
+        listOf(
+            acc("bank", "1"),
+            acc("card", "2", linked = "bank", settle = 10),
+            acc("debit", "3", linked = "bank"),
+            acc("save", "4", flagged = true),
+        )
 
     private fun ref(lump: Boolean = false, ti: Boolean = true) = RefData(
-        groups, accounts, emptyList(), listOf(usd, eur), emptyList(),
-        BookSettings(cardAccounting = if (lump) CardAccounting.LUMP_SUM else CardAccounting.AT_USE, transferIncome = ti),
+        groups,
+        accounts,
+        emptyList(),
+        listOf(usd, eur),
+        emptyList(),
+        BookSettings(
+            cardAccounting = if (lump) CardAccounting.LUMP_SUM else CardAccounting.AT_USE,
+            transferIncome = ti,
+        ),
     )
 
     @Test
@@ -55,7 +86,13 @@ class LedgerTest {
 
     private var n = 0
     private fun tx(kind: TxKind, account: String, date: String, amount: Double) = Transaction(
-        id = "t${n++}", kind = kind, accountId = account, dateTime = 0, date = date, amount = amount, amountMain = amount,
+        id = "t${n++}",
+        kind = kind,
+        accountId = account,
+        dateTime = 0,
+        date = date,
+        amount = amount,
+        amountMain = amount,
         amountAccount = amount, currencyId = "USD", createdAt = 0, updatedAt = 0,
     )
 

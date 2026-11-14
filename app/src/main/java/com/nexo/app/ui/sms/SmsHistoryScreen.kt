@@ -66,7 +66,10 @@ import com.nexo.app.ui.navigation.SmsHistoryKey
 /** "Add past transactions": nothing selected by default, picked rows go straight to the ledger. */
 @Composable
 fun SmsHistoryScreen(key: SmsHistoryKey) {
-    val vm = hiltViewModel<SmsHistoryViewModel, SmsHistoryViewModel.Factory>(creationCallback = { it.create(key) })
+    val vm =
+        hiltViewModel<SmsHistoryViewModel, SmsHistoryViewModel.Factory>(creationCallback = {
+            it.create(key)
+        })
     val nav = LocalNavigator.current
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -91,7 +94,9 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
     LaunchedEffect(Unit) { vm.initialize() }
     state.result?.let { r ->
         LaunchedEffect(r) {
-            r.message?.let { Toast.makeText(context, it.asString(resources), Toast.LENGTH_LONG).show() }
+            r.message?.let {
+                Toast.makeText(context, it.asString(resources), Toast.LENGTH_LONG).show()
+            }
             vm.onResultHandled()
             nav.back()
         }
@@ -99,18 +104,38 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
 
     Box(Modifier.fillMaxSize().background(colors.background)) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
-            Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = Space.m), verticalAlignment = Alignment.CenterVertically) {
-                RoundIconButton(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.action_back), { nav.back() })
+            Row(
+                Modifier.fillMaxWidth().height(56.dp).padding(horizontal = Space.m),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RoundIconButton(
+                    Icons.AutoMirrored.Rounded.ArrowBack,
+                    stringResource(R.string.action_back),
+                    {
+                        nav.back()
+                    },
+                )
                 Spacer(Modifier.width(Space.m))
-                Text(stringResource(R.string.sms_history_title), style = MaterialTheme.typography.titleLarge, color = colors.text)
+                Text(
+                    stringResource(R.string.sms_history_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = colors.text,
+                )
             }
             ChipRow(
                 // Opened from the re-enable hint, the gap comes first so the chosen chip is in view.
-                options = if (state.gap) listOf(HistoryRange.GAP) + HistoryRange.entries.filter { it != HistoryRange.GAP }
-                else HistoryRange.entries.filter { it != HistoryRange.GAP },
+                options = if (state.gap) {
+                    listOf(HistoryRange.GAP) +
+                        HistoryRange.entries.filter { it != HistoryRange.GAP }
+                } else {
+                    HistoryRange.entries.filter { it != HistoryRange.GAP }
+                },
                 selected = range,
                 label = { stringResource(it.label) },
-                onSelect = { haptics.tick(); vm.setRange(it) },
+                onSelect = {
+                    haptics.tick()
+                    vm.setRange(it)
+                },
             )
             if (range == HistoryRange.CUSTOM) {
                 DateRangeChips(custom.first, custom.second, vm::setCustom, color = colors.text)
@@ -121,33 +146,58 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                 list == null -> Text(
                     stringResource(R.string.sms_history_loading),
                     Modifier.fillMaxWidth().padding(top = Space.xxxl),
-                    style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
                     textAlign = TextAlign.Center,
                 )
+
                 list.isEmpty() -> EmptyState(
-                    stringResource(if (state.permitted) R.string.sms_history_empty else R.string.sms_history_needs_permission),
+                    stringResource(
+                        if (state.permitted) {
+                            R.string.sms_history_empty
+                        } else {
+                            R.string.sms_history_needs_permission
+                        },
+                    ),
                     Modifier.padding(top = Space.xxl),
                 )
+
                 else -> {
                     val cards = list.mapNotNull { it.item.cardLast4 }.distinct().sorted()
                     ChipRow(
                         options = HistoryKind.entries,
                         selected = kind,
                         label = { stringResource(it.label) },
-                        onSelect = { haptics.tick(); vm.setKind(it) },
+                        onSelect = {
+                            haptics.tick()
+                            vm.setKind(it)
+                        },
                     )
                     if (cards.size > 1) {
                         ChipRow(
                             options = listOf<String?>(null) + cards,
                             selected = card,
-                            label = { it?.let { c -> stringResource(R.string.sms_history_card, c) } ?: stringResource(R.string.sms_history_kind_all) },
-                            onSelect = { haptics.tick(); vm.setCard(it) },
+                            label = {
+                                it?.let { c -> stringResource(R.string.sms_history_card, c) }
+                                    ?: stringResource(R.string.sms_history_kind_all)
+                            },
+                            onSelect = {
+                                haptics.tick()
+                                vm.setCard(it)
+                            },
                         )
                     }
                     val visible = state.visible
-                    val unmapped = list.filter { it.item.accountId == null && it.item.cardLast4 != null && !it.cancelled }
+                    val unmapped = list.filter {
+                        it.item.accountId == null &&
+                            it.item.cardLast4 != null &&
+                            !it.cancelled
+                    }
                         .map { CardRef(it.item.bank, it.item.cardLast4!!) }.distinct()
-                    LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = Space.xl)) {
+                    LazyColumn(
+                        Modifier.weight(1f),
+                        contentPadding = PaddingValues(bottom = Space.xl),
+                    ) {
                         unmapped.firstOrNull()?.let { c ->
                             item(key = "card_${c.bank}_${c.last4}") {
                                 CardQuestion(c, Modifier.animateItem()) {
@@ -157,14 +207,42 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                             }
                         }
                         item(key = "select_all") {
-                            Row(Modifier.fillMaxWidth().padding(horizontal = Space.gutter), verticalAlignment = Alignment.CenterVertically) {
-                                val all = visible.filter { !it.cancelled }.all { it.item.id in selection }
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = Space.gutter),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                val all = visible.filter { !it.cancelled }.all {
+                                    it.item.id in
+                                        selection
+                                }
                                 Text(
-                                    if (selection.isEmpty()) "" else pluralStringResource(R.plurals.sms_history_selected, selection.size, selection.size),
-                                    Modifier.weight(1f), style = NexoType.Meta, color = colors.textTertiary,
+                                    if (selection.isEmpty()) {
+                                        ""
+                                    } else {
+                                        pluralStringResource(
+                                            R.plurals.sms_history_selected,
+                                            selection.size,
+                                            selection.size,
+                                        )
+                                    },
+                                    Modifier.weight(1f),
+                                    style = NexoType.Meta,
+                                    color = colors.textTertiary,
                                 )
-                                TextButton(onClick = { haptics.tick(); vm.selectAll(visible) }) {
-                                    Text(stringResource(if (all && visible.isNotEmpty()) R.string.sms_history_clear else R.string.sms_history_select_all), color = colors.text)
+                                TextButton(onClick = {
+                                    haptics.tick()
+                                    vm.selectAll(visible)
+                                }) {
+                                    Text(
+                                        stringResource(
+                                            if (all && visible.isNotEmpty()) {
+                                                R.string.sms_history_clear
+                                            } else {
+                                                R.string.sms_history_select_all
+                                            },
+                                        ),
+                                        color = colors.text,
+                                    )
                                 }
                             }
                         }
@@ -175,10 +253,17 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                                     ref = ref,
                                     selected = row.item.id in selection,
                                     now = now,
-                                    onClick = { haptics.tick(); vm.toggle(row) },
+                                    onClick = {
+                                        haptics.tick()
+                                        vm.toggle(row)
+                                    },
                                     onLongClick = null,
                                     onAmountClick = null,
-                                    note = if (row.possiblyAdded && !row.cancelled) stringResource(R.string.sms_history_possibly_added) else null,
+                                    note = if (row.possiblyAdded && !row.cancelled) {
+                                        stringResource(R.string.sms_history_possibly_added)
+                                    } else {
+                                        null
+                                    },
                                 )
                             }
                         }
@@ -190,22 +275,47 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                 val chosen = list.orEmpty().filter { it.item.id in selection }
                 val total = chosen.sumOf { ledgerAmount(it.item) }
                 Button(
-                    onClick = { haptics.confirm(); vm.add() },
+                    onClick = {
+                        haptics.confirm()
+                        vm.add()
+                    },
                     enabled = !adding,
-                    modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = Space.gutter, vertical = Space.m).height(52.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
+                    modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(
+                        horizontal = Space.gutter,
+                        vertical = Space.m,
+                    ).height(52.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.primary,
+                        contentColor = colors.onPrimary,
+                    ),
                 ) {
-                    Text(pluralStringResource(R.plurals.sms_history_add, selection.size, selection.size), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        pluralStringResource(
+                            R.plurals.sms_history_add,
+                            selection.size,
+                            selection.size,
+                        ),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
                     Spacer(Modifier.width(Space.s))
-                    Text("· " + AmountFormatter.format(total, ref.mainCurrency), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "· " + AmountFormatter.format(total, ref.mainCurrency),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                 }
             }
         }
 
-        InlineBottomSheet(mappingOpen, onDismiss = { mappingOpen = false }, heightFraction = 0.72f) {
+        InlineBottomSheet(mappingOpen, onDismiss = {
+            mappingOpen = false
+        }, heightFraction = 0.72f) {
             mapping?.let { c ->
                 SheetTitle(
-                    stringResource(R.string.sms_card_question, Banks.byName(c.bank)?.displayName.orEmpty(), c.last4),
+                    stringResource(
+                        R.string.sms_card_question,
+                        Banks.byName(c.bank)?.displayName.orEmpty(),
+                        c.last4,
+                    ),
                     stringResource(R.string.sms_card_hint),
                 )
                 AccountPickList(ref, null) { id ->
@@ -214,7 +324,9 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                 }
             }
         }
-        InlineBottomSheet(visible = feePrompt != null, onDismiss = { vm.answerFee(null) }, heightFraction = 0.6f) {
+        InlineBottomSheet(visible = feePrompt != null, onDismiss = {
+            vm.answerFee(null)
+        }, heightFraction = 0.6f) {
             shownPrompt[0]?.let { p -> FeePromptContent(p, ref) { vm.answerFee(it) } }
         }
     }
@@ -222,20 +334,39 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
 
 /** A horizontally scrolling row of filter chips (the same look as the queue's filters). */
 @Composable
-private fun <T> ChipRow(options: List<T>, selected: T, label: @Composable (T) -> String, onSelect: (T) -> Unit) {
+private fun <T> ChipRow(
+    options: List<T>,
+    selected: T,
+    label: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+) {
     val colors = LocalNexoColors.current
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = Space.gutter, vertical = Space.xs),
+        Modifier.fillMaxWidth().horizontalScroll(
+            rememberScrollState(),
+        ).padding(horizontal = Space.gutter, vertical = Space.xs),
         horizontalArrangement = Arrangement.spacedBy(Space.s),
     ) {
         options.forEach { option ->
             val on = option == selected
-            val container by animateColorAsState(if (on) colors.primarySoft else colors.raised, NexoMotion.standard(), label = "chip")
-            val content by animateColorAsState(if (on) colors.primaryText else colors.textSecondary, NexoMotion.standard(), label = "chipText")
+            val container by animateColorAsState(
+                if (on) colors.primarySoft else colors.raised,
+                NexoMotion.standard(),
+                label = "chip",
+            )
+            val content by animateColorAsState(
+                if (on) colors.primaryText else colors.textSecondary,
+                NexoMotion.standard(),
+                label = "chipText",
+            )
             Text(
                 label(option),
-                Modifier.clip(NexoShapes.pill).background(container).clickable { onSelect(option) }.padding(horizontal = Space.m + Space.xxs, vertical = Space.s),
-                style = MaterialTheme.typography.labelLarge, color = content, maxLines = 1,
+                Modifier.clip(NexoShapes.pill).background(container).clickable {
+                    onSelect(option)
+                }.padding(horizontal = Space.m + Space.xxs, vertical = Space.s),
+                style = MaterialTheme.typography.labelLarge,
+                color = content,
+                maxLines = 1,
             )
         }
     }

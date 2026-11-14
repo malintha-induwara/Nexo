@@ -76,10 +76,14 @@ class BackupViewModel @Inject constructor(
 ) : ViewModel() {
     private val state = MutableStateFlow(BackupUiState())
 
-    val uiState: StateFlow<BackupUiState> = combine(refs.getRefDataStream(), state) { r, s -> s.copy(ref = r) }
+    val uiState: StateFlow<BackupUiState> = combine(refs.getRefDataStream(), state) { r, s ->
+        s.copy(ref = r)
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BackupUiState())
 
-    fun refreshFiles() = state.update { it.copy(backups = backups.autoBackups(), imports = importer.files()) }
+    fun refreshFiles() = state.update {
+        it.copy(backups = backups.autoBackups(), imports = importer.files())
+    }
 
     fun backupFileName(): String = backups.backupFileName()
 
@@ -104,9 +108,13 @@ class BackupViewModel @Inject constructor(
 
     fun shareBackup() = work { backups.shareCopy()?.let(BackupResult::ShareReady) }
 
-    fun restore(uri: Uri) = work { BackupResult.Restored(backups.restore(uri).also { afterRestore(it) }) }
+    fun restore(uri: Uri) = work {
+        BackupResult.Restored(backups.restore(uri).also { afterRestore(it) })
+    }
 
-    fun restoreFile(file: File) = work { BackupResult.Restored(backups.restoreFile(file).also { afterRestore(it) }) }
+    fun restoreFile(file: File) = work {
+        BackupResult.Restored(backups.restoreFile(file).also { afterRestore(it) })
+    }
 
     private suspend fun afterRestore(r: RestoreResult) {
         if (r == RestoreResult.Success) {
@@ -120,7 +128,9 @@ class BackupViewModel @Inject constructor(
         null
     }
 
-    fun exportExcel(range: DateRange, total: Boolean) = work { BackupResult.ExcelReady(excel.export(range, total), range, total) }
+    fun exportExcel(range: DateRange, total: Boolean) = work {
+        BackupResult.ExcelReady(excel.export(range, total), range, total)
+    }
 
     fun addImport(uri: Uri) = work { BackupResult.ImportAdded(importer.add(uri) != null) }
 
@@ -145,9 +155,21 @@ class BackupViewModel @Inject constructor(
         BackupResult.ImportSaved(saved, failed)
     }
 
-    fun exportPhotos(tree: Uri) = work { BackupResult.PhotosCopied(photos.export(tree) { d, t -> state.update { it.copy(progress = Progress(d, t)) } }) }
+    fun exportPhotos(tree: Uri) = work {
+        BackupResult.PhotosCopied(
+            photos.export(tree) { d, t ->
+                state.update { it.copy(progress = Progress(d, t)) }
+            },
+        )
+    }
 
-    fun importPhotos(tree: Uri) = work { BackupResult.PhotosCopied(photos.import(tree) { d, t -> state.update { it.copy(progress = Progress(d, t)) } }) }
+    fun importPhotos(tree: Uri) = work {
+        BackupResult.PhotosCopied(
+            photos.import(tree) { d, t ->
+                state.update { it.copy(progress = Progress(d, t)) }
+            },
+        )
+    }
 
     fun completeReset(deletePhotos: Boolean) = work {
         book.completeReset(deletePhotos)

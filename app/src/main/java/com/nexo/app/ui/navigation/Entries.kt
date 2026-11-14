@@ -65,7 +65,9 @@ fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<SmsFeesKey> { SmsFeesScreen() }
     entry<SmsHistoryKey> { SmsHistoryScreen(it) }
     entry<SmsSendersKey> { SmsSendersScreen() }
-    entry<EntryKey>(metadata = { key -> if (key.fromAdd) SheetSceneStrategy.sheet(key) else emptyMap() }) { EntryScreen(it) }
+    entry<EntryKey>(metadata = { key ->
+        if (key.fromAdd) SheetSceneStrategy.sheet(key) else emptyMap()
+    }) { EntryScreen(it) }
     entry<BookmarksKey> { BookmarksScreen(it) }
     entry<RepeatListKey> { RepeatListScreen() }
     entry<SearchKey> { SearchScreen(it) }

@@ -29,22 +29,34 @@ class MigrationTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
     private fun createVersion1(file: File) = createVersion(file, 1) {
-        it.execSQL("INSERT INTO categories (id, name, kind, parentId, orderSeq, isDeleted, createdAt, updatedAt) VALUES ('7', 'Taxi', 'EXPENSE', NULL, 3, 0, 10, 20)")
+        it.execSQL(
+            "INSERT INTO categories (id, name, kind, parentId, orderSeq, isDeleted, createdAt, updatedAt) VALUES ('7', 'Taxi', 'EXPENSE', NULL, 3, 0, 10, 20)",
+        )
     }
 
     private fun createVersion(file: File, version: Int, seed: (SQLiteDatabase) -> Unit) {
-        val schema = Json.parseToJsonElement(File("schemas/com.nexo.app.data.database.NexoDatabase/$version.json").readText())
+        val schema = Json.parseToJsonElement(
+            File("schemas/com.nexo.app.data.database.NexoDatabase/$version.json").readText(),
+        )
             .jsonObject.getValue("database").jsonObject
         SQLiteDatabase.openOrCreateDatabase(file, null).use { db ->
             for (entity in schema.getValue("entities").jsonArray) {
                 val e = entity.jsonObject
                 val table = e.getValue("tableName").jsonPrimitive.content
-                db.execSQL(e.getValue("createSql").jsonPrimitive.content.replace("\${TABLE_NAME}", table))
+                db.execSQL(
+                    e.getValue("createSql").jsonPrimitive.content.replace("\${TABLE_NAME}", table),
+                )
                 e["indices"]?.jsonArray?.forEach { i ->
-                    db.execSQL(i.jsonObject.getValue("createSql").jsonPrimitive.content.replace("\${TABLE_NAME}", table))
+                    db.execSQL(
+                        i.jsonObject.getValue(
+                            "createSql",
+                        ).jsonPrimitive.content.replace("\${TABLE_NAME}", table),
+                    )
                 }
             }
-            schema.getValue("setupQueries").jsonArray.forEach { db.execSQL(it.jsonPrimitive.content) }
+            schema.getValue("setupQueries").jsonArray.forEach {
+                db.execSQL(it.jsonPrimitive.content)
+            }
             seed(db)
             db.version = version
         }
@@ -52,9 +64,16 @@ class MigrationTest {
 
     @Test
     fun version1To2KeepsCategoriesAndAddsVisualColumns() = runBlocking {
-        val file = context.getDatabasePath("migration-test.db").apply { parentFile?.mkdirs(); delete() }
+        val file = context.getDatabasePath("migration-test.db").apply {
+            parentFile?.mkdirs()
+            delete()
+        }
         createVersion1(file)
-        val room = Room.databaseBuilder(context, NexoDatabase::class.java, file.absolutePath).allowMainThreadQueries().build()
+        val room = Room.databaseBuilder(
+            context,
+            NexoDatabase::class.java,
+            file.absolutePath,
+        ).allowMainThreadQueries().build()
         try {
             val migrated = room.categoryDao().getById("7")!!
             assertEquals("Taxi", migrated.name)
@@ -75,14 +94,23 @@ class MigrationTest {
 
     @Test
     fun version2To3KeepsTransactionsAndAddsSmsTables() = runBlocking {
-        val file = context.getDatabasePath("migration-test-2.db").apply { parentFile?.mkdirs(); delete() }
+        val file = context.getDatabasePath("migration-test-2.db").apply {
+            parentFile?.mkdirs()
+            delete()
+        }
         createVersion(file, 2) {
             it.execSQL(
-                "INSERT INTO transactions (id, kind, accountId, isBalanceAdjustment, dateTime, date, amount, amountMain, amountAccount, currencyId, note, description, installmentIndex, installmentCount, createdAt, updatedAt) " +
+                "INSERT INTO transactions (id, kind, accountId, isBalanceAdjustment, dateTime, " +
+                    "date, amount, amountMain, amountAccount, currencyId, note, description, " +
+                    "installmentIndex, installmentCount, createdAt, updatedAt) " +
                     "VALUES ('t1', 'EXPENSE', '1', 0, 5, '2026-11-03', 120.0, 120.0, 120.0, 'LKR', 'Tea', '', 0, 0, 5, 5)",
             )
         }
-        val room = Room.databaseBuilder(context, NexoDatabase::class.java, file.absolutePath).allowMainThreadQueries().build()
+        val room = Room.databaseBuilder(
+            context,
+            NexoDatabase::class.java,
+            file.absolutePath,
+        ).allowMainThreadQueries().build()
         try {
             val tx = room.transactionDao().getById("t1")!!
             assertEquals("Tea", tx.note)

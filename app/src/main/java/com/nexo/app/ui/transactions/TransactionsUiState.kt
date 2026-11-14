@@ -26,9 +26,19 @@ data class CalendarCell(
     val isToday: Boolean,
 )
 
-data class WeekRow(val range: DateRange, val income: Double, val expense: Double, val containsToday: Boolean)
+data class WeekRow(
+    val range: DateRange,
+    val income: Double,
+    val expense: Double,
+    val containsToday: Boolean,
+)
 
-data class MonthRow(val period: MonthPeriod, val income: Double, val expense: Double, val weeks: List<WeekRow>)
+data class MonthRow(
+    val period: MonthPeriod,
+    val income: Double,
+    val expense: Double,
+    val weeks: List<WeekRow>,
+)
 
 data class RepeatPreview(val dates: List<LocalDate>, val names: List<String>, val amount: Double)
 
@@ -82,13 +92,17 @@ data class FilterCriteria(
     val accounts: Set<String> = emptySet(),
 ) {
     val hasCategoryPart: Boolean
-        get() = incomeAll || expenseAll || categories.isNotEmpty() || otherOf.isNotEmpty() || noneIncome || noneExpense ||
+        get() = incomeAll || expenseAll || categories.isNotEmpty() || otherOf.isNotEmpty() ||
+            noneIncome ||
+            noneExpense ||
             modifiedIncome || modifiedExpense || teExpense.isNotEmpty() || teIncome.isNotEmpty()
     val active: Boolean get() = hasCategoryPart || accounts.isNotEmpty()
 
     fun matches(tx: Transaction, ref: RefData, c: Classifier): Boolean {
         val catOk = !hasCategoryPart || categoryMatch(tx, ref, c)
-        val accOk = accounts.isEmpty() || tx.accountId in accounts || (tx.kind == TxKind.TRANSFER_OUT && tx.counterpartAccountId in accounts)
+        val accOk =
+            accounts.isEmpty() || tx.accountId in accounts ||
+                (tx.kind == TxKind.TRANSFER_OUT && tx.counterpartAccountId in accounts)
         return catOk && accOk
     }
 
@@ -100,16 +114,20 @@ data class FilterCriteria(
             TxKind.INCOME, TxKind.EXPENSE -> {
                 val income = tx.kind == TxKind.INCOME
                 if (tx.isBalanceAdjustment) return if (income) modifiedIncome else modifiedExpense
-                val main = ref.mainCategoryId(tx.categoryId) ?: return if (income) noneIncome else noneExpense
+                val main =
+                    ref.mainCategoryId(tx.categoryId)
+                        ?: return if (income) noneIncome else noneExpense
                 val sub = ref.subCategoryId(tx.categoryId)
                 if (main in categories) return true
                 if (sub != null && sub in categories) return true
                 if (sub == null && main in otherOf) return true
             }
+
             TxKind.TRANSFER_OUT -> {
                 if (flow == CashFlow.EXPENSE && tx.counterpartAccountId in teExpense) return true
                 if (flow == CashFlow.INCOME && tx.accountId in teIncome) return true
             }
+
             else -> Unit
         }
         return false

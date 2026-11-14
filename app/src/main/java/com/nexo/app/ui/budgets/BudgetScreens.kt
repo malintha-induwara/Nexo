@@ -78,7 +78,10 @@ import kotlin.math.abs
 
 @Composable
 fun BudgetDetailScreen(key: BudgetDetailKey) {
-    val vm = hiltViewModel<BudgetDetailViewModel, BudgetDetailViewModel.Factory>(creationCallback = { it.create(key) })
+    val vm =
+        hiltViewModel<BudgetDetailViewModel, BudgetDetailViewModel.Factory>(creationCallback = {
+            it.create(key)
+        })
     val ui by vm.uiState.collectAsStateWithLifecycle()
     val ref = ui.ref
     val month = ui.month
@@ -91,47 +94,107 @@ fun BudgetDetailScreen(key: BudgetDetailKey) {
     Scaffold(topBar = {
         NexoTopBar(ui.name, onBack = { nav.back() }, titleContent = {
             Box {
-                Row(Modifier.clickable(enabled = ui.siblings.isNotEmpty()) { dropdown = true }, verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.clickable(enabled = ui.siblings.isNotEmpty()) {
+                        dropdown = true
+                    },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(ui.name, fontWeight = FontWeight.SemiBold)
                     if (ui.siblings.isNotEmpty()) Icon(Icons.Filled.ArrowDropDown, null)
                 }
                 NexoMenu(dropdown, { dropdown = false }) {
-                    ui.siblings.forEach { (id, name) -> NexoMenuItem(name, { dropdown = false; vm.selectBudget(id) }) }
+                    ui.siblings.forEach { (id, name) ->
+                        NexoMenuItem(name, {
+                            dropdown = false
+                            vm.selectBudget(id)
+                        })
+                    }
                 }
             }
         }) {
             IconButton(onClick = {
-                if (ui.isVirtual) nav.navigate(BudgetAddKey(categoryId = ui.categoryId, preset = true)) else nav.navigate(BudgetEditorKey(ui.budgetId))
+                if (ui.isVirtual) {
+                    nav.navigate(BudgetAddKey(categoryId = ui.categoryId, preset = true))
+                } else {
+                    nav.navigate(BudgetEditorKey(ui.budgetId))
+                }
             }) { Icon(Icons.Outlined.Edit, stringResource(R.string.budget_setting)) }
         }
     }) { p ->
         Column(Modifier.fillMaxSize().padding(p)) {
-            PeriodNavigator(Formats.monthYear(month), { vm.step(false) }, { vm.step(true) }, { picker = true }, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurface)
+            PeriodNavigator(Formats.monthYear(month), { vm.step(false) }, { vm.step(true) }, {
+                picker = true
+            }, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurface)
             if (sel != null) {
                 val colors = LocalNexoColors.current
                 val labels = ui.months.map { Formats.monthShort(it.period.label.monthValue) }
                 val rem = sel.budget - sel.used
                 GroupCard(Modifier.padding(horizontal = Space.l, vertical = Space.xs)) {
-                    Column(Modifier.padding(start = Space.l, end = Space.l, top = Space.l, bottom = Space.m)) {
-                        ChartTitle(stringResource(R.string.budget), labels.getOrElse(ui.selected) { "" })
+                    Column(
+                        Modifier.padding(
+                            start = Space.l,
+                            end = Space.l,
+                            top = Space.l,
+                            bottom = Space.m,
+                        ),
+                    ) {
+                        ChartTitle(
+                            stringResource(R.string.budget),
+                            labels.getOrElse(ui.selected) {
+                                ""
+                            },
+                        )
                         Spacer(Modifier.height(Space.s))
                         Row(horizontalArrangement = Arrangement.spacedBy(Space.m)) {
-                            KeyFigure(stringResource(R.string.budget), sel.budget, main, colors.text, Modifier.weight(1f), stroke = true)
-                            KeyFigure(stringResource(R.string.used_amount), sel.used, main, money.expenseFill, Modifier.weight(1f))
-                            KeyFigure(stringResource(R.string.remaining), rem, main, null, Modifier.weight(1f), valueColor = if (rem < 0) money.expense else colors.text)
+                            KeyFigure(
+                                stringResource(R.string.budget),
+                                sel.budget,
+                                main,
+                                colors.text,
+                                Modifier.weight(1f),
+                                stroke = true,
+                            )
+                            KeyFigure(
+                                stringResource(R.string.used_amount),
+                                sel.used,
+                                main,
+                                money.expenseFill,
+                                Modifier.weight(1f),
+                            )
+                            KeyFigure(
+                                stringResource(R.string.remaining),
+                                rem,
+                                main,
+                                null,
+                                Modifier.weight(1f),
+                                valueColor = if (rem < 0) {
+                                    money.expense
+                                } else {
+                                    colors.text
+                                },
+                            )
                         }
                         Spacer(Modifier.height(Space.s))
                         ColumnChart(
-                            labels, listOf(ui.months.map { it.used }), listOf(money.expenseFill),
-                            selected = ui.selected, onSelect = vm::selectIndex,
+                            labels,
+                            listOf(ui.months.map { it.used }),
+                            listOf(money.expenseFill),
+                            selected = ui.selected,
+                            onSelect = vm::selectIndex,
                             targets = ui.months.map { it.budget },
                         )
                     }
                 }
             }
             DayGroupList(
-                groups = ui.days, main = main, selection = emptySet(),
-                onRowClick = { nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = it.id)) }, onRowLongClick = null,
+                groups = ui.days,
+                main = main,
+                selection = emptySet(),
+                onRowClick = {
+                    nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = it.id))
+                },
+                onRowLongClick = null,
             )
         }
     }
@@ -150,56 +213,152 @@ fun BudgetSettingsScreen(vm: BudgetSettingsViewModel = hiltViewModel()) {
     val main = ref.mainCurrency
     Scaffold(topBar = {
         NexoTopBar(stringResource(R.string.budget_setting), onBack = { nav.back() }) {
-            IconButton(onClick = { nav.navigate(BudgetAddKey()) }) { Icon(Icons.Filled.Add, stringResource(R.string.action_add)) }
+            IconButton(onClick = {
+                nav.navigate(BudgetAddKey())
+            }) { Icon(Icons.Filled.Add, stringResource(R.string.action_add)) }
         }
     }) { p ->
         LazyColumn(Modifier.padding(p), contentPadding = PaddingValues(bottom = 32.dp)) {
-            item { Text(stringResource(R.string.budget_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp)) }
+            item {
+                Text(
+                    stringResource(R.string.budget_help),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
             val d = data
             if (d == null || (d.total == null && d.rows.isEmpty())) {
                 item { EmptyState() }
                 return@LazyColumn
             }
-            d.total?.let { t -> item(key = "total") { SettingsBudgetRow(t, main, onClick = { t.budgetId?.let { nav.navigate(BudgetEditorKey(it)) } }, onDelete = { confirm = t.budgetId }) } }
+            d.total?.let { t ->
+                item(key = "total") {
+                    SettingsBudgetRow(t, main, onClick = {
+                        t.budgetId?.let { nav.navigate(BudgetEditorKey(it)) }
+                    }, onDelete = {
+                        confirm = t.budgetId
+                    })
+                }
+            }
             d.rows.forEach { row ->
                 item(key = row.categoryId ?: row.name) {
                     SettingsBudgetRow(
-                        row, main,
+                        row,
+                        main,
                         onClick = {
                             when {
-                                row.children.isNotEmpty() && ref.settings.subcategories -> expanded = if (row.categoryId in expanded) expanded - row.categoryId!! else expanded + row.categoryId!!
-                                row.budgetId == null -> nav.navigate(BudgetAddKey(categoryId = row.categoryId, preset = true))
+                                row.children.isNotEmpty() && ref.settings.subcategories ->
+                                    expanded =
+                                        if (row.categoryId in expanded) {
+                                            expanded - row.categoryId!!
+                                        } else {
+                                            expanded +
+                                                row.categoryId!!
+                                        }
+
+                                row.budgetId == null -> nav.navigate(
+                                    BudgetAddKey(categoryId = row.categoryId, preset = true),
+                                )
+
                                 else -> nav.navigate(BudgetEditorKey(row.budgetId))
                             }
                         },
-                        onEdit = if (row.children.isNotEmpty()) ({
-                            if (row.budgetId == null) nav.navigate(BudgetAddKey(categoryId = row.categoryId, preset = true)) else nav.navigate(BudgetEditorKey(row.budgetId))
-                        }) else null,
+                        onEdit = if (row.children.isNotEmpty()) {
+                            (
+                                {
+                                    if (row.budgetId == null) {
+                                        nav.navigate(
+                                            BudgetAddKey(
+                                                categoryId = row.categoryId,
+                                                preset = true,
+                                            ),
+                                        )
+                                    } else {
+                                        nav.navigate(BudgetEditorKey(row.budgetId))
+                                    }
+                                }
+                                )
+                        } else {
+                            null
+                        },
                         onDelete = row.budgetId?.let { id -> { confirm = id } },
                         virtual = row.budgetId == null,
                     )
                 }
-                if (row.categoryId in expanded) row.children.forEach { c ->
-                    item(key = "c_${c.categoryId}") {
-                        Box(Modifier.padding(start = 24.dp)) {
-                            SettingsBudgetRow(c, main, onClick = { c.budgetId?.let { nav.navigate(BudgetEditorKey(it)) } }, onDelete = c.budgetId?.let { id -> { confirm = id } })
+                if (row.categoryId in expanded) {
+                    row.children.forEach { c ->
+                        item(key = "c_${c.categoryId}") {
+                            Box(Modifier.padding(start = 24.dp)) {
+                                SettingsBudgetRow(
+                                    c,
+                                    main,
+                                    onClick = {
+                                        c.budgetId?.let { nav.navigate(BudgetEditorKey(it)) }
+                                    },
+                                    onDelete = c.budgetId?.let { id ->
+                                        {
+                                            confirm = id
+                                        }
+                                    },
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
-    confirm?.let { id -> ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.delete(id) }, onDismiss = { confirm = null }) }
+    confirm?.let { id ->
+        ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
+            vm.delete(id)
+        }, onDismiss = {
+            confirm = null
+        })
+    }
 }
 
 @Composable
-private fun SettingsBudgetRow(row: BudgetRow, main: Currency, onClick: () -> Unit, onDelete: (() -> Unit)?, onEdit: (() -> Unit)? = null, virtual: Boolean = false) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text((if (row.isTotal) stringResource(R.string.total_budget) else row.name) + if (row.children.isNotEmpty()) "  ▾" else "", Modifier.weight(1f).padding(vertical = 14.dp), fontWeight = if (row.isTotal) FontWeight.SemiBold else FontWeight.Normal)
-        if (!virtual) Text(AmountFormatter.format(row.amount, main), style = MaterialTheme.typography.bodyMedium)
-        if (onEdit != null) IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit)) }
-        if (onDelete != null) IconButton(onClick = onDelete) { Icon(Icons.Filled.RemoveCircle, stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error) }
-        else Box(Modifier.padding(24.dp))
+private fun SettingsBudgetRow(
+    row: BudgetRow,
+    main: Currency,
+    onClick: () -> Unit,
+    onDelete: (() -> Unit)?,
+    onEdit: (() -> Unit)? = null,
+    virtual: Boolean = false,
+) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 16.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            (if (row.isTotal) stringResource(R.string.total_budget) else row.name) +
+                if (row.children.isNotEmpty()) "  ▾" else "",
+            Modifier.weight(1f).padding(vertical = 14.dp),
+            fontWeight = if (row.isTotal) FontWeight.SemiBold else FontWeight.Normal,
+        )
+        if (!virtual) {
+            Text(
+                AmountFormatter.format(row.amount, main),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        if (onEdit != null) {
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit))
+            }
+        }
+        if (onDelete != null) {
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Filled.RemoveCircle,
+                    stringResource(R.string.action_delete),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
+        } else {
+            Box(Modifier.padding(24.dp))
+        }
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
@@ -215,35 +374,96 @@ fun BudgetAddScreen(key: BudgetAddKey, vm: BudgetSettingsViewModel = hiltViewMod
             vm.onAddedHandled()
         }
     }
-    var target by rememberSaveable { mutableStateOf(if (key.presetTotal) "total" else key.categoryId) }
+    var target by rememberSaveable {
+        mutableStateOf(if (key.presetTotal) "total" else key.categoryId)
+    }
     var amount by rememberSaveable { mutableStateOf<Double?>(null) }
     var picker by rememberSaveable { mutableStateOf(!key.preset) }
     var pad by rememberSaveable { mutableStateOf(false) }
     var error by rememberSaveable { mutableStateOf(false) }
     val label = when (target) {
         null -> ""
+
         "total" -> stringResource(R.string.total_budget)
+
         else -> {
             val c = ref.categoryById[target]
             if (c?.parentId != null) "${ref.categoryName(c.parentId)}/${c.name}" else c?.name ?: ""
         }
     }
-    Scaffold(topBar = { NexoTopBar(stringResource(R.string.add_budget), onBack = { nav.back() }) }) { p ->
+    Scaffold(topBar = {
+        NexoTopBar(stringResource(R.string.add_budget), onBack = { nav.back() })
+    }) { p ->
         Column(Modifier.padding(p)) {
-            SettingRow(stringResource(R.string.category), label.ifEmpty { stringResource(R.string.select_specific_category) }, onClick = { picker = true })
-            SettingRow(stringResource(R.string.amount), amount?.let { AmountFormatter.format(it, ref.mainCurrency) } ?: "", onClick = { pad = true })
-            if (error) Text(stringResource(R.string.select_specific_category), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
+            SettingRow(
+                stringResource(R.string.category),
+                label.ifEmpty {
+                    stringResource(R.string.select_specific_category)
+                },
+                onClick = {
+                    picker = true
+                },
+            )
+            SettingRow(
+                stringResource(R.string.amount),
+                amount?.let { AmountFormatter.format(it, ref.mainCurrency) } ?: "",
+                onClick = {
+                    pad = true
+                },
+            )
+            if (error) {
+                Text(
+                    stringResource(R.string.select_specific_category),
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
             Button(onClick = {
                 val t = target
-                if (t == null) error = true else vm.add(if (t == "total") null else t, amount ?: 0.0)
-            }, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text(stringResource(R.string.action_save)) }
+                if (t == null) {
+                    error = true
+                } else {
+                    vm.add(if (t == "total") null else t, amount ?: 0.0)
+                }
+            }, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                Text(stringResource(R.string.action_save))
+            }
         }
     }
     if (picker) {
-        CategoryPickerDialog(ref, onPick = { target = it; picker = false; if (amount == null) pad = true }, onDismiss = { picker = false },
-            allowAll = true, onAll = { target = "total"; picker = false; if (amount == null) pad = true }, kinds = listOf(CategoryKind.EXPENSE))
+        CategoryPickerDialog(
+            ref,
+            onPick = {
+                target = it
+                picker = false
+                if (amount == null) {
+                    pad = true
+                }
+            },
+            onDismiss = { picker = false },
+            allowAll = true,
+            onAll = {
+                target = "total"
+                picker = false
+                if (amount == null) {
+                    pad = true
+                }
+            },
+            kinds = listOf(CategoryKind.EXPENSE),
+        )
     }
-    if (pad) AmountSheet(stringResource(R.string.amount), amount, ref.mainCurrency.decimals, allowSign = false, onConfirm = { amount = it?.let { v -> abs(v) } }, onDismiss = { pad = false })
+    if (pad) {
+        AmountSheet(
+            stringResource(R.string.amount),
+            amount,
+            ref.mainCurrency.decimals,
+            allowSign = false,
+            onConfirm = {
+                amount = it?.let { v -> abs(v) }
+            },
+            onDismiss = { pad = false },
+        )
+    }
 }
 
 /** Monthly budget editor. */
@@ -261,28 +481,58 @@ fun BudgetEditorScreen(key: BudgetEditorKey, vm: BudgetSettingsViewModel = hiltV
     var editing by rememberSaveable { mutableStateOf<Int?>(null) }
     var confirm by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(budget?.isDeleted) { if (budget?.isDeleted == true) nav.back() }
-    val title = if (budget?.categoryId == null) stringResource(R.string.total_budget) else ref.categoryName(budget.categoryId) ?: ""
+    val title = if (budget?.categoryId == null) {
+        stringResource(R.string.total_budget)
+    } else {
+        ref.categoryName(budget.categoryId) ?: ""
+    }
     val main = ref.mainCurrency
     Scaffold(topBar = {
         NexoTopBar(title, onBack = { nav.back() }) {
-            IconButton(onClick = { confirm = true }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
+            IconButton(onClick = {
+                confirm = true
+            }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
         }
     }) { p ->
         LazyColumn(Modifier.padding(p)) {
             item {
                 Text(
-                    stringResource(R.string.budget_editor_help) + if (ref.settings.subcategories) "\n" + stringResource(R.string.budget_rollup_help) else "",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp),
+                    stringResource(R.string.budget_editor_help) +
+                        if (ref.settings.subcategories) {
+                            "\n" +
+                                stringResource(R.string.budget_rollup_help)
+                        } else {
+                            ""
+                        },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(16.dp),
                 )
-                SettingRow(stringResource(R.string.default_budget), AmountFormatter.format(BudgetMath.latest(records), main), onClick = { editing = 0 })
+                SettingRow(
+                    stringResource(R.string.default_budget),
+                    AmountFormatter.format(BudgetMath.latest(records), main),
+                    onClick = {
+                        editing = 0
+                    },
+                )
                 HorizontalDivider()
-                PeriodNavigator(year.toString(), { year-- }, { year++ }, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurface)
+                PeriodNavigator(year.toString(), {
+                    year--
+                }, {
+                    year++
+                }, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurface)
             }
             items((12 downTo 1).toList()) { m ->
                 val ym = YearMonth.of(year, m)
                 val k = BudgetMath.key(ym)
                 Row(
-                    Modifier.fillMaxWidth().background(if (ym == currentLabel) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface)
+                    Modifier.fillMaxWidth().background(
+                        if (ym == currentLabel) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        },
+                    )
                         .clickable { editing = k }.padding(horizontal = 16.dp, vertical = 14.dp),
                 ) {
                     Text(Formats.monthYear(ym), Modifier.weight(1f))
@@ -293,12 +543,37 @@ fun BudgetEditorScreen(key: BudgetEditorKey, vm: BudgetSettingsViewModel = hiltV
         }
     }
     editing?.let { k ->
-        val label = if (k == 0) stringResource(R.string.default_budget) else Formats.monthYear(YearMonth.of(k / 100, k % 100))
+        val label = if (k == 0) {
+            stringResource(R.string.default_budget)
+        } else {
+            Formats.monthYear(YearMonth.of(k / 100, k % 100))
+        }
         AmountSheet(
-            label, if (k == 0) BudgetMath.latest(records) else BudgetMath.effective(records, k), main.decimals, allowSign = false, subtitle = title,
-            onConfirm = { v -> val a = abs(v ?: 0.0); if (k == 0) vm.setDefault(key.budgetId, a) else vm.setMonth(key.budgetId, k, a) },
+            label,
+            if (k == 0) {
+                BudgetMath.latest(records)
+            } else {
+                BudgetMath.effective(records, k)
+            },
+            main.decimals,
+            allowSign = false,
+            subtitle = title,
+            onConfirm = { v ->
+                val a = abs(v ?: 0.0)
+                if (k == 0) {
+                    vm.setDefault(key.budgetId, a)
+                } else {
+                    vm.setMonth(key.budgetId, k, a)
+                }
+            },
             onDismiss = { editing = null },
         )
     }
-    if (confirm) ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = { vm.delete(key.budgetId) }, onDismiss = { confirm = false })
+    if (confirm) {
+        ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
+            vm.delete(key.budgetId)
+        }, onDismiss = {
+            confirm = false
+        })
+    }
 }

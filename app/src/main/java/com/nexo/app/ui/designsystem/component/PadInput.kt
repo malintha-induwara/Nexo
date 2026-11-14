@@ -3,7 +3,40 @@ package com.nexo.app.ui.designsystem.component
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-enum class PadKey { D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, DOUBLE_ZERO, TRIPLE_ZERO, DECIMAL, SIGN, BACKSPACE, CLEAR }
+enum class PadKey {
+
+    D0,
+
+    D1,
+
+    D2,
+
+    D3,
+
+    D4,
+
+    D5,
+
+    D6,
+
+    D7,
+
+    D8,
+
+    D9,
+
+    DOUBLE_ZERO,
+
+    TRIPLE_ZERO,
+
+    DECIMAL,
+
+    SIGN,
+
+    BACKSPACE,
+
+    CLEAR,
+}
 
 /**
  * Number-pad buffer rules. The buffer uses '.' as separator internally.
@@ -16,17 +49,24 @@ data class PadInput(
     val maxLength: Int = 15,
 ) {
     /** Result of a key press: the new input, and a field action when the buffer alone can't express it. */
-    data class Result(val input: PadInput, val negateExisting: Boolean = false, val clearField: Boolean = false)
+    data class Result(
+        val input: PadInput,
+        val negateExisting: Boolean = false,
+        val clearField: Boolean = false,
+    )
 
     fun press(key: PadKey): Result = when (key) {
         PadKey.BACKSPACE -> when {
             buffer.isEmpty() -> Result(this, clearField = true)
+
             else -> {
                 val next = buffer.dropLast(1)
                 Result(copy(buffer = if (next == "-") "" else next))
             }
         }
+
         PadKey.CLEAR -> Result(copy(buffer = ""), clearField = true)
+
         PadKey.SIGN -> when {
             !allowSign -> Result(this)
             buffer.isEmpty() -> Result(this, negateExisting = true)
@@ -34,6 +74,7 @@ data class PadInput(
             buffer == "0" -> Result(copy(buffer = "-"))
             else -> Result(copy(buffer = "-$buffer"))
         }
+
         PadKey.DECIMAL -> when {
             maxDecimals <= 0 -> Result(this)
             buffer.contains('.') -> Result(this)
@@ -42,12 +83,17 @@ data class PadInput(
             buffer.length >= maxLength -> Result(this)
             else -> Result(copy(buffer = "$buffer."))
         }
+
         PadKey.DOUBLE_ZERO -> Result(typeDigits("00"))
+
         PadKey.TRIPLE_ZERO -> Result(typeDigits("000"))
+
         else -> Result(typeDigits(key.ordinal.toString()))
     }
 
-    private fun typeDigits(digits: String): PadInput = digits.fold(this) { acc, c -> acc.typeDigit(c) }
+    private fun typeDigits(digits: String): PadInput = digits.fold(this) { acc, c ->
+        acc.typeDigit(c)
+    }
 
     private fun typeDigit(c: Char): PadInput {
         val b = buffer
@@ -63,12 +109,15 @@ data class PadInput(
     }
 
     val value: Double?
-        get() = buffer.takeIf { it.isNotEmpty() && it != "-" }?.trimEnd('.')?.toBigDecimalOrNull()?.toDouble()
+        get() = buffer.takeIf {
+            it.isNotEmpty() && it != "-"
+        }?.trimEnd('.')?.toBigDecimalOrNull()?.toDouble()
 
     companion object {
         /** Value shown in a field when it starts editing an existing amount: trailing zeros trimmed. */
-        fun plain(value: Double, decimals: Int): String =
-            BigDecimal.valueOf(value).setScale(decimals, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+        fun plain(value: Double, decimals: Int): String = BigDecimal.valueOf(
+            value,
+        ).setScale(decimals, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
     }
 }
 
@@ -81,7 +130,9 @@ object Calculator {
     }
 
     fun evaluate(expression: String): Outcome {
-        val tokens = tokenize(expression.trimEnd('+', '−', '-', '×', '÷', '*', '/', '.')) ?: return Outcome.Invalid
+        val tokens =
+            tokenize(expression.trimEnd('+', '−', '-', '×', '÷', '*', '/', '.'))
+                ?: return Outcome.Invalid
         if (tokens.isEmpty()) return Outcome.Value(BigDecimal.ZERO)
         // First pass: × and ÷ left to right.
         val terms = ArrayList<BigDecimal>()
@@ -93,10 +144,12 @@ object Calculator {
             val next = tokens[i + 1] as BigDecimal
             when (op) {
                 '×' -> current = current.multiply(next)
+
                 '÷' -> {
                     if (next.signum() == 0) return Outcome.DivideByZero
                     current = current.divide(next, 5, RoundingMode.UP)
                 }
+
                 else -> {
                     terms += current
                     ops += op
@@ -107,7 +160,10 @@ object Calculator {
         }
         terms += current
         var result = terms[0]
-        for (k in ops.indices) result = if (ops[k] == '+') result.add(terms[k + 1]) else result.subtract(terms[k + 1])
+        for (k in ops.indices) {
+            result =
+                if (ops[k] == '+') result.add(terms[k + 1]) else result.subtract(terms[k + 1])
+        }
         return Outcome.Value(result.stripTrailingZeros())
     }
 
@@ -123,6 +179,7 @@ object Calculator {
         for (c in s) {
             when (c) {
                 in '0'..'9', '.' -> num.append(c)
+
                 '+', '−', '-', '×', '*', '÷', '/' -> {
                     if (!flush()) return null
                     out += when (c) {
@@ -132,7 +189,9 @@ object Calculator {
                         else -> c
                     }
                 }
+
                 ' ', ',' -> Unit
+
                 else -> return null
             }
         }
@@ -151,6 +210,7 @@ object Calculator {
                 last in ops -> expr.dropLast(1) + key
                 else -> expr + key
             }
+
             key == "." -> {
                 val currentNumber = expr.takeLastWhile { it !in ops }
                 when {
@@ -159,6 +219,7 @@ object Calculator {
                     else -> expr + "."
                 }
             }
+
             else -> {
                 if (expr.length >= 120) return expr
                 val currentNumber = expr.takeLastWhile { it !in ops }

@@ -23,17 +23,21 @@ class DefaultBookRepository @Inject constructor(
         seeder.seedFresh(main)
     }
 
-    override suspend fun photoFileCount(): Int = withContext(ioDispatcher) { dirs.photos.listFiles()?.size ?: 0 }
+    override suspend fun photoFileCount(): Int = withContext(ioDispatcher) {
+        dirs.photos.listFiles()?.size
+            ?: 0
+    }
 
     /** Complete reset: every table emptied and re-seeded. Device preferences and the PIN stay. */
-    override suspend fun completeReset(deletePhotos: Boolean, main: CatalogCurrency) = withContext(ioDispatcher) {
-        db.clearAllTables()
-        vacuum()
-        seeder.seedFresh(main)
-        prefs.setCollapsedGroups(emptySet())
-        prefs.setRepeatDay("")
-        if (deletePhotos) dirs.photos.listFiles()?.forEach { it.delete() }
-    }
+    override suspend fun completeReset(deletePhotos: Boolean, main: CatalogCurrency) =
+        withContext(ioDispatcher) {
+            db.clearAllTables()
+            vacuum()
+            seeder.seedFresh(main)
+            prefs.setCollapsedGroups(emptySet())
+            prefs.setRepeatDay("")
+            if (deletePhotos) dirs.photos.listFiles()?.forEach { it.delete() }
+        }
 
     /** Reset contents only: transactions, photos, tag links and the SMS review queue that points at them. */
     override suspend fun contentsReset(deletePhotos: Boolean) = withContext(ioDispatcher) {
@@ -50,7 +54,9 @@ class DefaultBookRepository @Inject constructor(
     override suspend fun eraseAll() = withContext(ioDispatcher) {
         db.clearAllTables()
         vacuum()
-        listOf(dirs.photos, dirs.backups, dirs.imports, dirs.temp).forEach { d -> d.listFiles()?.forEach { it.deleteRecursively() } }
+        listOf(dirs.photos, dirs.backups, dirs.imports, dirs.temp).forEach { d ->
+            d.listFiles()?.forEach { it.deleteRecursively() }
+        }
         lock.setPin(null)
         prefs.setBiometrics(false)
         prefs.setSetupDone(false)

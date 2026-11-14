@@ -19,11 +19,24 @@ fun fxRateLine(context: Context, item: SmsItem): String? {
     val value = AmountFormatter.number(rate, 2)
     val source = when (val s = item.fxSource) {
         RateChoice.MEDIAN -> context.getString(R.string.fx_source_median)
+
         RateChoice.OFFICIAL -> context.getString(R.string.fx_source_official)
-        RateChoice.MANUAL -> return context.getString(R.string.fx_rate_line_manual, context.getString(R.string.fx_source_manual), value)
+
+        RateChoice.MANUAL -> return context.getString(
+            R.string.fx_rate_line_manual,
+            context.getString(R.string.fx_source_manual),
+            value,
+        )
+
         else -> Bank.entries.firstOrNull { it.rateCode == s }?.displayName ?: s.orEmpty()
     }
-    val side = context.getString(if (item.fxSide == RateSide.BUY) R.string.fx_side_buy else R.string.fx_side_sell)
+    val side = context.getString(
+        if (item.fxSide == RateSide.BUY) {
+            R.string.fx_side_buy
+        } else {
+            R.string.fx_side_sell
+        },
+    )
     val day = item.fxSnapshotAt?.let { Formats.dayMonth(FxRatesRepository.dayOf(it)) }.orEmpty()
     return context.getString(R.string.fx_rate_line, source, side, value, day).trimEnd(' ', '·')
 }
@@ -33,7 +46,12 @@ fun fxEstimateNote(context: Context, item: SmsItem, ref: RefData): String? {
     val estimate = item.estimatedAmount ?: return null
     val original = "${item.currency} ${AmountFormatter.number(item.amount, 2)}"
     val local = AmountFormatter.format(estimate, ref.accountCurrency(item.accountId))
-    return context.getString(R.string.fx_estimate_note, original, local, fxRateLine(context, item).orEmpty())
+    return context.getString(
+        R.string.fx_estimate_note,
+        original,
+        local,
+        fxRateLine(context, item).orEmpty(),
+    )
 }
 
 /** Whether a rate shown came from AllRatesToday, which then needs its visible link. */
@@ -41,6 +59,11 @@ val SmsItem.rateFromApi: Boolean get() = fxSource != null && fxSource != RateCho
 
 fun openRatesAttribution(context: Context) {
     runCatching {
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(FxRatesRepository.ATTRIBUTION_URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        context.startActivity(
+            Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse(FxRatesRepository.ATTRIBUTION_URL),
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
     }
 }

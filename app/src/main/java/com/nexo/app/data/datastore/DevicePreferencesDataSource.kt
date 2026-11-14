@@ -27,7 +27,9 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 /** Device-only preferences in the `nexo_device` DataStore. Never part of a data backup. */
 @Singleton
-class DevicePreferencesDataSource @Inject constructor(@ApplicationContext private val context: Context) {
+class DevicePreferencesDataSource @Inject constructor(
+    @ApplicationContext private val context: Context,
+) {
     private object K {
         val setupDone = booleanPreferencesKey("setup_done")
         val themeMode = stringPreferencesKey("theme_mode")
@@ -66,17 +68,21 @@ class DevicePreferencesDataSource @Inject constructor(@ApplicationContext privat
         val fxFetchedAt = longPreferencesKey("fx_fetched_at")
     }
 
-
     val deviceSettings: Flow<DeviceSettings> = context.dataStore.data.map { p ->
         DeviceSettings(
             setupDone = p[K.setupDone] ?: false,
-            themeMode = p[K.themeMode]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
-            themeColor = p[K.themeColor]?.let { runCatching { ThemeColor.valueOf(it) }.getOrNull() } ?: ThemeColor.WHITE,
+            themeMode =
+                p[K.themeMode]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }
+                    ?: ThemeMode.SYSTEM,
+            themeColor =
+                p[K.themeColor]?.let { runCatching { ThemeColor.valueOf(it) }.getOrNull() }
+                    ?: ThemeColor.WHITE,
             numberPadDescending = p[K.numberPadDescending] ?: false,
             reminderEnabled = p[K.reminderEnabled] ?: false,
             reminderHour = p[K.reminderHour] ?: 21,
             reminderMinute = p[K.reminderMinute] ?: 0,
-            reminderDays = p[K.reminderDays]?.mapNotNull { it.toIntOrNull() }?.toSet() ?: (1..7).toSet(),
+            reminderDays =
+                p[K.reminderDays]?.mapNotNull { it.toIntOrNull() }?.toSet() ?: (1..7).toSet(),
             copyWithToday = p[K.copyWithToday]?.toBooleanStrictOrNull(),
             groupedAccountPicker = p[K.groupedPicker] ?: false,
             photoNoticeShown = p[K.photoNotice] ?: false,
@@ -88,7 +94,9 @@ class DevicePreferencesDataSource @Inject constructor(@ApplicationContext privat
             pinFailures = p[K.pinFailures] ?: 0,
             pinLockoutUntil = p[K.pinLockoutUntil] ?: 0,
             biometricsEnabled = p[K.biometrics] ?: false,
-            lockTimeout = p[K.lockTimeout]?.let { runCatching { LockTimeout.valueOf(it) }.getOrNull() } ?: LockTimeout.IMMEDIATELY,
+            lockTimeout =
+                p[K.lockTimeout]?.let { runCatching { LockTimeout.valueOf(it) }.getOrNull() }
+                    ?: LockTimeout.IMMEDIATELY,
             permissionIntroShown = p[K.permissionIntro] ?: false,
             transferGuideShown = p[K.transferGuide] ?: false,
             budgetHelpHidden = p[K.budgetHelpHidden] ?: false,
@@ -97,7 +105,11 @@ class DevicePreferencesDataSource @Inject constructor(@ApplicationContext privat
             smsCaptureStartedAt = p[K.smsCaptureStartedAt] ?: 0,
             smsCaptureStoppedAt = p[K.smsCaptureStoppedAt] ?: 0,
             smsLastProcessedAt = p[K.smsLastProcessedAt] ?: 0,
-            smsHistoryImport = p[K.smsHistoryImport]?.let { runCatching { SmsHistoryImport.valueOf(it) }.getOrNull() } ?: SmsHistoryImport.NOT_OFFERED,
+            smsHistoryImport =
+                p[K.smsHistoryImport]?.let {
+                    runCatching { SmsHistoryImport.valueOf(it) }.getOrNull()
+                }
+                    ?: SmsHistoryImport.NOT_OFFERED,
             smsStoreFullText = p[K.smsStoreFullText] ?: false,
             smsCustomSenders = p[K.smsCustomSenders] ?: emptySet(),
             smsSeenAt = p[K.smsSeenAt] ?: 0,
@@ -109,17 +121,21 @@ class DevicePreferencesDataSource @Inject constructor(@ApplicationContext privat
 
     suspend fun current(): DeviceSettings = deviceSettings.first()
 
-
     suspend fun setSetupDone(v: Boolean) = context.dataStore.edit { it[K.setupDone] = v }
     suspend fun setThemeMode(v: ThemeMode) = context.dataStore.edit { it[K.themeMode] = v.name }
-    suspend fun setNumberPadDescending(v: Boolean) = context.dataStore.edit { it[K.numberPadDescending] = v }
-    suspend fun setReminder(enabled: Boolean, hour: Int, minute: Int, days: Set<Int>) = context.dataStore.edit {
-        it[K.reminderEnabled] = enabled
-        it[K.reminderHour] = hour
-        it[K.reminderMinute] = minute
-        it[K.reminderDays] = days.map(Int::toString).toSet()
+    suspend fun setNumberPadDescending(v: Boolean) = context.dataStore.edit {
+        it[K.numberPadDescending] = v
     }
-    suspend fun setCopyWithToday(v: Boolean) = context.dataStore.edit { it[K.copyWithToday] = v.toString() }
+    suspend fun setReminder(enabled: Boolean, hour: Int, minute: Int, days: Set<Int>) =
+        context.dataStore.edit {
+            it[K.reminderEnabled] = enabled
+            it[K.reminderHour] = hour
+            it[K.reminderMinute] = minute
+            it[K.reminderDays] = days.map(Int::toString).toSet()
+        }
+    suspend fun setCopyWithToday(v: Boolean) = context.dataStore.edit {
+        it[K.copyWithToday] = v.toString()
+    }
     suspend fun setGroupedPicker(v: Boolean) = context.dataStore.edit { it[K.groupedPicker] = v }
     suspend fun setPhotoNoticeShown() = context.dataStore.edit { it[K.photoNotice] = true }
     suspend fun setWhatsNewVersion(v: Int) = context.dataStore.edit { it[K.whatsNew] = v }
@@ -137,12 +153,15 @@ class DevicePreferencesDataSource @Inject constructor(@ApplicationContext privat
         it[K.pinLockoutUntil] = lockoutUntil
     }
     suspend fun setBiometrics(v: Boolean) = context.dataStore.edit { it[K.biometrics] = v }
-    suspend fun setLockTimeout(v: LockTimeout) = context.dataStore.edit { it[K.lockTimeout] = v.name }
+    suspend fun setLockTimeout(v: LockTimeout) =
+        context.dataStore.edit { it[K.lockTimeout] = v.name }
     suspend fun setPermissionIntroShown() = context.dataStore.edit { it[K.permissionIntro] = true }
     suspend fun setTransferGuideShown() = context.dataStore.edit { it[K.transferGuide] = true }
     suspend fun setMemoHelpHidden(v: Boolean) = context.dataStore.edit { it[K.memoHelpHidden] = v }
 
-    suspend fun setSmsCaptureEnabled(v: Boolean) = context.dataStore.edit { it[K.smsCaptureEnabled] = v }
+    suspend fun setSmsCaptureEnabled(v: Boolean) = context.dataStore.edit {
+        it[K.smsCaptureEnabled] = v
+    }
 
     /** Capture became active: a new start point. After an earlier stop, the gap becomes the re-enable hint. */
     suspend fun markSmsCaptureStarted(now: Long) = context.dataStore.edit {
@@ -161,10 +180,18 @@ class DevicePreferencesDataSource @Inject constructor(@ApplicationContext privat
         it[K.smsCaptureStoppedAt] = now
     }
 
-    suspend fun setSmsLastProcessed(v: Long) = context.dataStore.edit { it[K.smsLastProcessedAt] = v }
-    suspend fun setSmsHistoryImport(v: SmsHistoryImport) = context.dataStore.edit { it[K.smsHistoryImport] = v.name }
-    suspend fun setSmsStoreFullText(v: Boolean) = context.dataStore.edit { it[K.smsStoreFullText] = v }
-    suspend fun setSmsCustomSenders(v: Set<String>) = context.dataStore.edit { it[K.smsCustomSenders] = v }
+    suspend fun setSmsLastProcessed(v: Long) = context.dataStore.edit {
+        it[K.smsLastProcessedAt] = v
+    }
+    suspend fun setSmsHistoryImport(v: SmsHistoryImport) = context.dataStore.edit {
+        it[K.smsHistoryImport] = v.name
+    }
+    suspend fun setSmsStoreFullText(v: Boolean) = context.dataStore.edit {
+        it[K.smsStoreFullText] = v
+    }
+    suspend fun setSmsCustomSenders(v: Set<String>) = context.dataStore.edit {
+        it[K.smsCustomSenders] = v
+    }
     suspend fun setSmsSeenAt(v: Long) = context.dataStore.edit { it[K.smsSeenAt] = v }
     suspend fun setFxFetchedAt(v: Long) = context.dataStore.edit { it[K.fxFetchedAt] = v }
     suspend fun clearSmsGap() = context.dataStore.edit {

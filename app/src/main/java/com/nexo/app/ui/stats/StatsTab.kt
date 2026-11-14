@@ -101,7 +101,8 @@ fun scopeLabel(s: StatsScope): String = stringResource(
     },
 )
 
-private fun percentText(percent: Double, decimals: Int): String = percent.toBigDecimal().setScale(decimals, RoundingMode.HALF_UP).toPlainString() + "%"
+private fun percentText(percent: Double, decimals: Int): String =
+    percent.toBigDecimal().setScale(decimals, RoundingMode.HALF_UP).toPlainString() + "%"
 
 @Composable
 fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
@@ -125,25 +126,45 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
 
     Column(Modifier.fillMaxSize().background(colors.background)) {
         Row(
-            Modifier.fillMaxWidth().statusBarsPadding().height(56.dp).padding(start = Space.xs, end = Space.l),
+            Modifier.fillMaxWidth().statusBarsPadding().height(
+                56.dp,
+            ).padding(start = Space.xs, end = Space.l),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (q.scope == StatsScope.PERIOD) {
-                DateRangeChips(q.from, q.to, onChange = { f, t -> selectedSlice = -1; vm.setRange(f, t) }, color = colors.text)
+                DateRangeChips(q.from, q.to, onChange = { f, t ->
+                    selectedSlice = -1
+                    vm.setRange(f, t)
+                }, color = colors.text)
             } else {
                 val label = when (q.scope) {
                     StatsScope.WEEKLY -> Formats.range(data.range.start, data.range.end)
-                    StatsScope.MONTHLY -> Formats.monthYear(ref.settings.periods.monthPeriodContaining(q.anchor).label)
+
+                    StatsScope.MONTHLY -> Formats.monthYear(
+                        ref.settings.periods.monthPeriodContaining(q.anchor).label,
+                    )
+
                     else -> ref.settings.periods.yearOf(q.anchor).toString()
                 }
                 PeriodNavigator(
-                    label, { selectedSlice = -1; vm.step(false) }, { selectedSlice = -1; vm.step(true) },
+                    label,
+                    {
+                        selectedSlice = -1
+                        vm.step(false)
+                    },
+                    {
+                        selectedSlice = -1
+                        vm.step(true)
+                    },
                     if (q.scope == StatsScope.ANNUALLY) null else ({ titlePicker = true }),
                     color = colors.text,
                 )
             }
             Spacer(Modifier.weight(1f))
-            ModePill(scopeLabel(q.scope)) { haptics.tick(); scopePicker = true }
+            ModePill(scopeLabel(q.scope)) {
+                haptics.tick()
+                scopePicker = true
+            }
         }
         val net = data.incomeTotal - data.expenseTotal
         HeroSummary(
@@ -151,62 +172,144 @@ fun StatsTab(todaySignal: Int, vm: StatsViewModel = hiltViewModel()) {
             if (income) data.incomeTotal else data.expenseTotal,
             main,
             listOf(
-                if (income) HeroStat(stringResource(R.string.expenses), data.expenseTotal, money.expense)
-                else HeroStat(stringResource(R.string.income), data.incomeTotal, money.income),
-                HeroStat(stringResource(R.string.net), net, if (net < 0) money.expense else colors.text),
+                if (income) {
+                    HeroStat(stringResource(R.string.expenses), data.expenseTotal, money.expense)
+                } else {
+                    HeroStat(stringResource(R.string.income), data.incomeTotal, money.income)
+                },
+                HeroStat(
+                    stringResource(R.string.net),
+                    net,
+                    if (net < 0) {
+                        money.expense
+                    } else {
+                        colors.text
+                    },
+                ),
             ),
             Modifier.collapsingHeader(hero),
         )
         SegmentedPill(
             options = listOf(true, false),
             selected = income,
-            onSelect = { vm.setIncome(it); selectedSlice = -1 },
-            label = { isIncome -> stringResource(if (isIncome) R.string.income else R.string.expenses) },
+            onSelect = {
+                vm.setIncome(it)
+                selectedSlice = -1
+            },
+            label = { isIncome ->
+                stringResource(if (isIncome) R.string.income else R.string.expenses)
+            },
             accent = { isIncome -> if (isIncome) money.income else money.expense },
             modifier = Modifier.fillMaxWidth().padding(horizontal = Space.l, vertical = Space.s),
         )
         val threshold = with(LocalDensity.current) { 90.dp.toPx() }
         val swipe = ref.settings.swipeMode
-        val swipeModifier = if (swipe == SwipeMode.NONE || q.scope == StatsScope.PERIOD) Modifier else Modifier.pointerInput(swipe, income) {
-            var total = 0f
-            detectHorizontalDragGestures(onDragStart = { total = 0f }, onHorizontalDrag = { _, dx -> total += dx }, onDragEnd = {
-                if (abs(total) > threshold) {
-                    selectedSlice = -1
-                    if (swipe == SwipeMode.CHANGE_DATE) vm.step(total < 0) else vm.setIncome(total > 0)
-                }
-            })
+        val swipeModifier = if (swipe == SwipeMode.NONE || q.scope == StatsScope.PERIOD) {
+            Modifier
+        } else {
+            Modifier.pointerInput(swipe, income) {
+                var total = 0f
+                detectHorizontalDragGestures(onDragStart = {
+                    total = 0f
+                }, onHorizontalDrag = { _, dx ->
+                    total +=
+                        dx
+                }, onDragEnd = {
+                    if (abs(total) > threshold) {
+                        selectedSlice = -1
+                        if (swipe == SwipeMode.CHANGE_DATE) {
+                            vm.step(total < 0)
+                        } else {
+                            vm.setIncome(total > 0)
+                        }
+                    }
+                })
+            }
         }
         LazyColumn(
             Modifier.weight(1f).fillMaxWidth().nestedScroll(hero.connection).then(swipeModifier),
             contentPadding = PaddingValues(bottom = LocalShell.current.bottomInset + Space.m),
         ) {
             // An empty period shows the empty state alone, not an empty ring as well.
-            if (rows.isEmpty()) item(key = "empty") { EmptyState() }
-            else item(key = "chart") {
-                Box(Modifier.fillMaxWidth().padding(top = Space.s, bottom = Space.l), contentAlignment = Alignment.Center) {
-                    DonutChart(
-                        rows.map { PieSlice(it.name.asString(), it.percent, NexoPalette.Stats[it.colorIndex]) },
-                        selected = selectedSlice.takeIf { it in rows.indices },
-                        onSlice = { if (it != selectedSlice) haptics.tick(); selectedSlice = it },
+            if (rows.isEmpty()) {
+                item(key = "empty") { EmptyState() }
+            } else {
+                item(key = "chart") {
+                    Box(
+                        Modifier.fillMaxWidth().padding(top = Space.s, bottom = Space.l),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        // With nothing picked the ring names its largest share.
-                        ShareLabel(rows.getOrNull(selectedSlice) ?: rows.first(), main)
+                        DonutChart(
+                            rows.map {
+                                PieSlice(
+                                    it.name.asString(),
+                                    it.percent,
+                                    NexoPalette.Stats[it.colorIndex],
+                                )
+                            },
+                            selected = selectedSlice.takeIf { it in rows.indices },
+                            onSlice = {
+                                if (it != selectedSlice) haptics.tick()
+                                selectedSlice = it
+                            },
+                        ) {
+                            // With nothing picked the ring names its largest share.
+                            ShareLabel(rows.getOrNull(selectedSlice) ?: rows.first(), main)
+                        }
                     }
                 }
             }
             items(rows, key = { "${it.kind}_${it.key}" }) { r ->
                 CategoryCard(
-                    r, ref, main,
-                    onClick = { nav.navigate(StatsDetailKey(r.key, r.kind, q.scope, data.range.startText, data.range.endText, r.colorIndex)) },
-                    modifier = Modifier.animateItem().padding(horizontal = Space.l, vertical = 3.dp),
+                    r,
+                    ref,
+                    main,
+                    onClick = {
+                        nav.navigate(
+                            StatsDetailKey(
+                                r.key,
+                                r.kind,
+                                q.scope,
+                                data.range.startText,
+                                data.range.endText,
+                                r.colorIndex,
+                            ),
+                        )
+                    },
+                    modifier = Modifier.animateItem().padding(
+                        horizontal = Space.l,
+                        vertical = 3.dp,
+                    ),
                 )
             }
         }
     }
-    if (scopePicker) ChoiceDialog(stringResource(R.string.period), StatsScope.entries, q.scope, { scopeLabel(it) }, onSelect = { selectedSlice = -1; vm.setScope(it) }, onDismiss = { scopePicker = false })
+    if (scopePicker) {
+        ChoiceDialog(stringResource(R.string.period), StatsScope.entries, q.scope, {
+            scopeLabel(it)
+        }, onSelect = {
+            selectedSlice = -1
+            vm.setScope(it)
+        }, onDismiss = { scopePicker = false })
+    }
     if (titlePicker) {
-        if (q.scope == StatsScope.MONTHLY) MonthPickerDialog(ref.settings.periods.monthPeriodContaining(q.anchor).label, onPick = { selectedSlice = -1; vm.setMonth(it) }, onDismiss = { titlePicker = false })
-        else NexoDatePickerDialog(q.anchor, onPick = { selectedSlice = -1; vm.setAnchor(it) }, onDismiss = { titlePicker = false })
+        if (q.scope == StatsScope.MONTHLY) {
+            MonthPickerDialog(
+                ref.settings.periods.monthPeriodContaining(q.anchor).label,
+                onPick = {
+                    selectedSlice = -1
+                    vm.setMonth(it)
+                },
+                onDismiss = { titlePicker = false },
+            )
+        } else {
+            NexoDatePickerDialog(q.anchor, onPick = {
+                selectedSlice = -1
+                vm.setAnchor(it)
+            }, onDismiss = {
+                titlePicker = false
+            })
+        }
     }
 }
 
@@ -221,16 +324,41 @@ private fun ShareLabel(row: StatsRow, main: Currency) {
         label = "share",
     ) { r ->
         Column(Modifier.widthIn(max = 132.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(r.name.asString(), style = NexoType.Meta, color = colors.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-            Text(percentText(r.percent, 1), style = MaterialTheme.typography.displaySmall, color = colors.text, maxLines = 1, modifier = Modifier.shrinkToFit())
-            AmountText(r.amount, main, Modifier.shrinkToFit(), style = NexoType.AmountSmall, color = colors.textSecondary)
+            Text(
+                r.name.asString(),
+                style = NexoType.Meta,
+                color = colors.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                percentText(r.percent, 1),
+                style = MaterialTheme.typography.displaySmall,
+                color = colors.text,
+                maxLines = 1,
+                modifier = Modifier.shrinkToFit(),
+            )
+            AmountText(
+                r.amount,
+                main,
+                Modifier.shrinkToFit(),
+                style = NexoType.AmountSmall,
+                color = colors.textSecondary,
+            )
         }
     }
 }
 
 /** One category: its tile in the ring's colour, its name over its share, and the total. */
 @Composable
-private fun CategoryCard(row: StatsRow, ref: RefData, main: Currency, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun CategoryCard(
+    row: StatsRow,
+    ref: RefData,
+    main: Currency,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = LocalNexoColors.current
     val color = NexoPalette.Stats[row.colorIndex]
     val interactions = remember { MutableInteractionSource() }
@@ -240,22 +368,54 @@ private fun CategoryCard(row: StatsRow, ref: RefData, main: Currency, onClick: (
             .fillMaxWidth()
             .clip(NexoShapes.panel)
             .background(colors.surface)
-            .clickable(interactionSource = interactions, indication = null, role = Role.Button, onClick = onClick)
+            .clickable(
+                interactionSource = interactions,
+                indication = null,
+                role = Role.Button,
+                onClick = onClick,
+            )
             .padding(start = Space.m, top = 10.dp, bottom = 10.dp, end = Space.l),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val grouped = row.kind == StatsDetailKind.TRANSFER_EXPENSE_GROUP || row.kind == StatsDetailKind.TRANSFER_INCOME_GROUP
+        val grouped =
+            row.kind == StatsDetailKind.TRANSFER_EXPENSE_GROUP ||
+                row.kind == StatsDetailKind.TRANSFER_INCOME_GROUP
         val visual = if (grouped) null else ref.visual(row.key)
         when {
-            grouped -> IconTile(ref.groupById[row.key]?.let { GroupVisuals.of(it).icon } ?: Icons.Rounded.SwapHoriz, color, over = colors.surface)
-            visual != null -> CategoryTile(visual.emoji, visual.monogram, color, over = colors.surface)
+            grouped -> IconTile(
+                ref.groupById[row.key]?.let {
+                    GroupVisuals.of(it).icon
+                } ?: Icons.Rounded.SwapHoriz,
+                color,
+                over = colors.surface,
+            )
+
+            visual != null -> CategoryTile(
+                visual.emoji,
+                visual.monogram,
+                color,
+                over = colors.surface,
+            )
+
             row.key == KEY_MODIFIED -> IconTile(Icons.Rounded.Tune, color, over = colors.surface)
+
             else -> IconTile(Icons.Rounded.Inbox, color, over = colors.surface)
         }
         Spacer(Modifier.width(Space.m))
         Column(Modifier.weight(1f)) {
-            Text(row.name.asString(), style = MaterialTheme.typography.bodyMedium, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(percentText(row.percent, 0), style = NexoType.Meta, color = colors.textSecondary, maxLines = 1)
+            Text(
+                row.name.asString(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                percentText(row.percent, 0),
+                style = NexoType.Meta,
+                color = colors.textSecondary,
+                maxLines = 1,
+            )
         }
         Spacer(Modifier.width(Space.m))
         AmountText(row.amount, main, style = NexoType.Amount, color = colors.text)

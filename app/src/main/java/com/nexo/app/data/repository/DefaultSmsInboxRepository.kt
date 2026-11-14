@@ -84,39 +84,65 @@ class DefaultSmsInboxRepository @Inject constructor(
         return if (started > 0) minOf(until, started) else until
     }
 
-    override suspend fun scanHistory(from: Long, until: Long): List<HistoryRow> = withContext(ioDispatcher) {
-        val s = prefs.getDeviceSettings()
-        val bound = upperBound(until)
-        if (from >= bound) return@withContext emptyList()
-        val ref = refs.getRefData()
-        val parser = SmsParser(s.smsCustomSenders)
-        val store = MemorySmsStore()
-        val correlator = SmsCorrelator(store)
-        val now = System.currentTimeMillis()
-        // Oldest first, so OTP names and cancellations line up as they did on the phone.
-        for (incoming in inbox.read(after = from - 1, from = from, until = bound, limit = MAX_MESSAGES).sortedBy { it.message.timestamp }) {
-            val parsed = parser.parse(incoming.message)
-            correlator.accept(incoming.message, parsed, Redactor.stored(incoming.message.body, s.smsStoreFullText), now) { sms.prepare(it, ref) }
-        }
-        val candidates = store.items.values.toList()
-        val known = sms.getKnownDedupeKeys(candidates.map { it.dedupeKey })
-        val fresh = candidates.filter { it.dedupeKey !in known }.map {
-            // Past days may need that day's board from the API.
-            if (it.certainty == Certainty.ESTIMATED && it.estimatedAmount == null) fx.estimate(it, ref, allowNetwork = true) else it
-        }
-        val zone = ZoneId.systemDefault()
-        fun day(ms: Long) = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
-        val ledger = transactions.getRange(day(from).minusDays(1).toIsoText(), day(bound).plusDays(1).toIsoText())
-        fresh.sortedByDescending { it.occurredAt }.map { item ->
-            val date = day(item.occurredAt)
-            val amount = ledgerAmount(item)
-            val match = item.accountId != null && ledger.any { t ->
-                t.accountId == item.accountId && abs(t.amountAccount - amount) < 0.005 &&
-                    abs(ChronoUnit.DAYS.between(LocalDate.parse(t.date), date)) <= 1
+    override suspend fun scanHistory(from: Long, until: Long): List<HistoryRow> =
+        withContext(ioDispatcher) {
+            val s = prefs.getDeviceSettings()
+            val bound = upperBound(until)
+            if (from >= bound) return@withContext emptyList()
+            val ref = refs.getRefData()
+            val parser = SmsParser(s.smsCustomSenders)
+            val store = MemorySmsStore()
+            val correlator = SmsCorrelator(store)
+            val now = System.currentTimeMillis()
+            // Oldest first, so OTP names and cancellations line up as they did on the phone.
+            for (incoming in inbox.read(
+                after = from - 1,
+                from = from,
+                until = bound,
+                limit = MAX_MESSAGES,
+            ).sortedBy {
+                it.message.timestamp
+            }) {
+                val parsed = parser.parse(incoming.message)
+                correlator.accept(
+                    incoming.message,
+                    parsed,
+                    Redactor.stored(incoming.message.body, s.smsStoreFullText),
+                    now,
+                ) {
+                    sms.prepare(it, ref)
+                }
             }
-            HistoryRow(item, cancelled = item.status == SmsStatus.CANCELLED, possiblyAdded = match)
+            val candidates = store.items.values.toList()
+            val known = sms.getKnownDedupeKeys(candidates.map { it.dedupeKey })
+            val fresh = candidates.filter { it.dedupeKey !in known }.map {
+                // Past days may need that day's board from the API.
+                if (it.certainty == Certainty.ESTIMATED && it.estimatedAmount == null) {
+                    fx.estimate(it, ref, allowNetwork = true)
+                } else {
+                    it
+                }
+            }
+            val zone = ZoneId.systemDefault()
+            fun day(ms: Long) = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
+            val ledger = transactions.getRange(
+                day(from).minusDays(1).toIsoText(),
+                day(bound).plusDays(1).toIsoText(),
+            )
+            fresh.sortedByDescending { it.occurredAt }.map { item ->
+                val date = day(item.occurredAt)
+                val amount = ledgerAmount(item)
+                val match = item.accountId != null && ledger.any { t ->
+                    t.accountId == item.accountId && abs(t.amountAccount - amount) < 0.005 &&
+                        abs(ChronoUnit.DAYS.between(LocalDate.parse(t.date), date)) <= 1
+                }
+                HistoryRow(
+                    item,
+                    cancelled = item.status == SmsStatus.CANCELLED,
+                    possiblyAdded = match,
+                )
+            }
         }
-    }
 
     private companion object {
         const val TAG = "SmsInboxRepository"

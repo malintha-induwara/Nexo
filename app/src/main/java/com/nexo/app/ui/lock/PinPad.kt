@@ -36,42 +36,85 @@ import kotlin.math.roundToInt
 fun PinDots(count: Int, shake: Int, color: Color = MaterialTheme.colorScheme.primary) {
     val offset = remember { Animatable(0f) }
     LaunchedEffect(shake) {
-        if (shake > 0) for (x in listOf(40f, -40f, 28f, -28f, 12f, 0f)) offset.animateTo(x, tween(45))
+        if (shake > 0) {
+            for (x in listOf(40f, -40f, 28f, -28f, 12f, 0f)) offset.animateTo(x, tween(45))
+        }
     }
-    Row(Modifier.offset { IntOffset(offset.value.roundToInt(), 0) }, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+    Row(
+        Modifier.offset {
+            IntOffset(offset.value.roundToInt(), 0)
+        },
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
         repeat(4) { i ->
-            Box(Modifier.size(16.dp).then(if (i < count) Modifier.background(color, CircleShape) else Modifier.border(2.dp, color, CircleShape)))
+            Box(
+                Modifier.size(16.dp).then(
+                    if (i < count) {
+                        Modifier.background(color, CircleShape)
+                    } else {
+                        Modifier.border(2.dp, color, CircleShape)
+                    },
+                ),
+            )
         }
     }
 }
 
 /** Digit keypad for PIN entry; honours the number-pad order. */
 @Composable
-fun PinKeypad(onDigit: (Int) -> Unit, onBackspace: () -> Unit, descending: Boolean, onBiometric: (() -> Unit)? = null) {
-    val rows = if (descending) listOf(listOf(7, 8, 9), listOf(4, 5, 6), listOf(1, 2, 3)) else listOf(listOf(1, 2, 3), listOf(4, 5, 6), listOf(7, 8, 9))
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+fun PinKeypad(
+    onDigit: (Int) -> Unit,
+    onBackspace: () -> Unit,
+    descending: Boolean,
+    onBiometric: (() -> Unit)? = null,
+) {
+    val rows = if (descending) {
+        listOf(listOf(7, 8, 9), listOf(4, 5, 6), listOf(1, 2, 3))
+    } else {
+        listOf(listOf(1, 2, 3), listOf(4, 5, 6), listOf(7, 8, 9))
+    }
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         rows.forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) { row.forEach { d -> Key(d.toString()) { onDigit(d) } } }
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                row.forEach { d -> Key(d.toString()) { onDigit(d) } }
+            }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
             if (onBiometric != null) {
-                KeyBox(onBiometric) { Icon(Icons.Outlined.Fingerprint, stringResource(R.string.biometric_unlock), modifier = Modifier.size(30.dp)) }
+                KeyBox(onBiometric) {
+                    Icon(
+                        Icons.Outlined.Fingerprint,
+                        stringResource(R.string.biometric_unlock),
+                        modifier = Modifier.size(30.dp),
+                    )
+                }
             } else {
                 Box(Modifier.size(72.dp))
             }
             Key("0") { onDigit(0) }
-            KeyBox(onBackspace) { Icon(Icons.AutoMirrored.Outlined.Backspace, stringResource(R.string.action_delete)) }
+            KeyBox(onBackspace) {
+                Icon(Icons.AutoMirrored.Outlined.Backspace, stringResource(R.string.action_delete))
+            }
         }
     }
 }
 
 @Composable
-private fun Key(label: String, onClick: () -> Unit) = KeyBox(onClick) { Text(label, fontSize = 28.sp) }
+private fun Key(label: String, onClick: () -> Unit) =
+    KeyBox(onClick) { Text(label, fontSize = 28.sp) }
 
 @Composable
 private fun KeyBox(onClick: () -> Unit, content: @Composable () -> Unit) {
     Box(
-        Modifier.size(72.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape).clickable(onClick = onClick),
+        Modifier.size(
+            72.dp,
+        ).background(
+            MaterialTheme.colorScheme.surfaceContainerHigh,
+            CircleShape,
+        ).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { content() }
 }

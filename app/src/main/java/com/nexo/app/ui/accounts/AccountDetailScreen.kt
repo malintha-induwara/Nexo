@@ -86,7 +86,10 @@ import kotlin.math.abs
 
 @Composable
 fun AccountDetailScreen(key: AccountDetailKey) {
-    val vm = hiltViewModel<AccountDetailViewModel, AccountDetailViewModel.Factory>(creationCallback = { it.create(key) })
+    val vm =
+        hiltViewModel<AccountDetailViewModel, AccountDetailViewModel.Factory>(creationCallback = {
+            it.create(key)
+        })
     val ui by vm.uiState.collectAsStateWithLifecycle()
     val ref = ui.ref
     val tab = ui.tab
@@ -116,27 +119,69 @@ fun AccountDetailScreen(key: AccountDetailKey) {
         topBar = {
             val rows = ui.days.flatMap { it.rows }
             if (selection.isNotEmpty()) {
-                SelectionBar(selection.size, rows.size, selectedNet(rows, selection), cur, onToggleAll = {
-                    vm.setSelection(if (selection.size >= rows.size) emptySet() else rows.map { it.id }.toSet())
-                }, onClose = { vm.setSelection(emptySet()) }, onAction = { bulkAction = it; bulkOpen = true })
+                SelectionBar(
+                    selection.size,
+                    rows.size,
+                    selectedNet(rows, selection),
+                    cur,
+                    onToggleAll = {
+                        vm.setSelection(
+                            if (selection.size >= rows.size) {
+                                emptySet()
+                            } else {
+                                rows.map { it.id }.toSet()
+                            },
+                        )
+                    },
+                    onClose = { vm.setSelection(emptySet()) },
+                    onAction = {
+                        bulkAction = it
+                        bulkOpen = true
+                    },
+                )
             } else {
                 Column {
-                    NexoTopBar(account?.name ?: stringResource(R.string.none), onBack = { nav.back() }) {
-                        if (key.deleted) IconButton(onClick = { restore = true }) { Icon(Icons.Outlined.Restore, stringResource(R.string.action_restore)) }
+                    NexoTopBar(account?.name ?: stringResource(R.string.none), onBack = {
+                        nav.back()
+                    }) {
+                        if (key.deleted) {
+                            IconButton(onClick = {
+                                restore = true
+                            }) {
+                                Icon(
+                                    Icons.Outlined.Restore,
+                                    stringResource(R.string.action_restore),
+                                )
+                            }
+                        }
                     }
                     if (!isNone) {
                         PeriodNavigator(
-                            ui.title.asString(), { vm.step(false) }, { vm.step(true) },
+                            ui.title.asString(),
+                            { vm.step(false) },
+                            { vm.step(true) },
                             if (tab == DetailTab.DAILY) ({ monthPicker = true }) else null,
-                            modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                         SegmentedPill(
                             options = DetailTab.entries,
                             selected = tab,
                             onSelect = vm::setTab,
-                            label = { t -> stringResource(when (t) { DetailTab.DAILY -> R.string.daily; DetailTab.MONTHLY -> R.string.monthly; DetailTab.ANNUALLY -> R.string.annually }) },
+                            label = { t ->
+                                stringResource(
+                                    when (t) {
+                                        DetailTab.DAILY -> R.string.daily
+                                        DetailTab.MONTHLY -> R.string.monthly
+                                        DetailTab.ANNUALLY -> R.string.annually
+                                    },
+                                )
+                            },
                             textStyle = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = Space.l, vertical = Space.s),
+                            modifier = Modifier.fillMaxWidth().padding(
+                                horizontal = Space.l,
+                                vertical = Space.s,
+                            ),
                         )
                     }
                 }
@@ -144,12 +189,27 @@ fun AccountDetailScreen(key: AccountDetailKey) {
         },
         floatingActionButton = {
             if (selection.isEmpty() && !charts && !key.deleted) {
-                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                     if (isCard && account != null) {
-                        ExtendedFloatingActionButton(onClick = { nav.navigate(EntryKey(mode = EntryMode.PAY_CARD, accountId = account.id)) }, icon = { Icon(Icons.Outlined.Payments, null) }, text = { Text(stringResource(R.string.pay)) })
+                        ExtendedFloatingActionButton(onClick = {
+                            nav.navigate(
+                                EntryKey(mode = EntryMode.PAY_CARD, accountId = account.id),
+                            )
+                        }, icon = {
+                            Icon(Icons.Outlined.Payments, null)
+                        }, text = { Text(stringResource(R.string.pay)) })
                     }
-                    FloatingActionButton(onClick = { nav.navigate(EntryKey(accountId = account?.id, fromAdd = true)) }, containerColor = MaterialTheme.colorScheme.primary) {
-                        Icon(Icons.Filled.Add, stringResource(R.string.add_transaction), tint = MaterialTheme.colorScheme.onPrimary)
+                    FloatingActionButton(onClick = {
+                        nav.navigate(EntryKey(accountId = account?.id, fromAdd = true))
+                    }, containerColor = MaterialTheme.colorScheme.primary) {
+                        Icon(
+                            Icons.Filled.Add,
+                            stringResource(R.string.add_transaction),
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                        )
                     }
                 }
             }
@@ -157,33 +217,78 @@ fun AccountDetailScreen(key: AccountDetailKey) {
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (!isNone) {
-                SummaryBlock(ui, cur, tab, charts, onToggleCharts = vm::toggleCharts, onEdit = { account?.let { nav.navigate(AccountFormKey(it.id)) } }, onHelp = { help = true })
+                SummaryBlock(ui, cur, tab, charts, onToggleCharts = vm::toggleCharts, onEdit = {
+                    account?.let { nav.navigate(AccountFormKey(it.id)) }
+                }, onHelp = {
+                    help = true
+                })
             }
             if (charts && ui.chart != null) {
                 val c = ui.chart!!
-                FlowCharts(c.labels, c.balances, c.inflow, c.outflow, cur, stringResource(R.string.inflow_outflow), stringResource(R.string.inflow), stringResource(R.string.outflow))
+                FlowCharts(
+                    c.labels,
+                    c.balances,
+                    c.inflow,
+                    c.outflow,
+                    cur,
+                    stringResource(R.string.inflow_outflow),
+                    stringResource(R.string.inflow),
+                    stringResource(R.string.outflow),
+                )
             } else if (tab == DetailTab.DAILY || isNone) {
                 DayGroupList(
                     groups = ui.days,
                     main = cur,
                     selection = selection,
-                    onRowClick = { if (selection.isNotEmpty()) vm.toggleSelect(it.id) else nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = it.id)) },
+                    onRowClick = {
+                        if (selection.isNotEmpty()) {
+                            vm.toggleSelect(it.id)
+                        } else {
+                            nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = it.id))
+                        }
+                    },
                     onRowLongClick = { vm.toggleSelect(it.id) },
-                    onDayClick = if (key.deleted) null else ({ d -> nav.navigate(EntryKey(date = d.toString(), accountId = account?.id, fromAdd = true)) }),
+                    onDayClick = if (key.deleted) {
+                        null
+                    } else {
+                        (
+                            { d ->
+                                nav.navigate(
+                                    EntryKey(
+                                        date = d.toString(),
+                                        accountId = account?.id,
+                                        fromAdd = true,
+                                    ),
+                                )
+                            }
+                            )
+                    },
                     onMemoClick = { d -> nav.navigate(MemoListKey(d.toString())) },
                     rowContent = { row ->
                         TxRow(
-                            row, row.id in selection,
-                            onClick = { if (selection.isNotEmpty()) vm.toggleSelect(row.id) else nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id)) },
+                            row,
+                            row.id in selection,
+                            onClick = {
+                                if (selection.isNotEmpty()) {
+                                    vm.toggleSelect(row.id)
+                                } else {
+                                    nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id))
+                                }
+                            },
                             onLongClick = { vm.toggleSelect(row.id) },
-                            runningBalance = ui.running[row.id]?.let { AmountFormatter.format(it, cur) },
+                            runningBalance = ui.running[row.id]?.let {
+                                AmountFormatter.format(it, cur)
+                            },
                         )
                     },
                 )
             } else {
                 LazyColumn(contentPadding = PaddingValues(top = Space.xs, bottom = 96.dp)) {
                     items(ui.periods, key = { it.label + it.range.start }) { p ->
-                        PeriodCard(p, cur, onClick = { p.month?.let(vm::openMonth) ?: p.year?.let(vm::openYear) }, modifier = Modifier.padding(horizontal = Space.l, vertical = Space.xs))
+                        PeriodCard(p, cur, onClick = {
+                            p.month?.let(vm::openMonth)
+                                ?: p.year?.let(vm::openYear)
+                        }, modifier = Modifier.padding(horizontal = Space.l, vertical = Space.xs))
                     }
                 }
             }
@@ -192,56 +297,158 @@ fun AccountDetailScreen(key: AccountDetailKey) {
     if (help) MessageDialog(stringResource(R.string.balance_help), onDismiss = { help = false })
     if (monthPicker) {
         val e = vm.engineFor(ref, account)
-        MonthPickerDialog(e.monthPeriodContaining(anchor).label, onPick = { vm.setAnchor(e.monthPeriodFor(it).end) }, onDismiss = { monthPicker = false })
+        MonthPickerDialog(e.monthPeriodContaining(anchor).label, onPick = {
+            vm.setAnchor(e.monthPeriodFor(it).end)
+        }, onDismiss = {
+            monthPicker = false
+        })
     }
-    if (restore) ConfirmDialog(stringResource(R.string.restore_question), onConfirm = { vm.restore() }, onDismiss = { restore = false })
-    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.bulkActions, onDismiss = { bulkOpen = false })
+    if (restore) {
+        ConfirmDialog(stringResource(R.string.restore_question), onConfirm = {
+            vm.restore()
+        }, onDismiss = {
+            restore = false
+        })
+    }
+    BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.bulkActions, onDismiss = {
+        bulkOpen = false
+    })
 }
 
 /** The statement for the period on screen: the balance on one line, with money in, out and the net beneath. */
 @Composable
-private fun SummaryBlock(ui: AccountDetailUiState, cur: Currency, tab: DetailTab, charts: Boolean, onToggleCharts: () -> Unit, onEdit: () -> Unit, onHelp: () -> Unit) {
+private fun SummaryBlock(
+    ui: AccountDetailUiState,
+    cur: Currency,
+    tab: DetailTab,
+    charts: Boolean,
+    onToggleCharts: () -> Unit,
+    onEdit: () -> Unit,
+    onHelp: () -> Unit,
+) {
     val colors = LocalNexoColors.current
     val money = LocalMoneyColors.current
     GroupCard(Modifier.padding(horizontal = Space.l, vertical = Space.xs)) {
         Column(Modifier.padding(start = Space.l, end = Space.m, top = 10.dp, bottom = Space.m)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    (stringResource(R.string.statement) + if (ui.range != DateRange.ALL) " " + Formats.rangeFull(ui.range.start, ui.range.end) else "").uppercase(Locale.getDefault()),
-                    style = NexoType.Caps, color = colors.textTertiary, maxLines = 1, modifier = Modifier.weight(1f),
+                    (
+                        stringResource(R.string.statement) +
+                            if (ui.range != DateRange.ALL) {
+                                " " + Formats.rangeFull(ui.range.start, ui.range.end)
+                            } else {
+                                ""
+                            }
+                        ).uppercase(Locale.getDefault()),
+                    style = NexoType.Caps,
+                    color = colors.textTertiary,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f),
                 )
-                RoundIconButton(if (charts) Icons.AutoMirrored.Outlined.List else Icons.Outlined.BarChart, stringResource(R.string.toggle_charts), onToggleCharts, size = 32.dp)
+                RoundIconButton(
+                    if (charts) Icons.AutoMirrored.Outlined.List else Icons.Outlined.BarChart,
+                    stringResource(R.string.toggle_charts),
+                    onToggleCharts,
+                    size = 32.dp,
+                )
                 Spacer(Modifier.width(Space.s))
-                RoundIconButton(Icons.Outlined.Edit, stringResource(R.string.action_edit), onEdit, size = 32.dp)
+                RoundIconButton(
+                    Icons.Outlined.Edit,
+                    stringResource(R.string.action_edit),
+                    onEdit,
+                    size = 32.dp,
+                )
             }
             if (tab != DetailTab.ANNUALLY) {
-                Row(Modifier.padding(top = Space.xs, end = Space.xs), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.balance), style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+                Row(
+                    Modifier.padding(top = Space.xs, end = Space.xs),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.balance),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
+                    )
                     if (ui.showHelp) {
                         Icon(
-                            Icons.AutoMirrored.Outlined.HelpOutline, stringResource(R.string.help), tint = colors.textTertiary,
-                            modifier = Modifier.padding(start = Space.xs).size(28.dp).clip(CircleShape).clickable(onClick = onHelp).padding(6.dp),
+                            Icons.AutoMirrored.Outlined.HelpOutline,
+                            stringResource(R.string.help),
+                            tint = colors.textTertiary,
+                            modifier = Modifier.padding(
+                                start = Space.xs,
+                            ).size(
+                                28.dp,
+                            ).clip(CircleShape).clickable(onClick = onHelp).padding(6.dp),
                         )
                     }
                     Spacer(Modifier.width(Space.m))
                     Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                         val b = ui.balance
-                        if (b == null) Text("-", style = NexoType.AmountLarge, color = colors.text)
-                        else AmountText(b, cur, Modifier.shrinkToFit(), style = NexoType.AmountLarge, color = if (b < 0) money.expense else colors.text)
+                        if (b == null) {
+                            Text("-", style = NexoType.AmountLarge, color = colors.text)
+                        } else {
+                            AmountText(
+                                b,
+                                cur,
+                                Modifier.shrinkToFit(),
+                                style = NexoType.AmountLarge,
+                                color = if (b < 0) {
+                                    money.expense
+                                } else {
+                                    colors.text
+                                },
+                            )
+                        }
                     }
                 }
             }
             Spacer(Modifier.height(Space.s))
-            Row(Modifier.padding(end = Space.xs), horizontalArrangement = Arrangement.spacedBy(Space.m)) {
-                Figure(stringResource(R.string.deposit), ui.deposit, cur, money.income, Modifier.weight(1f))
-                Figure(stringResource(R.string.withdrawal), ui.withdrawal, cur, money.expense, Modifier.weight(1f))
-                Figure(stringResource(R.string.total), ui.deposit - ui.withdrawal, cur, colors.text, Modifier.weight(1f))
+            Row(
+                Modifier.padding(end = Space.xs),
+                horizontalArrangement = Arrangement.spacedBy(Space.m),
+            ) {
+                Figure(
+                    stringResource(R.string.deposit),
+                    ui.deposit,
+                    cur,
+                    money.income,
+                    Modifier.weight(1f),
+                )
+                Figure(
+                    stringResource(R.string.withdrawal),
+                    ui.withdrawal,
+                    cur,
+                    money.expense,
+                    Modifier.weight(1f),
+                )
+                Figure(
+                    stringResource(R.string.total),
+                    ui.deposit - ui.withdrawal,
+                    cur,
+                    colors.text,
+                    Modifier.weight(1f),
+                )
             }
             ui.card?.let { c ->
                 Spacer(Modifier.height(Space.s))
-                Row(Modifier.padding(end = Space.xs), horizontalArrangement = Arrangement.spacedBy(Space.m)) {
-                    Figure(stringResource(R.string.payable), abs(c.payable), cur, money.signed(c.payable), Modifier.weight(1f))
-                    Figure(stringResource(R.string.outstanding), abs(c.outstanding), cur, money.signed(c.outstanding), Modifier.weight(1f))
+                Row(
+                    Modifier.padding(end = Space.xs),
+                    horizontalArrangement = Arrangement.spacedBy(Space.m),
+                ) {
+                    Figure(
+                        stringResource(R.string.payable),
+                        abs(c.payable),
+                        cur,
+                        money.signed(c.payable),
+                        Modifier.weight(1f),
+                    )
+                    Figure(
+                        stringResource(R.string.outstanding),
+                        abs(c.outstanding),
+                        cur,
+                        money.signed(c.outstanding),
+                        Modifier.weight(1f),
+                    )
                     Spacer(Modifier.weight(1f))
                 }
             }
@@ -252,30 +459,72 @@ private fun SummaryBlock(ui: AccountDetailUiState, cur: Currency, tab: DetailTab
 @Composable
 private fun Figure(label: String, value: Double, cur: Currency, color: Color, modifier: Modifier) {
     Column(modifier) {
-        Text(label.uppercase(Locale.getDefault()), style = NexoType.Caps, color = LocalNexoColors.current.textTertiary, maxLines = 1)
+        Text(
+            label.uppercase(Locale.getDefault()),
+            style = NexoType.Caps,
+            color = LocalNexoColors.current.textTertiary,
+            maxLines = 1,
+        )
         FlowAmount(value, cur, color, Modifier.shrinkToFit(), NexoType.AmountSmall)
     }
 }
 
 /** A month or year of the account: money in and out, the net, and the balance it ended on in brackets. */
 @Composable
-private fun PeriodCard(p: PeriodRowUi, cur: Currency, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun PeriodCard(
+    p: PeriodRowUi,
+    cur: Currency,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = LocalNexoColors.current
     val money = LocalMoneyColors.current
     GroupCard(modifier, highlighted = p.current, onClick = onClick) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = Space.l, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.s)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = Space.l, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Space.s),
+        ) {
             Column(Modifier.width(92.dp)) {
-                Text(p.label, style = MaterialTheme.typography.titleMedium, color = colors.text, maxLines = 1)
-                Text(Formats.range(p.range.start, p.range.end), style = NexoType.Meta, color = if (p.current) colors.primaryText else colors.textTertiary, maxLines = 1)
+                Text(
+                    p.label,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.text,
+                    maxLines = 1,
+                )
+                Text(
+                    Formats.range(p.range.start, p.range.end),
+                    style = NexoType.Meta,
+                    color = if (p.current) colors.primaryText else colors.textTertiary,
+                    maxLines = 1,
+                )
             }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                FlowAmount(p.deposit, cur, money.income, Modifier.shrinkToFit(), NexoType.AmountSmall)
+                FlowAmount(
+                    p.deposit,
+                    cur,
+                    money.income,
+                    Modifier.shrinkToFit(),
+                    NexoType.AmountSmall,
+                )
                 Spacer(Modifier.padding(top = Space.xxs))
-                FlowAmount(p.withdrawal, cur, money.expense, Modifier.shrinkToFit(), NexoType.AmountSmall)
+                FlowAmount(
+                    p.withdrawal,
+                    cur,
+                    money.expense,
+                    Modifier.shrinkToFit(),
+                    NexoType.AmountSmall,
+                )
             }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                 FlowAmount(p.deposit - p.withdrawal, cur, colors.text, Modifier.shrinkToFit())
-                Text("(${AmountFormatter.format(p.balance, cur)})", style = NexoType.AmountSmall, color = colors.textTertiary, maxLines = 1, modifier = Modifier.shrinkToFit())
+                Text(
+                    "(${AmountFormatter.format(p.balance, cur)})",
+                    style = NexoType.AmountSmall,
+                    color = colors.textTertiary,
+                    maxLines = 1,
+                    modifier = Modifier.shrinkToFit(),
+                )
             }
         }
     }

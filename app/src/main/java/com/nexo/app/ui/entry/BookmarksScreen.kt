@@ -52,7 +52,11 @@ import com.nexo.app.ui.navigation.LocalNavigator
 @Composable
 fun accountLabel(ref: RefData, id: String?): String {
     val a = id?.let { ref.accountById[it] } ?: return stringResource(R.string.none)
-    return if (a.status == AccountStatus.DELETED || a.status == AccountStatus.PURGED) "##${a.name}##" else a.name
+    return if (a.status == AccountStatus.DELETED || a.status == AccountStatus.PURGED) {
+        "##${a.name}##"
+    } else {
+        a.name
+    }
 }
 
 @Composable
@@ -68,42 +72,102 @@ fun BookmarksScreen(key: BookmarksKey, vm: BookmarksViewModel = hiltViewModel())
     Scaffold(topBar = {
         NexoTopBar(stringResource(R.string.bookmarks), onBack = { nav.back() }) {
             if (editing) {
-                IconButton(onClick = { if (checked.isNotEmpty()) confirm = true }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
-                TextButton(onClick = { editing = false; checked = emptySet() }) { Text(stringResource(R.string.action_done)) }
+                IconButton(onClick = {
+                    if (checked.isNotEmpty()) confirm = true
+                }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
+                TextButton(onClick = {
+                    editing = false
+                    checked = emptySet()
+                }) { Text(stringResource(R.string.action_done)) }
             } else if (list.isNotEmpty()) {
-                IconButton(onClick = { editing = true }) { Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit)) }
+                IconButton(onClick = {
+                    editing = true
+                }) { Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit)) }
             }
         }
     }) { padding ->
         if (list.isEmpty()) {
             Column(Modifier.fillMaxSize().padding(padding).padding(24.dp)) {
-                Text(stringResource(R.string.bookmark_help_title), style = MaterialTheme.typography.titleMedium)
-                Text(stringResource(R.string.bookmark_help), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
+                Text(
+                    stringResource(R.string.bookmark_help_title),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    stringResource(R.string.bookmark_help),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
                 EmptyState()
             }
             return@Scaffold
         }
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(bottom = 24.dp)) {
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(bottom = 24.dp),
+        ) {
             itemsIndexed(list, key = { _, f -> f.id }) { index, f ->
                 Row(
                     Modifier.fillMaxWidth().clickable {
                         when {
-                            editing -> checked = if (f.id in checked) checked - f.id else checked + f.id
-                            key.pickForForm -> { vm.pickForForm(f.id); nav.back() }
-                            else -> nav.replace(EntryKey(mode = EntryMode.FAVORITE, favoriteId = f.id))
+                            editing ->
+                                checked =
+                                    if (f.id in checked) checked - f.id else checked + f.id
+
+                            key.pickForForm -> {
+                                vm.pickForForm(f.id)
+                                nav.back()
+                            }
+
+                            else -> nav.replace(
+                                EntryKey(mode = EntryMode.FAVORITE, favoriteId = f.id),
+                            )
                         }
                     }.padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (editing) Checkbox(f.id in checked, onCheckedChange = null, modifier = Modifier.padding(end = 8.dp))
+                    if (editing) {
+                        Checkbox(
+                            f.id in checked,
+                            onCheckedChange = null,
+                            modifier = Modifier.padding(end = 8.dp),
+                        )
+                    }
                     Column(Modifier.weight(1f)) {
                         Text(favoriteTitle(ref, f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(favoriteSubtitle(ref, f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, maxLines = 1)
-                        if (ref.settings.showDescription && f.description.isNotBlank()) Text(f.description.lines().first(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, maxLines = 1)
+                        Text(
+                            favoriteSubtitle(ref, f),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline,
+                            maxLines = 1,
+                        )
+                        if (ref.settings.showDescription && f.description.isNotBlank()) {
+                            Text(
+                                f.description.lines().first(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline,
+                                maxLines = 1,
+                            )
+                        }
                     }
                     if (editing) {
-                        IconButton(onClick = { vm.move(list.map { it.id }.toMutableList().apply { add(index - 1, removeAt(index)) }) }, enabled = index > 0) { Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up)) }
-                        IconButton(onClick = { vm.move(list.map { it.id }.toMutableList().apply { add(index + 1, removeAt(index)) }) }, enabled = index < list.size - 1) { Icon(Icons.Filled.ArrowDownward, stringResource(R.string.move_down)) }
+                        IconButton(onClick = {
+                            vm.move(
+                                list.map {
+                                    it.id
+                                }.toMutableList().apply { add(index - 1, removeAt(index)) },
+                            )
+                        }, enabled = index > 0) {
+                            Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up))
+                        }
+                        IconButton(onClick = {
+                            vm.move(
+                                list.map {
+                                    it.id
+                                }.toMutableList().apply { add(index + 1, removeAt(index)) },
+                            )
+                        }, enabled = index < list.size - 1) {
+                            Icon(Icons.Filled.ArrowDownward, stringResource(R.string.move_down))
+                        }
                     } else {
                         Text(
                             AmountFormatter.format(f.amount, ref.currency(f.currencyId)),
@@ -119,12 +183,21 @@ fun BookmarksScreen(key: BookmarksKey, vm: BookmarksViewModel = hiltViewModel())
             }
         }
     }
-    if (confirm) ConfirmDialog(stringResource(R.string.want_to_delete_n, checked.size), onConfirm = { vm.delete(checked.toList()); checked = emptySet() }, onDismiss = { confirm = false })
+    if (confirm) {
+        ConfirmDialog(stringResource(R.string.want_to_delete_n, checked.size), onConfirm = {
+            vm.delete(checked.toList())
+            checked = emptySet()
+        }, onDismiss = { confirm = false })
+    }
 }
 
 @Composable
 private fun favoriteTitle(ref: RefData, f: Favorite): String = f.note.ifBlank {
-    if (f.kind.isTransfer) "${accountLabel(ref, f.accountId)} → ${accountLabel(ref, f.toAccountId)}" else accountLabel(ref, f.accountId)
+    if (f.kind.isTransfer) {
+        "${accountLabel(ref, f.accountId)} → ${accountLabel(ref, f.toAccountId)}"
+    } else {
+        accountLabel(ref, f.accountId)
+    }
 }
 
 @Composable

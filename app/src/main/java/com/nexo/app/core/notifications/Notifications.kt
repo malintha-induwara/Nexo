@@ -51,33 +51,57 @@ object Notifications {
     fun ensureChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_REMINDER, context.getString(R.string.alarm_setting), NotificationManager.IMPORTANCE_HIGH).apply {
+            NotificationChannel(
+                CHANNEL_REMINDER,
+                context.getString(R.string.alarm_setting),
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
                 setSound(null, null)
                 enableVibration(false)
                 setShowBadge(false)
             },
         )
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_QUICK_ADD, context.getString(R.string.quick_add), NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) },
+            NotificationChannel(
+                CHANNEL_QUICK_ADD,
+                context.getString(R.string.quick_add),
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                setShowBadge(false)
+            },
         )
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_SMS, context.getString(R.string.sms_channel_name), NotificationManager.IMPORTANCE_DEFAULT).apply {
+            NotificationChannel(
+                CHANNEL_SMS,
+                context.getString(R.string.sms_channel_name),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
                 description = context.getString(R.string.sms_channel_description)
             },
         )
     }
 
-    fun canPost(context: Context): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    fun canPost(context: Context): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+        PackageManager.PERMISSION_GRANTED
 
-    private fun activityIntent(context: Context, action: String, request: Int, extra: (Intent.() -> Unit)? = null): PendingIntent {
+    private fun activityIntent(
+        context: Context,
+        action: String,
+        request: Int,
+        extra: (Intent.() -> Unit)? = null,
+    ): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {
             this.action = action
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             extra?.invoke(this)
         }
-        return PendingIntent.getActivity(context, request, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        return PendingIntent.getActivity(
+            context,
+            request,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 
     /** Persistent quick-add notification. Every action routes through the lock first. */
@@ -89,7 +113,12 @@ object Notifications {
         }
         if (!canPost(context)) return
         ensureChannels(context)
-        val repost = PendingIntent.getBroadcast(context, 10, Intent(context, QuickAddRepostReceiver::class.java), PendingIntent.FLAG_IMMUTABLE)
+        val repost = PendingIntent.getBroadcast(
+            context,
+            10,
+            Intent(context, QuickAddRepostReceiver::class.java),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
         val n = NotificationCompat.Builder(context, CHANNEL_QUICK_ADD)
             .setSmallIcon(R.drawable.ic_stat_nexo)
             .setColor(ContextCompat.getColor(context, R.color.brand))
@@ -98,11 +127,29 @@ object Notifications {
             .setOngoing(true)
             .setShowWhen(false)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setContentIntent(activityIntent(context, NexoIntents.ACTION_ADD, 20) { putExtra(NexoIntents.EXTRA_TYPE, EntryType.EXPENSE.name) })
+            .setContentIntent(
+                activityIntent(context, NexoIntents.ACTION_ADD, 20) {
+                    putExtra(NexoIntents.EXTRA_TYPE, EntryType.EXPENSE.name)
+                },
+            )
             .setDeleteIntent(repost)
-            .addAction(0, context.getString(R.string.add_transaction), activityIntent(context, NexoIntents.ACTION_ADD, 21) { putExtra(NexoIntents.EXTRA_TYPE, EntryType.EXPENSE.name) })
-            .addAction(0, context.getString(R.string.bookmarks), activityIntent(context, NexoIntents.ACTION_BOOKMARKS, 22))
-            .addAction(0, context.getString(R.string.search), activityIntent(context, NexoIntents.ACTION_SEARCH, 23))
+            .addAction(
+                0,
+                context.getString(R.string.add_transaction),
+                activityIntent(context, NexoIntents.ACTION_ADD, 21) {
+                    putExtra(NexoIntents.EXTRA_TYPE, EntryType.EXPENSE.name)
+                },
+            )
+            .addAction(
+                0,
+                context.getString(R.string.bookmarks),
+                activityIntent(context, NexoIntents.ACTION_BOOKMARKS, 22),
+            )
+            .addAction(
+                0,
+                context.getString(R.string.search),
+                activityIntent(context, NexoIntents.ACTION_SEARCH, 23),
+            )
             .build()
         try {
             nm.notify(ID_QUICK_ADD, n)
@@ -124,7 +171,9 @@ object Notifications {
             .setSmallIcon(R.drawable.ic_stat_nexo)
             .setColor(ContextCompat.getColor(context, R.color.brand))
             .setContentTitle(context.getString(R.string.sms_review_title))
-            .setContentText(context.resources.getQuantityString(R.plurals.sms_review_count, count, count))
+            .setContentText(
+                context.resources.getQuantityString(R.plurals.sms_review_count, count, count),
+            )
             .setNumber(count)
             .setOnlyAlertOnce(true)
             .setAutoCancel(true)
@@ -160,7 +209,12 @@ object Notifications {
 object ReminderScheduler {
     fun schedule(context: Context, enabled: Boolean, hour: Int, minute: Int) {
         val am = context.getSystemService(AlarmManager::class.java)
-        val pi = PendingIntent.getBroadcast(context, 40, Intent(context, ReminderReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val pi = PendingIntent.getBroadcast(
+            context,
+            40,
+            Intent(context, ReminderReceiver::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
         am.cancel(pi)
         if (!enabled) return
         val now = LocalDateTime.now()
@@ -175,10 +229,12 @@ object ReminderScheduler {
     }
 
     fun canScheduleExact(context: Context): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.S || context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 }
 
-private fun Context.entry() = EntryPointAccessors.fromApplication(applicationContext, NotificationsEntryPoint::class.java)
+private fun Context.entry() =
+    EntryPointAccessors.fromApplication(applicationContext, NotificationsEntryPoint::class.java)
 
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -187,8 +243,17 @@ class ReminderReceiver : BroadcastReceiver() {
             try {
                 val s = context.entry().prefs().getDeviceSettings()
                 // DayOfWeek 1 = Monday … 7 = Sunday.
-                if (s.reminderEnabled && LocalDate.now().dayOfWeek.value in s.reminderDays && s.setupDone) Notifications.postReminder(context)
-                ReminderScheduler.schedule(context, s.reminderEnabled, s.reminderHour, s.reminderMinute)
+                if (s.reminderEnabled && LocalDate.now().dayOfWeek.value in s.reminderDays &&
+                    s.setupDone
+                ) {
+                    Notifications.postReminder(context)
+                }
+                ReminderScheduler.schedule(
+                    context,
+                    s.reminderEnabled,
+                    s.reminderHour,
+                    s.reminderMinute,
+                )
             } finally {
                 pending.finish()
             }
@@ -202,7 +267,11 @@ class QuickAddRepostReceiver : BroadcastReceiver() {
         context.entry().appScope().launch {
             try {
                 val e = context.entry()
-                if (e.prefs().getDeviceSettings().setupDone && e.refs().getRefData().settings.quickAddNotification) Notifications.updateQuickAdd(context, true)
+                if (e.prefs().getDeviceSettings().setupDone &&
+                    e.refs().getRefData().settings.quickAddNotification
+                ) {
+                    Notifications.updateQuickAdd(context, true)
+                }
             } finally {
                 pending.finish()
             }
@@ -213,16 +282,29 @@ class QuickAddRepostReceiver : BroadcastReceiver() {
 /** After a reboot: re-post quick add and re-schedule the reminder. */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_MY_PACKAGE_REPLACED &&
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED &&
+            intent.action != Intent.ACTION_MY_PACKAGE_REPLACED &&
             intent.action != AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED
-        ) return
+        ) {
+            return
+        }
         val pending = goAsync()
         context.entry().appScope().launch {
             try {
                 val e = context.entry()
                 val s = e.prefs().getDeviceSettings()
-                if (s.setupDone) Notifications.updateQuickAdd(context, e.refs().getRefData().settings.quickAddNotification)
-                ReminderScheduler.schedule(context, s.reminderEnabled, s.reminderHour, s.reminderMinute)
+                if (s.setupDone) {
+                    Notifications.updateQuickAdd(
+                        context,
+                        e.refs().getRefData().settings.quickAddNotification,
+                    )
+                }
+                ReminderScheduler.schedule(
+                    context,
+                    s.reminderEnabled,
+                    s.reminderHour,
+                    s.reminderMinute,
+                )
             } finally {
                 pending.finish()
             }

@@ -25,7 +25,10 @@ class GetSmsFeePlanUseCase @Inject constructor(
             val estimate = item.estimatedAmount ?: return FeePlan.None
             val actual = item.actualAmount ?: return FeePlan.None
             if (actual <= estimate * (1 + FX_TOLERANCE)) return FeePlan.None
-            val difference = Money.round(actual - estimate, refs.getRefData().accountCurrency(account).decimals)
+            val difference = Money.round(
+                actual - estimate,
+                refs.getRefData().accountCurrency(account).decimals,
+            )
             return when (mode) {
                 FeeMode.NEVER -> FeePlan.None
                 FeeMode.AUTO -> FeePlan.Auto(route, difference)

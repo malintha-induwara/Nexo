@@ -84,7 +84,8 @@ data class BookSettings(
             val d = BookSettings()
             fun bool(key: String, def: Boolean) = map[key]?.toBooleanStrictOrNull() ?: def
             return BookSettings(
-                monthStartDay = map[Keys.MONTH_START_DAY]?.toIntOrNull()?.takeIf { it in 1..31 } ?: 1,
+                monthStartDay =
+                    map[Keys.MONTH_START_DAY]?.toIntOrNull()?.takeIf { it in 1..31 } ?: 1,
                 weekendRule = enumOr(map[Keys.WEEKEND_RULE], d.weekendRule),
                 weekStartDay = enumOr(map[Keys.WEEK_START_DAY], d.weekStartDay),
                 startScreen = enumOr(map[Keys.START_SCREEN], d.startScreen),

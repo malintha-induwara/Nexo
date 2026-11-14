@@ -25,10 +25,7 @@ sealed interface TagDialog {
     data class ConfirmDelete(val tag: Tag) : TagDialog
 }
 
-data class TagSettingsUiState(
-    val tags: List<Tag> = emptyList(),
-    val dialog: TagDialog? = null,
-)
+data class TagSettingsUiState(val tags: List<Tag> = emptyList(), val dialog: TagDialog? = null)
 
 @HiltViewModel
 class TagSettingsViewModel @Inject constructor(private val repo: TagsRepository) : ViewModel() {
@@ -51,17 +48,29 @@ class TagSettingsViewModel @Inject constructor(private val repo: TagsRepository)
     }
 
     fun add(name: String) = viewModelScope.launch {
-        if (repo.add(name) == TagResult.Exists) dialog.value = TagDialog.Add(nameTaken = true) else dismissDialog()
+        if (repo.add(name) == TagResult.Exists) {
+            dialog.value = TagDialog.Add(nameTaken = true)
+        } else {
+            dismissDialog()
+        }
     }
 
     fun rename(name: String) = viewModelScope.launch {
         val current = dialog.value as? TagDialog.Rename ?: return@launch
-        if (repo.rename(current.tag.id, name) == TagResult.Exists) dialog.update { current.copy(nameTaken = true) } else dismissDialog()
+        if (repo.rename(current.tag.id, name) == TagResult.Exists) {
+            dialog.update { current.copy(nameTaken = true) }
+        } else {
+            dismissDialog()
+        }
     }
 
     /** Unused tags go at once; a tag in use asks first. */
     fun requestDelete(tag: Tag) = viewModelScope.launch {
-        if (repo.usageCount(tag.id) > 0) dialog.value = TagDialog.ConfirmDelete(tag) else repo.delete(tag.id)
+        if (repo.usageCount(tag.id) > 0) {
+            dialog.value = TagDialog.ConfirmDelete(tag)
+        } else {
+            repo.delete(tag.id)
+        }
     }
 
     fun confirmDelete() = viewModelScope.launch {

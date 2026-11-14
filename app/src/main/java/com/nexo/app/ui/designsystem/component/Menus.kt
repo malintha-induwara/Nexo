@@ -45,13 +45,27 @@ fun NexoMenu(
 
 /** One choice in a [NexoMenu]. [danger] colours a destructive choice. */
 @Composable
-fun NexoMenuItem(label: String, onClick: () -> Unit, icon: ImageVector? = null, danger: Boolean = false) {
+fun NexoMenuItem(
+    label: String,
+    onClick: () -> Unit,
+    icon: ImageVector? = null,
+    danger: Boolean = false,
+) {
     val colors = LocalNexoColors.current
     val ink = if (danger) colors.danger else colors.text
     DropdownMenuItem(
         text = { Text(label, style = MaterialTheme.typography.bodyLarge, color = ink) },
         onClick = onClick,
-        leadingIcon = icon?.let { { Icon(it, null, tint = if (danger) colors.danger else colors.textSecondary, modifier = Modifier.size(20.dp)) } },
+        leadingIcon = icon?.let {
+            {
+                Icon(
+                    it,
+                    null,
+                    tint = if (danger) colors.danger else colors.textSecondary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        },
         contentPadding = PaddingValues(horizontal = Space.l),
     )
 }
