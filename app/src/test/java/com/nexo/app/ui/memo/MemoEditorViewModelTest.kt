@@ -1,5 +1,6 @@
 package com.nexo.app.ui.memo
 
+import androidx.lifecycle.SavedStateHandle
 import com.nexo.app.core.model.Memo
 import com.nexo.app.testing.FakeMemosRepository
 import com.nexo.app.testing.MainDispatcherRule
@@ -24,7 +25,14 @@ class MemoEditorViewModelTest {
     @Test
     fun newMemoIsSavedAndTheListScrollsToItsDate() = runTest {
         val memos = FakeMemosRepository()
-        val vm = MemoEditorViewModel(MemoEditorKey(date = "2026-11-02"), memos, home, fixedClock)
+        val vm =
+            MemoEditorViewModel(
+                MemoEditorKey(date = "2026-11-02"),
+                memos,
+                home,
+                fixedClock,
+                SavedStateHandle(),
+            )
         vm.initialize()
         assertTrue(vm.uiState.value.loaded)
         assertEquals(LocalDate.of(2026, 11, 2), vm.uiState.value.date)
@@ -46,7 +54,14 @@ class MemoEditorViewModelTest {
     @Test
     fun emptyingAnExistingMemoDeletesIt() = runTest {
         val memos = FakeMemosRepository(listOf(memo()))
-        val vm = MemoEditorViewModel(MemoEditorKey(memoId = "m1"), memos, home, fixedClock)
+        val vm =
+            MemoEditorViewModel(
+                MemoEditorKey(memoId = "m1"),
+                memos,
+                home,
+                fixedClock,
+                SavedStateHandle(),
+            )
         vm.initialize()
         assertEquals("Groceries", vm.uiState.value.title)
         assertEquals("milk", vm.uiState.value.content)
@@ -63,7 +78,14 @@ class MemoEditorViewModelTest {
     @Test
     fun editingKeepsTheMemoIdAndOrder() = runTest {
         val memos = FakeMemosRepository(listOf(memo()))
-        val vm = MemoEditorViewModel(MemoEditorKey(memoId = "m1"), memos, home, fixedClock)
+        val vm =
+            MemoEditorViewModel(
+                MemoEditorKey(memoId = "m1"),
+                memos,
+                home,
+                fixedClock,
+                SavedStateHandle(),
+            )
         vm.initialize()
         vm.setContent("milk, bread")
         vm.togglePin()
@@ -78,7 +100,14 @@ class MemoEditorViewModelTest {
 
     @Test
     fun closingIsHandledOnce() = runTest {
-        val vm = MemoEditorViewModel(MemoEditorKey(), FakeMemosRepository(), home, fixedClock)
+        val vm =
+            MemoEditorViewModel(
+                MemoEditorKey(),
+                FakeMemosRepository(),
+                home,
+                fixedClock,
+                SavedStateHandle(),
+            )
         vm.initialize()
         vm.saveAndClose().join()
         assertTrue(vm.uiState.value.closed)
@@ -95,4 +124,31 @@ class MemoEditorViewModelTest {
         orderSeq = 3,
         updatedAt = 0,
     )
+
+    @Test
+    fun aHalfWrittenMemoSurvivesTheProcessBeingKilled() = runTest {
+        val saved = SavedStateHandle()
+        val first =
+            MemoEditorViewModel(
+                MemoEditorKey(date = "2026-11-02"),
+                FakeMemosRepository(),
+                home,
+                fixedClock,
+                saved,
+            )
+        first.initialize()
+        first.setTitle("Groceries")
+        first.setContent("milk, eggs")
+
+        val again = MemoEditorViewModel(
+            MemoEditorKey(date = "2026-11-02"),
+            FakeMemosRepository(),
+            home,
+            fixedClock,
+            SavedStateHandle(mapOf("memo" to saved.get<String>("memo"))),
+        )
+        again.initialize()
+        assertEquals("Groceries", again.uiState.value.title)
+        assertEquals("milk, eggs", again.uiState.value.content)
+    }
 }

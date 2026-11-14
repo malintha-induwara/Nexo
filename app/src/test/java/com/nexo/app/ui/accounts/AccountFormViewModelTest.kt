@@ -1,6 +1,7 @@
 package com.nexo.app.ui.accounts
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.nexo.app.R
 import com.nexo.app.testing.MainDispatcherRule
@@ -47,8 +48,17 @@ class AccountFormViewModelTest {
 
     private suspend fun TestScope.openForm(
         key: AccountFormKey = AccountFormKey(),
+        saved: SavedStateHandle = SavedStateHandle(),
     ): AccountFormViewModel {
-        val vm = AccountFormViewModel(key, book.refs, book.accounts, book.transactions, book.clock)
+        val vm =
+            AccountFormViewModel(
+                key,
+                book.refs,
+                book.accounts,
+                book.transactions,
+                book.clock,
+                saved,
+            )
         backgroundScope.launch { vm.uiState.collect {} }
         vm.initialize()
         vm.uiState.first { it.loaded && it.ref.groups.isNotEmpty() }
@@ -99,5 +109,18 @@ class AccountFormViewModelTest {
         vm.onCloseHandled()
         // The state combines with reference data emitted elsewhere, so wait rather than read at once.
         assertNull(vm.uiState.first { it.close == null }.close)
+    }
+
+    @Test
+    fun aHalfFilledAccountSurvivesTheProcessBeingKilled() = runTest {
+        val saved = SavedStateHandle()
+        val first = openForm(saved = saved)
+        first.setName("Travel card")
+        first.setDescription("For the trip")
+        first.uiState.first { it.description == "For the trip" }
+
+        val restored = SavedStateHandle(mapOf("accountForm" to saved.get<String>("accountForm")))
+        val again = openForm(saved = restored).uiState.first { it.name == "Travel card" }
+        assertEquals("For the trip", again.description)
     }
 }

@@ -1,6 +1,7 @@
 package com.nexo.app.ui.entry
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.nexo.app.R
 import com.nexo.app.core.common.SystemZoneClock
@@ -50,7 +51,10 @@ class EntryViewModelTest {
         book.close()
     }
 
-    private suspend fun TestScope.openForm(key: EntryKey = EntryKey()): EntryViewModel {
+    private suspend fun TestScope.openForm(
+        key: EntryKey = EntryKey(),
+        saved: SavedStateHandle = SavedStateHandle(),
+    ): EntryViewModel {
         val b = book
         val vm = EntryViewModel(
             key,
@@ -67,6 +71,7 @@ class EntryViewModelTest {
             b.receipts,
             b.entryLoader,
             b.clock,
+            saved,
         )
         backgroundScope.launch { vm.uiState.collect {} }
         vm.initialize(EntryTexts(paymentNote = "Card payment"))
@@ -123,5 +128,24 @@ class EntryViewModelTest {
         assertNull(state.form.amount)
         assertNull(state.navigation)
         assertTrue(home.lastSaved.value != null)
+    }
+
+    @Test
+    fun typedInputSurvivesTheProcessBeingKilled() = runTest {
+        val saved = SavedStateHandle()
+        val first = openForm(saved = saved)
+        first.selectAccount("1")
+        first.calculatorResult(BigDecimal("980"))
+        first.setNote("Bus fare")
+        first.setTags(listOf("x"))
+        first.uiState.first { it.form.note == "Bus fare" }
+
+        // A new ViewModel gets only what the system kept.
+        val restored = SavedStateHandle(mapOf("entryForm" to saved.get<String>("entryForm")))
+        val form = openForm(saved = restored).uiState.first { it.form.note == "Bus fare" }.form
+        assertEquals("1", form.accountId)
+        assertEquals(980.0, form.amount)
+        assertEquals(listOf("x"), form.tagIds)
+        assertEquals(Panel.NONE, form.panel)
     }
 }

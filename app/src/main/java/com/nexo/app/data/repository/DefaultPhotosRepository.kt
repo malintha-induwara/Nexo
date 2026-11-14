@@ -17,6 +17,8 @@ class DefaultPhotosRepository @Inject constructor(
 
     override fun displayName(uri: Uri): String? = files.displayName(uri)
 
+    override suspend fun canRead(uri: Uri): Boolean = files.canRead(uri)
+
     override suspend fun importPhoto(uri: Uri): StoredPhoto? {
         val bytes = files.readBytes(uri) ?: return null
         val checksum = PhotoFileDataSource.md5(bytes)

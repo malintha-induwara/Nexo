@@ -13,6 +13,9 @@ interface PhotosRepository {
 
     fun displayName(uri: Uri): String?
 
+    /** Whether [uri] can still be opened; a picked file's permission ends with the process. */
+    suspend fun canRead(uri: Uri): Boolean
+
     /** Copies [uri] into the photo folder, reusing an identical stored file. */
     suspend fun importPhoto(uri: Uri): StoredPhoto?
 

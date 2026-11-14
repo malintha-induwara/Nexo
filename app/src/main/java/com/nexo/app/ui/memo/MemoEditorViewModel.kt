@@ -1,6 +1,7 @@
 package com.nexo.app.ui.memo
 
 import androidx.annotation.MainThread
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.period.toIsoText
@@ -8,6 +9,8 @@ import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.MemoColor
 import com.nexo.app.data.repository.MemosRepository
 import com.nexo.app.ui.HomeState
+import com.nexo.app.ui.common.getJson
+import com.nexo.app.ui.common.setJson
 import com.nexo.app.ui.navigation.MemoEditorKey
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -23,6 +26,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 
 data class MemoEditorUiState(
     val loaded: Boolean = false,
@@ -37,12 +41,36 @@ data class MemoEditorUiState(
     val closed: Boolean = false,
 )
 
+/** What the user typed into the memo; the rest is loaded again from the nav key. */
+@Serializable
+private data class SavedMemo(
+    val title: String,
+    val content: String,
+    val date: String,
+    val color: MemoColor,
+    val pinned: Boolean,
+) {
+    fun appliedTo(s: MemoEditorUiState) = s.copy(
+        title = title,
+        content = content,
+        date = LocalDate.parse(date),
+        color = color,
+        pinned = pinned,
+    )
+
+    companion object {
+        fun of(s: MemoEditorUiState) =
+            SavedMemo(s.title, s.content, s.date.toString(), s.color, s.pinned)
+    }
+}
+
 @HiltViewModel(assistedFactory = MemoEditorViewModel.Factory::class)
 class MemoEditorViewModel @AssistedInject constructor(
     @Assisted private val key: MemoEditorKey,
     private val memos: MemosRepository,
     private val home: HomeState,
     private val clock: Clock,
+    private val savedState: SavedStateHandle,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -81,6 +109,11 @@ class MemoEditorViewModel @AssistedInject constructor(
                             ?: LocalDate.now(clock),
                 )
             }
+            // Back after the process was killed: the typed memo over the loaded one.
+            savedState.getJson<SavedMemo>(SAVED_MEMO)?.let { saved ->
+                _uiState.update { saved.appliedTo(it) }
+            }
+            _uiState.collect { savedState.setJson(SAVED_MEMO, SavedMemo.of(it)) }
         }
     }
 
@@ -143,4 +176,8 @@ class MemoEditorViewModel @AssistedInject constructor(
     }
 
     fun onClosed() = _uiState.update { it.copy(closed = false) }
+
+    private companion object {
+        const val SAVED_MEMO = "memo"
+    }
 }

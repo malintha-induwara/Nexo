@@ -2,6 +2,7 @@ package com.nexo.app.ui.accounts
 
 import androidx.annotation.MainThread
 import androidx.annotation.StringRes
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
@@ -16,6 +17,8 @@ import com.nexo.app.core.model.Transaction
 import com.nexo.app.data.repository.AccountsRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
+import com.nexo.app.ui.common.getJson
+import com.nexo.app.ui.common.setJson
 import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.designsystem.UserMessage
 import com.nexo.app.ui.navigation.AccountFormKey
@@ -32,6 +35,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 
 data class AccountFormUiState(
     val loaded: Boolean = false,
@@ -62,6 +66,43 @@ data class AccountFormUiState(
 /** How the form closes: back to where it came from, or all the way to the main screen after a delete. */
 enum class AccountFormClose { BACK, TO_MAIN }
 
+/** What the user typed into the account form; balances and rows are loaded again. */
+@Serializable
+private data class SavedAccountForm(
+    val id: String,
+    val groupId: String?,
+    val name: String,
+    val amount: Double,
+    val currencyId: String,
+    val linkedAccountId: String?,
+    val description: String,
+    val settlementDay: Int,
+    val paymentDay: Int,
+    val includeInTotals: Boolean,
+    val hidden: Boolean,
+) {
+    fun appliedTo(s: AccountFormUiState) = s.copy(
+        id = if (s.isNew) id else s.id,
+        groupId = groupId,
+        name = name,
+        amount = amount,
+        currencyId = currencyId,
+        linkedAccountId = linkedAccountId,
+        description = description,
+        settlementDay = settlementDay,
+        paymentDay = paymentDay,
+        includeInTotals = includeInTotals,
+        hidden = hidden,
+    )
+
+    companion object {
+        fun of(s: AccountFormUiState) = SavedAccountForm(
+            s.id, s.groupId, s.name, s.amount, s.currencyId, s.linkedAccountId, s.description,
+            s.settlementDay, s.paymentDay, s.includeInTotals, s.hidden,
+        )
+    }
+}
+
 @HiltViewModel(assistedFactory = AccountFormViewModel.Factory::class)
 class AccountFormViewModel @AssistedInject constructor(
     @Assisted private val key: AccountFormKey,
@@ -69,6 +110,7 @@ class AccountFormViewModel @AssistedInject constructor(
     private val repo: AccountsRepository,
     private val transactions: TransactionsRepository,
     private val clock: Clock,
+    private val savedState: SavedStateHandle,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -141,6 +183,11 @@ class AccountFormViewModel @AssistedInject constructor(
                         a.status == AccountStatus.HIDDEN,
                 )
             }
+            // Back after the process was killed: the typed fields over the loaded account.
+            savedState.getJson<SavedAccountForm>(SAVED_FORM)?.let { saved ->
+                form.update { saved.appliedTo(it) }
+            }
+            form.collect { savedState.setJson(SAVED_FORM, SavedAccountForm.of(it)) }
         }
     }
 
@@ -290,4 +337,8 @@ class AccountFormViewModel @AssistedInject constructor(
     }
 
     fun onCloseHandled() = form.update { it.copy(close = null) }
+
+    private companion object {
+        const val SAVED_FORM = "accountForm"
+    }
 }

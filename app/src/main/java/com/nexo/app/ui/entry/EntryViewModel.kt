@@ -4,6 +4,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.annotation.MainThread
 import androidx.annotation.StringRes
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
@@ -30,6 +31,8 @@ import com.nexo.app.data.repository.TransactionImportRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.ui.HomeState
+import com.nexo.app.ui.common.getJson
+import com.nexo.app.ui.common.setJson
 import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.designsystem.UserMessage
 import com.nexo.app.ui.designsystem.component.PadInput
@@ -76,6 +79,7 @@ class EntryViewModel @AssistedInject constructor(
     private val receipts: ReceiptRepository,
     private val loader: EntryFormLoader,
     private val clock: Clock,
+    private val savedState: SavedStateHandle,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -127,10 +131,20 @@ class EntryViewModel @AssistedInject constructor(
             } else {
                 0
             }
-            form.value = loaded.copy(loaded = true, unassignedCount = unassigned)
-            originalState = form.value
-            if (!loaded.viewing && key.mode != EntryMode.PAY_CARD) advance()
+            val start = loaded.copy(loaded = true, unassignedCount = unassigned)
+            originalState = start
+            val saved = savedState.getJson<SavedEntryForm>(SAVED_FORM)
+            if (saved != null) {
+                // Back after the process was killed: the user's input over the freshly loaded form.
+                val readable = saved.photos.mapNotNull { it.uri }
+                    .filter { photos.canRead(Uri.parse(it)) }.toSet()
+                form.value = saved.appliedTo(start) { it in readable }
+            } else {
+                form.value = start
+                if (!loaded.viewing && key.mode != EntryMode.PAY_CARD) advance()
+            }
             loadSuggestions(r)
+            form.collect { savedState.setJson(SAVED_FORM, it.toSaved()) }
         }
         viewModelScope.launch {
             home.pickedFavorite.filterNotNull().collect { id ->
@@ -685,4 +699,8 @@ class EntryViewModel @AssistedInject constructor(
     fun markTransferGuideShown() = viewModelScope.launch { prefs.setTransferGuideShown() }
     fun markPhotoNoticeShown() = viewModelScope.launch { prefs.setPhotoNoticeShown() }
     fun setGroupedPicker(v: Boolean) = viewModelScope.launch { prefs.setGroupedPicker(v) }
+
+    private companion object {
+        const val SAVED_FORM = "entryForm"
+    }
 }

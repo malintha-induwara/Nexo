@@ -59,6 +59,11 @@ class PhotoFileDataSource @Inject constructor(
 
     fun isSupported(uri: Uri): Boolean = extensionOf(uri)?.let { it in SUPPORTED } ?: true
 
+    suspend fun canRead(uri: Uri): Boolean = withContext(ioDispatcher) {
+        runCatching { context.contentResolver.openFileDescriptor(uri, "r")?.use { true } }
+            .getOrNull() == true
+    }
+
     suspend fun readBytes(uri: Uri): ByteArray? = withContext(ioDispatcher) {
         context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
     }
