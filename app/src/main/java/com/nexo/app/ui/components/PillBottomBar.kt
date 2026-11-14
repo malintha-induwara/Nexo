@@ -7,8 +7,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,12 +19,15 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,11 +46,16 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import com.nexo.app.ui.theme.LocalNexoColors
 import com.nexo.app.ui.theme.NexoMotion
 import com.nexo.app.ui.theme.Sizes
@@ -57,7 +68,7 @@ data class BarItem(val label: String, val icon: ImageVector, val selectedIcon: I
 val PillBottomBarHeight = Sizes.bottomBar + Space.m * 2
 
 /**
- * Floating pill bar: two tabs, the add button, two tabs. A small dot slides to the selected
+ * Floating pill bar: two tabs, the add button, two tabs. A rounded highlight slides to the selected
  * tab. The area behind the bar fades to the page background so list content can scroll under it.
  */
 @Composable
@@ -72,15 +83,27 @@ fun PillBottomBar(
     require(items.size == 4) { "PillBottomBar takes two tabs either side of the add button" }
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
-    val centers = remember { mutableStateListOf(-1f, -1f, -1f, -1f) }
-    val dotX = remember { Animatable(0f) }
-    var dotPlaced by remember { mutableStateOf(false) }
-    val target = centers[selected.coerceIn(0, 3)]
+    val density = LocalDensity.current
+    val bounds = remember { mutableStateListOf(-1f to 0f, -1f to 0f, -1f to 0f, -1f to 0f) }
+    val thumbX = remember { Animatable(0f) }
+    val thumbW = remember { Animatable(0f) }
+    var thumbPlaced by remember { mutableStateOf(false) }
+    val target = bounds[selected.coerceIn(0, 3)]
     LaunchedEffect(target) {
-        if (target < 0) return@LaunchedEffect
-        if (dotPlaced) dotX.animateTo(target, NexoMotion.snappy()) else { dotX.snapTo(target); dotPlaced = true }
+        val (left, width) = target
+        if (left < 0) return@LaunchedEffect
+        if (thumbPlaced) {
+            coroutineScope {
+                launch { thumbX.animateTo(left, NexoMotion.snappy()) }
+                launch { thumbW.animateTo(width, NexoMotion.snappy()) }
+            }
+        } else {
+            thumbX.snapTo(left); thumbW.snapTo(width); thumbPlaced = true
+        }
     }
     val barColor = if (colors.isDark) colors.raised else colors.surface
+    // A wash of the text colour rather than the next grey step, which is barely visible on the dark bar.
+    val thumbColor = colors.text.copy(alpha = if (colors.isDark) 0.10f else 0.07f)
 
     Box(
         modifier
@@ -97,6 +120,18 @@ fun PillBottomBar(
                 .clip(CircleShape)
                 .background(barColor),
         ) {
+            if (thumbPlaced) {
+                Box(
+                    Modifier
+                        .align(Alignment.CenterStart)
+                        .offset { IntOffset((thumbX.value + THUMB_INSET.toPx()).toInt(), 0) }
+                        .width(with(density) { (thumbW.value.toDp() - THUMB_INSET * 2).coerceAtLeast(0.dp) })
+                        .fillMaxHeight()
+                        .padding(vertical = THUMB_INSET)
+                        .clip(CircleShape)
+                        .background(thumbColor),
+                )
+            }
             Row(Modifier.fillMaxWidth().fillMaxHeight().selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
                 items.forEachIndexed { i, item ->
                     if (i == 2) AddButton(onAdd, addLabel, Modifier.weight(1f))
@@ -107,44 +142,45 @@ fun PillBottomBar(
                             if (i != selected) haptics.tick()
                             onSelect(i)
                         },
-                        modifier = Modifier.weight(1f).onPlaced { c -> centers[i] = c.positionInParent().x + c.size.width / 2f },
+                        modifier = Modifier.weight(1f).onPlaced { c -> bounds[i] = c.positionInParent().x to c.size.width.toFloat() },
                     )
                 }
-            }
-            if (dotPlaced) {
-                Box(
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .offset { IntOffset((dotX.value - 2.dp.toPx()).toInt(), -10.dp.roundToPx()) }
-                        .size(4.dp)
-                        .clip(CircleShape)
-                        .background(colors.primaryText),
-                )
             }
         }
     }
 }
 
+private val THUMB_INSET = 5.dp
+
 @Composable
 private fun BarTab(item: BarItem, selected: Boolean, onClick: () -> Unit, modifier: Modifier) {
     val colors = LocalNexoColors.current
-    val tint by animateColorAsState(if (selected) colors.primaryText else colors.textTertiary, NexoMotion.standard(), label = "tab")
-    val bump by animateFloatAsState(if (selected) 1f else 0.92f, NexoMotion.snappy(), label = "tabScale")
-    Box(
+    val tint by animateColorAsState(if (selected) colors.text else colors.textSecondary, NexoMotion.standard(), label = "tab")
+    val bump by animateFloatAsState(if (selected) 1f else 0.94f, NexoMotion.snappy(), label = "tabScale")
+    Column(
         modifier
             .fillMaxHeight()
-            .selectable(selected, interactionSource = remember { MutableInteractionSource() }, indication = null, role = Role.Tab, onClick = onClick)
-            .semantics { contentDescription = item.label },
-        contentAlignment = Alignment.Center,
+            .selectable(selected, interactionSource = remember { MutableInteractionSource() }, indication = null, role = Role.Tab, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
         Crossfade(selected, animationSpec = NexoMotion.standard(), label = "tabIcon") { on ->
             Icon(
                 if (on) item.selectedIcon else item.icon,
                 contentDescription = null,
                 tint = tint,
-                modifier = Modifier.size(24.dp).graphicsLayer { scaleX = bump; scaleY = bump },
+                modifier = Modifier.size(22.dp).graphicsLayer { scaleX = bump; scaleY = bump },
             )
         }
+        Spacer(Modifier.height(2.dp))
+        Text(
+            item.label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            color = tint,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

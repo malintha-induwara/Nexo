@@ -67,7 +67,7 @@
     <string name="daily">Daily</string>
 
     <!-- Shell -->
-    <string name="tab_trans">Trans.</string>
+    <string name="tab_trans">Home</string>
     <string name="tab_stats">Stats</string>
     <string name="tab_accounts">Accounts</string>
     <string name="tab_more">More</string>
