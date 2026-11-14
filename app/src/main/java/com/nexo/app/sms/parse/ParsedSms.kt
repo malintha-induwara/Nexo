@@ -22,7 +22,7 @@ enum class IgnoreReason {
     /** OTP, security or marketing message (CB-007). */
     RULE,
 
-    /** A known bank, but no template or generic rule recognised it. */
+    /** A known bank, but no fixed format or general rule recognised it. */
     NO_MATCH,
 
     /** A cancellation with no earlier purchase to cancel (CB-004). */
@@ -71,7 +71,7 @@ internal object Amounts {
     fun parse(raw: String): BigDecimal? = raw.replace(",", "").toBigDecimalOrNull()?.setScale(2, RoundingMode.HALF_UP)?.takeIf { it.signum() > 0 }
 }
 
-/** CB-010: template messages dedupe on their parsed fields, so two byte-identical alerts seconds apart stay one item. */
+/** CB-010: fixed-format messages dedupe on their parsed fields, so two byte-identical alerts seconds apart stay one item. */
 object DedupeKeys {
     fun of(vararg parts: Any?): String {
         val joined = parts.joinToString("\u001F") { it?.toString().orEmpty() }

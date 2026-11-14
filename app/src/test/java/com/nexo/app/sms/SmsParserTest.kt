@@ -12,7 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDateTime
 
-/** Synthetic messages in ComBank's shapes (spec 03 templates). Names and amounts are invented. */
+/** Synthetic messages in the fixed formats (spec 03 shapes). Names and amounts are invented. */
 class SmsParserTest {
     private val parser = SmsParser()
     private val nov3 = LocalDateTime.of(2026, 11, 3, 19, 45).atZone(BodyDate.ZONE).toInstant().toEpochMilli()
@@ -156,6 +156,30 @@ class SmsParserTest {
     fun senderIsNormalised() {
         val p = parse("Dear Cardholder, Purchase at GREEN LEAF CAFE Kandy LK for LKR 2,450.00 on 03/11/26 07:45 PM has been authorised on your debit card ending #4321.", sender = "ComBank")
         assertTrue(p is ParsedSms.Movement)
+    }
+
+    @Test
+    fun formatsDoNotDependOnTheSender() {
+        val p = parser.parse(SmsMessage("SAMPATHTXN", "Purchase at GREEN LEAF CAFE Kandy LK for LKR 2,450.00 on 03/11/26 07:45 PM has been authorised on your debit card ending #4321.", nov3)) as ParsedSms.Movement
+        assertEquals(Bank.SAMPATH, p.bank)
+        assertEquals("purchase", p.template)
+        assertEquals(Certainty.EXACT, p.certainty)
+        assertEquals("GREEN LEAF CAFE Kandy", p.merchant.name)
+
+        val code = parser.parse(SmsMessage("SAMPATHTXN", "Sampath Online Transfer within Sampath Bank LKR 1,000.00 attempted. Please use code 987654 to approve.", nov3)) as ParsedSms.Movement
+        assertEquals("transfer_code", code.template)
+        assertEquals("within Sampath Bank", code.route)
+        assertEquals(FeeRoute.OWN_BANK_TRANSFER, code.feeRoute)
+    }
+
+    @Test
+    fun atmBankIsComparedWithTheSender() {
+        fun atm(sender: String, body: String) = (parser.parse(SmsMessage(sender, body, nov3)) as ParsedSms.Movement).feeRoute
+        val atComBank = "Withdrawal at Commercial Bank CITY BR WPLK for LKR 5,000.00 on 03/11/26 07:45 PM from card ending #4321."
+        assertNull(atm("COMBANK", atComBank))
+        assertEquals(FeeRoute.OTHER_BANK_ATM, atm("SAMPATHTXN", atComBank))
+        // The receipt footer names the sender's own ATMs, whatever the ATM name says.
+        assertNull(atm("SAMPATHTXN", "Withdrawal at BOC SQUARE BR WPLK for LKR 5,000.00 on 03/11/26 07:45 PM from card ending #4321. Receipt for Withdrawal performed at Sampath Bank ATMs"))
     }
 
     @Test

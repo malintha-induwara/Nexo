@@ -26,7 +26,7 @@ data class SmsItemEntity(
     /** [com.nexo.app.sms.parse.Bank] name. */
     val bank: String,
     val sender: String,
-    /** Template that recognised the message, e.g. "purchase", or "generic". */
+    /** Format that recognised the message, e.g. "purchase", or "generic" for the general rules. */
     val template: String,
     /** In [currency]; for a foreign-currency purchase this is the foreign amount. */
     val amount: Double,

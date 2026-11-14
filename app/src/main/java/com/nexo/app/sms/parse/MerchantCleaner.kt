@@ -13,7 +13,7 @@ data class Merchant(val raw: String, val name: String, val key: String) {
 object MerchantCleaner {
     private val ci = setOf(RegexOption.IGNORE_CASE)
 
-    // Step 1 (case-sensitive): ComBank ATM names end in a district code + LK; card descriptors in a 2-letter country.
+    // Step 1 (case-sensitive): Sri Lankan ATM names end in a district code + LK; card descriptors in a 2-letter country.
     private val atmSuffix = Regex("""\s?(?:[A-Z]{2}\s?)?LK$""")
     private val country = Regex("""\s[A-Z]{2}$""")
     private val phone = Regex("""\+\d{8,}""")

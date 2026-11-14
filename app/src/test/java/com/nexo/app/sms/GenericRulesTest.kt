@@ -10,8 +10,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Spec 01 worked examples (synthetic) plus the pitfalls it lists, through the generic pipeline. */
-class GenericParserTest {
+/** Spec 01 worked examples (synthetic) plus the pitfalls it lists, through the general rules. */
+class GenericRulesTest {
     private val parser = SmsParser()
     private fun parse(sender: String, body: String) = parser.parse(SmsMessage(sender, body, 1_793_700_000_000L))
     private fun movement(sender: String, body: String) = parse(sender, body) as ParsedSms.Movement
@@ -70,7 +70,7 @@ class GenericParserTest {
 
     @Test
     fun cardAndLoanPayments() {
-        // ComBank formats without a template fall through to the generic rules.
+        // Messages outside the fixed formats fall through to the general rules, whichever bank sent them.
         val cc = movement("COMBANK", "Own credit card payment of LKR 15,000.00 made to card no 4111XXXXXXXX1234 successful.")
         assertEquals(SmsKind.CARD_PAYMENT, cc.kind)
         assertEquals(FeeRoute.CC_PAYMENT, cc.feeRoute)
