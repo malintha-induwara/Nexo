@@ -20,10 +20,10 @@ import com.nexo.app.ui.backup.ExcelExportScreen
 import com.nexo.app.ui.backup.ImportListScreen
 import com.nexo.app.ui.backup.ImportPreviewScreen
 import com.nexo.app.ui.backup.RestoreFileScreen
-import com.nexo.app.ui.budgets.BudgetAddScreen
-import com.nexo.app.ui.budgets.BudgetDetailScreen
-import com.nexo.app.ui.budgets.BudgetEditorScreen
-import com.nexo.app.ui.budgets.BudgetSettingsScreen
+import com.nexo.app.ui.budgets.BudgetAddRoute
+import com.nexo.app.ui.budgets.BudgetDetailRoute
+import com.nexo.app.ui.budgets.BudgetEditorRoute
+import com.nexo.app.ui.budgets.BudgetSettingsRoute
 import com.nexo.app.ui.categories.CategoryFormRoute
 import com.nexo.app.ui.categories.CategoryListRoute
 import com.nexo.app.ui.categories.SubcategoryListRoute
@@ -84,10 +84,10 @@ fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<TransferExpenseKey> { TransferExpenseScreen() }
     entry<TotalStatsKey> { TotalStatsScreen() }
     entry<StatsDetailKey> { StatsDetailScreen(it) }
-    entry<BudgetDetailKey> { BudgetDetailScreen(it) }
-    entry<BudgetSettingsKey> { BudgetSettingsScreen() }
-    entry<BudgetAddKey> { BudgetAddScreen(it) }
-    entry<BudgetEditorKey> { BudgetEditorScreen(it) }
+    entry<BudgetDetailKey> { BudgetDetailRoute(it) }
+    entry<BudgetSettingsKey> { BudgetSettingsRoute() }
+    entry<BudgetAddKey> { BudgetAddRoute(it) }
+    entry<BudgetEditorKey> { BudgetEditorRoute(it) }
     entry<CategoryListKey> { CategoryListRoute(it) }
     entry<SubcategoryListKey> { SubcategoryListRoute(it) }
     entry<CategoryFormKey> { CategoryFormRoute(it) }

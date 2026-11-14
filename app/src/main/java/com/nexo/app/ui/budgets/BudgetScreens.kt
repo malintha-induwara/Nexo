@@ -38,14 +38,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.model.Budget
+import com.nexo.app.core.model.BudgetAmount
 import com.nexo.app.core.model.BudgetMath
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.Currency
+import com.nexo.app.domain.BudgetBlockData
 import com.nexo.app.domain.BudgetRow
 import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.AmountSheet
@@ -62,6 +66,8 @@ import com.nexo.app.ui.designsystem.component.NexoMenuItem
 import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.component.PeriodNavigator
 import com.nexo.app.ui.designsystem.component.SettingRow
+import com.nexo.app.ui.designsystem.preview.NexoPreview
+import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.Space
@@ -78,22 +84,47 @@ import java.time.YearMonth
 import kotlin.math.abs
 
 @Composable
-fun BudgetDetailScreen(key: BudgetDetailKey) {
+fun BudgetDetailRoute(key: BudgetDetailKey) {
     val vm =
         hiltViewModel<BudgetDetailViewModel, BudgetDetailViewModel.Factory>(creationCallback = {
             it.create(key)
         })
     val ui by vm.uiState.collectAsStateWithLifecycle()
+    val nav = LocalNavigator.current
+    BudgetDetailScreen(
+        ui = ui,
+        onBack = nav::back,
+        onSelectBudget = vm::selectBudget,
+        onAddBudgetFor = { nav.navigate(BudgetAddKey(categoryId = it, preset = true)) },
+        onEditBudget = { nav.navigate(BudgetEditorKey(it)) },
+        onStep = vm::step,
+        onSelectMonthIndex = vm::selectIndex,
+        onPickMonth = vm::setMonth,
+        onOpenTransaction = { nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = it)) },
+    )
+}
+
+@Composable
+internal fun BudgetDetailScreen(
+    ui: BudgetDetailUiState,
+    onBack: () -> Unit,
+    onSelectBudget: (budgetId: String) -> Unit,
+    onAddBudgetFor: (categoryId: String?) -> Unit,
+    onEditBudget: (budgetId: String) -> Unit,
+    onStep: (forward: Boolean) -> Unit,
+    onSelectMonthIndex: (Int) -> Unit,
+    onPickMonth: (YearMonth) -> Unit,
+    onOpenTransaction: (txId: String) -> Unit,
+) {
     val ref = ui.ref
     val month = ui.month
-    val nav = LocalNavigator.current
     val money = LocalMoneyColors.current
     var dropdown by rememberSaveable { mutableStateOf(false) }
     var picker by rememberSaveable { mutableStateOf(false) }
     val main = ref.mainCurrency
     val sel = ui.months.getOrNull(ui.selected)
     Scaffold(topBar = {
-        NexoTopBar(ui.name, onBack = { nav.back() }, titleContent = {
+        NexoTopBar(ui.name, onBack = onBack, titleContent = {
             Box {
                 Row(
                     Modifier.clickable(enabled = ui.siblings.isNotEmpty()) {
@@ -108,7 +139,7 @@ fun BudgetDetailScreen(key: BudgetDetailKey) {
                     ui.siblings.forEach { (id, name) ->
                         NexoMenuItem(name, {
                             dropdown = false
-                            vm.selectBudget(id)
+                            onSelectBudget(id)
                         })
                     }
                 }
@@ -116,15 +147,15 @@ fun BudgetDetailScreen(key: BudgetDetailKey) {
         }) {
             IconButton(onClick = {
                 if (ui.isVirtual) {
-                    nav.navigate(BudgetAddKey(categoryId = ui.categoryId, preset = true))
+                    onAddBudgetFor(ui.categoryId)
                 } else {
-                    nav.navigate(BudgetEditorKey(ui.budgetId))
+                    onEditBudget(ui.budgetId)
                 }
             }) { Icon(Icons.Outlined.Edit, stringResource(R.string.budget_setting)) }
         }
     }) { p ->
         Column(Modifier.fillMaxSize().padding(p)) {
-            PeriodNavigator(Formats.monthYear(month), { vm.step(false) }, { vm.step(true) }, {
+            PeriodNavigator(Formats.monthYear(month), { onStep(false) }, { onStep(true) }, {
                 picker = true
             }, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurface)
             if (sel != null) {
@@ -182,7 +213,7 @@ fun BudgetDetailScreen(key: BudgetDetailKey) {
                             listOf(ui.months.map { it.used }),
                             listOf(money.expenseFill),
                             selected = ui.selected,
-                            onSelect = vm::selectIndex,
+                            onSelect = onSelectMonthIndex,
                             targets = ui.months.map { it.budget },
                         )
                     }
@@ -192,31 +223,48 @@ fun BudgetDetailScreen(key: BudgetDetailKey) {
                 groups = ui.days,
                 main = main,
                 selection = emptySet(),
-                onRowClick = {
-                    nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = it.id))
-                },
+                onRowClick = { onOpenTransaction(it.id) },
                 onRowLongClick = null,
             )
         }
     }
-    if (picker) MonthPickerDialog(month, onPick = vm::setMonth, onDismiss = { picker = false })
+    if (picker) MonthPickerDialog(month, onPick = onPickMonth, onDismiss = { picker = false })
 }
 
 /** Budget Settings, plain or expandable. */
 @Composable
-fun BudgetSettingsScreen(vm: BudgetSettingsViewModel = hiltViewModel()) {
+fun BudgetSettingsRoute(vm: BudgetSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    BudgetSettingsScreen(
+        state = state,
+        onBack = nav::back,
+        onAdd = { nav.navigate(BudgetAddKey()) },
+        onAddBudgetFor = { nav.navigate(BudgetAddKey(categoryId = it, preset = true)) },
+        onEditBudget = { nav.navigate(BudgetEditorKey(it)) },
+        onDelete = vm::delete,
+    )
+}
+
+@Composable
+internal fun BudgetSettingsScreen(
+    state: BudgetSettingsUiState,
+    onBack: () -> Unit,
+    onAdd: () -> Unit,
+    onAddBudgetFor: (categoryId: String?) -> Unit,
+    onEditBudget: (budgetId: String) -> Unit,
+    onDelete: (budgetId: String) -> Unit,
+) {
     val data = state.list
     val ref = state.ref
     var confirm by rememberSaveable { mutableStateOf<String?>(null) }
     var expanded by rememberSaveable { mutableStateOf(setOf<String>()) }
     val main = ref.mainCurrency
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.budget_setting), onBack = { nav.back() }) {
-            IconButton(onClick = {
-                nav.navigate(BudgetAddKey())
-            }) { Icon(Icons.Filled.Add, stringResource(R.string.action_add)) }
+        NexoTopBar(stringResource(R.string.budget_setting), onBack = onBack) {
+            IconButton(onClick = onAdd) {
+                Icon(Icons.Filled.Add, stringResource(R.string.action_add))
+            }
         }
     }) { p ->
         LazyColumn(Modifier.padding(p), contentPadding = PaddingValues(bottom = 32.dp)) {
@@ -236,7 +284,7 @@ fun BudgetSettingsScreen(vm: BudgetSettingsViewModel = hiltViewModel()) {
             d.total?.let { t ->
                 item(key = "total") {
                     SettingsBudgetRow(t, main, onClick = {
-                        t.budgetId?.let { nav.navigate(BudgetEditorKey(it)) }
+                        t.budgetId?.let { onEditBudget(it) }
                     }, onDelete = {
                         confirm = t.budgetId
                     })
@@ -258,25 +306,18 @@ fun BudgetSettingsScreen(vm: BudgetSettingsViewModel = hiltViewModel()) {
                                                 row.categoryId!!
                                         }
 
-                                row.budgetId == null -> nav.navigate(
-                                    BudgetAddKey(categoryId = row.categoryId, preset = true),
-                                )
+                                row.budgetId == null -> onAddBudgetFor(row.categoryId)
 
-                                else -> nav.navigate(BudgetEditorKey(row.budgetId))
+                                else -> onEditBudget(row.budgetId)
                             }
                         },
                         onEdit = if (row.children.isNotEmpty()) {
                             (
                                 {
                                     if (row.budgetId == null) {
-                                        nav.navigate(
-                                            BudgetAddKey(
-                                                categoryId = row.categoryId,
-                                                preset = true,
-                                            ),
-                                        )
+                                        onAddBudgetFor(row.categoryId)
                                     } else {
-                                        nav.navigate(BudgetEditorKey(row.budgetId))
+                                        onEditBudget(row.budgetId)
                                     }
                                 }
                                 )
@@ -295,7 +336,7 @@ fun BudgetSettingsScreen(vm: BudgetSettingsViewModel = hiltViewModel()) {
                                     c,
                                     main,
                                     onClick = {
-                                        c.budgetId?.let { nav.navigate(BudgetEditorKey(it)) }
+                                        c.budgetId?.let { onEditBudget(it) }
                                     },
                                     onDelete = c.budgetId?.let { id ->
                                         {
@@ -312,7 +353,7 @@ fun BudgetSettingsScreen(vm: BudgetSettingsViewModel = hiltViewModel()) {
     }
     confirm?.let { id ->
         ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
-            vm.delete(id)
+            onDelete(id)
         }, onDismiss = {
             confirm = null
         })
@@ -365,16 +406,26 @@ private fun SettingsBudgetRow(
 }
 
 @Composable
-fun BudgetAddScreen(key: BudgetAddKey, vm: BudgetSettingsViewModel = hiltViewModel()) {
+fun BudgetAddRoute(key: BudgetAddKey, vm: BudgetSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val ref = state.ref
     LaunchedEffect(state.added) {
         if (state.added) {
             nav.back()
             vm.onAddedHandled()
         }
     }
+    BudgetAddScreen(key = key, state = state, onBack = nav::back, onAdd = vm::add)
+}
+
+@Composable
+internal fun BudgetAddScreen(
+    key: BudgetAddKey,
+    state: BudgetSettingsUiState,
+    onBack: () -> Unit,
+    onAdd: (categoryId: String?, amount: Double) -> Unit,
+) {
+    val ref = state.ref
     var target by rememberSaveable {
         mutableStateOf(if (key.presetTotal) "total" else key.categoryId)
     }
@@ -393,7 +444,7 @@ fun BudgetAddScreen(key: BudgetAddKey, vm: BudgetSettingsViewModel = hiltViewMod
         }
     }
     Scaffold(topBar = {
-        NexoTopBar(stringResource(R.string.add_budget), onBack = { nav.back() })
+        NexoTopBar(stringResource(R.string.add_budget), onBack = onBack)
     }) { p ->
         Column(Modifier.padding(p)) {
             SettingRow(
@@ -424,7 +475,7 @@ fun BudgetAddScreen(key: BudgetAddKey, vm: BudgetSettingsViewModel = hiltViewMod
                 if (t == null) {
                     error = true
                 } else {
-                    vm.add(if (t == "total") null else t, amount ?: 0.0)
+                    onAdd(if (t == "total") null else t, amount ?: 0.0)
                 }
             }, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Text(stringResource(R.string.action_save))
@@ -469,20 +520,40 @@ fun BudgetAddScreen(key: BudgetAddKey, vm: BudgetSettingsViewModel = hiltViewMod
 
 /** Monthly budget editor. */
 @Composable
-fun BudgetEditorScreen(key: BudgetEditorKey, vm: BudgetSettingsViewModel = hiltViewModel()) {
-    val clock = LocalClock.current
+fun BudgetEditorRoute(key: BudgetEditorKey, vm: BudgetSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val deleted = state.budgets.firstOrNull { it.id == key.budgetId }?.isDeleted
+    LaunchedEffect(deleted) { if (deleted == true) nav.back() }
+    BudgetEditorScreen(
+        budgetId = key.budgetId,
+        state = state,
+        onBack = nav::back,
+        onSetDefault = { vm.setDefault(key.budgetId, it) },
+        onSetMonth = { monthKey, amount -> vm.setMonth(key.budgetId, monthKey, amount) },
+        onDelete = { vm.delete(key.budgetId) },
+    )
+}
+
+@Composable
+internal fun BudgetEditorScreen(
+    budgetId: String,
+    state: BudgetSettingsUiState,
+    onBack: () -> Unit,
+    onSetDefault: (amount: Double) -> Unit,
+    onSetMonth: (monthKey: Int, amount: Double) -> Unit,
+    onDelete: () -> Unit,
+) {
+    val clock = LocalClock.current
     val ref = state.ref
     val budgets = state.budgets
     val amounts = state.amounts
-    val budget = budgets.firstOrNull { it.id == key.budgetId }
-    val records = amounts.filter { it.budgetId == key.budgetId }
+    val budget = budgets.firstOrNull { it.id == budgetId }
+    val records = amounts.filter { it.budgetId == budgetId }
     val currentLabel = ref.settings.periods.monthPeriodContaining(LocalDate.now(clock)).label
     var year by rememberSaveable { mutableIntStateOf(currentLabel.year) }
     var editing by rememberSaveable { mutableStateOf<Int?>(null) }
     var confirm by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(budget?.isDeleted) { if (budget?.isDeleted == true) nav.back() }
     val title = if (budget?.categoryId == null) {
         stringResource(R.string.total_budget)
     } else {
@@ -490,7 +561,7 @@ fun BudgetEditorScreen(key: BudgetEditorKey, vm: BudgetSettingsViewModel = hiltV
     }
     val main = ref.mainCurrency
     Scaffold(topBar = {
-        NexoTopBar(title, onBack = { nav.back() }) {
+        NexoTopBar(title, onBack = onBack) {
             IconButton(onClick = {
                 confirm = true
             }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
@@ -563,9 +634,9 @@ fun BudgetEditorScreen(key: BudgetEditorKey, vm: BudgetSettingsViewModel = hiltV
             onConfirm = { v ->
                 val a = abs(v ?: 0.0)
                 if (k == 0) {
-                    vm.setDefault(key.budgetId, a)
+                    onSetDefault(a)
                 } else {
-                    vm.setMonth(key.budgetId, k, a)
+                    onSetMonth(k, a)
                 }
             },
             onDismiss = { editing = null },
@@ -573,9 +644,106 @@ fun BudgetEditorScreen(key: BudgetEditorKey, vm: BudgetSettingsViewModel = hiltV
     }
     if (confirm) {
         ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
-            vm.delete(key.budgetId)
+            onDelete()
         }, onDismiss = {
             confirm = false
         })
     }
+}
+
+private val previewMonth = PreviewData.ref.settings.periods.monthPeriodContaining(PreviewData.today)
+
+private val previewBudgets = listOf(
+    Budget("total", null, 0, updatedAt = 0),
+    Budget("cat_food", "food", 1, updatedAt = 0),
+)
+
+private val previewAmounts = listOf(
+    BudgetAmount("total_0", "total", 0, 120_000.0, updatedAt = 0),
+    BudgetAmount("cat_food_0", "cat_food", 0, 40_000.0, updatedAt = 0),
+    BudgetAmount(
+        "cat_food_${previewMonth.key}",
+        "cat_food",
+        previewMonth.key,
+        45_000.0,
+        updatedAt = 0,
+    ),
+)
+
+private val previewSettingsState = BudgetSettingsUiState(
+    ref = PreviewData.ref,
+    budgets = previewBudgets,
+    amounts = previewAmounts,
+    list = BudgetBlockData(
+        total = BudgetRow("total", null, "", 120_000.0, 0.0, isTotal = true),
+        rows = listOf(
+            BudgetRow("cat_food", "food", "Food", 45_000.0, 0.0),
+            BudgetRow(null, "transport", "Transport", 0.0, 0.0),
+        ),
+    ),
+)
+
+@Preview
+@Composable
+private fun BudgetDetailScreenPreview() = NexoPreview {
+    val periods = PreviewData.ref.settings.periods
+    BudgetDetailScreen(
+        ui = BudgetDetailUiState(
+            loaded = true,
+            ref = PreviewData.ref,
+            month = previewMonth.label,
+            budgetId = "cat_food",
+            name = "Food",
+            categoryId = "food",
+            months = periods.yearPeriods(previewMonth.label.year).map {
+                BudgetMonth(it, 40_000.0, if (it.label <= previewMonth.label) 32_500.0 else 0.0)
+            },
+            selected = previewMonth.label.monthValue - 1,
+        ),
+        onBack = {},
+        onSelectBudget = {},
+        onAddBudgetFor = {},
+        onEditBudget = {},
+        onStep = {},
+        onSelectMonthIndex = {},
+        onPickMonth = {},
+        onOpenTransaction = {},
+    )
+}
+
+@Preview
+@Composable
+private fun BudgetSettingsScreenPreview() = NexoPreview {
+    BudgetSettingsScreen(
+        state = previewSettingsState,
+        onBack = {},
+        onAdd = {},
+        onAddBudgetFor = {},
+        onEditBudget = {},
+        onDelete = {},
+    )
+}
+
+@Preview
+@Composable
+private fun BudgetAddScreenPreview() = NexoPreview {
+    BudgetAddScreen(
+        key = BudgetAddKey(categoryId = "transport", preset = true),
+        state = previewSettingsState,
+        onBack = {},
+        onAdd = { _, _ -> },
+    )
+}
+
+@Preview
+@Composable
+private fun BudgetEditorScreenPreview() = NexoPreview {
+    BudgetEditorScreen(
+        budgetId = "cat_food",
+        state = previewSettingsState,
+        onBack = {},
+        onSetDefault = {},
+        onSetMonth = { _, _ -> },
+        onDelete = {},
+    )
 }
