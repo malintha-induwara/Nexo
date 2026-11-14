@@ -35,10 +35,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.model.CategoryKind
@@ -137,7 +139,7 @@ private fun errorText(row: ImportRow): String? {
 fun ImportPreviewScreen(key: ImportPreviewKey, vm: BackupViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
-    val resources = androidx.compose.ui.platform.LocalResources.current
+    val resources = LocalResources.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
     val busy = state.busy
@@ -163,7 +165,7 @@ fun ImportPreviewScreen(key: ImportPreviewKey, vm: BackupViewModel = hiltViewMod
         }
         vm.onResultHandled()
     }
-    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+    LifecycleResumeEffect(Unit) {
         reload++
         onPauseOrDispose {}
     }

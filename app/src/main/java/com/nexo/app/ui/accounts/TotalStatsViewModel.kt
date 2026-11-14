@@ -16,6 +16,7 @@ import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +32,7 @@ class TotalStatsViewModel @Inject constructor(refs: ReferenceDataRepository, pri
     private val ref = refs.getRefDataStream().stateIn(viewModelScope, SharingStarted.Eagerly, RefData())
     private val anchor = MutableStateFlow(LocalDate.now())
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<TotalStatsUiState> = combine(ref, anchor, transactions.getChangeStampStream()) { r, a, _ -> r to a }.mapLatest { (r, a) ->
         val e = r.settings.periods
         var p = e.monthPeriodContaining(a)

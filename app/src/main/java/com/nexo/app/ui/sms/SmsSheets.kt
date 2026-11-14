@@ -16,9 +16,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +35,8 @@ import com.nexo.app.core.model.RefData
 import com.nexo.app.ui.designsystem.component.SectionHeader
 import com.nexo.app.ui.designsystem.component.rememberHaptics
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import com.nexo.app.ui.designsystem.theme.NexoShapes
+import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
 
 /** Title and optional hint at the top of an inline sheet. */
@@ -107,21 +112,21 @@ fun SmsPromptCard(
     val colors = LocalNexoColors.current
     Column(
         modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.s)
-            .clip(com.nexo.app.ui.designsystem.theme.NexoShapes.panel).background(colors.surface).padding(Space.l),
+            .clip(NexoShapes.panel).background(colors.surface).padding(Space.l),
     ) {
         Text(title, style = MaterialTheme.typography.titleSmall, color = colors.text)
         if (text != null) {
             Spacer(Modifier.size(Space.xxs))
-            Text(text, style = com.nexo.app.ui.designsystem.theme.NexoType.Meta, color = colors.textSecondary)
+            Text(text, style = NexoType.Meta, color = colors.textSecondary)
         }
         Spacer(Modifier.size(Space.m))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            androidx.compose.material3.Button(
+            Button(
                 onClick = onPrimary,
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
+                colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
             ) { Text(primary, style = MaterialTheme.typography.labelLarge) }
             if (secondary != null && onSecondary != null) {
-                androidx.compose.material3.TextButton(onClick = onSecondary, modifier = Modifier.padding(start = Space.s)) {
+                TextButton(onClick = onSecondary, modifier = Modifier.padding(start = Space.s)) {
                     Text(secondary, color = colors.textSecondary)
                 }
             }

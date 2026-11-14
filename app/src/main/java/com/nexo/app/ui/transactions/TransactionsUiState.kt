@@ -3,6 +3,7 @@ package com.nexo.app.ui.transactions
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.MonthPeriod
 import com.nexo.app.core.model.CashFlow
+import com.nexo.app.core.model.Ledger
 import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.MemoColor
 import com.nexo.app.core.model.RefData
@@ -60,7 +61,7 @@ data class HomeData(
     val periodRows: List<Transaction> = emptyList(),
     val gridRows: List<Transaction> = emptyList(),
     val carryOver: Double = 0.0,
-    val ledger: com.nexo.app.core.model.Ledger = com.nexo.app.core.model.Ledger(),
+    val ledger: Ledger = Ledger(),
 )
 
 /** Main-screen filter. */

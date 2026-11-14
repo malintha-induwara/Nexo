@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -174,10 +175,10 @@ fun TagSelectSheet(
     }
     deleting?.let { tag ->
         var used by remember(tag.id) { mutableStateOf<Int?>(null) }
-        androidx.compose.runtime.LaunchedEffect(tag.id) { used = actions.usageCount(tag.id) }
+        LaunchedEffect(tag.id) { used = actions.usageCount(tag.id) }
         when (used) {
             null -> Unit
-            0 -> androidx.compose.runtime.LaunchedEffect(Unit) {
+            0 -> LaunchedEffect(Unit) {
                 actions.delete(tag.id)
                 selected = selected - tag.id
                 deleting = null

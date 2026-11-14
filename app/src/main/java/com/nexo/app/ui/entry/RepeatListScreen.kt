@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,6 +57,7 @@ import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 /** Estimated occurrences of a rule in the current month period. */
 fun estimatedCount(rule: RepeatRule, period: MonthPeriod): Int {
@@ -76,7 +78,7 @@ fun estimatedCount(rule: RepeatRule, period: MonthPeriod): Int {
                 RepeatType.BIWEEKLY -> 14L
                 else -> 28L
             }
-            days.count { java.time.temporal.ChronoUnit.DAYS.between(next, it).mod(step) == 0L }
+            days.count { ChronoUnit.DAYS.between(next, it).mod(step) == 0L }
         }
         RepeatType.NONE -> 0
     }
@@ -178,7 +180,7 @@ fun RepeatListScreen(vm: RepeatListViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun RuleRow(r: RepeatRule, ref: RefData, editing: Boolean, checked: Boolean, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+private fun RuleRow(r: RepeatRule, ref: RefData, editing: Boolean, checked: Boolean, color: Color, onClick: () -> Unit) {
     val accountText = if (r.kind.isTransfer) "${accountLabel(ref, r.accountId)} → ${accountLabel(ref, r.toAccountId)}"
     else {
         val main = ref.categoryName(ref.mainCategoryId(r.categoryId)) ?: ""

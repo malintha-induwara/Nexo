@@ -23,6 +23,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import kotlin.math.abs
 
 data class TxRowUi(
     val id: String,
@@ -115,8 +116,8 @@ class TransactionRowMapper(private val ref: RefData) {
         val label = UiText.of(R.string.carry_over)
         return TxRowUi(
             id = "carry_over", tx = null, category = label, subCategory = null, title = label, titleIsNote = true, accountText = UiText.Empty,
-            time = null, tags = null, descriptionLine = null, hasPhoto = false, flow = flow, amount = kotlin.math.abs(amount),
-            amountText = AmountFormatter.format(kotlin.math.abs(amount), ref.mainCurrency), amountMain = kotlin.math.abs(amount), isCarryOver = true,
+            time = null, tags = null, descriptionLine = null, hasPhoto = false, flow = flow, amount = abs(amount),
+            amountText = AmountFormatter.format(abs(amount), ref.mainCurrency), amountMain = abs(amount), isCarryOver = true,
             currency = ref.mainCurrency,
         )
     }

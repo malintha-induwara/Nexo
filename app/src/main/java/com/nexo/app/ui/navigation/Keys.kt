@@ -3,6 +3,7 @@ package com.nexo.app.ui.navigation
 import androidx.navigation3.runtime.NavKey
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.EntryType
+import com.nexo.app.core.model.RepeatType
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -26,7 +27,7 @@ data class EntryKey(
     val importOrder: String? = null,
     val reviewUnassigned: Boolean = false,
     val sourceText: String? = null,
-    val repeat: com.nexo.app.core.model.RepeatType? = null,
+    val repeat: RepeatType? = null,
     /** When true the form opens on top of the main screen from a shortcut or notification. */
     val external: Boolean = false,
     /** Opened from an add button: the form is shown as a drawer over the current screen. */

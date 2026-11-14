@@ -2,6 +2,7 @@ package com.nexo.app.data.repository
 
 import android.content.Context
 import android.net.Uri
+import android.text.format.DateFormat
 import androidx.room.withTransaction
 import com.nexo.app.R
 import com.nexo.app.core.common.Dispatcher
@@ -9,6 +10,7 @@ import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.core.common.money.Conversion
 import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.common.period.toIsoText
+import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.DateOrder
 import com.nexo.app.core.model.ImportError
@@ -100,7 +102,7 @@ class DefaultTransactionImportRepository @Inject constructor(
     }
 
     override fun deviceDateOrder(): DateOrder {
-        val p = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "yyyyMMdd").filter { it in "yMd" }.toList().distinct().joinToString("")
+        val p = DateFormat.getBestDateTimePattern(Locale.getDefault(), "yyyyMMdd").filter { it in "yMd" }.toList().distinct().joinToString("")
         return when (p) {
             "yMd" -> DateOrder.YMD
             "ydM" -> DateOrder.YDM
@@ -146,7 +148,7 @@ class DefaultTransactionImportRepository @Inject constructor(
         val currency = if (size >= 10) matchCurrency(ref, col(9)) else ref.mainCurrency.id
         val amount = if (size >= 10 && col(8).isNotBlank()) parseNumber(col(8)) else main
         val accountAmount = if (size >= 11 && col(10).isNotBlank()) parseNumber(col(10)) else null
-        val activeAccounts = ref.accounts.filter { it.status != com.nexo.app.core.model.AccountStatus.DELETED && it.status != com.nexo.app.core.model.AccountStatus.PURGED }
+        val activeAccounts = ref.accounts.filter { it.status != AccountStatus.DELETED && it.status != AccountStatus.PURGED }
         fun account(name: String) = activeAccounts.firstOrNull { it.name == name }?.id
         var error: ImportError? = null
         var categoryId: String? = null

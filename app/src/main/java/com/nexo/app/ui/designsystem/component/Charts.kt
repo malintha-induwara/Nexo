@@ -1,5 +1,6 @@
 package com.nexo.app.ui.designsystem.component
 
+import android.graphics.Paint
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
@@ -19,18 +20,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.content.res.ResourcesCompat
 import com.nexo.app.R
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -79,31 +90,31 @@ private class Plot(val left: Float, val top: Float, val width: Float, val height
 private val PlotGutter = 40.dp
 
 /** Draws the hairline grid with its value ticks and the labels under the slots; returns the plot area. */
-private fun DrawScope.drawPlotFrame(labels: List<String>, scale: AxisScale, grid: Color, ink: android.graphics.Paint): Plot {
+private fun DrawScope.drawPlotFrame(labels: List<String>, scale: AxisScale, grid: Color, ink: Paint): Plot {
     val plot = Plot(PlotGutter.toPx(), 8.dp.toPx(), size.width - PlotGutter.toPx(), size.height - 30.dp.toPx(), labels.size, scale)
     var v = scale.bottom
     while (v <= scale.top + scale.step / 2) {
         val y = plot.y(v)
         drawLine(grid, Offset(plot.left, y), Offset(size.width, y), 1.dp.toPx())
-        ink.textAlign = android.graphics.Paint.Align.RIGHT
+        ink.textAlign = Paint.Align.RIGHT
         drawContext.canvas.nativeCanvas.drawText(tickLabel(v), plot.left - 8.dp.toPx(), y + ink.textSize * 0.35f, ink)
         v += scale.step
     }
-    ink.textAlign = android.graphics.Paint.Align.CENTER
+    ink.textAlign = Paint.Align.CENTER
     labels.forEachIndexed { i, l -> drawContext.canvas.nativeCanvas.drawText(l, plot.x(i), size.height - 4.dp.toPx(), ink) }
     return plot
 }
 
 @Composable
-private fun rememberAxisInk(color: Color): android.graphics.Paint {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val size = with(androidx.compose.ui.platform.LocalDensity.current) { 11.dp.toPx() }
+private fun rememberAxisInk(color: Color): Paint {
+    val context = LocalContext.current
+    val size = with(LocalDensity.current) { 11.dp.toPx() }
     return remember(color, size) {
-        android.graphics.Paint().apply {
+        Paint().apply {
             isAntiAlias = true
             textSize = size
             this.color = color.toArgb()
-            typeface = androidx.core.content.res.ResourcesCompat.getFont(context, R.font.figtree_variable)
+            typeface = ResourcesCompat.getFont(context, R.font.figtree_variable)
             fontVariationSettings = "'wght' 500"
         }
     }
@@ -111,7 +122,7 @@ private fun rememberAxisInk(color: Color): android.graphics.Paint {
 
 /** Picks the slot under a tap or a sideways drag, so a value can be scrubbed. */
 private fun Modifier.pickSlot(count: Int, onPick: (Int) -> Unit): Modifier {
-    fun androidx.compose.ui.input.pointer.PointerInputScope.slotAt(x: Float): Int {
+    fun PointerInputScope.slotAt(x: Float): Int {
         val left = PlotGutter.toPx()
         return ((x - left) / ((size.width - left) / count)).toInt().coerceIn(0, count - 1)
     }
@@ -134,10 +145,10 @@ fun AreaChart(
     selected: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    height: androidx.compose.ui.unit.Dp = 172.dp,
+    height: Dp = 172.dp,
 ) {
     if (labels.isEmpty() || values.size != labels.size) return
-    val colors = com.nexo.app.ui.designsystem.theme.LocalNexoColors.current
+    val colors = LocalNexoColors.current
     val ink = rememberAxisInk(colors.textTertiary)
     val scale = remember(values) { axisScale(values) }
     val reveal = remember { Animatable(0f) }
@@ -167,7 +178,7 @@ fun AreaChart(
         }
         clipRect(right = plot.left + plot.width * reveal.value) {
             drawPath(area, color.copy(alpha = 0.12f))
-            drawPath(line, color, style = Stroke(2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+            drawPath(line, color, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
         if (selected in values.indices && reveal.value > 0.98f) {
             val x = plot.x(selected)
@@ -191,12 +202,12 @@ fun ColumnChart(
     selected: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    height: androidx.compose.ui.unit.Dp = 172.dp,
+    height: Dp = 172.dp,
     targets: List<Double>? = null,
-    targetColor: Color = com.nexo.app.ui.designsystem.theme.LocalNexoColors.current.text,
+    targetColor: Color = LocalNexoColors.current.text,
 ) {
     if (labels.isEmpty() || series.isEmpty()) return
-    val colors = com.nexo.app.ui.designsystem.theme.LocalNexoColors.current
+    val colors = LocalNexoColors.current
     val ink = rememberAxisInk(colors.textTertiary)
     val scale = remember(series, targets) { axisScale(series.flatten() + targets.orEmpty()) }
     val grow = remember { Animatable(0f) }
@@ -208,7 +219,7 @@ fun ColumnChart(
         val plot = drawPlotFrame(labels, scale, colors.hairline, ink)
         if (selected in labels.indices) {
             val inset = 4.dp.toPx()
-            drawRoundRect(colors.raised, Offset(plot.left + plot.slot * selected + inset, plot.top), Size(plot.slot - inset * 2, plot.height), androidx.compose.ui.geometry.CornerRadius(8.dp.toPx()))
+            drawRoundRect(colors.raised, Offset(plot.left + plot.slot * selected + inset, plot.top), Size(plot.slot - inset * 2, plot.height), CornerRadius(8.dp.toPx()))
             // The grid stays readable through the band.
             var v = scale.bottom
             while (v <= scale.top + scale.step / 2) {
@@ -225,12 +236,12 @@ fun ColumnChart(
                 if (v == 0.0 || i >= labels.size) return@forEachIndexed
                 val x = plot.left + plot.slot * i + (plot.slot - group) / 2 + (thick + gap) * s
                 val end = plot.y(v * grow.value)
-                val r = androidx.compose.ui.geometry.CornerRadius(min(4.dp.toPx(), min(thick / 2, abs(end - zero))))
-                val none = androidx.compose.ui.geometry.CornerRadius.Zero
+                val r = CornerRadius(min(4.dp.toPx(), min(thick / 2, abs(end - zero))))
+                val none = CornerRadius.Zero
                 val up = end < zero
                 val bar = Path().apply {
                     addRoundRect(
-                        androidx.compose.ui.geometry.RoundRect(
+                        RoundRect(
                             x, min(end, zero), x + thick, max(end, zero),
                             topLeftCornerRadius = if (up) r else none, topRightCornerRadius = if (up) r else none,
                             bottomLeftCornerRadius = if (up) none else r, bottomRightCornerRadius = if (up) none else r,

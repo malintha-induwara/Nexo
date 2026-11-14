@@ -48,7 +48,10 @@ import com.nexo.app.ui.settings.SubCurrenciesScreen
 import com.nexo.app.ui.settings.SubCurrencyEditScreen
 import com.nexo.app.ui.shell.MainShell
 import com.nexo.app.ui.sms.SmsCardsScreen
+import com.nexo.app.ui.sms.SmsFeesScreen
+import com.nexo.app.ui.sms.SmsHistoryScreen
 import com.nexo.app.ui.sms.SmsQueueScreen
+import com.nexo.app.ui.sms.SmsSendersScreen
 import com.nexo.app.ui.sms.SmsSettingsScreen
 import com.nexo.app.ui.stats.StatsDetailScreen
 import com.nexo.app.ui.tags.TagSettingsScreen
@@ -59,9 +62,9 @@ fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<SmsQueueKey> { SmsQueueScreen() }
     entry<SmsSettingsKey> { SmsSettingsScreen() }
     entry<SmsCardsKey> { SmsCardsScreen() }
-    entry<SmsFeesKey> { com.nexo.app.ui.sms.SmsFeesScreen() }
-    entry<SmsHistoryKey> { com.nexo.app.ui.sms.SmsHistoryScreen(it) }
-    entry<SmsSendersKey> { com.nexo.app.ui.sms.SmsSendersScreen() }
+    entry<SmsFeesKey> { SmsFeesScreen() }
+    entry<SmsHistoryKey> { SmsHistoryScreen(it) }
+    entry<SmsSendersKey> { SmsSendersScreen() }
     entry<EntryKey>(metadata = { key -> if (key.fromAdd) SheetSceneStrategy.sheet(key) else emptyMap() }) { EntryScreen(it) }
     entry<BookmarksKey> { BookmarksScreen(it) }
     entry<RepeatListKey> { RepeatListScreen() }

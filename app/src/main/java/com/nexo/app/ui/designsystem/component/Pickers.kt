@@ -1,5 +1,6 @@
 package com.nexo.app.ui.designsystem.component
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,6 +31,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -80,7 +82,7 @@ fun NexoDatePickerDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NexoTimePickerDialog(initial: LocalTime, onPick: (LocalTime) -> Unit, onDismiss: () -> Unit) {
-    val is24 = android.text.format.DateFormat.is24HourFormat(LocalContext.current)
+    val is24 = DateFormat.is24HourFormat(LocalContext.current)
     val state = rememberTimePickerState(initial.hour, initial.minute, is24)
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -137,7 +139,7 @@ fun DateRangeChips(
     end: LocalDate,
     onChange: (LocalDate, LocalDate) -> Unit,
     modifier: Modifier = Modifier,
-    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,
+    color: Color = MaterialTheme.colorScheme.onSurface,
 ) {
     var editing by rememberSaveable { mutableIntStateOf(0) }
     Row(modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {

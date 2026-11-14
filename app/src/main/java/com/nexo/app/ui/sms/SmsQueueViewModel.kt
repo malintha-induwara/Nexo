@@ -9,6 +9,7 @@ import com.nexo.app.core.model.DeviceSettings
 import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.SmsHistoryImport
 import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.data.repository.ReferenceDataRepository
@@ -214,7 +215,7 @@ class SmsQueueViewModel @Inject constructor(
     fun clearGap() = viewModelScope.launch { prefs.clearSmsGap() }
 
     /** "Not now". The picker stays in Settings. */
-    fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(com.nexo.app.core.model.SmsHistoryImport.SKIPPED) }
+    fun skipHistory() = viewModelScope.launch { prefs.setSmsHistoryImport(SmsHistoryImport.SKIPPED) }
 
     /** Undo pressed on [notice]. */
     fun undo(notice: QueueNotice) {

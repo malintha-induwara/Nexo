@@ -3,7 +3,10 @@ package com.nexo.app.domain
 import com.nexo.app.core.model.CardAccounting
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.Transaction
+import com.nexo.app.core.model.TxAggregate
 import com.nexo.app.core.model.TxKind
+import java.math.BigDecimal
 
 /**
  * Income / expense classification. Transfers are judged on their outgoing leg:
@@ -66,28 +69,28 @@ data class InOut(val income: Double = 0.0, val expense: Double = 0.0) {
 
 /** Income/expense totals from aggregates or rows, in main currency. */
 object Totals {
-    fun fromAggregates(ref: RefData, rows: List<com.nexo.app.core.model.TxAggregate>): InOut {
+    fun fromAggregates(ref: RefData, rows: List<TxAggregate>): InOut {
         val c = Classifier(ref)
-        var inc = java.math.BigDecimal.ZERO
-        var exp = java.math.BigDecimal.ZERO
+        var inc = BigDecimal.ZERO
+        var exp = BigDecimal.ZERO
         for (r in rows) {
             when (c.classify(r.kind, r.accountId, r.counterpartAccountId)) {
-                CashFlow.INCOME -> inc += java.math.BigDecimal.valueOf(r.main)
-                CashFlow.EXPENSE -> exp += java.math.BigDecimal.valueOf(r.main)
+                CashFlow.INCOME -> inc += BigDecimal.valueOf(r.main)
+                CashFlow.EXPENSE -> exp += BigDecimal.valueOf(r.main)
                 CashFlow.NEUTRAL -> Unit
             }
         }
         return InOut(inc.toDouble(), exp.toDouble())
     }
 
-    fun fromRows(ref: RefData, rows: List<com.nexo.app.core.model.Transaction>): InOut {
+    fun fromRows(ref: RefData, rows: List<Transaction>): InOut {
         val c = Classifier(ref)
-        var inc = java.math.BigDecimal.ZERO
-        var exp = java.math.BigDecimal.ZERO
+        var inc = BigDecimal.ZERO
+        var exp = BigDecimal.ZERO
         for (r in rows) {
             when (c.classify(r.kind, r.accountId, r.counterpartAccountId)) {
-                CashFlow.INCOME -> inc += java.math.BigDecimal.valueOf(r.amountMain)
-                CashFlow.EXPENSE -> exp += java.math.BigDecimal.valueOf(r.amountMain)
+                CashFlow.INCOME -> inc += BigDecimal.valueOf(r.amountMain)
+                CashFlow.EXPENSE -> exp += BigDecimal.valueOf(r.amountMain)
                 CashFlow.NEUTRAL -> Unit
             }
         }

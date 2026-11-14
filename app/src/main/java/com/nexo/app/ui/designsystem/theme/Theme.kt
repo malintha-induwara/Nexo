@@ -1,6 +1,8 @@
 package com.nexo.app.ui.designsystem.theme
 
+import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -132,7 +134,7 @@ fun NexoTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+            val window = (view.context as? Activity)?.window ?: return@SideEffect
             val controller = WindowCompat.getInsetsController(window, view)
             controller.isAppearanceLightStatusBars = !dark
             controller.isAppearanceLightNavigationBars = !dark
@@ -146,7 +148,7 @@ fun NexoTheme(
     ) {
         MaterialTheme(colorScheme = scheme, typography = NexoTypography, shapes = NexoMaterialShapes) {
             // Screens without a Scaffold or Surface (the tab roots) still get readable text by default.
-            CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides colors.text, content = content)
+            CompositionLocalProvider(LocalContentColor provides colors.text, content = content)
         }
     }
 }

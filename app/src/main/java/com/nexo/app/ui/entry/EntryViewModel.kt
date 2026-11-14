@@ -1,6 +1,7 @@
 package com.nexo.app.ui.entry
 
 import android.net.Uri
+import android.util.Log
 import androidx.annotation.MainThread
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
@@ -11,27 +12,36 @@ import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.common.period.toIsoText
 import com.nexo.app.core.common.period.toLocalDateTime
 import com.nexo.app.core.model.CategoryKind
+import com.nexo.app.core.model.Certainty
+import com.nexo.app.core.model.DateOrder
 import com.nexo.app.core.model.EntryType
+import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeDraft
+import com.nexo.app.core.model.InputOrder
 import com.nexo.app.core.model.PhotoItem
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.RepeatRule
 import com.nexo.app.core.model.RepeatSchedule
 import com.nexo.app.core.model.RepeatType
+import com.nexo.app.core.model.SmsItem
+import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxDraft
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.repository.FavoritesRepository
 import com.nexo.app.data.repository.PhotosRepository
+import com.nexo.app.data.repository.ReceiptRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.RepeatRulesRepository
 import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.repository.TagResult
 import com.nexo.app.data.repository.TagsRepository
+import com.nexo.app.data.repository.TransactionImportRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.data.sms.noteFor
 import com.nexo.app.domain.CardStatement
+import com.nexo.app.domain.sms.FeePlan
 import com.nexo.app.domain.sms.GetSmsFeePlanUseCase
 import com.nexo.app.domain.sms.GetSmsLedgerAmountUseCase
 import com.nexo.app.ui.HomeState
@@ -49,9 +59,13 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import java.util.UUID
+import kotlin.math.abs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -75,10 +89,10 @@ class EntryViewModel @AssistedInject constructor(
     private val home: HomeState,
     private val photos: PhotosRepository,
     private val tags: TagsRepository,
-    private val importer: com.nexo.app.data.repository.TransactionImportRepository,
+    private val importer: TransactionImportRepository,
     private val getSmsLedgerAmount: GetSmsLedgerAmountUseCase,
     private val getSmsFeePlan: GetSmsFeePlanUseCase,
-    private val receipts: com.nexo.app.data.repository.ReceiptRepository,
+    private val receipts: ReceiptRepository,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -186,7 +200,7 @@ class EntryViewModel @AssistedInject constructor(
     private suspend fun loadSuggestions(r: RefData) {
         if (!r.settings.autocomplete) return
         val cutoff = maxOf(System.currentTimeMillis() - 456L * 24 * 3600 * 1000, r.settings.autocompleteResetAt)
-        val cutDate = java.time.Instant.ofEpochMilli(cutoff).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toIsoText()
+        val cutDate = Instant.ofEpochMilli(cutoff).atZone(ZoneId.systemDefault()).toLocalDate().toIsoText()
         _suggestions.value = transactions.getNoteUsage(cutDate, cutoff).map { NoteSuggestion(it.note, it.count, it.lastDate) }
     }
 
@@ -335,7 +349,7 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     /** The Review Queue item being reviewed in [EntryMode.SMS]. */
-    private var smsItem: com.nexo.app.core.model.SmsItem? = null
+    private var smsItem: SmsItem? = null
 
     /** The form opens with everything the SMS gave; saving approves the item. */
     private suspend fun loadSmsItem(r: RefData, base: EntryForm): EntryForm {
@@ -344,16 +358,16 @@ class EntryViewModel @AssistedInject constructor(
         val (currency, amount) = getSmsLedgerAmount(item, r)
         val kind = item.kind
         // A payment to someone outside Nexo starts as an expense; picking a destination account turns it into a transfer.
-        val transfer = kind.isTransfer && (kind != com.nexo.app.core.model.SmsKind.TRANSFER_OUT || item.toAccountId != null)
-        val (from, to) = if (kind == com.nexo.app.core.model.SmsKind.TRANSFER_IN) item.toAccountId to item.accountId else item.accountId to item.toAccountId
+        val transfer = kind.isTransfer && (kind != SmsKind.TRANSFER_OUT || item.toAccountId != null)
+        val (from, to) = if (kind == SmsKind.TRANSFER_IN) item.toAccountId to item.accountId else item.accountId to item.toAccountId
         val dt = item.occurredAt.toLocalDateTime()
         // The fee field starts filled when the route's preset knows the fee.
         val presetFee = when (val plan = getSmsFeePlan(item)) {
-            is com.nexo.app.domain.sms.FeePlan.Auto -> plan.amount
-            is com.nexo.app.domain.sms.FeePlan.Ask -> plan.prefill.takeIf { !plan.fxDifference }
-            com.nexo.app.domain.sms.FeePlan.None -> null
+            is FeePlan.Auto -> plan.amount
+            is FeePlan.Ask -> plan.prefill.takeIf { !plan.fxDifference }
+            FeePlan.None -> null
         }
-        val estimated = item.certainty == com.nexo.app.core.model.Certainty.ESTIMATED
+        val estimated = item.certainty == Certainty.ESTIMATED
         return base.copy(
             mode = EntryMode.SMS,
             fxNote = if (estimated) FxNote(item, editHint = false) else null,
@@ -381,14 +395,14 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     /** An SMS transfer's fee goes to the system Bank fee category. */
-    private suspend fun withBankFeeCategory(d: com.nexo.app.core.model.TxDraft): com.nexo.app.core.model.TxDraft {
+    private suspend fun withBankFeeCategory(d: TxDraft): TxDraft {
         val fee = d.fee ?: return d
         if (key.mode != EntryMode.SMS) return d
         return d.copy(fee = fee.copy(categoryId = transactions.bankFeeCategory()))
     }
 
     /** An approved SMS transaction still booked at an FX estimate: editing its amount records the actual one. */
-    private var linkedEstimate: com.nexo.app.core.model.SmsItem? = null
+    private var linkedEstimate: SmsItem? = null
 
     private suspend fun withFxNote(s: EntryForm, txId: String, r: RefData): EntryForm {
         val item = smsRepository.getItemForTransaction(txId)?.takeIf { it.awaitingActual } ?: return s
@@ -406,11 +420,11 @@ class EntryViewModel @AssistedInject constructor(
     /** Pre-fill from a spreadsheet import row. */
     private suspend fun loadImportRow(r: RefData, base: EntryForm): EntryForm {
         val file = key.importFile ?: return newEntry(r, base)
-        val order = key.importOrder?.let { runCatching { com.nexo.app.core.model.DateOrder.valueOf(it) }.getOrNull() }
+        val order = key.importOrder?.let { runCatching { DateOrder.valueOf(it) }.getOrNull() }
         val row = importer.load(file, order).rows.getOrNull(key.importLine)?.parsed ?: return newEntry(r, base).copy(mode = EntryMode.IMPORT_FIX)
         val kind = row.kind ?: TxKind.EXPENSE
         val transferIn = kind == TxKind.TRANSFER_IN
-        val dt = row.dateTime ?: java.time.LocalDateTime.now()
+        val dt = row.dateTime ?: LocalDateTime.now()
         val cur = r.currency(row.currencyId)
         return base.copy(
             mode = EntryMode.IMPORT_FIX,
@@ -534,7 +548,7 @@ class EntryViewModel @AssistedInject constructor(
             r.input.buffer.isEmpty() && s.pad.buffer.isEmpty() -> current
             else -> null
         }
-        _ui.value = (if (forFee) s.copy(feeAmount = value?.let { kotlin.math.abs(it) }) else s.copy(amount = value)).copy(pad = r.input, viewing = false)
+        _ui.value = (if (forFee) s.copy(feeAmount = value?.let { abs(it) }) else s.copy(amount = value)).copy(pad = r.input, viewing = false)
     }
 
     fun padDone() {
@@ -557,7 +571,7 @@ class EntryViewModel @AssistedInject constructor(
         _ui.update { s ->
             val d = refCurrencyDecimals(if (s.panel == Panel.FEE) s.feeCurrencyId else s.currencyId)
             val value = v.setScale(d, RoundingMode.HALF_UP).toDouble()
-            if (s.panel == Panel.FEE) s.copy(feeAmount = kotlin.math.abs(value), pad = s.pad.copy(buffer = PadInput.plain(kotlin.math.abs(value), d)))
+            if (s.panel == Panel.FEE) s.copy(feeAmount = abs(value), pad = s.pad.copy(buffer = PadInput.plain(abs(value), d)))
             else s.copy(amount = value, pad = s.pad.copy(buffer = PadInput.plain(value, d)), viewing = false)
         }
     }
@@ -567,7 +581,7 @@ class EntryViewModel @AssistedInject constructor(
         val s = _ui.value
         val amount = s.amount ?: return
         if (amount == 0.0) return
-        val rate = kotlin.math.abs(Money.divide(main, amount, 10))
+        val rate = abs(Money.divide(main, amount, 10))
         edit { it.copy(rate = rate) }
     }
 
@@ -604,7 +618,7 @@ class EntryViewModel @AssistedInject constructor(
                 throw e
             } catch (e: Exception) {
                 // The stack trace carries no receipt text, and it is what a release-only failure needs.
-                android.util.Log.w("ReceiptScan", "Receipt read failed", e)
+                Log.w("ReceiptScan", "Receipt read failed", e)
                 null
             }
             if (read == null) {
@@ -697,7 +711,7 @@ class EntryViewModel @AssistedInject constructor(
             openPanel(panel)
             return false
         }
-        val accountFirst = s.inputOrder == com.nexo.app.core.model.InputOrder.ACCOUNT_FIRST
+        val accountFirst = s.inputOrder == InputOrder.ACCOUNT_FIRST
         val checks = mutableListOf<() -> Boolean>()
         val accountCheck = { s.accountId != null && r.accountById.containsKey(s.accountId) || fail(R.string.select_specific_asset, Panel.ACCOUNT) }
         val secondCheck = {
@@ -738,13 +752,13 @@ class EntryViewModel @AssistedInject constructor(
                         // Changing an estimate's amount records what the bank actually charged.
                         smsItem?.let { item ->
                             val estimate = item.estimatedAmount
-                            if (item.certainty == com.nexo.app.core.model.Certainty.ESTIMATED && s.amount != null && estimate != null && s.amount != estimate) smsRepository.setAmount(item.id, s.amount)
+                            if (item.certainty == Certainty.ESTIMATED && s.amount != null && estimate != null && s.amount != estimate) smsRepository.setAmount(item.id, s.amount)
                         }
-                        val bankAccount = if (smsItem?.kind == com.nexo.app.core.model.SmsKind.TRANSFER_IN) s.toAccountId else s.accountId
+                        val bankAccount = if (smsItem?.kind == SmsKind.TRANSFER_IN) s.toAccountId else s.accountId
                         val fee = s.feeAmount?.takeIf { s.feeExpanded && it > 0 }
                         if (fee != null && !s.isTransfer) transactions.addFee(id, fee)
                         smsRepository.markApproved(key.smsItemId, id, bankAccount, if (s.isTransfer) null else s.categoryId)
-                        smsItem?.let { item -> if (fee != null) smsRepository.recordFee(item, bankAccount, com.nexo.app.core.model.FeeChoice(fee)) }
+                        smsItem?.let { item -> if (fee != null) smsRepository.recordFee(item, bankAccount, FeeChoice(fee)) }
                     }
                     linkedEstimate?.let { item ->
                         val amount = _ui.value.amount

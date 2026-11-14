@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import android.webkit.MimeTypeMap
 import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.core.model.StoredPhoto
@@ -45,7 +46,7 @@ class PhotoFileDataSource @Inject constructor(
         val ext = name?.substringAfterLast('.', "")?.lowercase(Locale.ROOT)?.takeIf { it.isNotEmpty() }
         if (ext != null) return ext
         val mime = context.contentResolver.getType(uri) ?: return null
-        return android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)
+        return MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)
     }
 
     fun isSupported(uri: Uri): Boolean = extensionOf(uri)?.let { it in SUPPORTED } ?: true

@@ -5,6 +5,7 @@ import com.nexo.app.core.model.SymbolPosition
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormatSymbols
+import kotlin.math.abs
 
 /**
  * A formatted amount split for display, so the integer can be set large and the symbol and
@@ -37,7 +38,7 @@ data class AmountParts(
         fun of(value: Double, symbol: String, position: SymbolPosition, decimals: Int, sign: Sign = Sign.NEGATIVE): AmountParts {
             val scale = decimals.coerceIn(0, 10)
             val signum = BigDecimal.valueOf(value).setScale(scale, RoundingMode.HALF_UP).signum()
-            val body = AmountFormatter.number(kotlin.math.abs(value), scale)
+            val body = AmountFormatter.number(abs(value), scale)
             val separator = DecimalFormatSymbols.getInstance().decimalSeparator
             val cut = if (scale > 0) body.lastIndexOf(separator) else -1
             val integer = if (cut >= 0) body.substring(0, cut) else body

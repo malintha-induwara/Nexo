@@ -3,6 +3,7 @@ package com.nexo.app.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation3.runtime.NavKey
+import com.nexo.app.BuildConfig
 import com.nexo.app.core.model.BookSettings
 import com.nexo.app.core.model.DeviceSettings
 import com.nexo.app.data.repository.AppLockRepository
@@ -55,7 +56,7 @@ class AppViewModel @Inject constructor(
     fun consumePending(): List<NavKey> = pending.value.also { pending.value = emptyList() }
 
     fun markWhatsNewSeen() {
-        viewModelScope.launch { prefs.setWhatsNewVersion(com.nexo.app.BuildConfig.VERSION_CODE) }
+        viewModelScope.launch { prefs.setWhatsNewVersion(BuildConfig.VERSION_CODE) }
     }
 
     /** Cipher for the biometric unlock prompt, or null when the key is missing or was invalidated. */

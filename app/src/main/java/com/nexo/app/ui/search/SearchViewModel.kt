@@ -20,7 +20,9 @@ import com.nexo.app.ui.transactions.TxRowUi
 import com.nexo.app.ui.transactions.bulkEditActions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -95,7 +97,7 @@ class SearchViewModel @Inject constructor(
         val r = refs.getRefData()
         if (!r.settings.autocomplete) return emptyList()
         val cutoff = maxOf(System.currentTimeMillis() - 456L * 24 * 3600 * 1000, r.settings.autocompleteResetAt)
-        val cutDate = java.time.Instant.ofEpochMilli(cutoff).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toIsoText()
+        val cutDate = Instant.ofEpochMilli(cutoff).atZone(ZoneId.systemDefault()).toLocalDate().toIsoText()
         return transactions.getNoteUsage(cutDate, cutoff).map { NoteSuggestion(it.note, it.count, it.lastDate) }
     }
 

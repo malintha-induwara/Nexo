@@ -7,6 +7,7 @@ import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
+import kotlin.math.abs
 
 /** Formats amounts: half-up rounding, locale grouping, fixed decimals, symbol placement. */
 object AmountFormatter {
@@ -33,7 +34,7 @@ object AmountFormatter {
 
     fun format(value: Double, symbol: String, position: SymbolPosition, decimals: Int): String {
         val negative = BigDecimal.valueOf(value).setScale(decimals.coerceIn(0, 10), RoundingMode.HALF_UP).signum() < 0
-        val body = number(kotlin.math.abs(value), decimals)
+        val body = number(abs(value), decimals)
         val text = if (position == SymbolPosition.PREFIX) "$symbol $body" else "$body$symbol"
         return if (negative) "-$text" else text
     }
@@ -44,7 +45,7 @@ object AmountFormatter {
     /** Exchange-rate display: two decimals when ≥ 1, otherwise enough to show two significant digits. */
     fun rate(rate: Double): String {
         if (rate == 0.0) return "0"
-        val abs = kotlin.math.abs(rate)
+        val abs = abs(rate)
         val scale = if (abs >= 1) 2 else {
             var s = 2
             var v = abs

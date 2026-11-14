@@ -48,6 +48,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.ui.designsystem.asString
@@ -73,6 +74,7 @@ import com.nexo.app.ui.navigation.AccountFormKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
+import com.nexo.app.ui.navigation.MemoListKey
 import com.nexo.app.ui.transactions.BulkAction
 import com.nexo.app.ui.transactions.BulkDialogs
 import com.nexo.app.ui.transactions.DayGroupList
@@ -80,6 +82,7 @@ import com.nexo.app.ui.transactions.SelectionBar
 import com.nexo.app.ui.transactions.TxRow
 import com.nexo.app.ui.transactions.selectedNet
 import java.util.Locale
+import kotlin.math.abs
 
 @Composable
 fun AccountDetailScreen(key: AccountDetailKey) {
@@ -167,7 +170,7 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                     onRowClick = { if (selection.isNotEmpty()) vm.toggleSelect(it.id) else nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = it.id)) },
                     onRowLongClick = { vm.toggleSelect(it.id) },
                     onDayClick = if (key.deleted) null else ({ d -> nav.navigate(EntryKey(date = d.toString(), accountId = account?.id, fromAdd = true)) }),
-                    onMemoClick = { d -> nav.navigate(com.nexo.app.ui.navigation.MemoListKey(d.toString())) },
+                    onMemoClick = { d -> nav.navigate(MemoListKey(d.toString())) },
                     rowContent = { row ->
                         TxRow(
                             row, row.id in selection,
@@ -204,7 +207,7 @@ private fun SummaryBlock(ui: AccountDetailUiState, cur: Currency, tab: DetailTab
         Column(Modifier.padding(start = Space.l, end = Space.m, top = 10.dp, bottom = Space.m)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    (stringResource(R.string.statement) + if (ui.range != com.nexo.app.core.common.period.DateRange.ALL) " " + Formats.rangeFull(ui.range.start, ui.range.end) else "").uppercase(Locale.getDefault()),
+                    (stringResource(R.string.statement) + if (ui.range != DateRange.ALL) " " + Formats.rangeFull(ui.range.start, ui.range.end) else "").uppercase(Locale.getDefault()),
                     style = NexoType.Caps, color = colors.textTertiary, maxLines = 1, modifier = Modifier.weight(1f),
                 )
                 RoundIconButton(if (charts) Icons.AutoMirrored.Outlined.List else Icons.Outlined.BarChart, stringResource(R.string.toggle_charts), onToggleCharts, size = 32.dp)
@@ -237,8 +240,8 @@ private fun SummaryBlock(ui: AccountDetailUiState, cur: Currency, tab: DetailTab
             ui.card?.let { c ->
                 Spacer(Modifier.height(Space.s))
                 Row(Modifier.padding(end = Space.xs), horizontalArrangement = Arrangement.spacedBy(Space.m)) {
-                    Figure(stringResource(R.string.payable), kotlin.math.abs(c.payable), cur, money.signed(c.payable), Modifier.weight(1f))
-                    Figure(stringResource(R.string.outstanding), kotlin.math.abs(c.outstanding), cur, money.signed(c.outstanding), Modifier.weight(1f))
+                    Figure(stringResource(R.string.payable), abs(c.payable), cur, money.signed(c.payable), Modifier.weight(1f))
+                    Figure(stringResource(R.string.outstanding), abs(c.outstanding), cur, money.signed(c.outstanding), Modifier.weight(1f))
                     Spacer(Modifier.weight(1f))
                 }
             }

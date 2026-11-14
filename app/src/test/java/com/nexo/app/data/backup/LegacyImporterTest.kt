@@ -1,10 +1,12 @@
 package com.nexo.app.data.backup
 
+import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupType
+import com.nexo.app.core.model.MemoColor
 import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.RestoreResult
 import com.nexo.app.core.model.TxKind
@@ -32,7 +34,7 @@ class LegacyImporterTest {
 
     @Before
     fun setUp() {
-        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val context = ApplicationProvider.getApplicationContext<Context>()
         db = Room.inMemoryDatabaseBuilder(context, NexoDatabase::class.java).allowMainThreadQueries().build()
         file = File(context.cacheDir, "legacy.mmbak").apply { delete() }
         SQLiteDatabase.openOrCreateDatabase(file, null).use { src ->
@@ -149,7 +151,7 @@ class LegacyImporterTest {
         assertEquals(1, db.tagDao().linksForTransaction("t2").size)
         val memo = db.memoDao().getAll().single()
         assertTrue(memo.pinned)
-        assertEquals(com.nexo.app.core.model.MemoColor.YELLOW, memo.color)
+        assertEquals(MemoColor.YELLOW, memo.color)
         val settings = db.settingDao().getAll().associate { it.key to it.value }
         assertEquals("25", settings["month_start_day"])
         assertEquals("true", settings["subcategories"])

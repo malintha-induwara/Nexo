@@ -1,10 +1,13 @@
 package com.nexo.app.ui.accounts
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -138,7 +141,7 @@ fun AccountGroupsScreen(vm: AccountSettingsViewModel = hiltViewModel()) {
                     IconButton(onClick = { vm.reorderGroups(groups.map { it.id }.toMutableList().apply { add(i + 1, removeAt(i)) }) }, enabled = i < groups.size - 1) { Icon(Icons.Filled.ArrowDownward, stringResource(R.string.move_down)) }
                     if (g.builtinId !in setOf(1, 2, 3, 11)) {
                         IconButton(onClick = { vm.setGroupStatus(g.id, GroupStatus.DELETED) }) { Icon(Icons.Filled.RemoveCircle, stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error) }
-                    } else androidx.compose.foundation.layout.Spacer(Modifier.padding(24.dp))
+                    } else Spacer(Modifier.padding(24.dp))
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
@@ -198,17 +201,17 @@ fun AccountListScreen(key: AccountListKey, vm: AccountSettingsViewModel = hiltVi
         g != null && g.status == GroupStatus.ACTIVE && (a.status == AccountStatus.ACTIVE || a.status == AccountStatus.HIDDEN)
     }
     val back = { if (mode != AccountListMode.NORMAL && key.mode == AccountListMode.NORMAL) mode = AccountListMode.NORMAL else nav.back() }
-    androidx.activity.compose.BackHandler { back() }
+    BackHandler { back() }
     Scaffold(topBar = {
         NexoTopBar(stringResource(R.string.accounts_setting), onBack = back) {
             if (mode == AccountListMode.NORMAL) {
                 IconButton(onClick = { nav.navigate(AccountFormKey()) }) { Icon(Icons.Filled.Add, stringResource(R.string.action_add)) }
-                androidx.compose.foundation.layout.Box {
-                IconButton(onClick = { menu = true }) { Icon(androidx.compose.material.icons.Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more)) }
+                Box {
+                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more)) }
                 NexoMenu(menu, { menu = false }) {
-                    NexoMenuItem(stringResource(R.string.modify_orders), { menu = false; mode = AccountListMode.REORDER }, androidx.compose.material.icons.Icons.Rounded.SwapVert)
-                    NexoMenuItem(stringResource(R.string.show_hide), { menu = false; mode = AccountListMode.VISIBILITY }, androidx.compose.material.icons.Icons.Rounded.Visibility)
-                    NexoMenuItem(stringResource(R.string.action_delete), { menu = false; mode = AccountListMode.DELETE }, androidx.compose.material.icons.Icons.Rounded.DeleteOutline, danger = true)
+                    NexoMenuItem(stringResource(R.string.modify_orders), { menu = false; mode = AccountListMode.REORDER }, Icons.Rounded.SwapVert)
+                    NexoMenuItem(stringResource(R.string.show_hide), { menu = false; mode = AccountListMode.VISIBILITY }, Icons.Rounded.Visibility)
+                    NexoMenuItem(stringResource(R.string.action_delete), { menu = false; mode = AccountListMode.DELETE }, Icons.Rounded.DeleteOutline, danger = true)
                 }
                 }
             }

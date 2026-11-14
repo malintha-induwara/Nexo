@@ -3,6 +3,7 @@ package com.nexo.app.ui.transactions
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -166,7 +167,7 @@ fun TxRow(
     LaunchedEffect(highlight) {
         if (highlight) {
             flash.animateTo(1f, NexoMotion.enter(NexoMotion.SHORT))
-            flash.animateTo(0f, androidx.compose.animation.core.tween(900, delayMillis = 350))
+            flash.animateTo(0f, tween(900, delayMillis = 350))
         }
     }
     val category = row.category.asString()

@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -58,7 +59,7 @@ fun LockScreen(
     onEraseAll: () -> Unit,
 ) {
     val context = LocalContext.current
-    val resources = androidx.compose.ui.platform.LocalResources.current
+    val resources = LocalResources.current
     val activity = context as? FragmentActivity
     val scope = rememberCoroutineScope()
     var pin by remember { mutableStateOf("") }

@@ -1,6 +1,7 @@
 package com.nexo.app.ui.transactions
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -54,7 +55,10 @@ import com.nexo.app.ui.designsystem.component.MessageDialog
 import com.nexo.app.ui.designsystem.component.NexoDatePickerDialog
 import com.nexo.app.ui.designsystem.component.NexoMenu
 import com.nexo.app.ui.designsystem.component.NexoMenuItem
+import com.nexo.app.ui.designsystem.component.RollingAmount
+import com.nexo.app.ui.designsystem.component.RoundIconButton
 import com.nexo.app.ui.designsystem.component.TextFieldDialog
+import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.nexo
 import java.time.LocalDate
 import kotlinx.coroutines.launch
@@ -87,14 +91,14 @@ fun SelectionBar(
         TopAppBar(
             title = { Text(if (count == 0) stringResource(R.string.please_select_item) else stringResource(R.string.n_selected, count), style = MaterialTheme.typography.titleLarge) },
             navigationIcon = {
-                com.nexo.app.ui.designsystem.component.RoundIconButton(
-                    androidx.compose.material.icons.Icons.Rounded.Close, stringResource(R.string.action_back), onClose,
+                RoundIconButton(
+                    Icons.Rounded.Close, stringResource(R.string.action_back), onClose,
                     modifier = Modifier.padding(start = 12.dp, end = 4.dp),
                 )
             },
             actions = {
                 IconButton(onClick = { onAction(null) }) { Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete)) }
-                androidx.compose.foundation.layout.Box {
+                Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.action_more)) }
                 NexoMenu(menu, onDismissRequest = { menu = false }) {
                     listOf(
@@ -118,7 +122,7 @@ fun SelectionBar(
                 onClick = onToggleAll,
             )
             Text(stringResource(R.string.action_select_all), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            com.nexo.app.ui.designsystem.component.RollingAmount(net, main, style = com.nexo.app.ui.designsystem.theme.NexoType.Amount, minorScale = 0.8f)
+            RollingAmount(net, main, style = NexoType.Amount, minorScale = 0.8f)
         }
     }
 }

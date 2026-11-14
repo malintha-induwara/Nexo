@@ -1,5 +1,6 @@
 package com.nexo.app.ui.shell
 
+import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -132,7 +133,7 @@ fun MainShell(vm: MainShellViewModel = hiltViewModel()) {
         }
         val now = System.currentTimeMillis()
         if (now - lastBack < 5_000) {
-            (context as? android.app.Activity)?.finish()
+            (context as? Activity)?.finish()
         } else {
             lastBack = now
             Toast.makeText(context, pressAgain, Toast.LENGTH_SHORT).show()

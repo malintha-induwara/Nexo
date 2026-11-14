@@ -6,11 +6,14 @@ import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.MonthPeriod
 import com.nexo.app.core.model.CashFlow
+import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
+import com.nexo.app.core.model.Ledger
 import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.RepeatRule
 import com.nexo.app.core.model.RepeatSchedule
+import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.StartScreen
 import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
@@ -27,8 +30,10 @@ import com.nexo.app.domain.Totals
 import com.nexo.app.ui.HomeState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -105,7 +110,7 @@ class TransactionsViewModel @Inject constructor(
 
     fun onFocusHandled() = home.focusConsumed()
 
-    private fun load(p: Params): kotlinx.coroutines.flow.Flow<HomeData> {
+    private fun load(p: Params): Flow<HomeData> {
         val engine = p.ref.settings.periods
         val period = engine.monthPeriodContaining(p.date)
         val year = period.label.year
@@ -141,7 +146,7 @@ class TransactionsViewModel @Inject constructor(
         p: Params,
         period: MonthPeriod,
         year: Int,
-        l: com.nexo.app.core.model.Ledger,
+        l: Ledger,
         memos: List<Memo>,
         rules: List<RepeatRule>,
         carry: Double,
@@ -224,7 +229,7 @@ class TransactionsViewModel @Inject constructor(
                 else -> 0
             }
             total += main.multiply(BigDecimal(sign * occ.size))
-            if (rule.repeatType == com.nexo.app.core.model.RepeatType.DAILY) dates += occ.first() else dates += occ
+            if (rule.repeatType == RepeatType.DAILY) dates += occ.first() else dates += occ
             names += rule.note.ifBlank {
                 if (rule.kind.isTransfer) "${ref.accountById[rule.accountId]?.name} → ${ref.accountById[rule.toAccountId]?.name}"
                 else ref.categoryName(ref.mainCategoryId(rule.categoryId)) ?: ""
@@ -319,8 +324,8 @@ class TransactionsViewModel @Inject constructor(
                 if (dst != null && dst.builtinId !in cashIds && dstType == GroupType.NORMAL) transfer += BigDecimal.valueOf(r.amountMain)
             }
         }
-        val names = ref.groups.filter { it.builtinId == 11 && it.status == com.nexo.app.core.model.GroupStatus.ACTIVE }.map { it.name } +
-            ref.groups.filter { it.builtinId == 1 && it.status == com.nexo.app.core.model.GroupStatus.ACTIVE }.map { it.name }
+        val names = ref.groups.filter { it.builtinId == 11 && it.status == GroupStatus.ACTIVE }.map { it.name } +
+            ref.groups.filter { it.builtinId == 1 && it.status == GroupStatus.ACTIVE }.map { it.name }
         return TotalSummary(
             comparedPercent = compared,
             cashLabel = names.joinToString(", "),
@@ -412,10 +417,10 @@ class TransactionsViewModel @Inject constructor(
     }
 
     companion object {
-        fun gridRange(period: MonthPeriod, weekStart: java.time.DayOfWeek): DateRange {
+        fun gridRange(period: MonthPeriod, weekStart: DayOfWeek): DateRange {
             val start = period.start.with(TemporalAdjusters.previousOrSame(weekStart))
             var end = period.end.with(TemporalAdjusters.nextOrSame(weekStart.minus(1)))
-            if (java.time.temporal.ChronoUnit.DAYS.between(period.end, end) <= 4) end = end.plusDays(7)
+            if (ChronoUnit.DAYS.between(period.end, end) <= 4) end = end.plusDays(7)
             return DateRange(start, end)
         }
     }

@@ -15,6 +15,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -86,7 +87,7 @@ class MemoEditorViewModel @AssistedInject constructor(
             empty -> Unit
             else -> {
                 val now = System.currentTimeMillis()
-                val time = o?.let { java.time.Instant.ofEpochMilli(it.dateTime.toLong()).atZone(ZoneId.systemDefault()).toLocalTime() } ?: LocalTime.now()
+                val time = o?.let { Instant.ofEpochMilli(it.dateTime.toLong()).atZone(ZoneId.systemDefault()).toLocalTime() } ?: LocalTime.now()
                 val row = Memo(
                     id = o?.id ?: UUID.randomUUID().toString(),
                     title = s.title.trim(),

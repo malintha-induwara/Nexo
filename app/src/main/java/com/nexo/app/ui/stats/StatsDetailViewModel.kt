@@ -8,6 +8,8 @@ import com.nexo.app.R
 import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.model.CashFlow
+import com.nexo.app.core.model.Ledger
+import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
@@ -125,7 +127,7 @@ class StatsDetailViewModel @AssistedInject constructor(
         else -> r.subCategoryId(t.categoryId) ?: "other"
     }
 
-    private fun build(r: RefData, range: DateRange, buckets: List<Pair<String, DateRange>>, l: com.nexo.app.core.model.Ledger, sel: String, memos: List<com.nexo.app.core.model.Memo>): StatsDetailUiState {
+    private fun build(r: RefData, range: DateRange, buckets: List<Pair<String, DateRange>>, l: Ledger, sel: String, memos: List<Memo>): StatsDetailUiState {
         val c = Classifier(r)
         val all = l.rows.filter { matches(r, c, it) }
         val inRange = all.filter { LocalDate.parse(it.date) in range }

@@ -89,7 +89,7 @@ fun MainCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
     val busy = state.busy
-    val effectContext = androidx.compose.ui.platform.LocalContext.current
+    val effectContext = LocalContext.current
     state.userMessage?.let { message ->
         val text = message.text.asString()
         LaunchedEffect(message.id) {
@@ -126,7 +126,7 @@ fun MainCurrencyPickerScreen(vm: CurrencyViewModel = hiltViewModel()) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
     val busy = state.busy
-    val effectContext = androidx.compose.ui.platform.LocalContext.current
+    val effectContext = LocalContext.current
     state.userMessage?.let { message ->
         val text = message.text.asString()
         LaunchedEffect(message.id) {
@@ -204,7 +204,7 @@ fun SubCurrenciesScreen(vm: CurrencyViewModel = hiltViewModel()) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
     val busy = state.busy
-    val effectContext = androidx.compose.ui.platform.LocalContext.current
+    val effectContext = LocalContext.current
     state.userMessage?.let { message ->
         val text = message.text.asString()
         LaunchedEffect(message.id) {
@@ -255,7 +255,7 @@ fun AddSubCurrencyScreen(vm: CurrencyViewModel = hiltViewModel()) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
     val busy = state.busy
-    val effectContext = androidx.compose.ui.platform.LocalContext.current
+    val effectContext = LocalContext.current
     state.userMessage?.let { message ->
         val text = message.text.asString()
         LaunchedEffect(message.id) {
@@ -302,7 +302,7 @@ fun SubCurrencyEditScreen(key: SubCurrencyEditKey, vm: CurrencyViewModel = hiltV
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ref = state.ref
     val busy = state.busy
-    val effectContext = androidx.compose.ui.platform.LocalContext.current
+    val effectContext = LocalContext.current
     state.userMessage?.let { message ->
         val text = message.text.asString()
         LaunchedEffect(message.id) {

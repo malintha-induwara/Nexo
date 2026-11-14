@@ -59,6 +59,7 @@ import com.nexo.app.core.model.Account
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.Category
 import com.nexo.app.core.model.CategoryKind
+import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.RefData
 import com.nexo.app.ui.designsystem.component.CategoryTile
 import com.nexo.app.ui.designsystem.component.NavMotion
@@ -159,7 +160,7 @@ fun AccountPanel(
         }
         val visible = ref.orderedAccounts().filter { a ->
             val g = ref.groupById[a.groupId]
-            g != null && g.status == com.nexo.app.core.model.GroupStatus.ACTIVE && (a.status == AccountStatus.ACTIVE || (grouped && a.status == AccountStatus.HIDDEN))
+            g != null && g.status == GroupStatus.ACTIVE && (a.status == AccountStatus.ACTIVE || (grouped && a.status == AccountStatus.HIDDEN))
         }
         if (!grouped) {
             LazyVerticalGrid(GridCells.Fixed(3), Modifier.padding(horizontal = Space.s), contentPadding = PaddingValues(bottom = Space.s)) {

@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -19,6 +20,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -98,12 +100,19 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.common.period.MonthPeriod
 import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.StartScreen
 import com.nexo.app.core.model.SwipeMode
 import com.nexo.app.domain.BudgetBlockData
+import com.nexo.app.ui.budgets.BudgetBlock
+import com.nexo.app.ui.designsystem.component.AmountText
+import com.nexo.app.ui.designsystem.component.EmptyState
+import com.nexo.app.ui.designsystem.component.FlowAmount
 import com.nexo.app.ui.designsystem.component.Formats
+import com.nexo.app.ui.designsystem.component.GroupCard
 import com.nexo.app.ui.designsystem.component.MonthPickerDialog
 import com.nexo.app.ui.designsystem.component.NavMotion
 import com.nexo.app.ui.designsystem.component.PeriodNavigator
@@ -128,16 +137,20 @@ import com.nexo.app.ui.designsystem.theme.Space
 import com.nexo.app.ui.navigation.BookmarksKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
+import com.nexo.app.ui.navigation.ExcelExportKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MemoEditorKey
 import com.nexo.app.ui.navigation.RepeatListKey
 import com.nexo.app.ui.navigation.SearchKey
 import com.nexo.app.ui.shell.LocalShell
 import com.nexo.app.ui.sms.QueueBadge
+import com.nexo.app.ui.sms.SmsInboxAction
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.sign
+import kotlinx.coroutines.delay
 
 @Composable
 fun TransactionsTab(todaySignal: Int, smsBadge: QueueBadge, vm: TransactionsViewModel = hiltViewModel()) {
@@ -171,7 +184,7 @@ fun TransactionsTab(todaySignal: Int, smsBadge: QueueBadge, vm: TransactionsView
     // The highlight plays once; clear it so scrolling the row away and back does not replay it.
     LaunchedEffect(lastSaved) {
         if (lastSaved != null) {
-            kotlinx.coroutines.delay(2_500)
+            delay(2_500)
             vm.clearLastSaved()
         }
     }
@@ -199,7 +212,7 @@ fun TransactionsTab(todaySignal: Int, smsBadge: QueueBadge, vm: TransactionsView
         }
     }
 
-    val tabs = if (ref.settings.startScreen == com.nexo.app.core.model.StartScreen.CALENDAR)
+    val tabs = if (ref.settings.startScreen == StartScreen.CALENDAR)
         listOf(SubTab.CALENDAR, SubTab.DAILY, SubTab.MONTHLY, SubTab.TOTAL, SubTab.NOTE)
     else listOf(SubTab.DAILY, SubTab.CALENDAR, SubTab.MONTHLY, SubTab.TOTAL, SubTab.NOTE)
     val visibleTabs = if (filterOpen) tabs.filter { it != SubTab.TOTAL && it != SubTab.NOTE } else tabs
@@ -244,7 +257,7 @@ fun TransactionsTab(todaySignal: Int, smsBadge: QueueBadge, vm: TransactionsView
                         Spacer(Modifier.weight(1f))
                         AnimatedVisibility(!filterOpen, enter = fadeIn(NexoMotion.enter()) + expandHorizontally(NexoMotion.snappy()), exit = fadeOut(NexoMotion.exit()) + shrinkHorizontally(NexoMotion.snappy())) {
                             Row {
-                                com.nexo.app.ui.sms.SmsInboxAction(smsBadge)
+                                SmsInboxAction(smsBadge)
                                 HeaderAction(Icons.Rounded.StarOutline, stringResource(R.string.bookmarks)) { nav.navigate(BookmarksKey()) }
                                 HeaderAction(Icons.Rounded.Search, stringResource(R.string.search)) { nav.navigate(SearchKey()) }
                             }
@@ -324,6 +337,7 @@ fun TransactionsTab(todaySignal: Int, smsBadge: QueueBadge, vm: TransactionsView
                     }
                 }
                 val memoButton = !selecting && !filterOpen && ref.settings.memoButton && (currentTab == SubTab.DAILY || currentTab == SubTab.CALENDAR)
+                // Qualified so the outer Column's scoped overload isn't picked.
                 androidx.compose.animation.AnimatedVisibility(
                     memoButton,
                     modifier = Modifier.align(Alignment.BottomEnd).padding(end = Space.gutter, bottom = bottom),
@@ -454,7 +468,7 @@ private fun DailyContent(
  * Each cell still shows income, expenses and the day's net.
  */
 @Composable
-private fun CalendarContent(data: HomeData, main: Currency, weekStart: java.time.DayOfWeek, bottom: Dp, onDay: (LocalDate) -> Unit) {
+private fun CalendarContent(data: HomeData, main: Currency, weekStart: DayOfWeek, bottom: Dp, onDay: (LocalDate) -> Unit) {
     val money = LocalMoneyColors.current
     val colors = LocalNexoColors.current
     Column(Modifier.fillMaxSize().padding(horizontal = Space.s)) {
@@ -465,8 +479,8 @@ private fun CalendarContent(data: HomeData, main: Currency, weekStart: java.time
                     Formats.weekdayShort(d).uppercase(Locale.getDefault()),
                     Modifier.weight(1f),
                     color = when (d) {
-                        java.time.DayOfWeek.SUNDAY -> NexoPalette.Sunday
-                        java.time.DayOfWeek.SATURDAY -> NexoPalette.Saturday
+                        DayOfWeek.SUNDAY -> NexoPalette.Sunday
+                        DayOfWeek.SATURDAY -> NexoPalette.Saturday
                         else -> colors.textTertiary
                     },
                     style = NexoType.Caps,
@@ -523,7 +537,7 @@ private fun CalendarDay(cell: CalendarCell, main: Currency, money: MoneyColors, 
                 color = when {
                     cell.isToday -> colors.onPrimary
                     !cell.inPeriod -> colors.textTertiary.copy(alpha = 0.7f)
-                    cell.date.dayOfWeek == java.time.DayOfWeek.SUNDAY -> NexoPalette.Sunday
+                    cell.date.dayOfWeek == DayOfWeek.SUNDAY -> NexoPalette.Sunday
                     else -> colors.text
                 },
             )
@@ -545,11 +559,11 @@ private fun CalendarDay(cell: CalendarCell, main: Currency, money: MoneyColors, 
 
 /** One card per month: its income, expenses and net, opening to the weeks inside it. */
 @Composable
-private fun MonthlyContent(data: HomeData, main: Currency, selected: LocalDate, bottom: Dp, onWeek: (com.nexo.app.core.common.period.MonthPeriod) -> Unit) {
+private fun MonthlyContent(data: HomeData, main: Currency, selected: LocalDate, bottom: Dp, onWeek: (MonthPeriod) -> Unit) {
     val haptics = rememberHaptics()
     var expanded by rememberSaveable(data.year) { mutableStateOf(data.months.firstOrNull { selected in it.period.range }?.period?.key ?: -1) }
     if (data.months.isEmpty()) {
-        com.nexo.app.ui.designsystem.component.EmptyState()
+        EmptyState()
         return
     }
     val today = LocalDate.now()
@@ -572,9 +586,9 @@ private fun MonthlyContent(data: HomeData, main: Currency, selected: LocalDate, 
 private fun MonthCard(month: MonthRow, main: Currency, open: Boolean, showRange: Boolean, onToggle: () -> Unit, onWeek: () -> Unit, modifier: Modifier = Modifier) {
     val colors = LocalNexoColors.current
     val money = LocalMoneyColors.current
-    val interactions = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    val turn by androidx.compose.animation.core.animateFloatAsState(if (open) 180f else 0f, NexoMotion.snappy(), label = "chevron")
-    com.nexo.app.ui.designsystem.component.GroupCard(modifier, interactions = interactions) {
+    val interactions = remember { MutableInteractionSource() }
+    val turn by animateFloatAsState(if (open) 180f else 0f, NexoMotion.snappy(), label = "chevron")
+    GroupCard(modifier, interactions = interactions) {
         Row(
             Modifier
                 .fillMaxWidth()
@@ -587,9 +601,9 @@ private fun MonthCard(month: MonthRow, main: Currency, open: Boolean, showRange:
                 if (showRange) Text(Formats.range(month.period.start, month.period.end), style = NexoType.Meta, color = colors.textTertiary)
             }
             Column(horizontalAlignment = Alignment.End) {
-                com.nexo.app.ui.designsystem.component.FlowAmount(month.income, main, money.income)
-                com.nexo.app.ui.designsystem.component.FlowAmount(month.expense, main, money.expense)
-                com.nexo.app.ui.designsystem.component.AmountText(month.income - month.expense, main, style = NexoType.AmountSmall, color = colors.textSecondary)
+                FlowAmount(month.income, main, money.income)
+                FlowAmount(month.expense, main, money.expense)
+                AmountText(month.income - month.expense, main, style = NexoType.AmountSmall, color = colors.textSecondary)
             }
             Icon(
                 Icons.Rounded.KeyboardArrowDown, null, tint = colors.textTertiary,
@@ -630,13 +644,13 @@ private fun WeekLine(week: WeekRow, main: Currency, onClick: () -> Unit) {
             maxLines = 1, modifier = Modifier.width(88.dp),
         )
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-            com.nexo.app.ui.designsystem.component.FlowAmount(week.income, main, money.income, Modifier.shrinkToFit(), NexoType.AmountSmall)
+            FlowAmount(week.income, main, money.income, Modifier.shrinkToFit(), NexoType.AmountSmall)
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-            com.nexo.app.ui.designsystem.component.FlowAmount(week.expense, main, money.expense, Modifier.shrinkToFit(), NexoType.AmountSmall)
+            FlowAmount(week.expense, main, money.expense, Modifier.shrinkToFit(), NexoType.AmountSmall)
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-            com.nexo.app.ui.designsystem.component.FlowAmount(net, main, colors.text, Modifier.shrinkToFit(), NexoType.AmountSmall)
+            FlowAmount(net, main, colors.text, Modifier.shrinkToFit(), NexoType.AmountSmall)
         }
     }
 }
@@ -647,7 +661,7 @@ private fun NoteContent(memos: List<Memo>, saved: String?, onSavedShown: () -> U
     val nav = LocalNavigator.current
     val dark = LocalIsDark.current
     if (memos.isEmpty()) {
-        com.nexo.app.ui.designsystem.component.EmptyState(stringResource(R.string.no_memos))
+        EmptyState(stringResource(R.string.no_memos))
         return
     }
     LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = bottom), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -691,7 +705,7 @@ private fun NoteContent(memos: List<Memo>, saved: String?, onSavedShown: () -> U
 private fun TotalContent(data: HomeData, main: Currency, budgetBlock: BudgetBlockData?, ref: RefData, bottom: Dp) {
     val nav = LocalNavigator.current
     LazyColumn(contentPadding = PaddingValues(12.dp, 12.dp, 12.dp, bottom), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { data.period?.let { com.nexo.app.ui.budgets.BudgetBlock(it, budgetBlock, ref) } }
+        item { data.period?.let { BudgetBlock(it, budgetBlock, ref) } }
         item {
             val s = data.summary ?: return@item
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
@@ -708,7 +722,7 @@ private fun TotalContent(data: HomeData, main: Currency, budgetBlock: BudgetBloc
                     else SummaryLine(stringResource(R.string.expenses_card), AmountFormatter.format(s.cardOut, main))
                     SummaryLine(stringResource(R.string.transfer_of, s.cashLabel), AmountFormatter.format(s.transfer, main))
                     Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = { data.period?.let { nav.navigate(com.nexo.app.ui.navigation.ExcelExportKey(it.start.toString(), it.end.toString())) } }, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = { data.period?.let { nav.navigate(ExcelExportKey(it.start.toString(), it.end.toString())) } }, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.export_to_excel))
                     }
                 }

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.text.format.DateFormat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -62,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.model.LockTimeout
 import com.nexo.app.core.model.ThemeMode
+import com.nexo.app.core.notifications.Notifications
 import com.nexo.app.core.notifications.ReminderScheduler
 import com.nexo.app.data.lock.PinHasher
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
@@ -132,11 +134,11 @@ fun ReminderScreen(vm: SettingsViewModel = hiltViewModel()) {
     Scaffold(topBar = { NexoTopBar(stringResource(R.string.alarm_setting), onBack = { nav.back() }) }) { p ->
         Column(Modifier.padding(p)) {
             SwitchRow(stringResource(R.string.alarm), d.reminderEnabled, { on ->
-                if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !com.nexo.app.core.notifications.Notifications.canPost(context)) permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !Notifications.canPost(context)) permission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 else apply(on, d.reminderHour, d.reminderMinute, d.reminderDays)
             })
             if (d.reminderEnabled) {
-                SettingRow(stringResource(R.string.time), Formats.time(LocalTime.of(d.reminderHour, d.reminderMinute), android.text.format.DateFormat.is24HourFormat(context)), onClick = { time = true })
+                SettingRow(stringResource(R.string.time), Formats.time(LocalTime.of(d.reminderHour, d.reminderMinute), DateFormat.is24HourFormat(context)), onClick = { time = true })
                 SectionHeader(stringResource(R.string.repeat))
                 FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(DayOfWeek.SUNDAY) .plus(DayOfWeek.entries.filter { it != DayOfWeek.SUNDAY }).forEach { day ->

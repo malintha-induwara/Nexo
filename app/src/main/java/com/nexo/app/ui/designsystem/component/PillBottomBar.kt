@@ -4,6 +4,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -255,7 +256,7 @@ private fun BarTab(item: BarItem, selected: Boolean, onClick: () -> Unit, modifi
     }
 }
 
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AddButton(onAdd: () -> Unit, label: String, modifier: Modifier, onLongPress: (() -> Unit)?, longPressLabel: String?) {
     val colors = LocalNexoColors.current

@@ -45,6 +45,7 @@ import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.core.model.BudgetMath
 import com.nexo.app.core.model.CategoryKind
+import com.nexo.app.core.model.Currency
 import com.nexo.app.domain.BudgetRow
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.ChartTitle
@@ -73,6 +74,7 @@ import com.nexo.app.ui.transactions.CategoryPickerDialog
 import com.nexo.app.ui.transactions.DayGroupList
 import java.time.LocalDate
 import java.time.YearMonth
+import kotlin.math.abs
 
 @Composable
 fun BudgetDetailScreen(key: BudgetDetailKey) {
@@ -191,7 +193,7 @@ fun BudgetSettingsScreen(vm: BudgetSettingsViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun SettingsBudgetRow(row: BudgetRow, main: com.nexo.app.core.model.Currency, onClick: () -> Unit, onDelete: (() -> Unit)?, onEdit: (() -> Unit)? = null, virtual: Boolean = false) {
+private fun SettingsBudgetRow(row: BudgetRow, main: Currency, onClick: () -> Unit, onDelete: (() -> Unit)?, onEdit: (() -> Unit)? = null, virtual: Boolean = false) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Text((if (row.isTotal) stringResource(R.string.total_budget) else row.name) + if (row.children.isNotEmpty()) "  ▾" else "", Modifier.weight(1f).padding(vertical = 14.dp), fontWeight = if (row.isTotal) FontWeight.SemiBold else FontWeight.Normal)
         if (!virtual) Text(AmountFormatter.format(row.amount, main), style = MaterialTheme.typography.bodyMedium)
@@ -241,7 +243,7 @@ fun BudgetAddScreen(key: BudgetAddKey, vm: BudgetSettingsViewModel = hiltViewMod
         CategoryPickerDialog(ref, onPick = { target = it; picker = false; if (amount == null) pad = true }, onDismiss = { picker = false },
             allowAll = true, onAll = { target = "total"; picker = false; if (amount == null) pad = true }, kinds = listOf(CategoryKind.EXPENSE))
     }
-    if (pad) AmountSheet(stringResource(R.string.amount), amount, ref.mainCurrency.decimals, allowSign = false, onConfirm = { amount = it?.let { v -> kotlin.math.abs(v) } }, onDismiss = { pad = false })
+    if (pad) AmountSheet(stringResource(R.string.amount), amount, ref.mainCurrency.decimals, allowSign = false, onConfirm = { amount = it?.let { v -> abs(v) } }, onDismiss = { pad = false })
 }
 
 /** Monthly budget editor. */
@@ -294,7 +296,7 @@ fun BudgetEditorScreen(key: BudgetEditorKey, vm: BudgetSettingsViewModel = hiltV
         val label = if (k == 0) stringResource(R.string.default_budget) else Formats.monthYear(YearMonth.of(k / 100, k % 100))
         AmountSheet(
             label, if (k == 0) BudgetMath.latest(records) else BudgetMath.effective(records, k), main.decimals, allowSign = false, subtitle = title,
-            onConfirm = { v -> val a = kotlin.math.abs(v ?: 0.0); if (k == 0) vm.setDefault(key.budgetId, a) else vm.setMonth(key.budgetId, k, a) },
+            onConfirm = { v -> val a = abs(v ?: 0.0); if (k == 0) vm.setDefault(key.budgetId, a) else vm.setMonth(key.budgetId, k, a) },
             onDismiss = { editing = null },
         )
     }

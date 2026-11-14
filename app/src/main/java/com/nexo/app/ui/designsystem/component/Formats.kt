@@ -1,9 +1,11 @@
 package com.nexo.app.ui.designsystem.component
 
+import android.text.format.DateFormat
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.Month
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -27,8 +29,8 @@ object Formats {
         t.format(DateTimeFormatter.ofPattern(if (is24h) "HH:mm" else "h:mm a", locale))
 
     fun monthYear(m: YearMonth): String = m.format(DateTimeFormatter.ofPattern(bestPattern("MMMyyyy"), locale))
-    fun monthShort(month: Int): String = java.time.Month.of(month).getDisplayName(TextStyle.SHORT, locale)
-    fun monthFull(month: Int): String = java.time.Month.of(month).getDisplayName(TextStyle.FULL_STANDALONE, locale)
+    fun monthShort(month: Int): String = Month.of(month).getDisplayName(TextStyle.SHORT, locale)
+    fun monthFull(month: Int): String = Month.of(month).getDisplayName(TextStyle.FULL_STANDALONE, locale)
 
     /** "M.D" style. */
     fun monthDay(d: LocalDate): String = d.format(DateTimeFormatter.ofPattern(bestPattern("Md"), locale))
@@ -42,7 +44,7 @@ object Formats {
     fun isoDate(d: LocalDate): String = d.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
     private fun bestPattern(skeleton: String): String =
-        android.text.format.DateFormat.getBestDateTimePattern(locale, skeleton)
+        DateFormat.getBestDateTimePattern(locale, skeleton)
 
     private fun monthFirst(): Boolean {
         val p = bestPattern("yMd")

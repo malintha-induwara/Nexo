@@ -3,6 +3,7 @@ package com.nexo.app.ui.backup
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -229,7 +230,7 @@ fun BackupDeviceScreen(vm: BackupViewModel = hiltViewModel()) {
 }
 
 fun displayName(context: Context, uri: Uri): String? = runCatching {
-    context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+    context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
 }.getOrNull() ?: uri.lastPathSegment
 
 /** Restore requested by opening a backup file with Nexo. */

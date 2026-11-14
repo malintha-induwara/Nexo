@@ -1,5 +1,6 @@
 package com.nexo.app.ui.entry
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -148,7 +149,7 @@ fun ColumnScope.ReceiptSheetContent(
         }
         val date = read.date
         if (date != null) {
-            val time = read.time?.let { Formats.time(it, android.text.format.DateFormat.is24HourFormat(context)) }
+            val time = read.time?.let { Formats.time(it, DateFormat.is24HourFormat(context)) }
             val shown = Formats.mediumDate(date) + (time?.let { ", $it" } ?: "")
             TickRow(stringResource(R.string.receipt_use_date, shown), useDate) { haptics.tick(); useDate = !useDate }
         }

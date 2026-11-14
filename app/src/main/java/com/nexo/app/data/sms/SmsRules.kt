@@ -7,6 +7,7 @@ import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.data.sms.parser.Bank
 import com.nexo.app.data.sms.parser.Banks
+import com.nexo.app.data.sms.parser.MerchantCleaner
 
 /** What an item still lacks before it can be approved. Separate from [Certainty]. */
 enum class Missing { ACCOUNT, DESTINATION, CATEGORY, AMOUNT }
@@ -33,7 +34,7 @@ val SmsItem.needsAttention: Boolean get() = certainty != Certainty.EXACT || need
 
 /** The key learned categories are stored under: the merchant, or the payee of a transfer. */
 val SmsItem.learningKey: String
-    get() = merchantKey.ifEmpty { payee?.let(com.nexo.app.data.sms.parser.MerchantCleaner::key).orEmpty() }
+    get() = merchantKey.ifEmpty { payee?.let(MerchantCleaner::key).orEmpty() }
 
 /** Where withdrawals go. The chosen account, else the first visible account in the Cash group. */
 fun RefData.smsCashAccount(): String? {

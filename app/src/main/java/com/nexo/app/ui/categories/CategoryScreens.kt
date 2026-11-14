@@ -57,6 +57,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -98,7 +99,7 @@ private val EMOJI_CHOICES = listOf(
 )
 
 @Composable
-private fun CategoryTileFor(visual: CategoryVisual?, size: androidx.compose.ui.unit.Dp = 36.dp) {
+private fun CategoryTileFor(visual: CategoryVisual?, size: Dp = 36.dp) {
     val colors = LocalNexoColors.current
     val v = visual ?: return
     CategoryTile(v.emoji, v.monogram, CategoryHues.of(v.colorIndex, colors.isDark), size = size)

@@ -53,6 +53,7 @@ import com.nexo.app.ui.designsystem.theme.Space
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
+import com.nexo.app.ui.navigation.MemoListKey
 import com.nexo.app.ui.navigation.StatsDetailKey
 import com.nexo.app.ui.navigation.StatsDetailKind
 import com.nexo.app.ui.navigation.StatsScope
@@ -107,7 +108,7 @@ fun StatsDetailScreen(key: StatsDetailKey) {
                 groups = ui.days, main = main, selection = selection,
                 onRowClick = { row -> if (selection.isNotEmpty()) vm.toggleSelect(row.id) else nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = row.id)) },
                 onRowLongClick = { row -> vm.toggleSelect(row.id) },
-                onMemoClick = { d -> nav.navigate(com.nexo.app.ui.navigation.MemoListKey(d.toString())) },
+                onMemoClick = { d -> nav.navigate(MemoListKey(d.toString())) },
                 header = {
                     item(key = "summary") {
                         val colors = LocalNexoColors.current

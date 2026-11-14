@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.common.money.AmountParts
 import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.RefData
@@ -112,7 +113,7 @@ fun ColumnScope.FeePromptContent(prompt: FeePrompt, ref: RefData, onAnswer: (Fee
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(stringResource(R.string.fee_amount), style = MaterialTheme.typography.bodyLarge, color = colors.textSecondary, modifier = Modifier.weight(1f))
-            if (amount != null) AmountText(amount!!, currency, sign = com.nexo.app.core.common.money.AmountParts.Sign.NONE)
+            if (amount != null) AmountText(amount!!, currency, sign = AmountParts.Sign.NONE)
             else Text("—", style = NexoType.Amount, color = colors.textTertiary)
         }
         if (confirmLarge && tooLarge) {

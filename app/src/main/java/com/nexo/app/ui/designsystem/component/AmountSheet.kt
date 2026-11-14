@@ -20,7 +20,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.ui.designsystem.theme.LocalNexoColors
+import java.math.BigDecimal
 import java.math.RoundingMode
+import java.text.DecimalFormatSymbols
 
 /**
  * Generic numeric entry sheet (pad + optional calculator). Used for account amounts, budget amounts,
@@ -46,12 +49,12 @@ fun AmountSheet(
     var input by remember { mutableStateOf(PadInput("", decimals, allowSign, maxLength)) }
     var current by remember { mutableStateOf(initial) }
     var calc by remember { mutableStateOf(false) }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state, containerColor = com.nexo.app.ui.designsystem.theme.LocalNexoColors.current.surface) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state, containerColor = LocalNexoColors.current.surface) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
             if (subtitle != null) Text(subtitle, modifier = Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodyMedium)
             val shown = input.value ?: if (input.buffer.isEmpty()) current else null
             Text(
-                text = if (input.buffer.isNotEmpty()) input.buffer.replace('.', java.text.DecimalFormatSymbols.getInstance().decimalSeparator)
+                text = if (input.buffer.isNotEmpty()) input.buffer.replace('.', DecimalFormatSymbols.getInstance().decimalSeparator)
                 else shown?.let(format) ?: "",
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
                 textAlign = TextAlign.End, style = MaterialTheme.typography.displaySmall,
@@ -70,7 +73,7 @@ fun AmountSheet(
                 onDone = {
                     val v = input.value ?: current
                     if (validate(v)) {
-                        onConfirm(v?.let { java.math.BigDecimal.valueOf(it).setScale(decimals, RoundingMode.HALF_UP).toDouble() })
+                        onConfirm(v?.let { BigDecimal.valueOf(it).setScale(decimals, RoundingMode.HALF_UP).toDouble() })
                         onDismiss()
                     }
                 },

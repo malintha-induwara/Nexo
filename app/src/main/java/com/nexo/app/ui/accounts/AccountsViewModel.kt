@@ -16,6 +16,7 @@ import com.nexo.app.domain.AccountsSummaryCalculator
 import com.nexo.app.domain.Balances
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
+import java.time.YearMonth
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,7 +40,7 @@ data class AccountsData(
     val changes: Map<String, Double> = emptyMap(),
     val unassigned: Double? = null,
     val range: DateRange? = null,
-    val debitMonthLabel: java.time.YearMonth? = null,
+    val debitMonthLabel: YearMonth? = null,
 )
 
 data class AccountsUiState(

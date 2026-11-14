@@ -36,6 +36,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -50,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -59,11 +61,13 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.model.Certainty
+import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsHistoryImport
 import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.data.sms.needsAttention
 import com.nexo.app.data.sms.needsDetails
+import com.nexo.app.data.sms.parser.Banks
 import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.EmptyState
@@ -95,7 +99,7 @@ private sealed interface QueueSheet {
 @Composable
 fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -263,7 +267,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
             when (val s = sheet) {
                 is QueueSheet.MapCard -> {
                     SheetTitle(
-                        stringResource(R.string.sms_card_question, com.nexo.app.data.sms.parser.Banks.byName(s.card.bank)?.displayName.orEmpty(), s.card.last4),
+                        stringResource(R.string.sms_card_question, Banks.byName(s.card.bank)?.displayName.orEmpty(), s.card.last4),
                         stringResource(R.string.sms_card_hint),
                     )
                     AccountPickList(ref, null) { id ->
@@ -316,7 +320,7 @@ fun SmsQueueScreen(vm: SmsQueueViewModel = hiltViewModel()) {
 @Composable
 private fun QueueItem(
     item: SmsItem,
-    ref: com.nexo.app.core.model.RefData,
+    ref: RefData,
     now: Long,
     selected: Boolean,
     selecting: Boolean,
@@ -372,7 +376,7 @@ private fun SelectionHeader(count: Int, onClose: () -> Unit, onAssign: () -> Uni
             colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
             contentPadding = PaddingValues(horizontal = Space.l),
         ) {
-            androidx.compose.material3.Icon(Icons.Rounded.DoneAll, null, Modifier.size(18.dp))
+            Icon(Icons.Rounded.DoneAll, null, Modifier.size(18.dp))
             Spacer(Modifier.width(Space.xs))
             Text(stringResource(R.string.sms_approve), style = MaterialTheme.typography.labelLarge)
         }
@@ -424,7 +428,7 @@ private fun FilterChips(selected: QueueFilter, pendingCount: Int, attentionCount
 /** Card mapping, asked once per card at the top of a list. */
 @Composable
 fun CardQuestion(card: CardRef, modifier: Modifier, onChoose: () -> Unit) {
-    val bank = com.nexo.app.data.sms.parser.Banks.byName(card.bank)?.displayName.orEmpty()
+    val bank = Banks.byName(card.bank)?.displayName.orEmpty()
     SmsPromptCard(
         stringResource(R.string.sms_card_question, bank, card.last4),
         stringResource(R.string.sms_card_hint),

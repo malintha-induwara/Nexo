@@ -7,6 +7,7 @@ import com.nexo.app.core.common.money.CatalogCurrency
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.model.BookSettings
 import com.nexo.app.core.model.CategoryKind
+import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
 import com.nexo.app.data.database.entity.AccountEntity
 import com.nexo.app.data.database.entity.AccountGroupEntity
@@ -35,7 +36,7 @@ class BookSeeder @Inject constructor(
         if (db.currencyDao().getMain() == null) db.currencyDao().upsert(listOf(mainCurrencyRow(main, now)))
         val mainId = db.currencyDao().getMain()!!.id
         if (db.categoryDao().getAll().isEmpty()) db.categoryDao().upsert(categories(now))
-        if (db.accountGroupDao().getAll().none { it.status == com.nexo.app.core.model.GroupStatus.ACTIVE }) {
+        if (db.accountGroupDao().getAll().none { it.status == GroupStatus.ACTIVE }) {
             db.accountGroupDao().upsert(groups(now))
         }
         if (db.accountDao().getAll().isEmpty()) db.accountDao().upsert(accounts(mainId, now))

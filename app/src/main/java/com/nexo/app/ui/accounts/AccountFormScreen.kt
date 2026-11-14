@@ -6,6 +6,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -42,6 +43,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.common.period.MonthPeriod
+import com.nexo.app.core.common.period.PeriodEngine
 import com.nexo.app.core.model.Account
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
@@ -122,10 +125,10 @@ fun AccountFormScreen(key: AccountFormKey) {
             if (type == GroupType.CREDIT_CARD) {
                 SettingRow(stringResource(R.string.settlement_date), stringResource(R.string.every_n, s.settlementDay), onClick = { editDay = 1 })
                 SettingRow(stringResource(R.string.payment_date), stringResource(R.string.every_n, s.paymentDay), onClick = { editDay = 2 })
-                val e = com.nexo.app.core.common.period.PeriodEngine(s.settlementDay)
+                val e = PeriodEngine(s.settlementDay)
                 val current = e.monthPeriodContaining(LocalDate.now())
                 val prev = e.previous(current)
-                fun line(p: com.nexo.app.core.common.period.MonthPeriod): String {
+                fun line(p: MonthPeriod): String {
                     val pay = CardStatement.paymentDate(p.end, s.paymentDay)
                     return "%02d-%02d ~ %02d-%02d (%s %02d-%02d)".format(p.start.monthValue, p.start.dayOfMonth, p.end.monthValue, p.end.dayOfMonth, payLabel, pay.monthValue, pay.dayOfMonth)
                 }
@@ -181,7 +184,7 @@ fun AccountFormScreen(key: AccountFormKey) {
 }
 
 @Composable
-private fun androidx.compose.foundation.layout.RowScope.SettingRowWeighted(title: String, value: String, onClick: () -> Unit) {
+private fun RowScope.SettingRowWeighted(title: String, value: String, onClick: () -> Unit) {
     Column(Modifier.weight(1f).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp)) {
         Text(title, style = MaterialTheme.typography.bodyLarge)
         Text(value, style = MaterialTheme.typography.titleMedium)

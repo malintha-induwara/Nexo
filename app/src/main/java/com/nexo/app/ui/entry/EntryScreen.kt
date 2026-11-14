@@ -1,6 +1,13 @@
 package com.nexo.app.ui.entry
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.res.Resources
 import android.net.Uri
+import android.text.format.DateFormat
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -29,6 +36,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -102,6 +110,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -133,6 +142,7 @@ import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.RepeatReflect
 import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.core.model.TxKind
@@ -141,6 +151,7 @@ import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.AmountText
 import com.nexo.app.ui.designsystem.component.CalculatorDialog
 import com.nexo.app.ui.designsystem.component.CategoryTile
+import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.InlineBottomSheet
@@ -172,6 +183,8 @@ import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SubCurrenciesKey
+import com.nexo.app.ui.sms.fxEstimateNote
+import com.nexo.app.ui.sms.openRatesAttribution
 import java.io.File
 import java.text.DecimalFormatSymbols
 import java.text.NumberFormat
@@ -192,7 +205,7 @@ fun EntryScreen(key: EntryKey) {
     LaunchedEffect(Unit) { vm.initialize(EntryTexts(paymentNote = paymentNote)) }
     val nav = LocalNavigator.current
     val context = LocalContext.current
-    val resources = androidx.compose.ui.platform.LocalResources.current
+    val resources = LocalResources.current
     val money = LocalMoneyColors.current
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
@@ -265,7 +278,7 @@ fun EntryScreen(key: EntryKey) {
     // one page, which is read and then attached once the user confirms it. Where the scanner cannot start (no Google Play
     // services, or a phone it does not support) the plain camera and gallery choices take its place.
     val scanDocument = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
+        if (result.resultCode == Activity.RESULT_OK) {
             GmsDocumentScanningResult.fromActivityResultIntent(result.data)?.pages?.firstOrNull()?.imageUri?.let(vm::scanReceipt)
         }
     }
@@ -512,7 +525,7 @@ fun EntryScreen(key: EntryKey) {
                     ) { vm.enterEdit(); showDate = true }
                     if (ref.settings.timeDisplay.timeInput && s.showTime) {
                         FieldPill(
-                            text = Formats.time(s.time, android.text.format.DateFormat.is24HourFormat(context)),
+                            text = Formats.time(s.time, DateFormat.is24HourFormat(context)),
                             label = stringResource(R.string.date),
                             icon = Icons.Outlined.Schedule,
                             accent = typeColor,
@@ -598,7 +611,7 @@ fun EntryScreen(key: EntryKey) {
                                 if (device?.photoNoticeShown == false) showPhotoNotice = true else launchScanner()
                             }
                             NexoMenu(showScanMenu, onDismissRequest = { showScanMenu = false }) {
-                                if (context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY)) {
+                                if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
                                     NexoMenuItem(stringResource(R.string.camera), { showScanMenu = false; launchCamera() }, Icons.Rounded.PhotoCamera)
                                 }
                                 NexoMenuItem(stringResource(R.string.gallery), {
@@ -625,7 +638,7 @@ fun EntryScreen(key: EntryKey) {
                     modifier = Modifier.fillMaxWidth().padding(horizontal = Space.s, vertical = Space.xs).onFocusChanged { if (it.isFocused) { vm.closePanel(); vm.enterEdit() } },
                 )
                 val fxText = s.fxNote?.let { fx ->
-                    com.nexo.app.ui.sms.fxEstimateNote(context, fx.item, ref)?.let { note ->
+                    fxEstimateNote(context, fx.item, ref)?.let { note ->
                         if (fx.editHint) note + "\n" + stringResource(R.string.fx_edit_hint) else note
                     }
                 }
@@ -635,7 +648,7 @@ fun EntryScreen(key: EntryKey) {
                         if (s.fxFromApi) {
                             Text(
                                 stringResource(R.string.fx_attribution),
-                                Modifier.clickable { com.nexo.app.ui.sms.openRatesAttribution(context) }.padding(top = Space.xs),
+                                Modifier.clickable { openRatesAttribution(context) }.padding(top = Space.xs),
                                 style = NexoType.Meta, color = colors.textTertiary,
                             )
                         }
@@ -739,7 +752,7 @@ fun EntryScreen(key: EntryKey) {
     if (showRepeatEnd) NexoDatePickerDialog(s.repeatEnd ?: s.date.plusYears(1), onPick = { vm.setRepeatEnd(if (it.isBefore(s.date)) s.date else it) }, onDismiss = { showRepeatEnd = false })
     if (showCalc) CalculatorDialog(if (s.panel == Panel.FEE) s.feeAmount else s.amount, onResult = vm::calculatorResult, onDismiss = { showCalc = false })
     if (showRepeatList) {
-        com.nexo.app.ui.designsystem.component.ChoiceDialog(
+        ChoiceDialog(
             title = stringResource(R.string.repeat),
             options = RepeatType.pickerOrder,
             selected = s.repeat,
@@ -808,7 +821,7 @@ fun EntryScreen(key: EntryKey) {
     }
     if (s.confirmRepeat) {
         ConfirmDialog(
-            message = stringResource(if (ref.settings.repeatReflect == com.nexo.app.core.model.RepeatReflect.ON_DATE) R.string.repeat_reflect_on_date else R.string.repeat_reflect_first_day) +
+            message = stringResource(if (ref.settings.repeatReflect == RepeatReflect.ON_DATE) R.string.repeat_reflect_on_date else R.string.repeat_reflect_first_day) +
                 "\n\n" + stringResource(R.string.repeat_save_question),
             onConfirm = vm::confirmRepeatSave,
             onDismiss = vm::dismissRepeatConfirm,
@@ -854,7 +867,7 @@ fun EntryScreen(key: EntryKey) {
 
 private enum class BottomKind { PAD, ACCOUNT, CATEGORY, ACTIONS }
 
-private fun pluralStringResourceText(resources: android.content.res.Resources, n: Int): String =
+private fun pluralStringResourceText(resources: Resources, n: Int): String =
     resources.getQuantityString(R.plurals.n_months, n, n)
 
 private fun categoryText(ref: RefData, s: EntryForm): String {
@@ -908,7 +921,7 @@ private fun AmountDisplay(s: EntryForm, currency: Currency, color: Color, shake:
     val active = s.panel == Panel.AMOUNT
     val tint by animateColorAsState(if (parts == null) colors.textTertiary else color, NexoMotion.standard(), label = "amountTint")
     Column(
-        Modifier.fillMaxWidth().clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, role = Role.Button, onClick = onClick)
+        Modifier.fillMaxWidth().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, role = Role.Button, onClick = onClick)
             .padding(horizontal = Space.gutter, vertical = Space.m),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -977,7 +990,7 @@ private fun FieldPill(
     onClick: () -> Unit,
 ) {
     val colors = LocalNexoColors.current
-    val interactions = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val interactions = remember { MutableInteractionSource() }
     val bg by animateColorAsState(if (active) colors.tint(accent, colors.raised) else colors.raised, NexoMotion.standard(), label = "pillBg")
     val ring by animateColorAsState(if (active) accent else Color.Transparent, NexoMotion.standard(), label = "pillRing")
     Row(
@@ -1060,7 +1073,7 @@ private fun BottomButtons(
                 SoftButton(stringResource(R.string.action_delete), onDelete, Modifier.weight(1f), content = MaterialTheme.colorScheme.error)
             }
             if (sms) SoftButton(stringResource(R.string.sms_deny), onDeny, Modifier.weight(1f), enabled = !s.saving)
-            val interactions = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val interactions = remember { MutableInteractionSource() }
             Button(
                 onClick = onSave,
                 enabled = !s.saving,
@@ -1087,7 +1100,7 @@ private fun BottomButtons(
 @Composable
 private fun SoftButton(text: String, onClick: () -> Unit, modifier: Modifier, content: Color = LocalNexoColors.current.text, enabled: Boolean = true) {
     val colors = LocalNexoColors.current
-    val interactions = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val interactions = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
         enabled = enabled,
@@ -1105,7 +1118,7 @@ private fun SoftButton(text: String, onClick: () -> Unit, modifier: Modifier, co
  * follow them, and one that does not simply opens on whichever lens it used last.
  */
 private class RearCameraPicture : ActivityResultContracts.TakePicture() {
-    override fun createIntent(context: android.content.Context, input: Uri): android.content.Intent =
+    override fun createIntent(context: Context, input: Uri): Intent =
         super.createIntent(context, input).apply {
             putExtra("android.intent.extras.CAMERA_FACING", 0)
             putExtra("android.intent.extras.LENS_FACING_BACK", 1)
@@ -1125,8 +1138,8 @@ private fun receiptScanner() = GmsDocumentScanning.getClient(
         .build(),
 )
 
-private tailrec fun android.content.Context.findActivity(): android.app.Activity? = when (this) {
-    is android.app.Activity -> this
-    is android.content.ContextWrapper -> baseContext.findActivity()
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
     else -> null
 }

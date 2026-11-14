@@ -2,12 +2,15 @@ package com.nexo.app.ui.budgets
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.common.period.DateRange
 import com.nexo.app.core.common.period.MonthPeriod
 import com.nexo.app.core.model.Budget
 import com.nexo.app.core.model.BudgetAmount
 import com.nexo.app.core.model.BudgetMath
+import com.nexo.app.core.model.Ledger
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.repository.BudgetsRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
@@ -74,7 +77,7 @@ class BudgetDetailViewModel @AssistedInject constructor(
 
     private data class Inputs(val r: RefData, val id: String, val m: YearMonth, val budgets: List<Budget>, val amounts: List<BudgetAmount>)
 
-    private fun build(inp: Inputs, year: List<MonthPeriod>, l: com.nexo.app.core.model.Ledger): BudgetDetailUiState {
+    private fun build(inp: Inputs, year: List<MonthPeriod>, l: Ledger): BudgetDetailUiState {
         val r = inp.r
         val budget = inp.budgets.firstOrNull { it.id == inp.id }
         val categoryId = budget?.categoryId ?: inp.id.removePrefix("virtual_").takeIf { inp.id.startsWith("virtual_") }
@@ -87,11 +90,11 @@ class BudgetDetailViewModel @AssistedInject constructor(
             return if (own == 0.0 && !isSub) subBudgets.sumOf { BudgetMath.effective(byBudget[it.id].orEmpty(), key) } else own
         }
         val expense = l.rows.filter { it.kind == TxKind.EXPENSE && !it.isBalanceAdjustment }
-        fun matches(t: com.nexo.app.core.model.Transaction) =
+        fun matches(t: Transaction) =
             if (isSub) t.categoryId == categoryId else r.mainCategoryId(t.categoryId) == categoryId
         val months = year.map { p ->
             val used = expense.filter { LocalDate.parse(it.date) in p.range && matches(it) }.sumOf { it.amountMain }
-            BudgetMonth(p, budgetFor(p.key), com.nexo.app.core.common.money.Money.round(used, r.mainCurrency.decimals))
+            BudgetMonth(p, budgetFor(p.key), Money.round(used, r.mainCurrency.decimals))
         }
         val selected = months.indexOfFirst { it.period.label == inp.m }.coerceAtLeast(0)
         val sel = months.getOrNull(selected)

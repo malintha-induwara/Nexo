@@ -49,6 +49,7 @@ import java.io.File
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
@@ -306,7 +307,7 @@ class LegacyImporter @Inject constructor(
             val ms = r.long("ZDATE")
             val date = r.str("WDATE")?.takeIf { it.length == 10 }?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
                 ?: ms?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() } ?: return@each
-            val time = ms?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalTime() } ?: java.time.LocalTime.MIDNIGHT
+            val time = ms?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalTime() } ?: LocalTime.MIDNIGHT
             val ctg = r.str("ctgUid")?.trim()
             val adjustment = ctg == "-4" || kind.isBalance
             val account = acc(r.str("assetUid"))

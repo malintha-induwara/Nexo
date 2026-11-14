@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -56,9 +57,11 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
+import com.nexo.app.core.model.RefData
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.DateRangeChips
+import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.component.PeriodNavigator
@@ -66,6 +69,7 @@ import com.nexo.app.ui.designsystem.component.TotalsBar
 import com.nexo.app.ui.designsystem.theme.LocalIsDark
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.NexoPalette
+import com.nexo.app.ui.entry.NoteSuggestion
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
@@ -73,6 +77,7 @@ import com.nexo.app.ui.navigation.MemoEditorKey
 import com.nexo.app.ui.navigation.SearchKey
 import com.nexo.app.ui.transactions.BulkAction
 import com.nexo.app.ui.transactions.BulkDialogs
+import com.nexo.app.ui.transactions.FilterCriteria
 import com.nexo.app.ui.transactions.SelectionBar
 import com.nexo.app.ui.transactions.TxRow
 import com.nexo.app.ui.transactions.selectedNet
@@ -141,7 +146,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
             if (focused && c.query.isNotEmpty()) {
                 val q = c.query
                 suggestions.mapNotNull { s -> s.note.indexOf(q, ignoreCase = true).takeIf { it >= 0 && s.note != q }?.let { s to it } }
-                    .sortedWith(compareByDescending<Pair<com.nexo.app.ui.entry.NoteSuggestion, Int>> { it.first.count }.thenBy { it.second }.thenByDescending { it.first.lastDate })
+                    .sortedWith(compareByDescending<Pair<NoteSuggestion, Int>> { it.first.count }.thenBy { it.second }.thenByDescending { it.first.lastDate })
                     .take(5).forEach { (s, i) ->
                         Text(
                             buildAnnotatedString {
@@ -156,7 +161,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
             if (panel) {
                 CriteriaRow(stringResource(R.string.period), stringResource(periodLabel(c.period)), null) { dialog = "period" }
                 CriteriaRow(stringResource(R.string.account), c.accounts.mapNotNull { ref.accountById[it]?.name }.joinToString(", ").ifEmpty { null }, { vm.update { it.copy(accounts = emptySet()) } }) { dialog = "account" }
-                CriteriaRow(stringResource(R.string.category), categorySummary(ref, c), { vm.update { it.copy(categories = com.nexo.app.ui.transactions.FilterCriteria()) } }) { dialog = "category" }
+                CriteriaRow(stringResource(R.string.category), categorySummary(ref, c), { vm.update { it.copy(categories = FilterCriteria()) } }) { dialog = "category" }
                 CriteriaRow(
                     stringResource(R.string.amount),
                     if (c.min == null && c.max == null) null else "${c.min?.let { AmountFormatter.number(it, ref.mainCurrency.decimals) } ?: stringResource(R.string.min)} ~ ${c.max?.let { AmountFormatter.number(it, ref.mainCurrency.decimals) } ?: stringResource(R.string.max)}",
@@ -168,7 +173,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
             if (r.memos.isNotEmpty()) {
                 Row(Modifier.padding(horizontal = 12.dp)) {
                     FilterChip(!showMemos, onClick = { showMemos = false }, label = { Text(stringResource(R.string.transactions_n, r.rows.size)) })
-                    androidx.compose.foundation.layout.Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(8.dp))
                     FilterChip(showMemos, onClick = { showMemos = true }, label = { Text(stringResource(R.string.memos_n, r.memos.size)) })
                 }
             }
@@ -190,7 +195,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
                         }
                     }
                 } else {
-                    if (r.loaded && r.rows.isEmpty()) item { com.nexo.app.ui.designsystem.component.EmptyState() }
+                    if (r.loaded && r.rows.isEmpty()) item { EmptyState() }
                     items(r.rows, key = { it.second.id }) { (date, row) ->
                         Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
                             Text(date.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(start = 16.dp, top = 6.dp))
@@ -221,7 +226,7 @@ fun SearchScreen(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun categorySummary(ref: com.nexo.app.core.model.RefData, c: SearchCriteria): String? {
+private fun categorySummary(ref: RefData, c: SearchCriteria): String? {
     val f = c.categories
     if (!f.hasCategoryPart) return null
     val parts = buildList {

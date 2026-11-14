@@ -41,12 +41,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter
 import com.nexo.app.data.sms.ledgerAmount
+import com.nexo.app.data.sms.parser.Banks
 import com.nexo.app.ui.designsystem.asString
 import com.nexo.app.ui.designsystem.component.DateRangeChips
 import com.nexo.app.ui.designsystem.component.EmptyState
@@ -120,7 +122,7 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
                     stringResource(R.string.sms_history_loading),
                     Modifier.fillMaxWidth().padding(top = Space.xxxl),
                     style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    textAlign = TextAlign.Center,
                 )
                 list.isEmpty() -> EmptyState(
                     stringResource(if (state.permitted) R.string.sms_history_empty else R.string.sms_history_needs_permission),
@@ -203,7 +205,7 @@ fun SmsHistoryScreen(key: SmsHistoryKey) {
         InlineBottomSheet(mappingOpen, onDismiss = { mappingOpen = false }, heightFraction = 0.72f) {
             mapping?.let { c ->
                 SheetTitle(
-                    stringResource(R.string.sms_card_question, com.nexo.app.data.sms.parser.Banks.byName(c.bank)?.displayName.orEmpty(), c.last4),
+                    stringResource(R.string.sms_card_question, Banks.byName(c.bank)?.displayName.orEmpty(), c.last4),
                     stringResource(R.string.sms_card_hint),
                 )
                 AccountPickList(ref, null) { id ->

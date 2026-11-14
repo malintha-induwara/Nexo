@@ -3,18 +3,25 @@ package com.nexo.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.nexo.app.BuildConfig
+import com.nexo.app.R
+import com.nexo.app.core.model.ThemeMode
 import com.nexo.app.ui.designsystem.component.NavMotion
 import com.nexo.app.ui.designsystem.theme.NexoTheme
 import com.nexo.app.ui.lock.LockScreen
@@ -33,7 +40,7 @@ fun NexoApp(app: AppViewModel) {
     val locked = state.locked
     val pending = state.pending
     val d = device
-    NexoTheme(mode = d?.themeMode ?: com.nexo.app.core.model.ThemeMode.SYSTEM, colorSet = book.colorSet) {
+    NexoTheme(mode = d?.themeMode ?: ThemeMode.SYSTEM, colorSet = book.colorSet) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             if (d == null) return@Box
             if (!d.setupDone) {
@@ -62,13 +69,13 @@ fun NexoApp(app: AppViewModel) {
                 }
             }
             // "What's new" once per release; a first install only stores the marker.
-            if (!locked && d.whatsNewVersion < com.nexo.app.BuildConfig.VERSION_CODE) {
+            if (!locked && d.whatsNewVersion < BuildConfig.VERSION_CODE) {
                 if (d.whatsNewVersion == 0) LaunchedEffect(Unit) { app.markWhatsNewSeen() }
-                else androidx.compose.material3.AlertDialog(
+                else AlertDialog(
                     onDismissRequest = { app.markWhatsNewSeen() },
-                    title = { androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(com.nexo.app.R.string.whats_new)) },
-                    text = { androidx.compose.material3.Text(com.nexo.app.BuildConfig.VERSION_NAME + "\n\n" + androidx.compose.ui.res.stringResource(com.nexo.app.R.string.whats_new_text)) },
-                    confirmButton = { androidx.compose.material3.TextButton(onClick = { app.markWhatsNewSeen() }) { androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(com.nexo.app.R.string.action_close)) } },
+                    title = { Text(stringResource(R.string.whats_new)) },
+                    text = { Text(BuildConfig.VERSION_NAME + "\n\n" + stringResource(R.string.whats_new_text)) },
+                    confirmButton = { TextButton(onClick = { app.markWhatsNewSeen() }) { Text(stringResource(R.string.action_close)) } },
                 )
             }
             LaunchedEffect(locked, pending) {

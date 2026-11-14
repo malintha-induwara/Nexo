@@ -1,6 +1,7 @@
 package com.nexo.app.data.repository
 
 import android.content.Context
+import android.text.format.DateFormat
 import com.nexo.app.R
 import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
@@ -14,6 +15,7 @@ import com.nexo.app.data.file.XCell
 import com.nexo.app.data.file.XlsxWriter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -35,7 +37,7 @@ class DefaultExcelExportRepository @Inject constructor(
 ) : ExcelExportRepository {
     /** Device date order as an Excel number format, e.g. "yyyy/mm/dd" or "mm/dd/yyyy". */
     private fun excelDatePattern(): String {
-        val p = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "yyyyMMdd")
+        val p = DateFormat.getBestDateTimePattern(Locale.getDefault(), "yyyyMMdd")
         val order = p.filter { it == 'y' || it == 'M' || it == 'd' }.toList().distinct()
         return order.joinToString("/") { when (it) { 'y' -> "yyyy"; 'M' -> "mm"; else -> "dd" } }
     }
@@ -79,7 +81,7 @@ class DefaultExcelExportRepository @Inject constructor(
                 XCell.Text(type),
                 XCell.Text(tags),
                 XCell.Text(t.description),
-                XCell.Text(java.math.BigDecimal.valueOf(t.amount).toPlainString()),
+                XCell.Text(BigDecimal.valueOf(t.amount).toPlainString()),
                 XCell.Text(cur.isoCode ?: cur.symbol),
                 XCell.Num(t.amountAccount),
             )

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,7 +37,7 @@ fun Tile(
     val colors = LocalNexoColors.current
     val corner = if (size >= Sizes.tile) Radius.tile else (size.value * Radius.tile.value / Sizes.tile.value).dp
     Box(
-        modifier.size(size).clip(androidx.compose.foundation.shape.RoundedCornerShape(corner)).background(colors.tint(hue, over)),
+        modifier.size(size).clip(RoundedCornerShape(corner)).background(colors.tint(hue, over)),
         contentAlignment = Alignment.Center,
         content = content,
     )

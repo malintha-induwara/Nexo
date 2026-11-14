@@ -1,7 +1,10 @@
 package com.nexo.app.ui.settings
 
+import android.content.Context
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -33,6 +36,7 @@ import com.nexo.app.core.model.StartScreen
 import com.nexo.app.core.model.SwipeMode
 import com.nexo.app.core.model.TimeDisplay
 import com.nexo.app.core.model.WeekendRule
+import com.nexo.app.core.notifications.Notifications
 import com.nexo.app.ui.accounts.CardTimingDialog
 import com.nexo.app.ui.accounts.cardAccountingLabel
 import com.nexo.app.ui.designsystem.component.AmountSheet
@@ -144,7 +148,7 @@ fun ConfigurationScreen(vm: SettingsViewModel = hiltViewModel()) {
             extraButton = {
                 TextButton(onClick = {
                     vm.update { it.copy(autocompleteResetAt = System.currentTimeMillis()) }
-                    android.widget.Toast.makeText(context, R.string.reset_complete, android.widget.Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, R.string.reset_complete, Toast.LENGTH_SHORT).show()
                     close()
                 }) { Text(stringResource(R.string.action_reset)) }
             },
@@ -153,7 +157,7 @@ fun ConfigurationScreen(vm: SettingsViewModel = hiltViewModel()) {
         "memo" -> ChoiceDialog(stringResource(R.string.memo_button_setting), listOf(false, true), s.memoButton, { onOff(it) }, onSelect = { v -> vm.update { it.copy(memoButton = v) } }, onDismiss = close, description = stringResource(R.string.memo_button_text))
         "quick" -> ChoiceDialog(stringResource(R.string.quick_add), listOf(false, true), s.quickAddNotification, { onOff(it) }, onSelect = { v ->
             vm.update { it.copy(quickAddNotification = v) }
-            com.nexo.app.core.notifications.Notifications.updateQuickAdd(context, v)
+            Notifications.updateQuickAdd(context, v)
         }, onDismiss = close, description = stringResource(R.string.quick_add_text))
         "pad" -> ChoiceDialog(stringResource(R.string.number_pad_order), listOf(false, true), device?.numberPadDescending == true, { stringResource(if (it) R.string.pad_descending else R.string.pad_ascending) }, onSelect = { v -> vm.setNumberPadDescending(v) }, onDismiss = close)
         "lang" -> LanguageDialog(onDismiss = close)
@@ -172,7 +176,7 @@ fun swipeLabel(m: SwipeMode) = stringResource(
     },
 )
 
-private fun swipeLabelText(context: android.content.Context, m: SwipeMode) = context.getString(
+private fun swipeLabelText(context: Context, m: SwipeMode) = context.getString(
     when (m) {
         SwipeMode.CHANGE_TAB -> R.string.swipe_tab
         SwipeMode.CHANGE_DATE -> R.string.swipe_date
@@ -211,7 +215,7 @@ fun MonthStartScreen(vm: SettingsViewModel = hiltViewModel()) {
             SettingRow(stringResource(R.string.monthly_start_date), stringResource(R.string.every_n, s.monthStartDay), onClick = { pad = true })
             SectionHeader(stringResource(R.string.weekend_rule_title))
             listOf(WeekendRule.NONE to R.string.weekend_none, WeekendRule.PREVIOUS_FRIDAY to R.string.weekend_friday, WeekendRule.FOLLOWING_MONDAY to R.string.weekend_monday).forEach { (rule, label) ->
-                androidx.compose.foundation.layout.Row(
+                Row(
                     Modifier.fillMaxWidth().padding(horizontal = 8.dp).then(Modifier),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

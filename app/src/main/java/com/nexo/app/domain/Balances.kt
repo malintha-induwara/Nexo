@@ -12,6 +12,8 @@ import com.nexo.app.core.model.Transaction
 import com.nexo.app.core.model.TxAggregate
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.YearMonth
+import kotlin.math.abs
 
 /** Net (inflows − outflows) of one account's own rows, in main and in account currency. */
 data class Net(val main: Double = 0.0, val account: Double = 0.0)
@@ -75,7 +77,7 @@ data class AccountsSummary(
     val liabilities: Double,
     val groups: Map<String, GroupFigure>,
 ) {
-    val total: Double get() = Money.subtract(kotlin.math.abs(assets), kotlin.math.abs(liabilities))
+    val total: Double get() = Money.subtract(abs(assets), abs(liabilities))
 }
 
 object AccountsSummaryCalculator {
@@ -85,7 +87,7 @@ object AccountsSummaryCalculator {
         val subtotal = HashMap<String, BigDecimal>()
         val payable = HashMap<String, BigDecimal>()
         fun addAssetOrLiability(v: Double) {
-            if (v > 0) assets += BigDecimal.valueOf(v) else liabilities += BigDecimal.valueOf(kotlin.math.abs(v))
+            if (v > 0) assets += BigDecimal.valueOf(v) else liabilities += BigDecimal.valueOf(abs(v))
         }
         for (f in figures) {
             val a = f.account
@@ -176,7 +178,7 @@ object CardStatement {
             val value = Balances.rowMeasure(ref, r, card)
             val signed = if (r.kind.isInflow) value else -value
             val isCredit = signed > 0
-            val amt = BigDecimal.valueOf(kotlin.math.abs(signed))
+            val amt = BigDecimal.valueOf(abs(signed))
             if (isCredit) {
                 if (!d.isAfter(p.end)) cb += amt
                 if (!d.isBefore(c.start)) ca += amt
@@ -200,7 +202,7 @@ object CardStatement {
         var payable = payableAmt.negate().toDouble()
         val outstanding = (cur - s3).negate().toDouble()
         var other = overdue.negate().toDouble()
-        if (kotlin.math.abs(other) < 1) {
+        if (abs(other) < 1) {
             payable = Money.add(payable, other)
             other = 0.0
         }
@@ -210,7 +212,7 @@ object CardStatement {
 
     /** Payment date for a statement ending on [end]: first payment-day date strictly after it. */
     fun paymentDate(end: LocalDate, paymentDay: Int): LocalDate {
-        var month = java.time.YearMonth.from(end)
+        var month = YearMonth.from(end)
         repeat(3) {
             val candidate = month.atDay(minOf(paymentDay.coerceIn(1, 31), month.lengthOfMonth()))
             if (candidate.isAfter(end)) return candidate

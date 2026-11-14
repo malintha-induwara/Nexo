@@ -32,12 +32,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -63,8 +66,8 @@ fun MemoEditorScreen(key: MemoEditorKey) {
     val vm = hiltViewModel<MemoEditorViewModel, MemoEditorViewModel.Factory>(creationCallback = { it.create(key) })
     val s by vm.uiState.collectAsStateWithLifecycle()
     val nav = LocalNavigator.current
-    androidx.compose.runtime.LaunchedEffect(Unit) { vm.initialize() }
-    androidx.compose.runtime.LaunchedEffect(s.closed) {
+    LaunchedEffect(Unit) { vm.initialize() }
+    LaunchedEffect(s.closed) {
         if (s.closed) {
             nav.back()
             vm.onClosed()
@@ -75,8 +78,8 @@ fun MemoEditorScreen(key: MemoEditorKey) {
     var pickDate by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     val close = { vm.saveAndClose() }
-    val titleFocus = androidx.compose.runtime.remember { androidx.compose.ui.focus.FocusRequester() }
-    androidx.compose.runtime.LaunchedEffect(s.loaded) { if (s.loaded && s.id == null) runCatching { titleFocus.requestFocus() } }
+    val titleFocus = remember { FocusRequester() }
+    LaunchedEffect(s.loaded) { if (s.loaded && s.id == null) runCatching { titleFocus.requestFocus() } }
     BackHandler { close() }
     if (!s.loaded) return
     val bg = NexoPalette.memo(s.color, dark)
@@ -101,7 +104,7 @@ fun MemoEditorScreen(key: MemoEditorKey) {
                 focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
             )
             TextField(s.title, vm::setTitle, placeholder = { Text(stringResource(R.string.title)) }, singleLine = true, colors = colors,
-                textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.fillMaxWidth().then(androidx.compose.ui.Modifier.focusRequester(titleFocus)))
+                textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.fillMaxWidth().then(Modifier.focusRequester(titleFocus)))
             TextField(s.content, vm::setContent, placeholder = { Text(stringResource(R.string.note)) }, colors = colors, modifier = Modifier.fillMaxWidth().weight(1f))
         }
     }

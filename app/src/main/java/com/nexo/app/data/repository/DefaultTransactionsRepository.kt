@@ -38,6 +38,7 @@ import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.abs
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -572,7 +573,7 @@ class DefaultTransactionsRepository @Inject constructor(
         val ref = refs.getRefData()
         db.withTransaction {
             val cur = ref.accountCurrency(accountId)
-            val amount = Money.round(kotlin.math.abs(difference), cur.decimals)
+            val amount = Money.round(abs(difference), cur.decimals)
             val kind = when {
                 asIncomeExpense && difference > 0 -> TxKind.INCOME
                 asIncomeExpense -> TxKind.EXPENSE

@@ -1,5 +1,6 @@
 package com.nexo.app.ui.settings
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -65,13 +66,14 @@ import com.nexo.app.ui.navigation.FeedbackKey
 import com.nexo.app.ui.navigation.HelpKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.LockSettingsKey
+import com.nexo.app.ui.navigation.SmsSettingsKey
 import com.nexo.app.ui.navigation.StyleKey
 import com.nexo.app.ui.shell.LocalShell
 
 data class HubItem(val label: Int, val icon: ImageVector, val key: NavKey)
 
 /** Sends the feedback e-mail. The address is a placeholder for the publisher's own. */
-fun feedbackIntent(context: android.content.Context, subjectRes: Int = R.string.feedback_subject): Intent {
+fun feedbackIntent(context: Context, subjectRes: Int = R.string.feedback_subject): Intent {
     val body = "\n\n---\n${Build.MANUFACTURER} ${Build.MODEL}\nAndroid ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n" +
         "Nexo ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\nLocale ${java.util.Locale.getDefault()}"
     return Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).apply {
@@ -94,7 +96,7 @@ fun SettingsTab(vm: SettingsViewModel = hiltViewModel()) {
         HubItem(R.string.tab_accounts, Icons.Outlined.AccountBalanceWallet, AccountSettingsMenuKey),
         HubItem(R.string.lock_settings, Icons.Outlined.Lock, LockSettingsKey),
         HubItem(R.string.backup, Icons.Outlined.Backup, BackupKey),
-        HubItem(R.string.sms_settings_title, Icons.Outlined.Sms, com.nexo.app.ui.navigation.SmsSettingsKey),
+        HubItem(R.string.sms_settings_title, Icons.Outlined.Sms, SmsSettingsKey),
         HubItem(R.string.style, Icons.Outlined.Palette, StyleKey),
         HubItem(R.string.help, Icons.AutoMirrored.Outlined.HelpOutline, HelpKey),
         HubItem(R.string.feedback, Icons.Outlined.Feedback, FeedbackKey),
