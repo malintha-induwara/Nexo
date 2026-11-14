@@ -1,5 +1,14 @@
 package com.nexo.app.ui.budgets
 
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
+import com.nexo.app.ui.theme.Space
+import com.nexo.app.ui.theme.LocalNexoColors
+import com.nexo.app.ui.components.KeyFigure
+import com.nexo.app.ui.components.GroupCard
+import com.nexo.app.ui.components.ColumnChart
+import com.nexo.app.ui.components.ChartTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -46,11 +55,9 @@ import com.nexo.app.core.money.AmountFormatter
 import com.nexo.app.domain.BudgetMath
 import com.nexo.app.domain.BudgetRow
 import com.nexo.app.ui.components.AmountSheet
-import com.nexo.app.ui.components.BarLineChart
 import com.nexo.app.ui.components.ConfirmDialog
 import com.nexo.app.ui.components.EmptyState
 import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.Legend
 import com.nexo.app.ui.components.MonthPickerDialog
 import com.nexo.app.ui.components.NexoTopBar
 import com.nexo.app.ui.components.PeriodNavigator
@@ -99,24 +106,27 @@ fun BudgetDetailScreen(key: BudgetDetailKey) {
         Column(Modifier.fillMaxSize().padding(p)) {
             PeriodNavigator(Formats.monthYear(month), { vm.step(false) }, { vm.step(true) }, { picker = true }, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurface)
             if (sel != null) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                    Figure(stringResource(R.string.budget), AmountFormatter.format(sel.budget, main), Modifier.weight(1f))
-                    Figure(stringResource(R.string.used_amount), AmountFormatter.format(sel.used, main), Modifier.weight(1f))
-                    val rem = sel.budget - sel.used
-                    Figure(stringResource(R.string.remaining), AmountFormatter.format(rem, main), Modifier.weight(1f), if (rem < 0) money.expense else MaterialTheme.colorScheme.onSurface)
+                val colors = LocalNexoColors.current
+                val labels = ui.months.map { Formats.monthShort(it.period.label.monthValue) }
+                val rem = sel.budget - sel.used
+                GroupCard(Modifier.padding(horizontal = Space.l, vertical = Space.xs)) {
+                    Column(Modifier.padding(start = Space.l, end = Space.l, top = Space.l, bottom = Space.m)) {
+                        ChartTitle(stringResource(R.string.budget), labels.getOrElse(ui.selected) { "" })
+                        Spacer(Modifier.height(Space.s))
+                        Row(horizontalArrangement = Arrangement.spacedBy(Space.m)) {
+                            KeyFigure(stringResource(R.string.budget), sel.budget, main, colors.text, Modifier.weight(1f), stroke = true)
+                            KeyFigure(stringResource(R.string.used_amount), sel.used, main, money.expenseFill, Modifier.weight(1f))
+                            KeyFigure(stringResource(R.string.remaining), rem, main, null, Modifier.weight(1f), valueColor = if (rem < 0) money.expense else colors.text)
+                        }
+                        Spacer(Modifier.height(Space.s))
+                        ColumnChart(
+                            labels, listOf(ui.months.map { it.used }), listOf(money.expenseFill),
+                            selected = ui.selected, onSelect = vm::selectIndex,
+                            targets = ui.months.map { it.budget },
+                        )
+                    }
                 }
             }
-            BarLineChart(
-                labels = ui.months.map { Formats.monthShort(it.period.label.monthValue) },
-                columns = listOf(ui.months.map { it.used }),
-                columnColors = listOf(money.expense),
-                line = ui.months.map { it.budget },
-                lineColor = money.income,
-                selected = ui.selected,
-                onSelect = vm::selectIndex,
-                modifier = Modifier.padding(horizontal = 12.dp),
-            )
-            Legend(listOf(stringResource(R.string.expenses) to money.expense, stringResource(R.string.budget) to money.income))
             DayGroupList(
                 groups = ui.days, main = main, selection = emptySet(),
                 onRowClick = { nav.navigate(EntryKey(mode = EntryMode.EDIT, txId = it.id)) }, onRowLongClick = null,
@@ -124,14 +134,6 @@ fun BudgetDetailScreen(key: BudgetDetailKey) {
         }
     }
     if (picker) MonthPickerDialog(month, onPick = { vm.month.value = it }, onDismiss = { picker = false })
-}
-
-@Composable
-private fun Figure(label: String, value: String, modifier: Modifier, color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = color, maxLines = 1)
-    }
 }
 
 /** Budget Settings, plain or expandable. */

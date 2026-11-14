@@ -1,5 +1,10 @@
 package com.nexo.app.ui.budgets
 
+import com.nexo.app.ui.theme.LocalNexoColors
+import com.nexo.app.ui.theme.LocalMoneyColors
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ExpandLess
@@ -32,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,10 +52,8 @@ import com.nexo.app.ui.navigation.BudgetDetailKey
 import com.nexo.app.ui.navigation.BudgetEditorKey
 import com.nexo.app.ui.navigation.BudgetSettingsKey
 import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.theme.NexoPalette
 import com.nexo.app.ui.theme.nexo
 import java.time.LocalDateTime
-import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 /** Proportional "Today" marker. */
@@ -127,34 +128,38 @@ fun BudgetRowView(
     onExpand: () -> Unit = {},
 ) {
     val over = row.used > row.amount
-    val full = row.used == row.amount && row.amount > 0
-    val barColor = if (over) NexoPalette.ExpenseRed else NexoPalette.IncomeBlue
+    val colors = LocalNexoColors.current
+    val money = LocalMoneyColors.current
+    val barColor = if (over) money.expenseFill else money.incomeFill
+    val usedColor = if (over) money.expense else money.income
     Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = if (small) 16.dp else 0.dp, top = 10.dp, bottom = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(row.name, style = if (small) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge, fontWeight = if (row.isTotal) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(AmountFormatter.format(row.amount, main), style = MaterialTheme.typography.bodySmall)
             if (expandable) Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, null, Modifier.clickable(onClick = onExpand).padding(start = 4.dp))
         }
-        Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(if (small) 14.dp else 18.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp))) {
-            Box(Modifier.fillMaxWidth(row.fill).height(if (small) 14.dp else 18.dp).background(barColor.copy(alpha = if (full) 1f else 0.85f), RoundedCornerShape(4.dp)))
-            val rate = row.rate
-            Text(if (rate == null) "-" else "$rate%", style = MaterialTheme.typography.labelSmall, color = Color.White, modifier = Modifier.align(Alignment.CenterStart).padding(start = 6.dp))
+        // A thin meter: the fill is what has been used, the tick is where today falls in the month.
+        Box(Modifier.fillMaxWidth().padding(vertical = 8.dp).height(if (small) 6.dp else 8.dp)) {
+            Box(Modifier.matchParentSize().clip(CircleShape).background(colors.raised))
+            if (row.fill > 0f) Box(Modifier.fillMaxWidth(row.fill).fillMaxHeight().clip(CircleShape).background(barColor))
             if (today != null) {
-                val line = MaterialTheme.colorScheme.onSurface
                 Canvas(Modifier.matchParentSize()) {
                     val x = size.width * today
-                    drawLine(line, Offset(x, -4f), Offset(x, size.height + 4f), strokeWidth = 2f)
+                    val reach = 4.dp.toPx()
+                    drawLine(colors.surface, Offset(x, -reach), Offset(x, size.height + reach), strokeWidth = 5.dp.toPx())
+                    drawLine(colors.text, Offset(x, -reach), Offset(x, size.height + reach), strokeWidth = 2.dp.toPx())
                 }
             }
         }
         Row {
             Text(
                 if (row.used < 0) "(${AmountFormatter.format(-row.used, main)})" else AmountFormatter.format(row.used, main),
-                color = barColor, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f),
+                color = usedColor, style = MaterialTheme.typography.bodySmall,
             )
+            Text(" · " + (row.rate?.let { "$it%" } ?: "-"), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary, modifier = Modifier.weight(1f))
             Text(
                 if (over) stringResource(R.string.excess) + " " + AmountFormatter.format(row.remaining, main) else AmountFormatter.format(row.remaining, main),
-                style = MaterialTheme.typography.bodySmall, color = if (over) NexoPalette.ExpenseRed else MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.bodySmall, color = if (over) money.expense else MaterialTheme.colorScheme.onSurface,
             )
         }
     }

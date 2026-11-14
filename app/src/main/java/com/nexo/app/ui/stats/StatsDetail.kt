@@ -1,5 +1,24 @@
 package com.nexo.app.ui.stats
 
+import java.util.Locale
+import com.nexo.app.ui.theme.Space
+import com.nexo.app.ui.theme.NexoType
+import com.nexo.app.ui.theme.NexoShapes
+import com.nexo.app.ui.theme.LocalNexoColors
+import com.nexo.app.ui.components.shrinkToFit
+import com.nexo.app.ui.components.rememberHaptics
+import com.nexo.app.ui.components.GroupCard
+import com.nexo.app.ui.components.ChartTitle
+import com.nexo.app.ui.components.AreaChart
+import com.nexo.app.ui.components.AmountText
+import com.nexo.app.core.database.entity.CurrencyEntity
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -10,7 +29,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -23,7 +41,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -33,7 +50,6 @@ import com.nexo.app.R
 import com.nexo.app.core.database.entity.TransactionEntity
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.TxKind
-import com.nexo.app.core.money.AmountFormatter
 import com.nexo.app.core.money.Money
 import com.nexo.app.core.period.DateRange
 import com.nexo.app.data.LedgerRepository
@@ -43,7 +59,6 @@ import com.nexo.app.domain.Classifier
 import com.nexo.app.domain.RefData
 import com.nexo.app.ui.components.DateRangeChips
 import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.LineChart
 import com.nexo.app.ui.components.MonthPickerDialog
 import com.nexo.app.ui.components.NexoTopBar
 import com.nexo.app.ui.components.PeriodNavigator
@@ -75,8 +90,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import java.math.BigDecimal
-import java.math.RoundingMode
 import java.time.LocalDate
 
 data class Breakdown(val key: String, val name: String, val amount: Double, val percent: Int?)
@@ -239,24 +252,39 @@ fun StatsDetailScreen(key: StatsDetailKey) {
                 onRowLongClick = { row -> vm.selection.update { if (row.id in it) it - row.id else it + row.id } },
                 onMemoClick = { d -> nav.navigate(com.nexo.app.ui.navigation.MemoListKey(d.toString())) },
                 header = {
-                    item {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                            Text(summaryLabel, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(AmountFormatter.format(if (q.scope == StatsScope.ANNUALLY) ui.trend.sum() else ui.total, main), fontWeight = FontWeight.SemiBold)
-                        }
-                        ui.breakdown.forEach { b ->
-                            Row(
-                                Modifier.fillMaxWidth().background(if (b.key == sel) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface)
-                                    .clickable { vm.select(b.key) }.padding(horizontal = 16.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(b.name, Modifier.weight(1f))
-                                Text(if (b.key == "all") "" else b.percent?.takeIf { it > 0 }?.let { "$it%" } ?: "-", Modifier.width(56.dp), style = MaterialTheme.typography.bodySmall)
-                                Text(AmountFormatter.format(b.amount, main))
+                    item(key = "summary") {
+                        val colors = LocalNexoColors.current
+                        GroupCard(Modifier.padding(horizontal = Space.l, vertical = Space.xs)) {
+                            Column(Modifier.padding(Space.s)) {
+                                Row(Modifier.padding(horizontal = Space.s, vertical = Space.s), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(summaryLabel.uppercase(Locale.getDefault()), style = NexoType.Caps, color = colors.textTertiary, maxLines = 1, modifier = Modifier.weight(1f))
+                                    AmountText(if (q.scope == StatsScope.ANNUALLY) ui.trend.sum() else ui.total, main, style = NexoType.Balance, color = colors.text)
+                                }
+                                ui.breakdown.forEach { b ->
+                                    val on = b.key == sel
+                                    Row(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clip(NexoShapes.control)
+                                            .background(if (on) colors.primarySoft else Color.Transparent)
+                                            .clickable { vm.select(b.key) }
+                                            .padding(horizontal = Space.s, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(b.name, style = MaterialTheme.typography.bodyMedium, color = if (on) colors.primaryText else colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                        Text(
+                                            if (b.key == "all") "" else b.percent?.takeIf { it > 0 }?.let { "$it%" } ?: "-",
+                                            style = NexoType.Meta, color = colors.textSecondary, textAlign = TextAlign.End, modifier = Modifier.width(48.dp),
+                                        )
+                                        Spacer(Modifier.width(Space.m))
+                                        AmountText(b.amount, main, style = NexoType.AmountSmall, color = colors.text)
+                                    }
+                                }
                             }
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         }
-                        LineChart(ui.trendLabels, ui.trend, NexoPalette.Stats[ui.color % 11], modifier = Modifier.padding(12.dp), format = { AmountFormatter.format(it, main) })
+                    }
+                    if (ui.trend.any { it != 0.0 } && ui.trend.size == ui.trendLabels.size) {
+                        item(key = "trend") { TrendCard(ui.title, ui.trendLabels, ui.trend, NexoPalette.Stats[ui.color % 11], main) }
                     }
                 },
             )
@@ -266,3 +294,19 @@ fun StatsDetailScreen(key: StatsDetailKey) {
     BulkDialogs(bulkAction, bulkOpen, selection.size, ref, vm.writer, selection, onDone = { vm.selection.value = emptySet() }, onDismiss = { bulkOpen = false })
 }
 
+/** The category's total over the recent periods; tap or drag the chart to read another period. */
+@Composable
+private fun TrendCard(title: String, labels: List<String>, values: List<Double>, color: Color, main: CurrencyEntity) {
+    val haptics = rememberHaptics()
+    var picked by rememberSaveable(labels) { mutableIntStateOf(labels.lastIndex) }
+    val i = picked.coerceIn(0, labels.lastIndex)
+    GroupCard(Modifier.padding(horizontal = Space.l, vertical = Space.xs)) {
+        Column(Modifier.padding(start = Space.l, end = Space.l, top = Space.l, bottom = Space.m)) {
+            ChartTitle(title, labels[i])
+            Spacer(Modifier.height(Space.xxs))
+            AmountText(values[i], main, Modifier.shrinkToFit(), style = NexoType.Balance, color = LocalNexoColors.current.text)
+            Spacer(Modifier.height(Space.s))
+            AreaChart(labels, values, color, i, { if (it != picked) { haptics.tick(); picked = it } })
+        }
+    }
+}

@@ -1,16 +1,7 @@
 package com.nexo.app.ui.accounts
 
+import com.nexo.app.ui.components.FlowCharts
 import androidx.activity.compose.BackHandler
-import com.nexo.app.ui.theme.NexoShapes
-import com.nexo.app.ui.components.rememberHaptics
-import com.nexo.app.ui.components.EmptyState
-import com.nexo.app.ui.components.ColumnChart
-import com.nexo.app.ui.components.AreaChart
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.background
 import java.util.Locale
 import com.nexo.app.ui.components.RoundIconButton
 import com.nexo.app.ui.components.AmountText
@@ -158,7 +149,8 @@ fun AccountDetailScreen(key: AccountDetailKey) {
                 SummaryBlock(ui, cur, tab, charts, onToggleCharts = vm::toggleCharts, onEdit = { account?.let { nav.navigate(AccountFormKey(it.id)) } }, onHelp = { help = true })
             }
             if (charts && ui.chart != null) {
-                AccountCharts(ui.chart!!, cur)
+                val c = ui.chart!!
+                FlowCharts(c.labels, c.balances, c.inflow, c.outflow, cur, stringResource(R.string.inflow_outflow), stringResource(R.string.inflow), stringResource(R.string.outflow))
             } else if (tab == DetailTab.DAILY || isNone) {
                 DayGroupList(
                     groups = ui.days,
@@ -275,98 +267,5 @@ private fun PeriodCard(p: PeriodRowUi, cur: CurrencyEntity, onClick: () -> Unit,
                 Text("(${AmountFormatter.format(p.balance, cur)})", style = NexoType.AmountSmall, color = colors.textTertiary, maxLines = 1, modifier = Modifier.shrinkToFit())
             }
         }
-    }
-}
-
-/** The chart view: balance over time, money in and out, and the same figures as a table. One month is picked across all three. */
-@Composable
-private fun AccountCharts(c: ChartData, cur: CurrencyEntity) {
-    val colors = LocalNexoColors.current
-    val money = LocalMoneyColors.current
-    val haptics = rememberHaptics()
-    if (c.labels.isEmpty()) {
-        EmptyState()
-        return
-    }
-    var picked by rememberSaveable(c.labels) { mutableIntStateOf(c.labels.lastIndex) }
-    val i = picked.coerceIn(0, c.labels.lastIndex)
-    val pick: (Int) -> Unit = { if (it != picked) { haptics.tick(); picked = it } }
-    val card = Modifier.padding(horizontal = Space.l, vertical = Space.xs)
-    LazyColumn(contentPadding = PaddingValues(top = Space.xs, bottom = 96.dp)) {
-        item(key = "balance") {
-            GroupCard(card) {
-                Column(Modifier.padding(start = Space.l, end = Space.l, top = Space.l, bottom = Space.m)) {
-                    ChartTitle(stringResource(R.string.balance), c.labels[i])
-                    Spacer(Modifier.height(Space.xxs))
-                    AmountText(c.balances[i], cur, Modifier.shrinkToFit(), style = NexoType.Balance, color = if (c.balances[i] < 0) money.expense else colors.text)
-                    Spacer(Modifier.height(Space.s))
-                    AreaChart(c.labels, c.balances, colors.primary, i, pick)
-                }
-            }
-        }
-        item(key = "flow") {
-            GroupCard(card) {
-                Column(Modifier.padding(start = Space.l, end = Space.l, top = Space.l, bottom = Space.m)) {
-                    ChartTitle(stringResource(R.string.inflow_outflow), c.labels[i])
-                    Spacer(Modifier.height(Space.s))
-                    Row(horizontalArrangement = Arrangement.spacedBy(Space.l)) {
-                        KeyFigure(stringResource(R.string.inflow), c.inflow[i], cur, money.incomeFill, Modifier.weight(1f))
-                        KeyFigure(stringResource(R.string.outflow), c.outflow[i], cur, money.expenseFill, Modifier.weight(1f))
-                    }
-                    Spacer(Modifier.height(Space.s))
-                    ColumnChart(c.labels, listOf(c.inflow, c.outflow), listOf(money.incomeFill, money.expenseFill), i, pick)
-                }
-            }
-        }
-        item(key = "table") {
-            GroupCard(card) {
-                Column(Modifier.padding(Space.s)) {
-                    Row(Modifier.padding(horizontal = Space.s, vertical = Space.s), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Spacer(Modifier.width(44.dp))
-                        listOf(R.string.balance, R.string.inflow, R.string.outflow).forEach { label ->
-                            Text(stringResource(label).uppercase(Locale.getDefault()), style = NexoType.Caps, color = colors.textTertiary, maxLines = 1, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
-                        }
-                    }
-                    c.labels.forEachIndexed { row, label ->
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(NexoShapes.control)
-                                .background(if (row == i) colors.primarySoft else Color.Transparent)
-                                .clickable { pick(row) }
-                                .padding(horizontal = Space.s, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Text(label, style = NexoType.Meta, color = if (row == i) colors.primaryText else colors.textSecondary, maxLines = 1, modifier = Modifier.width(44.dp))
-                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) { FlowAmount(c.balances[row], cur, colors.text, Modifier.shrinkToFit(), NexoType.AmountSmall) }
-                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) { FlowAmount(c.inflow[row], cur, money.income, Modifier.shrinkToFit(), NexoType.AmountSmall) }
-                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) { FlowAmount(c.outflow[row], cur, money.expense, Modifier.shrinkToFit(), NexoType.AmountSmall) }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** "BALANCE · NOV": what the chart shows and which month the figures above it are for. */
-@Composable
-private fun ChartTitle(title: String, period: String) {
-    Text("$title · $period".uppercase(Locale.getDefault()), style = NexoType.Caps, color = LocalNexoColors.current.textTertiary, maxLines = 1)
-}
-
-/** A series' swatch and name over its value for the picked month; doubles as the chart's legend. */
-@Composable
-private fun KeyFigure(label: String, value: Double, cur: CurrencyEntity, swatch: Color, modifier: Modifier = Modifier) {
-    val colors = LocalNexoColors.current
-    Column(modifier) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(10.dp).clip(RoundedCornerShape(3.dp)).background(swatch))
-            Spacer(Modifier.width(6.dp))
-            Text(label, style = NexoType.Meta, color = colors.textSecondary, maxLines = 1)
-        }
-        Spacer(Modifier.height(Space.xxs))
-        AmountText(value, cur, Modifier.shrinkToFit(), style = NexoType.Amount, color = colors.text)
     }
 }

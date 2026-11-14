@@ -6,22 +6,15 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -36,146 +29,14 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nexo.app.R
 import com.nexo.app.ui.theme.NexoMotion
 import kotlin.math.abs
 import kotlin.math.atan2
-import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.sin
-
-private fun niceMax(v: Double): Double {
-    if (v <= 0) return 1.0
-    val exp = Math.pow(10.0, Math.floor(Math.log10(v)))
-    val f = v / exp
-    val nice = when {
-        f <= 1 -> 1.0
-        f <= 2 -> 2.0
-        f <= 5 -> 5.0
-        else -> 10.0
-    }
-    return nice * exp
-}
-
-private fun DrawScope.axisLabel(text: String, x: Float, y: Float, color: Int, sizePx: Float, align: android.graphics.Paint.Align = android.graphics.Paint.Align.CENTER) {
-    val paint = android.graphics.Paint().apply {
-        this.color = color
-        textSize = sizePx
-        textAlign = align
-        isAntiAlias = true
-    }
-    drawContext.canvas.nativeCanvas.drawText(text, x, y, paint)
-}
-
-private fun compact(v: Double): String {
-    val a = abs(v)
-    return when {
-        a >= 1e9 -> "%.1fB".format(v / 1e9)
-        a >= 1e6 -> "%.1fM".format(v / 1e6)
-        a >= 1e4 -> "%.0fK".format(v / 1e3)
-        a >= 1e3 -> "%.1fK".format(v / 1e3)
-        else -> "%.0f".format(v)
-    }
-}
-
-/**
- * Columns (one or two series) with an optional line on top. Tapping selects a category index.
- * Used for account inflow/outflow, Total Stats and the budget chart.
- */
-@Composable
-fun BarLineChart(
-    labels: List<String>,
-    columns: List<List<Double>>,
-    columnColors: List<Color>,
-    line: List<Double>? = null,
-    lineColor: Color = MaterialTheme.colorScheme.primary,
-    selected: Int? = null,
-    onSelect: ((Int) -> Unit)? = null,
-    modifier: Modifier = Modifier,
-    height: Int = 200,
-    showValueOnSelect: ((Int) -> String)? = null,
-) {
-    if (labels.isEmpty()) {
-        Box(modifier.fillMaxWidth().height(height.dp), contentAlignment = Alignment.Center) { Text(stringResource(R.string.no_data), color = MaterialTheme.colorScheme.outline) }
-        return
-    }
-    val grid = MaterialTheme.colorScheme.outlineVariant
-    val axisColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
-    val highlight = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
-    var tapped by remember(labels) { mutableIntStateOf(-1) }
-    val all = columns.flatten() + line.orEmpty()
-    val top = niceMax(max(all.maxOrNull() ?: 0.0, 0.0) * 1.1)
-    val bottom = min(all.minOrNull() ?: 0.0, 0.0).let { if (it < 0) -niceMax(-it * 1.1) else 0.0 }
-    Column(modifier) {
-        Canvas(
-            Modifier.fillMaxWidth().height(height.dp).pointerInput(labels) {
-                detectTapGestures { pos ->
-                    val left = 44.dp.toPx()
-                    val w = (size.width - left) / labels.size
-                    val i = ((pos.x - left) / w).toInt().coerceIn(0, labels.lastIndex)
-                    tapped = i
-                    onSelect?.invoke(i)
-                }
-            },
-        ) {
-            val left = 44.dp.toPx()
-            val bottomPad = 20.dp.toPx()
-            val plotH = size.height - bottomPad - 8.dp.toPx()
-            val plotTop = 8.dp.toPx()
-            val w = (size.width - left) / labels.size
-            fun y(v: Double) = plotTop + ((top - v) / (top - bottom)).toFloat() * plotH
-            val textPx = 10.dp.toPx()
-            for (k in 0..4) {
-                val v = bottom + (top - bottom) * k / 4
-                val yy = y(v)
-                drawLine(grid, Offset(left, yy), Offset(size.width, yy), 1f)
-                axisLabel(compact(v), left - 4.dp.toPx(), yy + 3.dp.toPx(), axisColor, textPx, android.graphics.Paint.Align.RIGHT)
-            }
-            val sel = selected ?: tapped.takeIf { it >= 0 }
-            if (sel != null && sel in labels.indices) drawRect(highlight, Offset(left + w * sel, plotTop), Size(w, plotH))
-            val groups = columns.size
-            val barW = (w * 0.6f / max(groups, 1))
-            columns.forEachIndexed { s, series ->
-                series.forEachIndexed { i, v ->
-                    val x = left + w * i + w * 0.2f + barW * s
-                    val y0 = y(0.0)
-                    val y1 = y(v)
-                    drawRect(columnColors.getOrElse(s) { Color.Gray }, Offset(x, min(y0, y1)), Size(barW, abs(y1 - y0)))
-                }
-            }
-            if (line != null) {
-                val path = Path()
-                line.forEachIndexed { i, v ->
-                    val x = left + w * i + w / 2
-                    if (i == 0) path.moveTo(x, y(v)) else path.lineTo(x, y(v))
-                }
-                drawPath(path, lineColor, style = Stroke(width = 2.5.dp.toPx()))
-                line.forEachIndexed { i, v ->
-                    drawCircle(lineColor, radius = if (i == sel) 5.dp.toPx() else 3.dp.toPx(), center = Offset(left + w * i + w / 2, y(v)))
-                }
-            }
-            labels.forEachIndexed { i, l -> axisLabel(l, left + w * i + w / 2, size.height - 4.dp.toPx(), axisColor, textPx) }
-        }
-        val sel = selected ?: tapped.takeIf { it >= 0 }
-        if (showValueOnSelect != null && sel != null && sel in labels.indices) {
-            Text(showValueOnSelect(sel), style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), textAlign = TextAlign.Center)
-        }
-    }
-}
-
-@Composable
-fun LineChart(labels: List<String>, values: List<Double>, color: Color, modifier: Modifier = Modifier, format: (Double) -> String = { compact(it) }) {
-    if (values.isEmpty() || values.all { it == 0.0 }) {
-        Box(modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) { Text(stringResource(R.string.no_data), color = MaterialTheme.colorScheme.outline) }
-        return
-    }
-    BarLineChart(labels, emptyList(), emptyList(), line = values, lineColor = color, modifier = modifier, height = 180, showValueOnSelect = { "${labels[it]}: ${format(values[it])}" })
-}
 
 /** A value axis with round steps that always includes zero. */
 private class AxisScale(val bottom: Double, val top: Double, val step: Double)
@@ -320,6 +181,7 @@ fun AreaChart(
 /**
  * Side-by-side columns for a few series per label, rounded at the value end and square at the
  * baseline. The [selected] label sits on a soft band; tap or drag across the chart to move it.
+ * [targets] marks a level per label (a budget) as a short stroke across its columns.
  */
 @Composable
 fun ColumnChart(
@@ -330,11 +192,13 @@ fun ColumnChart(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     height: androidx.compose.ui.unit.Dp = 172.dp,
+    targets: List<Double>? = null,
+    targetColor: Color = com.nexo.app.ui.theme.LocalNexoColors.current.text,
 ) {
     if (labels.isEmpty() || series.isEmpty()) return
     val colors = com.nexo.app.ui.theme.LocalNexoColors.current
     val ink = rememberAxisInk(colors.textTertiary)
-    val scale = remember(series) { axisScale(series.flatten()) }
+    val scale = remember(series, targets) { axisScale(series.flatten() + targets.orEmpty()) }
     val grow = remember { Animatable(0f) }
     LaunchedEffect(series) {
         grow.snapTo(0f)
@@ -375,6 +239,14 @@ fun ColumnChart(
                 }
                 drawPath(bar, seriesColors.getOrElse(s) { colors.textSecondary })
             }
+        }
+        // A target is a short stroke across the slot, ringed in the surface colour so it reads over a column.
+        targets?.forEachIndexed { i, t ->
+            if (i >= labels.size || t == 0.0) return@forEachIndexed
+            val half = min(plot.slot / 2 - 4.dp.toPx(), group / 2 + 8.dp.toPx())
+            val y = plot.y(t)
+            drawLine(colors.surface, Offset(plot.x(i) - half - 1.dp.toPx(), y), Offset(plot.x(i) + half + 1.dp.toPx(), y), 5.dp.toPx())
+            drawLine(targetColor, Offset(plot.x(i) - half, y), Offset(plot.x(i) + half, y), 2.dp.toPx())
         }
     }
 }
@@ -463,17 +335,5 @@ fun DonutChart(
             }
         }
         content()
-    }
-}
-
-@Composable
-fun Legend(items: List<Pair<String, Color>>) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center) {
-        items.forEach { (label, c) ->
-            Canvas(Modifier.size(10.dp)) { drawRect(c) }
-            Spacer(Modifier.width(4.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall)
-            Spacer(Modifier.width(12.dp))
-        }
     }
 }

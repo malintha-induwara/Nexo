@@ -1,5 +1,7 @@
 package com.nexo.app.ui.accounts
 
+import com.nexo.app.ui.theme.Space
+import com.nexo.app.ui.components.FlowCharts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -11,8 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -31,7 +31,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,9 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -63,12 +60,10 @@ import com.nexo.app.data.AccountRepository
 import com.nexo.app.data.RefRepository
 import com.nexo.app.domain.Balances
 import com.nexo.app.domain.RefData
-import com.nexo.app.ui.components.BarLineChart
 import com.nexo.app.ui.components.ChoiceDialog
 import com.nexo.app.ui.components.ConfirmDialog
 import com.nexo.app.ui.components.EmptyState
 import com.nexo.app.ui.components.Formats
-import com.nexo.app.ui.components.Legend
 import com.nexo.app.ui.components.MonthPickerDialog
 import com.nexo.app.ui.components.NexoTopBar
 import com.nexo.app.ui.components.PeriodNavigator
@@ -84,7 +79,6 @@ import com.nexo.app.ui.navigation.DeletedAccountsKey
 import com.nexo.app.ui.navigation.DeletedGroupsKey
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.TransferExpenseKey
-import com.nexo.app.ui.theme.LocalMoneyColors
 import com.nexo.app.ui.theme.nexo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -433,27 +427,21 @@ fun TotalStatsScreen(vm: TotalStatsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val ui by vm.ui.collectAsStateWithLifecycle()
     val ref by vm.ref.collectAsStateWithLifecycle()
-    val money = LocalMoneyColors.current
     var picker by rememberSaveable { mutableStateOf(false) }
     val main = ref.mainCurrency
     val labels = ui.periods.map { Formats.monthShort(it.label.monthValue) }
     Scaffold(topBar = { NexoTopBar(stringResource(R.string.total_stats), onBack = { nav.back() }) }) { p ->
-        Column(Modifier.padding(p).verticalScroll(rememberScrollState()).padding(16.dp)) {
+        Column(Modifier.fillMaxSize().padding(p)) {
             ui.periods.lastOrNull()?.let { last ->
                 PeriodNavigator(Formats.monthYear(last.label), { vm.step(false) }, { vm.step(true) }, { picker = true }, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurface)
             }
-            Text(stringResource(R.string.balance), style = MaterialTheme.typography.labelLarge)
-            Text(AmountFormatter.format(ui.balances.lastOrNull() ?: 0.0, main), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-            BarLineChart(labels, emptyList(), emptyList(), line = ui.balances, lineColor = MaterialTheme.colorScheme.primary, showValueOnSelect = { "${labels[it]}: ${AmountFormatter.format(ui.balances[it], main)}" })
-            BarLineChart(labels, listOf(ui.income, ui.expense), listOf(money.income, money.expense), modifier = Modifier.padding(top = 16.dp))
-            Legend(listOf(stringResource(R.string.income) to money.income, stringResource(R.string.expense) to money.expense))
-            ui.periods.indices.reversed().forEach { i ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                    Text(labels[i], Modifier.weight(0.6f))
-                    Text(AmountFormatter.format(ui.balances[i], main), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-                    Text(AmountFormatter.format(ui.income[i], main), Modifier.weight(1f), color = money.income, style = MaterialTheme.typography.bodySmall)
-                    Text(AmountFormatter.format(ui.expense[i], main), Modifier.weight(1f), color = money.expense, style = MaterialTheme.typography.bodySmall)
-                }
+            if (ui.periods.isNotEmpty()) {
+                FlowCharts(
+                    labels, ui.balances, ui.income, ui.expense, main,
+                    flowTitle = stringResource(R.string.income) + " / " + stringResource(R.string.expenses),
+                    inflowLabel = stringResource(R.string.income), outflowLabel = stringResource(R.string.expenses),
+                    contentPadding = PaddingValues(top = Space.xs, bottom = Space.xl),
+                )
             }
         }
     }
