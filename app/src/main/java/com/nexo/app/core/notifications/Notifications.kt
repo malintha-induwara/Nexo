@@ -13,13 +13,10 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import com.nexo.app.MainActivity
 import com.nexo.app.R
 import com.nexo.app.core.common.ApplicationScope
 import com.nexo.app.core.common.NexoIntents
 import com.nexo.app.core.model.EntryType
-import com.nexo.app.data.repository.ReferenceDataRepository
-import com.nexo.app.data.repository.UserPreferencesRepository
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -33,8 +30,7 @@ import kotlinx.coroutines.launch
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 interface NotificationsEntryPoint {
-    fun prefs(): UserPreferencesRepository
-    fun refs(): ReferenceDataRepository
+    fun settings(): NotificationSettingsSource
 
     @ApplicationScope
     fun appScope(): CoroutineScope
@@ -91,7 +87,9 @@ object Notifications {
         request: Int,
         extra: (Intent.() -> Unit)? = null,
     ): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java).apply {
+        // The launcher activity, named without depending on the app module's classes.
+        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        val intent = Intent().setComponent(launch?.component).apply {
             this.action = action
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             extra?.invoke(this)
@@ -241,7 +239,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val pending = goAsync()
         context.entry().appScope().launch {
             try {
-                val s = context.entry().prefs().getDeviceSettings()
+                val s = context.entry().settings().getDeviceSettings()
                 // DayOfWeek 1 = Monday … 7 = Sunday.
                 if (s.reminderEnabled && LocalDate.now().dayOfWeek.value in s.reminderDays &&
                     s.setupDone
@@ -266,9 +264,9 @@ class QuickAddRepostReceiver : BroadcastReceiver() {
         val pending = goAsync()
         context.entry().appScope().launch {
             try {
-                val e = context.entry()
-                if (e.prefs().getDeviceSettings().setupDone &&
-                    e.refs().getRefData().settings.quickAddNotification
+                val settings = context.entry().settings()
+                if (settings.getDeviceSettings().setupDone &&
+                    settings.getBookSettings().quickAddNotification
                 ) {
                     Notifications.updateQuickAdd(context, true)
                 }
@@ -291,12 +289,12 @@ class BootReceiver : BroadcastReceiver() {
         val pending = goAsync()
         context.entry().appScope().launch {
             try {
-                val e = context.entry()
-                val s = e.prefs().getDeviceSettings()
+                val settings = context.entry().settings()
+                val s = settings.getDeviceSettings()
                 if (s.setupDone) {
                     Notifications.updateQuickAdd(
                         context,
-                        e.refs().getRefData().settings.quickAddNotification,
+                        settings.getBookSettings().quickAddNotification,
                     )
                 }
                 ReminderScheduler.schedule(
