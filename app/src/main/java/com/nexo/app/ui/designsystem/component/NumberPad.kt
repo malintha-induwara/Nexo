@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -171,7 +172,14 @@ fun NumberPad(
                 PadKeyButton(
                     stringResource(R.string.action_done),
                     background = accent,
-                    content = MaterialTheme.colorScheme.onPrimary,
+                    // A light accent (the neutral transfer colour in dark mode) needs dark text.
+                    content = if (accent.luminance() >
+                        0.5f
+                    ) {
+                        colors.background
+                    } else {
+                        colors.onPrimary
+                    },
                     label = true,
                 ) {
                     onDone()
