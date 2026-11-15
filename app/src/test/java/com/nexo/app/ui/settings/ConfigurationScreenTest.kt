@@ -35,15 +35,15 @@ class ConfigurationScreenTest {
                     languageTag = "",
                     actions = ConfigurationActions(
                         onBack = { events += "back" },
-                        onAccountGroups = { events += "groups" },
+                        onBudgets = { events += "budgets" },
                     ),
                 )
             }
         }
-        rule.onNodeWithText("Account Group").assertIsDisplayed().performClick()
+        rule.onNodeWithText("Budget Setting").assertIsDisplayed().performClick()
         rule.onNodeWithContentDescription("Back").performClick()
 
-        assertEquals(listOf("groups", "back"), events)
+        assertEquals(listOf("budgets", "back"), events)
     }
 
     @Test

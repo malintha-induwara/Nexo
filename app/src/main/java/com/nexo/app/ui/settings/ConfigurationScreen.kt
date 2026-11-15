@@ -38,8 +38,6 @@ import com.nexo.app.core.model.StartScreen
 import com.nexo.app.core.model.SwipeMode
 import com.nexo.app.core.model.TimeDisplay
 import com.nexo.app.core.model.WeekendRule
-import com.nexo.app.ui.accounts.CardTimingDialog
-import com.nexo.app.ui.accounts.cardAccountingLabel
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.ChoiceDialog
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
@@ -50,22 +48,15 @@ import com.nexo.app.ui.designsystem.component.SettingRow
 import com.nexo.app.ui.designsystem.component.SwitchRow
 import com.nexo.app.ui.designsystem.preview.NexoPreview
 import com.nexo.app.ui.designsystem.preview.PreviewData
-import com.nexo.app.ui.navigation.AccountGroupsKey
-import com.nexo.app.ui.navigation.AccountListKey
 import com.nexo.app.ui.navigation.BudgetSettingsKey
 import com.nexo.app.ui.navigation.CategoryListKey
-import com.nexo.app.ui.navigation.DeletedAccountsKey
-import com.nexo.app.ui.navigation.DeletedGroupsKey
 import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.navigation.LockSettingsKey
 import com.nexo.app.ui.navigation.MainCurrencyKey
 import com.nexo.app.ui.navigation.MonthStartKey
 import com.nexo.app.ui.navigation.ReminderKey
 import com.nexo.app.ui.navigation.RepeatListKey
-import com.nexo.app.ui.navigation.StyleKey
 import com.nexo.app.ui.navigation.SubCurrenciesKey
 import com.nexo.app.ui.navigation.TagSettingsKey
-import com.nexo.app.ui.navigation.TransferExpenseKey
 import java.time.DayOfWeek
 
 @Composable
@@ -86,11 +77,6 @@ fun timeDisplayLabel(t: TimeDisplay) = stringResource(
 /** What the configuration screen can do; each action defaults to nothing. */
 class ConfigurationActions(
     val onBack: () -> Unit = {},
-    val onAccountGroups: () -> Unit = {},
-    val onAccounts: () -> Unit = {},
-    val onDeletedGroups: () -> Unit = {},
-    val onDeletedAccounts: () -> Unit = {},
-    val onTransferExpense: () -> Unit = {},
     val onCategories: (CategoryKind) -> Unit = {},
     val onBudgets: () -> Unit = {},
     val onTags: () -> Unit = {},
@@ -98,9 +84,7 @@ class ConfigurationActions(
     val onMainCurrency: () -> Unit = {},
     val onSubCurrencies: () -> Unit = {},
     val onMonthStart: () -> Unit = {},
-    val onLockSettings: () -> Unit = {},
     val onReminder: () -> Unit = {},
-    val onStyle: () -> Unit = {},
     val onUpdate: ((BookSettings) -> BookSettings) -> Unit = {},
     val onSetQuickAddNotification: (Boolean) -> Unit = {},
     val onSetNumberPadDescending: (Boolean) -> Unit = {},
@@ -117,11 +101,6 @@ fun ConfigurationRoute(vm: ConfigurationViewModel = hiltViewModel()) {
     val actions = remember(vm, nav, context) {
         ConfigurationActions(
             onBack = nav::back,
-            onAccountGroups = { nav.navigate(AccountGroupsKey) },
-            onAccounts = { nav.navigate(AccountListKey()) },
-            onDeletedGroups = { nav.navigate(DeletedGroupsKey) },
-            onDeletedAccounts = { nav.navigate(DeletedAccountsKey) },
-            onTransferExpense = { nav.navigate(TransferExpenseKey) },
             onCategories = { nav.navigate(CategoryListKey(it)) },
             onBudgets = { nav.navigate(BudgetSettingsKey) },
             onTags = { nav.navigate(TagSettingsKey) },
@@ -129,9 +108,7 @@ fun ConfigurationRoute(vm: ConfigurationViewModel = hiltViewModel()) {
             onMainCurrency = { nav.navigate(MainCurrencyKey) },
             onSubCurrencies = { nav.navigate(SubCurrenciesKey) },
             onMonthStart = { nav.navigate(MonthStartKey) },
-            onLockSettings = { nav.navigate(LockSettingsKey) },
             onReminder = { nav.navigate(ReminderKey) },
-            onStyle = { nav.navigate(StyleKey) },
             onUpdate = vm::update,
             onSetQuickAddNotification = vm::setQuickAddNotification,
             onSetNumberPadDescending = vm::setNumberPadDescending,
@@ -174,26 +151,6 @@ internal fun ConfigurationScreen(
         NexoTopBar(stringResource(R.string.configuration), onBack = actions.onBack)
     }) { p ->
         Column(Modifier.padding(p).verticalScroll(rememberScrollState())) {
-            SectionHeader(stringResource(R.string.tab_accounts))
-            SettingRow(stringResource(R.string.account_group), onClick = actions.onAccountGroups)
-            SettingRow(stringResource(R.string.accounts_setting), onClick = actions.onAccounts)
-            SettingRow(stringResource(R.string.deleted_groups), onClick = actions.onDeletedGroups)
-            SettingRow(
-                stringResource(R.string.deleted_accounts),
-                onClick = actions.onDeletedAccounts,
-            )
-            SettingRow(
-                stringResource(R.string.transfer_expense_setting),
-                onClick = actions.onTransferExpense,
-            )
-            SettingRow(
-                stringResource(R.string.card_expense_config),
-                cardAccountingLabel(s.cardAccounting),
-                onClick = {
-                    dialog = "card"
-                },
-            )
-
             SectionHeader(stringResource(R.string.category_repeat))
             SettingRow(stringResource(R.string.income_category_setting), onClick = {
                 actions.onCategories(CategoryKind.INCOME)
@@ -304,7 +261,6 @@ internal fun ConfigurationScreen(
             )
 
             SectionHeader(stringResource(R.string.other))
-            SettingRow(stringResource(R.string.lock_settings), onClick = actions.onLockSettings)
             SwitchRow(
                 stringResource(R.string.privacy_button),
                 device?.privacyButton == true,
@@ -336,7 +292,6 @@ internal fun ConfigurationScreen(
                     dialog = "pad"
                 },
             )
-            SettingRow(stringResource(R.string.style), onClick = actions.onStyle)
             SettingRow(
                 stringResource(R.string.language_setting),
                 languageLabel(languageTag),
@@ -349,10 +304,6 @@ internal fun ConfigurationScreen(
     }
     val close = { dialog = null }
     when (dialog) {
-        "card" -> CardTimingDialog(s.cardAccounting, onSelect = { c ->
-            actions.onUpdate { it.copy(cardAccounting = c) }
-        }, onDismiss = close)
-
         "sub" -> ChoiceDialog(
             stringResource(R.string.subcategory),
             listOf(false, true),
