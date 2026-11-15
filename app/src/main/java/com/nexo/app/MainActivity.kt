@@ -9,7 +9,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.nexo.app.core.model.ThemeMode
 import com.nexo.app.ui.AppViewModel
 import com.nexo.app.ui.IntentRouter
@@ -33,9 +35,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         splash.setKeepOnScreenCondition { app.uiState.value.device == null }
         lifecycleScope.launch {
-            app.uiState.mapNotNull {
-                it.device?.themeMode
-            }.distinctUntilChanged().collect(::syncSystemNightMode)
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                app.uiState.mapNotNull {
+                    it.device?.themeMode
+                }.distinctUntilChanged().collect(::syncSystemNightMode)
+            }
         }
         if (savedInstanceState == null) app.setPending(IntentRouter.route(intent))
         setContent {

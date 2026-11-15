@@ -27,6 +27,8 @@ class ReminderViewModelTest {
 
         override fun updateQuickAdd(enabled: Boolean) = Unit
 
+        override fun postReminder() = Unit
+
         override fun scheduleReminder(enabled: Boolean, hour: Int, minute: Int) {
             reminders += Triple(enabled, hour, minute)
         }

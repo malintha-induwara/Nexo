@@ -8,6 +8,9 @@ interface Notifier {
     /** Shows or removes the persistent quick-add notification. */
     fun updateQuickAdd(enabled: Boolean)
 
+    /** Shows the daily reminder to record the day's transactions. */
+    fun postReminder()
+
     /** Sets the daily reminder alarm for [hour]:[minute], or cancels it. */
     fun scheduleReminder(enabled: Boolean, hour: Int, minute: Int)
 

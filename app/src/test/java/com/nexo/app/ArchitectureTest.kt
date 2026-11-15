@@ -7,6 +7,19 @@ import org.junit.Test
 /**
  * Keeps the layers apart: core knows nothing above it, data never reaches up into domain or ui,
  * and ui talks to data only through repositories. Nothing else enforces this in a one-module app.
+ *
+ * Where code goes:
+ * - core/model: the app's types, their derived properties, and pure rules the data layer needs
+ *   too, since data cannot see domain. Plain Kotlin.
+ * - domain: rules only the ui needs, over core types. A pure calculation is a function or a named
+ *   object. Code that reads a repository is an `XxxUseCase` with `operator fun invoke`, used when
+ *   logic spans repositories or is shared by ViewModels. Plain Kotlin.
+ * - data/repository: everything that reads or writes storage, with the rules a write must keep.
+ *   Logic over a single repository belongs here rather than in a use case.
+ * - ui: a ViewModel turns repository and use-case output into one uiState; a Route connects it
+ *   to a stateless Screen.
+ * - system: Android entry points other than the activity (receivers, the process lifecycle) and
+ *   the notifications they post. They hand off to repositories straight away.
  */
 class ArchitectureTest {
     private val root: File = listOf("src/main/java", "app/src/main/java")
@@ -37,6 +50,7 @@ class ArchitectureTest {
         "data" to listOf("core", "data"),
         "domain" to listOf("core", "domain", "data.repository"),
         "ui" to listOf("core", "domain", "data.repository", "ui"),
+        "system" to listOf("core", "data.repository", "data.sms", "data.work", "system"),
     )
 
     @Test
@@ -63,6 +77,31 @@ class ArchitectureTest {
                 }
             }
         }
+        assertNoViolations(violations)
+    }
+
+    @Test
+    fun modelsAndDomainArePlainKotlin() {
+        val violations = sources.filter {
+            it.path.startsWith("core/model/") || it.layer == "domain"
+        }.flatMap { source ->
+            source.lines.mapIndexedNotNull { i, line ->
+                if (line.startsWith("import android.") || line.startsWith("import androidx.")) {
+                    "${source.path}:${i + 1} ${line.removePrefix("import ")}"
+                } else {
+                    null
+                }
+            }
+        }
+        assertNoViolations(violations)
+    }
+
+    @Test
+    fun domainReadsRepositoriesOnlyInUseCases() {
+        val violations = sources.filter { source ->
+            source.layer == "domain" && !source.name.endsWith("UseCase.kt") &&
+                source.appImports.any { (_, target) -> target.startsWith("data.repository.") }
+        }.map { it.path }
         assertNoViolations(violations)
     }
 
@@ -103,6 +142,42 @@ class ArchitectureTest {
                 }
             }
         assertNoViolations(violations)
+    }
+
+    /** A ViewModel stays in its Route: composables below it get state and lambdas. */
+    @Test
+    fun onlyRoutesTakeAViewModel() {
+        val viewModelParam = Regex("""\b\w+\s*:\s*\w*ViewModel\b""")
+        val violations = sources.filter { it.layer == "ui" && it.name != "NexoApp.kt" }
+            .flatMap { source ->
+                composableSignatures(source).filter { (name, _, signature) ->
+                    !name.endsWith("Route") && viewModelParam.containsMatchIn(signature)
+                }.map { (name, line, _) -> "${source.path}:$line $name" }
+            }
+        assertNoViolations(violations)
+    }
+
+    /** Top-level composables as (name, line, parameter list text). */
+    private fun composableSignatures(source: Source): List<Triple<String, Int, String>> {
+        val found = mutableListOf<Triple<String, Int, String>>()
+        source.lines.forEachIndexed { i, line ->
+            val name = topLevelFun.find(line)?.groupValues?.get(1) ?: return@forEachIndexed
+            val annotations = source.lines.subList(0, i).asReversed()
+                .takeWhile { it.startsWith("@") }
+            if (annotations.none { it.startsWith("@Composable") }) return@forEachIndexed
+            // The parameter list runs until its parentheses balance again.
+            val signature = StringBuilder()
+            var depth = 0
+            var opened = false
+            for (next in source.lines.drop(i)) {
+                signature.append(next).append('\n')
+                depth += next.count { it == '(' } - next.count { it == ')' }
+                if (next.contains('(')) opened = true
+                if (opened && depth <= 0) break
+            }
+            found += Triple(name, i + 1, signature.toString())
+        }
+        return found
     }
 
     @Test

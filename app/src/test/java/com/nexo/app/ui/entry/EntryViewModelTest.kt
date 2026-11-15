@@ -64,9 +64,10 @@ class EntryViewModelTest {
             b.prefs,
             b.photos,
             b.tags,
-            b.importer,
             b.receipts,
             b.entryLoader,
+            b.saveEntry,
+            b.getNoteSuggestions,
             b.clock,
             saved,
         )

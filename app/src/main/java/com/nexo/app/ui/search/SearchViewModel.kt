@@ -3,7 +3,6 @@ package com.nexo.app.ui.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.period.DateRange
-import com.nexo.app.core.common.period.toIsoText
 import com.nexo.app.core.model.CashFlow
 import com.nexo.app.core.model.Memo
 import com.nexo.app.core.model.RefData
@@ -12,6 +11,7 @@ import com.nexo.app.data.repository.MemosRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.domain.Classifier
+import com.nexo.app.domain.entry.GetNoteSuggestionsUseCase
 import com.nexo.app.ui.entry.NoteSuggestion
 import com.nexo.app.ui.transactions.BulkEditActions
 import com.nexo.app.ui.transactions.FilterCriteria
@@ -21,7 +21,6 @@ import com.nexo.app.ui.transactions.bulkEditActions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.time.Clock
-import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -74,6 +73,7 @@ class SearchViewModel @Inject constructor(
     private val memos: MemosRepository,
     private val refs: ReferenceDataRepository,
     private val transactions: TransactionsRepository,
+    private val getNoteSuggestions: GetNoteSuggestionsUseCase,
     private val clock: Clock,
 ) : ViewModel() {
     /** Kept for event handlers that need the reference data synchronously. */
@@ -119,21 +119,8 @@ class SearchViewModel @Inject constructor(
         SearchUiState(criteria = criteria.value),
     )
 
-    private suspend fun loadSuggestions(): List<NoteSuggestion> {
-        val r = refs.getRefData()
-        if (!r.settings.autocomplete) return emptyList()
-        val cutoff =
-            maxOf(
-                clock.millis() - 456L * 24 * 3600 * 1000,
-                r.settings.autocompleteResetAt,
-            )
-        val cutDate = Instant.ofEpochMilli(
-            cutoff,
-        ).atZone(clock.zone).toLocalDate().toIsoText()
-        return transactions.getNoteUsage(cutDate, cutoff).map {
-            NoteSuggestion(it.note, it.count, it.lastDate)
-        }
-    }
+    private suspend fun loadSuggestions(): List<NoteSuggestion> =
+        getNoteSuggestions().map { NoteSuggestion(it.note, it.count, it.lastDate) }
 
     fun range(r: RefData, c: SearchCriteria): DateRange {
         val e = r.settings.periods

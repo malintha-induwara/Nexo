@@ -10,15 +10,11 @@ import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
 import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.common.period.toIsoText
-import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.EntryType
-import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.InputOrder
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.RepeatSchedule
 import com.nexo.app.core.model.RepeatType
-import com.nexo.app.core.model.SmsKind
-import com.nexo.app.core.model.TxDraft
 import com.nexo.app.data.repository.FavoritesRepository
 import com.nexo.app.data.repository.PhotosRepository
 import com.nexo.app.data.repository.ReceiptRepository
@@ -27,9 +23,15 @@ import com.nexo.app.data.repository.RepeatRulesRepository
 import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.repository.TagResult
 import com.nexo.app.data.repository.TagsRepository
-import com.nexo.app.data.repository.TransactionImportRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
+import com.nexo.app.domain.entry.EntrySave
+import com.nexo.app.domain.entry.EstimateEdit
+import com.nexo.app.domain.entry.GetNoteSuggestionsUseCase
+import com.nexo.app.domain.entry.ImportLine
+import com.nexo.app.domain.entry.SaveEntryResult
+import com.nexo.app.domain.entry.SaveEntryUseCase
+import com.nexo.app.domain.entry.SmsReview
 import com.nexo.app.ui.common.getJson
 import com.nexo.app.ui.common.setJson
 import com.nexo.app.ui.designsystem.UiText
@@ -47,7 +49,6 @@ import java.io.File
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Clock
-import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
@@ -74,9 +75,10 @@ class EntryViewModel @AssistedInject constructor(
     private val prefs: UserPreferencesRepository,
     private val photos: PhotosRepository,
     private val tags: TagsRepository,
-    private val importer: TransactionImportRepository,
     private val receipts: ReceiptRepository,
     private val loader: EntryFormLoader,
+    private val saveEntry: SaveEntryUseCase,
+    private val getNoteSuggestions: GetNoteSuggestionsUseCase,
     private val clock: Clock,
     private val savedState: SavedStateHandle,
 ) : ViewModel() {
@@ -142,7 +144,9 @@ class EntryViewModel @AssistedInject constructor(
                 form.value = start
                 if (!loaded.viewing && key.mode != EntryMode.PAY_CARD) advance()
             }
-            loadSuggestions(r)
+            suggestions.value = getNoteSuggestions().map {
+                NoteSuggestion(it.note, it.count, it.lastDate)
+            }
             form.collect { savedState.setJson(SAVED_FORM, it.toSaved()) }
         }
     }
@@ -194,29 +198,6 @@ class EntryViewModel @AssistedInject constructor(
     suspend fun deleteTag(id: String) = tags.delete(id)
 
     suspend fun reorderTags(ids: List<String>) = tags.reorder(ids)
-
-    private suspend fun loadSuggestions(r: RefData) {
-        if (!r.settings.autocomplete) return
-        val cutoff =
-            maxOf(
-                clock.millis() - 456L * 24 * 3600 * 1000,
-                r.settings.autocompleteResetAt,
-            )
-        val cutDate = Instant.ofEpochMilli(
-            cutoff,
-        ).atZone(clock.zone).toLocalDate().toIsoText()
-        suggestions.value =
-            transactions.getNoteUsage(cutDate, cutoff).map {
-                NoteSuggestion(it.note, it.count, it.lastDate)
-            }
-    }
-
-    /** An SMS transfer's fee goes to the system Bank fee category. */
-    private suspend fun withBankFeeCategory(d: TxDraft): TxDraft {
-        val fee = d.fee ?: return d
-        if (key.mode != EntryMode.SMS) return d
-        return d.copy(fee = fee.copy(categoryId = transactions.bankFeeCategory()))
-    }
 
     /** Deny from the form. Nothing is written to the ledger. */
     fun denySms() = viewModelScope.launch {
@@ -542,56 +523,34 @@ class EntryViewModel @AssistedInject constructor(
         }
         form.update { it.copy(saving = true) }
         viewModelScope.launch {
-            runCatching { transactions.save(withBankFeeCategory(form.value.toDraft())) }
-                .onSuccess { id ->
-                    results.update { it + NavResult.TransactionSaved(id) }
-                    if (key.mode == EntryMode.SMS && key.smsItemId != null) {
-                        val s = form.value
-                        // Changing an estimate's amount records what the bank actually charged.
-                        opened.smsItem?.let { item ->
-                            val estimate = item.estimatedAmount
-                            if (item.certainty == Certainty.ESTIMATED && s.amount != null &&
-                                estimate != null &&
-                                s.amount != estimate
-                            ) {
-                                smsRepository.setAmount(item.id, s.amount)
-                            }
-                        }
-                        val bankAccount = if (opened.smsItem?.kind == SmsKind.TRANSFER_IN) {
-                            s.toAccountId
-                        } else {
-                            s.accountId
-                        }
-                        val fee = s.feeAmount?.takeIf { s.feeExpanded && it > 0 }
-                        if (fee != null && !s.isTransfer) transactions.addFee(id, fee)
-                        smsRepository.markApproved(
-                            key.smsItemId,
-                            id,
-                            bankAccount,
-                            if (s.isTransfer) null else s.categoryId,
-                        )
-                        opened.smsItem?.let { item ->
-                            if (fee != null) {
-                                smsRepository.recordFee(item, bankAccount, FeeChoice(fee))
-                            }
-                        }
-                    }
-                    opened.linkedEstimate?.let { item ->
-                        val amount = form.value.amount
-                        if (key.mode == EntryMode.EDIT && amount != null &&
-                            amount != opened.original?.amount
-                        ) {
-                            smsRepository.setAmount(item.id, amount)
-                        }
-                    }
-                    afterSave(continueAfter)
-                }
-                .onFailure {
-                    form.update { st -> st.copy(saving = false) }
+            when (val result = saveEntry(entrySave(form.value))) {
+                SaveEntryResult.Failed -> {
+                    form.update { it.copy(saving = false) }
                     showMessage(R.string.save_failed)
                 }
+
+                is SaveEntryResult.Saved -> {
+                    results.update { it + NavResult.TransactionSaved(result.id) }
+                    afterSave(continueAfter, result.sameNoteAssigned)
+                }
+            }
         }
     }
+
+    /** The form as it is saved, with the records this way of opening it settles. */
+    private fun entrySave(s: EntryForm) = EntrySave(
+        draft = s.toDraft(),
+        smsReview = key.smsItemId?.takeIf { key.mode == EntryMode.SMS }?.let { id ->
+            SmsReview(id, opened.smsItem, s.amount, s.feeAmount?.takeIf { s.feeExpanded && it > 0 })
+        },
+        estimateEdit = opened.linkedEstimate?.takeIf { key.mode == EntryMode.EDIT }?.let {
+            EstimateEdit(it, savedAmount = opened.original?.amount, amount = s.amount)
+        },
+        uncategorizedOriginal = opened.original?.takeIf { key.reviewUnassigned },
+        importLine = key.importFile?.takeIf { key.mode == EntryMode.IMPORT_FIX }?.let {
+            ImportLine(it, key.importLine)
+        },
+    )
 
     fun confirmRepeatSave() {
         form.update { it.copy(confirmRepeat = false) }
@@ -621,30 +580,12 @@ class EntryViewModel @AssistedInject constructor(
         }
     }
 
-    private suspend fun afterSave(continueAfter: Boolean) {
+    private suspend fun afterSave(continueAfter: Boolean, sameNoteAssigned: Int) {
         val s = form.value
         if (key.reviewUnassigned) {
-            // Bulk-assign other unassigned entries with the same note.
-            val orig = opened.original
-            if (orig != null && orig.categoryId == null && s.categoryId != null &&
-                s.note.isNotBlank()
-            ) {
-                val same = transactions.getUnassigned("9999-12-31").filter {
-                    it.id != orig.id &&
-                        it.note == s.note &&
-                        it.categoryId == null &&
-                        !it.kind.isTransfer
-                }
-                if (same.isNotEmpty()) {
-                    transactions.setCategory(same.map { it.id }, s.categoryId)
-                    showMessage(R.string.bulk_assigned, same.size)
-                }
-            }
+            if (sameNoteAssigned > 0) showMessage(R.string.bulk_assigned, sameNoteAssigned)
             openNextUnassigned()
             return
-        }
-        if (key.mode == EntryMode.IMPORT_FIX && key.importFile != null) {
-            importer.removeLine(key.importFile, key.importLine)
         }
         if (continueAfter) {
             val r = refs.getRefData()

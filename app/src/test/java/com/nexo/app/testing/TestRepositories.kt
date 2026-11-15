@@ -36,6 +36,8 @@ import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.data.sms.SmsInboxDataSource
 import com.nexo.app.data.sms.SmsSuggester
+import com.nexo.app.domain.entry.GetNoteSuggestionsUseCase
+import com.nexo.app.domain.entry.SaveEntryUseCase
 import com.nexo.app.domain.sms.ApproveSmsUseCase
 import com.nexo.app.domain.sms.GetSmsDraftUseCase
 import com.nexo.app.domain.sms.GetSmsFeePlanUseCase
@@ -189,6 +191,8 @@ class TestBook(
         getFeePlan,
         clock,
     )
+    val saveEntry = SaveEntryUseCase(transactions, sms, importer)
+    val getNoteSuggestions = GetNoteSuggestionsUseCase(refs, transactions, clock)
     val approveSms =
         ApproveSmsUseCase(
             sms,
@@ -203,14 +207,25 @@ class TestBook(
 /** Records what would have been posted instead of showing it. */
 class FakeNotifier : Notifier {
     val smsReviewCounts = mutableListOf<Int>()
+    val quickAdd = mutableListOf<Boolean>()
+    var reminders = 0
+    val reminderAlarms = mutableListOf<Triple<Boolean, Int, Int>>()
 
     override fun postSmsReview(count: Int) {
         smsReviewCounts += count
     }
 
-    override fun updateQuickAdd(enabled: Boolean) = Unit
+    override fun updateQuickAdd(enabled: Boolean) {
+        quickAdd += enabled
+    }
 
-    override fun scheduleReminder(enabled: Boolean, hour: Int, minute: Int) = Unit
+    override fun postReminder() {
+        reminders++
+    }
+
+    override fun scheduleReminder(enabled: Boolean, hour: Int, minute: Int) {
+        reminderAlarms += Triple(enabled, hour, minute)
+    }
 
     override fun canPost(): Boolean = true
 

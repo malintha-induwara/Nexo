@@ -80,17 +80,17 @@
                 tools:node="remove" />
         </provider>
 
-        <receiver android:name=".core.notifications.ReminderReceiver" android:exported="false" />
-        <receiver android:name=".core.notifications.QuickAddRepostReceiver" android:exported="false" />
+        <receiver android:name=".system.ReminderReceiver" android:exported="false" />
+        <receiver android:name=".system.QuickAddRepostReceiver" android:exported="false" />
         <receiver
-            android:name=".data.sms.SmsReceiver"
+            android:name=".system.SmsReceiver"
             android:exported="true"
             android:permission="android.permission.BROADCAST_SMS">
             <intent-filter>
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
             </intent-filter>
         </receiver>
-        <receiver android:name=".core.notifications.BootReceiver" android:exported="true">
+        <receiver android:name=".system.BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />

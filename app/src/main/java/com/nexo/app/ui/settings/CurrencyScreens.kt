@@ -131,7 +131,7 @@ private fun FormatRows(
 @Composable
 private fun MainCurrencyEffects(
     state: MainCurrencyUiState,
-    vm: MainCurrencyViewModel,
+    onMessageShown: (id: Long) -> Unit,
     onClosed: () -> Unit,
 ) {
     val effectContext = LocalContext.current
@@ -139,14 +139,11 @@ private fun MainCurrencyEffects(
         val text = message.text.asString()
         LaunchedEffect(message.id) {
             Toast.makeText(effectContext, text, Toast.LENGTH_LONG).show()
-            vm.onUserMessageShown(message.id)
+            onMessageShown(message.id)
         }
     }
     LaunchedEffect(state.closed) {
-        if (state.closed) {
-            onClosed()
-            vm.onClosedHandled()
-        }
+        if (state.closed) onClosed()
     }
 }
 
@@ -154,7 +151,10 @@ private fun MainCurrencyEffects(
 fun MainCurrencyRoute(vm: MainCurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    MainCurrencyEffects(state, vm, nav::back)
+    MainCurrencyEffects(state, onMessageShown = vm::onUserMessageShown, onClosed = {
+        nav.back()
+        vm.onClosedHandled()
+    })
     MainCurrencyScreen(
         state = state,
         onBack = nav::back,
@@ -199,7 +199,10 @@ internal fun MainCurrencyScreen(
 fun MainCurrencyPickerRoute(vm: MainCurrencyViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    MainCurrencyEffects(state, vm, nav::back)
+    MainCurrencyEffects(state, onMessageShown = vm::onUserMessageShown, onClosed = {
+        nav.back()
+        vm.onClosedHandled()
+    })
     MainCurrencyPickerScreen(
         state = state,
         onBack = nav::back,
