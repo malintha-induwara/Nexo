@@ -105,10 +105,11 @@ import com.nexo.app.ui.designsystem.component.EmptyState
 import com.nexo.app.ui.designsystem.component.FlowAmount
 import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.GroupCard
+import com.nexo.app.ui.designsystem.component.HeroAmount
+import com.nexo.app.ui.designsystem.component.HeroLabel
 import com.nexo.app.ui.designsystem.component.MonthPickerDialog
 import com.nexo.app.ui.designsystem.component.NavMotion
 import com.nexo.app.ui.designsystem.component.PeriodNavigator
-import com.nexo.app.ui.designsystem.component.RollingAmount
 import com.nexo.app.ui.designsystem.component.RoundIconButton
 import com.nexo.app.ui.designsystem.component.SegmentedPill
 import com.nexo.app.ui.designsystem.component.collapsingHeader
@@ -616,12 +617,8 @@ private fun NetHero(
             bottom = Space.m,
         ),
     ) {
-        Text(
-            stringResource(R.string.net),
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.textSecondary,
-        )
-        RollingAmount(income - expense, main, Modifier.shrinkToFit(), color = colors.text)
+        HeroLabel(stringResource(R.string.net))
+        HeroAmount(income - expense, main, Modifier.shrinkToFit(), color = colors.text)
         Spacer(Modifier.height(Space.xs))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
@@ -631,7 +628,7 @@ private fun NetHero(
                 modifier = Modifier.size(16.dp),
             )
             Spacer(Modifier.width(Space.xs))
-            RollingAmount(
+            HeroAmount(
                 income,
                 main,
                 style = NexoType.Amount,
@@ -646,7 +643,7 @@ private fun NetHero(
                 modifier = Modifier.size(16.dp),
             )
             Spacer(Modifier.width(Space.xs))
-            RollingAmount(
+            HeroAmount(
                 expense,
                 main,
                 style = NexoType.Amount,

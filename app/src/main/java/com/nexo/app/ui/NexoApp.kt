@@ -25,6 +25,8 @@ import com.nexo.app.BuildConfig
 import com.nexo.app.R
 import com.nexo.app.core.model.ThemeMode
 import com.nexo.app.ui.designsystem.LocalClock
+import com.nexo.app.ui.designsystem.component.AmountPrivacy
+import com.nexo.app.ui.designsystem.component.LocalAmountPrivacy
 import com.nexo.app.ui.designsystem.component.NavMotion
 import com.nexo.app.ui.designsystem.theme.NexoTheme
 import com.nexo.app.ui.lock.LockScreen
@@ -45,7 +47,12 @@ fun NexoApp(app: AppViewModel, clock: Clock) {
     val locked = state.locked
     val pending = state.pending
     val d = device
-    CompositionLocalProvider(LocalClock provides clock) {
+    val privacyButton = d?.privacyButton == true
+    val hideAmounts = privacyButton && d?.hideAmounts == true
+    val privacy = remember(privacyButton, hideAmounts) {
+        AmountPrivacy(privacyButton, hideAmounts) { app.setHideAmounts(!hideAmounts) }
+    }
+    CompositionLocalProvider(LocalClock provides clock, LocalAmountPrivacy provides privacy) {
         NexoTheme(mode = d?.themeMode ?: ThemeMode.SYSTEM, colorSet = book.colorSet) {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                 if (d == null) return@Box

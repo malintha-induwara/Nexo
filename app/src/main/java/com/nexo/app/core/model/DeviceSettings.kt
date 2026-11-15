@@ -41,6 +41,10 @@ data class DeviceSettings(
     val transferGuideShown: Boolean = false,
     val budgetHelpHidden: Boolean = false,
     val memoHelpHidden: Boolean = false,
+    /** Show the eye button that blurs the large summary figures (net, net worth, stats totals). */
+    val privacyButton: Boolean = false,
+    /** The eye button's state: summary figures blurred. Only applies while [privacyButton] is on. */
+    val hideAmounts: Boolean = false,
     /** "Auto-capture bank SMS", on by default. */
     val smsCaptureEnabled: Boolean = true,
     /** Start point: when capture last became active (switch on and permission granted); 0 = not active. */

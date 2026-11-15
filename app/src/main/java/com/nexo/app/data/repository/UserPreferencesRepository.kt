@@ -48,6 +48,10 @@ interface UserPreferencesRepository {
 
     suspend fun setMemoHelpHidden(v: Boolean)
 
+    suspend fun setHideAmounts(v: Boolean)
+
+    suspend fun setPrivacyButton(v: Boolean)
+
     suspend fun setSmsCaptureEnabled(v: Boolean)
 
     suspend fun markSmsCaptureStarted(now: Long)

@@ -54,6 +54,8 @@ class DevicePreferencesDataSource @Inject constructor(
         val transferGuide = booleanPreferencesKey("transfer_guide_shown")
         val budgetHelpHidden = booleanPreferencesKey("budget_help_hidden")
         val memoHelpHidden = booleanPreferencesKey("memo_help_hidden")
+        val privacyButton = booleanPreferencesKey("privacy_button")
+        val hideAmounts = booleanPreferencesKey("hide_amounts")
         val smsCaptureEnabled = booleanPreferencesKey("sms_capture_enabled")
         val smsCaptureStartedAt = longPreferencesKey("sms_capture_started_at")
         val smsCaptureStoppedAt = longPreferencesKey("sms_capture_stopped_at")
@@ -100,6 +102,8 @@ class DevicePreferencesDataSource @Inject constructor(
             transferGuideShown = p[K.transferGuide] ?: false,
             budgetHelpHidden = p[K.budgetHelpHidden] ?: false,
             memoHelpHidden = p[K.memoHelpHidden] ?: false,
+            privacyButton = p[K.privacyButton] ?: false,
+            hideAmounts = p[K.hideAmounts] ?: false,
             smsCaptureEnabled = p[K.smsCaptureEnabled] ?: true,
             smsCaptureStartedAt = p[K.smsCaptureStartedAt] ?: 0,
             smsCaptureStoppedAt = p[K.smsCaptureStoppedAt] ?: 0,
@@ -157,6 +161,14 @@ class DevicePreferencesDataSource @Inject constructor(
     suspend fun setPermissionIntroShown() = context.dataStore.edit { it[K.permissionIntro] = true }
     suspend fun setTransferGuideShown() = context.dataStore.edit { it[K.transferGuide] = true }
     suspend fun setMemoHelpHidden(v: Boolean) = context.dataStore.edit { it[K.memoHelpHidden] = v }
+
+    suspend fun setHideAmounts(v: Boolean) = context.dataStore.edit { it[K.hideAmounts] = v }
+
+    /** Turning the button off also shows the figures again, so they never stay hidden with no way back. */
+    suspend fun setPrivacyButton(v: Boolean) = context.dataStore.edit {
+        it[K.privacyButton] = v
+        if (!v) it[K.hideAmounts] = false
+    }
 
     suspend fun setSmsCaptureEnabled(v: Boolean) = context.dataStore.edit {
         it[K.smsCaptureEnabled] = v

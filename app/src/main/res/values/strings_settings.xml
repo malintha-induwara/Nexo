@@ -2,6 +2,8 @@
 <resources>
     <string name="configuration">Configuration</string>
     <string name="lock_settings">Lock</string>
+    <string name="privacy_button">Hide amounts button</string>
+    <string name="privacy_button_text">Adds an eye next to the large totals on Home, Stats and Accounts. Tap it to blur them.</string>
     <string name="backup">Backup</string>
     <string name="style">Style</string>
     <string name="help">Help</string>

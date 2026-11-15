@@ -87,6 +87,14 @@ class DefaultUserPreferencesRepository @Inject constructor(
         source.setMemoHelpHidden(v)
     }
 
+    override suspend fun setHideAmounts(v: Boolean) {
+        source.setHideAmounts(v)
+    }
+
+    override suspend fun setPrivacyButton(v: Boolean) {
+        source.setPrivacyButton(v)
+    }
+
     override suspend fun setSmsCaptureEnabled(v: Boolean) {
         source.setSmsCaptureEnabled(v)
     }

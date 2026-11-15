@@ -47,6 +47,7 @@ import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.component.SectionHeader
 import com.nexo.app.ui.designsystem.component.SettingRow
+import com.nexo.app.ui.designsystem.component.SwitchRow
 import com.nexo.app.ui.designsystem.preview.NexoPreview
 import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.navigation.AccountGroupsKey
@@ -103,6 +104,7 @@ class ConfigurationActions(
     val onUpdate: ((BookSettings) -> BookSettings) -> Unit = {},
     val onSetQuickAddNotification: (Boolean) -> Unit = {},
     val onSetNumberPadDescending: (Boolean) -> Unit = {},
+    val onSetPrivacyButton: (Boolean) -> Unit = {},
     val onResetAutocomplete: () -> Unit = {},
     val onSetLanguage: (tag: String) -> Unit = {},
 )
@@ -133,6 +135,7 @@ fun ConfigurationRoute(vm: ConfigurationViewModel = hiltViewModel()) {
             onUpdate = vm::update,
             onSetQuickAddNotification = vm::setQuickAddNotification,
             onSetNumberPadDescending = vm::setNumberPadDescending,
+            onSetPrivacyButton = vm::setPrivacyButton,
             onResetAutocomplete = {
                 vm.resetAutocomplete()
                 Toast.makeText(context, R.string.reset_complete, Toast.LENGTH_SHORT).show()
@@ -302,6 +305,12 @@ internal fun ConfigurationScreen(
 
             SectionHeader(stringResource(R.string.other))
             SettingRow(stringResource(R.string.lock_settings), onClick = actions.onLockSettings)
+            SwitchRow(
+                stringResource(R.string.privacy_button),
+                device?.privacyButton == true,
+                onChange = actions.onSetPrivacyButton,
+                subtitle = stringResource(R.string.privacy_button_text),
+            )
             SettingRow(
                 stringResource(R.string.alarm_setting),
                 onOff(device?.reminderEnabled == true),

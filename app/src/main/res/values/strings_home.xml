@@ -25,6 +25,9 @@
     <string name="all_expenses">All Expenses</string>
     <string name="yesterday">Yesterday</string>
     <string name="net">Net</string>
+    <string name="hide_amounts">Hide amounts</string>
+    <string name="show_amounts">Show amounts</string>
+    <string name="amount_hidden">Amount hidden</string>
     <string name="net_this_period">Net this month</string>
     <string name="income_short_desc">Income %1$s</string>
     <string name="expense_short_desc">Expenses %1$s</string>

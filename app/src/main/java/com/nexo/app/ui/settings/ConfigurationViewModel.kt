@@ -43,6 +43,8 @@ class ConfigurationViewModel @Inject constructor(
         prefs.setNumberPadDescending(descending)
     }
 
+    fun setPrivacyButton(on: Boolean) = viewModelScope.launch { prefs.setPrivacyButton(on) }
+
     /** Forgets the notes typed so far; suggestions only learn from notes written after now. */
     fun resetAutocomplete() = update { it.copy(autocompleteResetAt = clock.millis()) }
 

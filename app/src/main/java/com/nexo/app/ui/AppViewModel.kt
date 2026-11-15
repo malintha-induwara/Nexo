@@ -59,6 +59,10 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch { prefs.setWhatsNewVersion(BuildConfig.VERSION_CODE) }
     }
 
+    fun setHideAmounts(v: Boolean) {
+        viewModelScope.launch { prefs.setHideAmounts(v) }
+    }
+
     /** Cipher for the biometric unlock prompt, or null when the key is missing or was invalidated. */
     fun unlockCipher(): Cipher? = lock.getUnlockCipher()
 
