@@ -51,7 +51,7 @@ data class DeviceSettings(
     val smsCaptureStartedAt: Long = 0,
     /** When capture last stopped; turns into the re-enable gap. */
     val smsCaptureStoppedAt: Long = 0,
-    /** Catch-up watermark (inbox `date`); never earlier than the start point. */
+    /** Catch-up watermark (inbox `date`): how far the inbox has been read. Never earlier than the start point. */
     val smsLastProcessedAt: Long = 0,
     val smsHistoryImport: SmsHistoryImport = SmsHistoryImport.NOT_OFFERED,
     /** Keep message text unredacted. */

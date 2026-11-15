@@ -14,6 +14,7 @@ import com.nexo.app.data.database.entity.FxSnapshotEntity
 import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.database.entity.SmsMerchantRuleEntity
 import com.nexo.app.data.database.entity.SmsOtpHintEntity
+import com.nexo.app.data.database.entity.SmsSeenEntity
 import com.nexo.app.data.database.entity.SmsSourceEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -80,6 +81,20 @@ interface SmsDao {
         amount: Double,
         currency: String,
         since: Long,
+    ): SmsItemEntity?
+
+    /** A transfer the bank confirmed in [since, until], whatever was decided about it. */
+    @Query(
+        "SELECT * FROM sms_items WHERE bank = :bank AND kind = 'TRANSFER_OUT' AND certainty = " +
+            "'EXACT' AND template != 'transfer_code' AND amount = :amount AND " +
+            "currency = :currency AND smsAt BETWEEN :since AND :until ORDER BY smsAt DESC LIMIT 1",
+    )
+    suspend fun confirmedTransfer(
+        bank: String,
+        amount: Double,
+        currency: String,
+        since: Long,
+        until: Long,
     ): SmsItemEntity?
 
     @Query(
@@ -163,6 +178,17 @@ interface SmsDao {
 
     @Query("DELETE FROM sms_otp_hints")
     suspend fun deleteAllHints()
+
+    // Messages already taken in
+
+    @Query("SELECT EXISTS(SELECT 1 FROM sms_seen WHERE id = :id)")
+    suspend fun isSeen(id: String): Boolean
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun markSeen(row: SmsSeenEntity)
+
+    @Query("DELETE FROM sms_seen WHERE receivedAt < :before")
+    suspend fun purgeSeen(before: Long)
 
     // Card / bank → account
 

@@ -10,11 +10,14 @@ import com.nexo.app.data.repository.SmsInboxRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
 import com.nexo.app.data.work.AutoBackupWorker
 import com.nexo.app.data.work.FxSyncWorker
+import com.nexo.app.data.work.SmsCatchUpWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Clock
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -36,6 +39,21 @@ class AppLifecycleTasks @Inject constructor(
     override fun onCreate(owner: LifecycleOwner) {
         scope.launch {
             if (setupDone()) repeats.generateIfNewDay(force = true)
+        }
+        // The hourly inbox check runs exactly while capture is active, whatever switched it on or off.
+        scope.launch {
+            var scheduled = false
+            prefs.getDeviceSettingsStream()
+                .map { it.setupDone && it.smsCaptureStartedAt != 0L }
+                .distinctUntilChanged()
+                .collect { active ->
+                    if (active) {
+                        SmsCatchUpWorker.schedule(context)
+                    } else if (scheduled) {
+                        SmsCatchUpWorker.cancel(context)
+                    }
+                    scheduled = active
+                }
         }
     }
 

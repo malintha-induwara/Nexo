@@ -32,6 +32,7 @@ import com.nexo.app.data.database.entity.SettingEntity
 import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.database.entity.SmsMerchantRuleEntity
 import com.nexo.app.data.database.entity.SmsOtpHintEntity
+import com.nexo.app.data.database.entity.SmsSeenEntity
 import com.nexo.app.data.database.entity.SmsSourceEntity
 import com.nexo.app.data.database.entity.TagEntity
 import com.nexo.app.data.database.entity.TransactionEntity
@@ -55,6 +56,7 @@ import com.nexo.app.data.database.entity.TransactionTagEntity
         SettingEntity::class,
         SmsItemEntity::class,
         SmsOtpHintEntity::class,
+        SmsSeenEntity::class,
         SmsSourceEntity::class,
         SmsMerchantRuleEntity::class,
         FeePresetEntity::class,
@@ -69,6 +71,8 @@ import com.nexo.app.data.database.entity.TransactionTagEntity
         AutoMigration(from = 2, to = 3),
         // 4: fee stated in the SMS (sms_items.statedFee).
         AutoMigration(from = 3, to = 4),
+        // 5: messages capture has already taken in (sms_seen).
+        AutoMigration(from = 4, to = 5),
     ],
 )
 abstract class NexoDatabase : RoomDatabase() {
@@ -87,7 +91,7 @@ abstract class NexoDatabase : RoomDatabase() {
     abstract fun smsDao(): SmsDao
 
     companion object {
-        const val VERSION = 4
+        const val VERSION = 5
         const val FILE_NAME = "nexo.db"
 
         /** Room identity table name; its presence identifies a Nexo backup file. */

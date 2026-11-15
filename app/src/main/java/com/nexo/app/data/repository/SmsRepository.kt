@@ -28,8 +28,9 @@ interface SmsRepository {
     suspend fun getItemForTransaction(transactionId: String): SmsItem?
 
     /**
-     * The single path from an SMS to the queue: gate → parse → correlate → suggest → store → notify.
-     * Returns how many items were created or changed. [notify] also posts the notification and schedules rate syncs.
+     * The single path from an SMS to the queue: gate → parse → correlate → suggest → store → notify. A message is
+     * taken in once, however often it is handed over. Returns how many items were created or changed. [notify] also
+     * posts the notification and schedules rate syncs.
      */
     suspend fun receive(batch: List<IncomingSms>, notify: Boolean = true): Int
 
@@ -101,5 +102,11 @@ interface SmsRepository {
     companion object {
         /** Days an item stays in the queue before it expires. */
         const val QUEUE_WINDOW_DAYS = 30
+
+        /**
+         * Hours of the inbox that every check reads again. Android keeps messages that carry a code from other apps
+         * for three hours, and nothing announces their release.
+         */
+        const val REREAD_HOURS = 24
     }
 }

@@ -198,4 +198,17 @@ class SmsCorrelatorTest {
         assertEquals(2, o.item.evidenceCount)
         assertEquals(1, store.items.size)
     }
+
+    @Test
+    fun approvalCodeArrivingAfterItsCompletionMessageIsNotASecondItem() {
+        val completion =
+            "Fund transfer request WT00001234 P 2026-11-03 at 19:45:10 via Combank Online to J Silva for LKR 2500.00 Inquiries+94110000000."
+        val confirmed = (send(completion, base + 2 * minute) as Outcome.Created).item
+        val late = send(transferCode("2,500.00"), base) as Outcome.Duplicate
+        assertEquals(confirmed.id, late.existing.id)
+        assertEquals(1, store.items.size)
+        // A code from well before that transfer, or for another amount, is its own transfer.
+        assertTrue(send(transferCode("2,500.00"), base - 20 * minute) is Outcome.Created)
+        assertTrue(send(transferCode("2,600.00"), base) is Outcome.Created)
+    }
 }

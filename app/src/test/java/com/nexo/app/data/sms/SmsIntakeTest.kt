@@ -185,7 +185,7 @@ class SmsIntakeTest {
         send(purchase())
         assertFalse(only().text.contains("4321"))
         db.smsDao().deleteAllItems()
-        send(purchase(), s = active.copy(smsStoreFullText = true))
+        send(purchase(), receivedAt = start + 2_000, s = active.copy(smsStoreFullText = true))
         assertTrue(only().text.contains("4321"))
     }
 
@@ -198,6 +198,22 @@ class SmsIntakeTest {
         val item = only()
         assertEquals(Certainty.UNVERIFIED, item.certainty)
         assertFalse(item.text.contains("987654"))
+    }
+
+    @Test
+    fun aMessageHandedOverTwiceIsTakenInOnce() = runBlocking {
+        val code =
+            "ComBank Digital-Transfer to Other Banks LKR 2,500.00 attempted. Please use code 987654 to approve. Do NOT share this number with anyone."
+        val completion =
+            "Fund transfer request WT00001234 P 2026-11-03 at 19:45:10 via Combank Online to J Silva for LKR 2500.00 Inquiries+94110000000."
+        assertEquals(1, send(code, receivedAt = start + 1_000))
+        assertEquals(1, send(completion, receivedAt = start + 60_000))
+        // The inbox read hands both over again after the broadcast did.
+        assertEquals(0, send(code, receivedAt = start + 1_000))
+        assertEquals(0, send(completion, receivedAt = start + 60_000))
+        val item = only()
+        assertEquals(Certainty.EXACT, item.certainty)
+        assertEquals(2, item.evidenceCount)
     }
 
     @Test

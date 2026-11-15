@@ -219,7 +219,7 @@ class DefaultBackupRepository @Inject constructor(
             "tags",
             "photos",
             "repeat_rules", "favorites", "budgets", "budget_amounts", "memos", "settings",
-            // Bank SMS capture. OTP hints are transient and stay out of backups.
+            // Bank SMS capture. OTP hints and the record of messages already taken in are transient and stay out.
             "sms_items", "sms_sources", "sms_merchant_rules", "fee_presets", "fx_snapshots",
         )
     }

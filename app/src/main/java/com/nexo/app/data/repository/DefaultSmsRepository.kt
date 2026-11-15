@@ -19,6 +19,7 @@ import com.nexo.app.data.database.dao.SmsDao
 import com.nexo.app.data.database.entity.FeePresetEntity
 import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.database.entity.SmsMerchantRuleEntity
+import com.nexo.app.data.database.entity.SmsSeenEntity
 import com.nexo.app.data.database.entity.SmsSourceEntity
 import com.nexo.app.data.database.entity.asEntity
 import com.nexo.app.data.database.entity.asExternalModel
@@ -29,6 +30,7 @@ import com.nexo.app.data.sms.SmsSuggester
 import com.nexo.app.data.sms.learningKey
 import com.nexo.app.data.sms.parser.Redactor
 import com.nexo.app.data.sms.parser.SmsParser
+import com.nexo.app.data.sms.seenKey
 import com.nexo.app.data.work.FxSyncWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Clock
@@ -100,6 +102,8 @@ class DefaultSmsRepository @Inject constructor(
         var foreign = false
         for (incoming in batch.sortedBy { it.message.timestamp }) {
             if (incoming.receivedAt < s.smsCaptureStartedAt) continue
+            val seenKey = incoming.message.seenKey()
+            if (dao.isSeen(seenKey)) continue
             val outcome = try {
                 val parsed = parser.parse(incoming.message)
                 val text = Redactor.stored(incoming.message.body, s.smsStoreFullText)
@@ -111,6 +115,7 @@ class DefaultSmsRepository @Inject constructor(
                 Log.w(TAG, "SMS intake failed: ${e.javaClass.simpleName}")
                 continue
             }
+            dao.markSeen(SmsSeenEntity(seenKey, incoming.receivedAt))
             if (outcome.changesQueue) changed++
             if ((outcome as? SmsCorrelator.Outcome.Created)?.item?.certainty ==
                 Certainty.ESTIMATED
@@ -147,6 +152,7 @@ class DefaultSmsRepository @Inject constructor(
         dao.purge(SmsStatus.CANCELLED, now - DENIED_KEEP_MS)
         dao.purgeApproved(now - APPROVED_KEEP_MS)
         dao.purgeHints(now - HINT_KEEP_MS)
+        dao.purgeSeen(now - SEEN_KEEP_MS)
     }
 
     override suspend fun markApproved(
@@ -336,5 +342,8 @@ class DefaultSmsRepository @Inject constructor(
         /** Long enough for late cancellations and editing an FX estimate later. */
         const val APPROVED_KEEP_MS = 90 * DAY_MS
         const val HINT_KEEP_MS = 15 * 60 * 1000L
+
+        /** An hour past the re-read window: the broadcast and the inbox don't stamp a message with the same second. */
+        const val SEEN_KEEP_MS = (SmsRepository.REREAD_HOURS + 1) * 60 * 60 * 1000L
     }
 }

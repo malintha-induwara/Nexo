@@ -33,6 +33,15 @@ interface SmsStore {
         since: Long,
     ): SmsItem?
 
+    /** Transfer-out the bank confirmed in [since, until] with the same amount, in any status. */
+    suspend fun confirmedTransfer(
+        bank: String,
+        amount: Double,
+        currency: String,
+        since: Long,
+        until: Long,
+    ): SmsItem?
+
     /** Card purchases on [cardLast4] in [since, until], newest first. */
     suspend fun purchasesOnCard(
         bank: String,
@@ -133,6 +142,14 @@ class SmsCorrelator(private val store: SmsStore) {
                 store.update(merged)
                 return Outcome.Merged(merged)
             }
+            // Android can hand a code message over hours late, after the bank's confirmation made the item.
+            store.confirmedTransfer(
+                bank,
+                amount,
+                m.currency,
+                msg.timestamp,
+                msg.timestamp + RETRY_MS,
+            )?.let { return Outcome.Duplicate(it) }
         }
         if (m.kind == SmsKind.TRANSFER_OUT && m.certainty == Certainty.EXACT) {
             store.upgradeCandidate(
@@ -303,6 +320,19 @@ class MemorySmsStore : SmsStore {
             it.certainty == Certainty.UNVERIFIED && it.amount == amount &&
             it.currency == currency &&
             it.smsAt >= since
+    }.maxByOrNull { it.smsAt }
+
+    override suspend fun confirmedTransfer(
+        bank: String,
+        amount: Double,
+        currency: String,
+        since: Long,
+        until: Long,
+    ) = items.values.filter {
+        it.bank == bank && it.kind == SmsKind.TRANSFER_OUT && it.certainty == Certainty.EXACT &&
+            it.template != SmsCorrelator.TRANSFER_CODE && it.amount == amount &&
+            it.currency == currency &&
+            it.smsAt in since..until
     }.maxByOrNull { it.smsAt }
 
     override suspend fun purchasesOnCard(

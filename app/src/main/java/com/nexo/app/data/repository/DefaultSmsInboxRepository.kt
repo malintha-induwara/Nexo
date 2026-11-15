@@ -53,7 +53,7 @@ class DefaultSmsInboxRepository @Inject constructor(
             active && s.smsCaptureStartedAt == 0L -> prefs.markSmsCaptureStarted(now)
             !active && s.smsCaptureStartedAt != 0L -> prefs.markSmsCaptureStopped(now)
         }
-        if (active) catchUp()
+        if (active) catchUp(now)
         sms.sweep(now)
     }
 
@@ -62,10 +62,14 @@ class DefaultSmsInboxRepository @Inject constructor(
         refresh()
     }
 
-    /** Messages missed while the process wasn't running. Never reaches back past the start point. */
-    private suspend fun catchUp() {
+    /**
+     * Messages the broadcast didn't bring: the process wasn't running, or Android kept them back and released them
+     * later with their original time. So the last day is read again every time; intake skips what it already took.
+     * Never reaches back past the start point.
+     */
+    private suspend fun catchUp(now: Long) {
         val s = prefs.getDeviceSettings()
-        var after = maxOf(s.smsLastProcessedAt, s.smsCaptureStartedAt - 1)
+        var after = maxOf(minOf(s.smsLastProcessedAt, now - REREAD_MS), s.smsCaptureStartedAt - 1)
         while (true) {
             val rows = try {
                 inbox.read(after = after, from = s.smsCaptureStartedAt)
@@ -76,7 +80,7 @@ class DefaultSmsInboxRepository @Inject constructor(
             if (rows.isEmpty()) return
             sms.receive(rows)
             after = rows.maxOf { it.receivedAt }
-            prefs.setSmsLastProcessed(after)
+            if (after > s.smsLastProcessedAt) prefs.setSmsLastProcessed(after)
             if (rows.size < PAGE) return
         }
     }
@@ -149,6 +153,7 @@ class DefaultSmsInboxRepository @Inject constructor(
     private companion object {
         const val TAG = "SmsInboxRepository"
         const val PAGE = 500
+        const val REREAD_MS = SmsRepository.REREAD_HOURS * 60 * 60 * 1000L
 
         /** Very large inboxes are read up to this many messages per scan. */
         const val MAX_MESSAGES = 5_000

@@ -23,6 +23,13 @@ class RoomSmsStore(private val dao: SmsDao) : SmsStore {
         currency: String,
         since: Long,
     ) = dao.upgradeCandidate(bank, amount, currency, since)?.asExternalModel()
+    override suspend fun confirmedTransfer(
+        bank: String,
+        amount: Double,
+        currency: String,
+        since: Long,
+        until: Long,
+    ) = dao.confirmedTransfer(bank, amount, currency, since, until)?.asExternalModel()
     override suspend fun purchasesOnCard(
         bank: String,
         cardLast4: String,

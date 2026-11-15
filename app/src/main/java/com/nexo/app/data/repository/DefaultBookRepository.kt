@@ -6,6 +6,7 @@ import com.nexo.app.core.common.money.CatalogCurrency
 import com.nexo.app.data.database.BookSeeder
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.file.AppDirs
+import java.time.Clock
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -17,6 +18,7 @@ class DefaultBookRepository @Inject constructor(
     private val prefs: UserPreferencesRepository,
     private val lock: AppLockRepository,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
+    private val clock: Clock,
 ) : BookRepository {
     override suspend fun seedFresh(main: CatalogCurrency) {
         seeder.seedFresh(main)
@@ -31,6 +33,7 @@ class DefaultBookRepository @Inject constructor(
     override suspend fun completeReset(deletePhotos: Boolean, main: CatalogCurrency) =
         withContext(ioDispatcher) {
             db.clearAllTables()
+            restartSmsCapture()
             vacuum()
             seeder.seedFresh(main)
             prefs.setCollapsedGroups(emptySet())
@@ -52,6 +55,7 @@ class DefaultBookRepository @Inject constructor(
     /** Forgotten PIN: everything on the device is erased and the app returns to the welcome screen. */
     override suspend fun eraseAll() = withContext(ioDispatcher) {
         db.clearAllTables()
+        restartSmsCapture()
         vacuum()
         listOf(dirs.photos, dirs.backups, dirs.imports, dirs.temp).forEach { d ->
             d.listFiles()?.forEach { it.deleteRecursively() }
@@ -62,6 +66,13 @@ class DefaultBookRepository @Inject constructor(
         prefs.setLastAutoBackup(0)
         prefs.setRepeatDay("")
         lock.unlock()
+    }
+
+    /** The record of messages already taken in is gone, so capture starts over rather than refill the queue. */
+    private suspend fun restartSmsCapture() {
+        if (prefs.getDeviceSettings().smsCaptureStartedAt != 0L) {
+            prefs.markSmsCaptureStarted(clock.millis())
+        }
     }
 
     private fun vacuum() {
