@@ -40,7 +40,7 @@ class AppLifecycleTasks @Inject constructor(
         scope.launch {
             if (setupDone()) repeats.generateIfNewDay(force = true)
         }
-        // The hourly inbox check runs exactly while capture is active, whatever switched it on or off.
+        // The background inbox check runs exactly while capture is active, whatever switched it on or off.
         scope.launch {
             var scheduled = false
             prefs.getDeviceSettingsStream()
