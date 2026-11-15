@@ -79,7 +79,6 @@
     <string name="receipt_nothing">No amounts found. Tap Total to type it.</string>
     <string name="receipt_other_amounts">Amounts on the receipt</string>
     <string name="receipt_use_note">Note: %1$s</string>
-    <string name="receipt_use_date">Date: %1$s</string>
     <string name="receipt_use">Use this</string>
     <string name="receipt_unreadable">Couldn\'t read this photo.</string>
 </resources>

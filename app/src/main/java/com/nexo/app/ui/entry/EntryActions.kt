@@ -27,8 +27,7 @@ class EntryActions(
     val takePhoto: () -> Unit = {},
     val pickPhoto: () -> Unit = {},
     val dismissScan: () -> Unit = {},
-    val applyReceipt: (amount: Double?, useDate: Boolean, useMerchant: Boolean) -> Unit =
-        { _, _, _ -> },
+    val applyReceipt: (amount: Double?, useMerchant: Boolean) -> Unit = { _, _ -> },
     // Fields and panels.
     val setType: (EntryType) -> Unit = {},
     val revert: () -> Unit = {},

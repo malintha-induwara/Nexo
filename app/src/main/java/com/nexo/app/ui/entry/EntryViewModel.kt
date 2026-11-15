@@ -399,14 +399,14 @@ class EntryViewModel @AssistedInject constructor(
     }
 
     /**
-     * The user's confirmed reading: [amount] (as shown or corrected, rounded to the entry's currency), the receipt's date
-     * and time when [useDate], its shop as the note when [useMerchant] and the note is still empty, and the photo itself.
+     * The user's confirmed reading: [amount] (as shown or corrected, rounded to the entry's currency), its shop as the
+     * note when [useMerchant] and the note is still empty, and the photo itself.
      * Nothing is saved until the entry is.
      */
-    fun applyReceipt(amount: Double?, useDate: Boolean, useMerchant: Boolean) {
+    fun applyReceipt(amount: Double?, useMerchant: Boolean) {
         val done = form.value.scan as? ScanUi.Done ?: return
         edit { s ->
-            s.withReceipt(done, amount, useDate, useMerchant, refCurrencyDecimals(s.currencyId))
+            s.withReceipt(done, amount, useMerchant, refCurrencyDecimals(s.currencyId))
         }
         advance()
     }

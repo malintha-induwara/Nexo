@@ -157,13 +157,12 @@ internal fun EntryForm.withInstallments(n: Int): EntryForm = copy(
 )
 
 /**
- * The confirmed reading of [done]: [amount] rounded to [decimals], the receipt's date and time when
- * [useDate], its shop as the note when [useMerchant] and the note is still empty, and the photo itself.
+ * The confirmed reading of [done]: [amount] rounded to [decimals], its shop as the note when
+ * [useMerchant] and the note is still empty, and the photo itself. The entry's date is left alone.
  */
 internal fun EntryForm.withReceipt(
     done: ScanUi.Done,
     amount: Double?,
-    useDate: Boolean,
     useMerchant: Boolean,
     decimals: Int,
 ): EntryForm {
@@ -176,7 +175,6 @@ internal fun EntryForm.withReceipt(
             pad = PadInput("", decimals, allowSign = true),
         )
     }
-    if (useDate && read.date != null) n = n.copy(date = read.date, time = read.time ?: n.time)
     if (useMerchant && read.merchant != null && note.isBlank()) n = n.copy(note = read.merchant)
     return n
 }

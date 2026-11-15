@@ -3,8 +3,6 @@ package com.nexo.app.data.receipt
 import com.nexo.app.core.model.ReceiptRead
 import java.math.BigDecimal
 import java.math.RoundingMode
-import java.time.LocalDate
-import java.time.LocalTime
 
 /**
  * Reads the total, the date and the shop name from the rows of an English receipt. Stateless; the rules follow what
@@ -26,12 +24,10 @@ object ReceiptParser {
     private const val MAX_OTHERS = 6
     private const val MERCHANT_ROWS = 6
     private const val MERCHANT_LENGTH = 40
-    private val EARLIEST = LocalDate.of(2000, 1, 1)
 
-    fun read(lines: List<OcrLine>, today: LocalDate): ReceiptRead =
-        parse(ReceiptRows.build(lines), today)
+    fun read(lines: List<OcrLine>): ReceiptRead = parse(ReceiptRows.build(lines))
 
-    fun parse(rows: List<String>, today: LocalDate): ReceiptRead {
+    fun parse(rows: List<String>): ReceiptRead {
         if (rows.isEmpty()) return ReceiptRead.EMPTY
         val all = rows.mapIndexed { i, text -> Row(i, text) }
         val (total, guessed) = pickTotal(all)
@@ -41,8 +37,7 @@ object ReceiptParser {
             .distinct()
             .sortedDescending()
             .take(MAX_OTHERS)
-        val (date, time) = dateAndTime(rows, today)
-        return ReceiptRead(total, guessed, others, date, time, merchant(rows))
+        return ReceiptRead(total, guessed, others, merchant(rows))
     }
 
     // ---- Total ----
@@ -138,63 +133,9 @@ object ReceiptParser {
         val isTotal = strength > 0 && !excluded
     }
 
-    // ---- Date and time ----
-
-    private fun dateAndTime(rows: List<String>, today: LocalDate): Pair<LocalDate?, LocalTime?> {
-        for ((i, row) in rows.withIndex()) {
-            val date = dateIn(row, today) ?: continue
-            val time = listOfNotNull(
-                row,
-                rows.getOrNull(i + 1),
-                rows.getOrNull(i - 1),
-            ).firstNotNullOfOrNull(::timeIn)
-            return date to time
-        }
-        return null to null
-    }
-
-    private fun dateIn(row: String, today: LocalDate): LocalDate? {
-        val found = sequence {
-            isoDate.findAll(row).forEach { m -> yield(Triple(m.int(3), m.int(2), m.int(1))) }
-            numericDate.findAll(row).forEach { m ->
-                val (a, b) = m.int(1) to m.int(3)
-                // Day first; a "month" over 12 means the receipt printed month first.
-                yield(if (b > 12 && a <= 12) Triple(b, a, m.int(4)) else Triple(a, b, m.int(4)))
-            }
-            dayMonthYear.findAll(row).forEach { m ->
-                yield(Triple(m.int(1), monthOf(m.groupValues[2]), m.int(3)))
-            }
-            monthDayYear.findAll(row).forEach { m ->
-                yield(Triple(m.int(2), monthOf(m.groupValues[1]), m.int(3)))
-            }
-        }
-        return found.firstNotNullOfOrNull { (day, month, y) ->
-            val year = if (y < 100) 2000 + y else y
-            runCatching { LocalDate.of(year, month, day) }.getOrNull()?.takeIf {
-                !it.isAfter(today) &&
-                    !it.isBefore(EARLIEST)
-            }
-        }
-    }
-
-    private fun timeIn(row: String): LocalTime? = clock.findAll(row).firstNotNullOfOrNull { m ->
-        var hour = m.int(1)
-        val minute = m.int(2)
-        val half = m.groupValues[3].lowercase()
-        if (half.isNotEmpty()) {
-            if (hour !in 1..12) return@firstNotNullOfOrNull null
-            hour = when {
-                half == "p" && hour < 12 -> hour + 12
-                half == "a" && hour == 12 -> 0
-                else -> hour
-            }
-        }
-        if (hour > 23 || minute > 59) null else LocalTime.of(hour, minute)
-    }
-
-    private fun monthOf(name: String): Int = MONTHS.indexOf(name.take(3).lowercase()) + 1
-
-    private fun MatchResult.int(group: Int): Int = groupValues[group].toInt()
+    /** Whether [row] holds a date, so the merchant search skips it. */
+    private fun hasDate(row: String): Boolean =
+        listOf(isoDate, numericDate, dayMonthYear, monthDayYear).any { it.containsMatchIn(row) }
 
     // ---- Merchant ----
 
@@ -208,7 +149,7 @@ object ReceiptParser {
             val letters = row.count { it.isLetter() }
             val others = row.count { !it.isLetter() && !it.isWhitespace() }
             val bad = letters < 3 || letters <= others || notMerchant.containsMatchIn(row) ||
-                amount.containsMatchIn(cleanNumbers(row)) || dateIn(row, LocalDate.MAX) != null
+                amount.containsMatchIn(cleanNumbers(row)) || hasDate(row)
             if (bad) null else titleCase(row).take(MERCHANT_LENGTH).trim()
         }
 
@@ -277,8 +218,6 @@ private fun toAmount(raw: String): BigDecimal? {
         ).toBigDecimalOrNull()?.setScale(2, RoundingMode.HALF_UP)
 }
 
-private val MONTHS =
-    listOf("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
 private val EDGE_MARKS = charArrayOf('-', '*', '#', '=', '_', '~', '|', '.', ',', ':')
 
 private fun rx(p: String) = Regex(p, RegexOption.IGNORE_CASE)
@@ -359,7 +298,7 @@ private val extraWord = label(
 )
 private val inclusiveWord = label("""incl\.?""", "including", "inclusive", """inc\.?""", "with")
 
-// ---- Date, time and merchant patterns ----
+// ---- Date and merchant patterns ----
 
 private const val MONTH_NAME =
     """(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"""
@@ -374,9 +313,6 @@ private val monthDayYear =
     rx(
         """(?<![a-z])$MONTH_NAME(?![a-z])\.?[\s\-/.,]*(\d{1,2})(?:st|nd|rd|th)?[\s\-/.,]+(\d{4}|\d{2})(?!\d)""",
     )
-private val clock =
-    rx("""(?<![\d:])(\d{1,2}):(\d{2})(?::\d{2})?(?!\d)(?:\s*([ap])\.?\s*m(?![a-z])\.?)?""")
-
 private val welcomeTo = rx("""^\s*welcome\s+to\s+""")
 private val spaces = Regex("""\s+""")
 private val notMerchant = rx(

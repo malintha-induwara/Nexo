@@ -1,6 +1,5 @@
 package com.nexo.app.data.receipt
 
-import java.time.LocalDate
 import kotlin.math.cos
 import kotlin.math.sin
 import org.junit.Assert.assertEquals
@@ -46,7 +45,7 @@ class ReceiptRowsTest {
         assertEquals(listOf("SUB TOTAL  3,950.00", "TOTAL  4,250.00"), rows)
         assertEquals(
             "4250.00",
-            ReceiptParser.read(lines, LocalDate.of(2026, 11, 14)).total?.toPlainString(),
+            ReceiptParser.read(lines).total?.toPlainString(),
         )
     }
 

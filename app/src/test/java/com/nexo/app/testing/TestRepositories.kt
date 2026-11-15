@@ -168,7 +168,6 @@ class TestBook(
         DefaultReceiptRepository(
             ReceiptTextDataSource(context, Dispatchers.IO),
             Dispatchers.Default,
-            clock,
         )
     val backups =
         DefaultBackupRepository(

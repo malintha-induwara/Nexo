@@ -1,6 +1,5 @@
 package com.nexo.app.ui.entry
 
-import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,7 +40,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,7 +49,6 @@ import com.nexo.app.core.common.money.AmountParts
 import com.nexo.app.core.model.Currency
 import com.nexo.app.ui.designsystem.component.AmountSheet
 import com.nexo.app.ui.designsystem.component.AmountText
-import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.rememberHaptics
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoShapes
@@ -61,7 +58,7 @@ import java.util.Locale
 
 /**
  * Scan receipt's confirm step. While the photo is read it shows progress; then the total it found (tap to correct it),
- * the other amounts on the receipt (tap one to use it instead), and the shop and date with a tick to use or skip each.
+ * the other amounts on the receipt (tap one to use it instead), and the shop with a tick to use or skip it as the note.
  * Use this fills the entry; Cancel, back, the scrim or a drag leave the entry as it was.
  */
 @OptIn(ExperimentalLayoutApi::class)
@@ -70,12 +67,11 @@ fun ColumnScope.ReceiptSheetContent(
     scan: ScanUi,
     currency: Currency,
     noteEmpty: Boolean,
-    onUse: (amount: Double?, useDate: Boolean, useMerchant: Boolean) -> Unit,
+    onUse: (amount: Double?, useMerchant: Boolean) -> Unit,
     onCancel: () -> Unit,
 ) {
     val colors = LocalNexoColors.current
     val haptics = rememberHaptics()
-    val context = LocalContext.current
 
     if (scan is ScanUi.Reading) {
         Column(Modifier.fillMaxWidth().weight(1f).padding(horizontal = Space.gutter)) {
@@ -102,7 +98,6 @@ fun ColumnScope.ReceiptSheetContent(
 
     val read = (scan as ScanUi.Done).read
     var amount by remember(scan) { mutableStateOf(read.total?.toDouble()) }
-    var useDate by remember(scan) { mutableStateOf(true) }
     var useMerchant by remember(scan) { mutableStateOf(true) }
     var editing by remember(scan) { mutableStateOf(false) }
     val choices =
@@ -211,15 +206,6 @@ fun ColumnScope.ReceiptSheetContent(
                 useMerchant = !useMerchant
             }
         }
-        val date = read.date
-        if (date != null) {
-            val time = read.time?.let { Formats.time(it, DateFormat.is24HourFormat(context)) }
-            val shown = Formats.mediumDate(date) + (time?.let { ", $it" } ?: "")
-            TickRow(stringResource(R.string.receipt_use_date, shown), useDate) {
-                haptics.tick()
-                useDate = !useDate
-            }
-        }
     }
 
     Row(
@@ -244,7 +230,7 @@ fun ColumnScope.ReceiptSheetContent(
         Button(
             onClick = {
                 haptics.confirm()
-                onUse(amount, useDate, useMerchant)
+                onUse(amount, useMerchant)
             },
             modifier = Modifier.weight(1.3f).height(52.dp),
             colors = ButtonDefaults.buttonColors(

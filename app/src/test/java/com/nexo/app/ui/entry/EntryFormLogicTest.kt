@@ -108,21 +108,20 @@ class EntryFormLogicTest {
             total = BigDecimal("1499.995"),
             guessed = false,
             others = emptyList(),
-            date = LocalDate.of(2026, 11, 2),
-            time = LocalTime.of(18, 5),
             merchant = "Keells",
         )
         val done = ScanUi.Done(Uri.parse("content://receipts/1"), read)
         val noted = lunch.copy(note = "Groceries", scan = done)
 
-        val applied = noted.withReceipt(done, 1499.995, useDate = true, useMerchant = true, 2)
+        val applied = noted.withReceipt(done, 1499.995, useMerchant = true, 2)
 
         assertEquals(1500.0, applied.amount)
-        assertEquals(LocalDate.of(2026, 11, 2), applied.date)
+        assertEquals(noted.date, applied.date)
+        assertEquals(noted.time, applied.time)
         assertEquals("Groceries", applied.note)
         assertEquals(listOf(PhotoItem.Picked("content://receipts/1")), applied.photos)
         assertNull(applied.scan)
-        assertEquals(applied.photos, applied.withReceipt(done, null, false, false, 2).photos)
+        assertEquals(applied.photos, applied.withReceipt(done, null, false, 2).photos)
     }
 
     @Test

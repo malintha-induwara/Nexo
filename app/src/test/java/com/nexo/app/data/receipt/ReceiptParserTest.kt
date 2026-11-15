@@ -2,8 +2,6 @@ package com.nexo.app.data.receipt
 
 import com.nexo.app.core.model.ReceiptRead
 import java.math.BigDecimal
-import java.time.LocalDate
-import java.time.LocalTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -12,8 +10,7 @@ import org.junit.Test
 
 /** Synthetic receipts only; real bills stay out of the repository. */
 class ReceiptParserTest {
-    private val today = LocalDate.of(2026, 11, 14)
-    private fun read(vararg rows: String) = ReceiptParser.parse(rows.toList(), today)
+    private fun read(vararg rows: String) = ReceiptParser.parse(rows.toList())
     private fun amount(s: String) = BigDecimal(s).setScale(2)
 
     @Test
@@ -37,8 +34,6 @@ class ReceiptParserTest {
         )
         assertEquals(amount("4250"), r.total)
         assertFalse(r.guessed)
-        assertEquals(LocalDate.of(2026, 11, 14), r.date)
-        assertEquals(LocalTime.of(18, 42), r.time)
         assertEquals("Keells Super", r.merchant)
         assertEquals(amount("5000"), r.others.first())
         assertTrue(amount("3950") in r.others)
@@ -181,7 +176,7 @@ class ReceiptParserTest {
         val r = read("THANK YOU", "Visit again")
         assertNull(r.total)
         assertTrue(r.others.isEmpty())
-        assertEquals(ReceiptRead.EMPTY, ReceiptParser.parse(emptyList(), today))
+        assertEquals(ReceiptRead.EMPTY, ReceiptParser.parse(emptyList()))
     }
 
     @Test
@@ -189,43 +184,6 @@ class ReceiptParserTest {
         val r = read("4902430123456", "14.11.2026", "077-1234567", "Total  99.50")
         assertEquals(amount("99.50"), r.total)
         assertTrue(r.others.isEmpty())
-    }
-
-    @Test
-    fun dateFormats() {
-        fun date(row: String) = read(row).date
-        assertEquals(LocalDate.of(2026, 11, 3), date("Date: 03/11/2026"))
-        assertEquals(LocalDate.of(2026, 11, 3), date("03-11-26 10:15"))
-        assertEquals(LocalDate.of(2026, 11, 3), date("03.11.2026"))
-        assertEquals(LocalDate.of(2026, 11, 3), date("2026-11-03 10:15:22"))
-        assertEquals(LocalDate.of(2026, 11, 3), date("3 Nov 2026"))
-        assertEquals(LocalDate.of(2026, 11, 3), date("03-NOV-26"))
-        assertEquals(LocalDate.of(2026, 11, 3), date("3rd November, 2026"))
-        assertEquals(LocalDate.of(2026, 11, 3), date("Nov 3, 2026"))
-        assertEquals(
-            "month first when the day cannot be a month",
-            LocalDate.of(2026, 10, 31),
-            date("10/31/2026"),
-        )
-    }
-
-    @Test
-    fun futureAndImpossibleDatesAreSkipped() {
-        assertNull(read("Exp 12/12/2030").date)
-        assertNull(read("31/02/2026").date)
-        assertNull(read("Market 12 24").date)
-        assertEquals(
-            LocalDate.of(2026, 11, 1),
-            read("Valid till 01/01/2027", "Date 01/11/2026").date,
-        )
-    }
-
-    @Test
-    fun timeFromTheDateRowOrItsNeighbour() {
-        assertEquals(LocalTime.of(18, 5), read("14/11/2026 6:05 PM").time)
-        assertEquals(LocalTime.of(0, 30), read("14/11/2026", "Time 12:30 am").time)
-        assertEquals(LocalTime.of(9, 7), read("Time: 09:07:44", "Date: 14/11/2026").time)
-        assertNull(read("14/11/2026").time)
     }
 
     @Test
