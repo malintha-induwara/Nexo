@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -56,7 +57,9 @@ fun NexoApp(app: AppViewModel, clock: Clock) {
                 val results = rememberSaveable(saver = NavResultStore.Saver) { NavResultStore() }
                 val navigator = remember(backStack, results) { Navigator(backStack, results) }
                 // Entry forms opened from an add button are drawers over the current screen.
-                val sheets = remember(backStack) { SheetSceneStrategy { it in backStack } }
+                val host = LocalLifecycleOwner.current
+                val sheets =
+                    remember(backStack, host) { SheetSceneStrategy(host) { it in backStack } }
                 Box(Modifier.fillMaxSize()) {
                     CompositionLocalProvider(LocalNavigator provides navigator) {
                         NavDisplay(

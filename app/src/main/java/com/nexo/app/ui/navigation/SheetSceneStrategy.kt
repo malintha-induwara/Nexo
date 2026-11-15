@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -28,6 +29,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.rememberLifecycleOwner
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.NavMetadataKey
@@ -50,8 +54,13 @@ import kotlinx.coroutines.launch
  *
  * Moving on from the drawer to another screen fades it out, and coming back fades it in, so it
  * only ever slides when it is actually opened or closed.
+ *
+ * [host] is the lifecycle the drawer's content follows; see [SheetScene.content].
  */
-class SheetSceneStrategy(private val isOnBackStack: (NavKey) -> Boolean) : SceneStrategy<NavKey> {
+class SheetSceneStrategy(
+    private val host: LifecycleOwner,
+    private val isOnBackStack: (NavKey) -> Boolean,
+) : SceneStrategy<NavKey> {
     /** Drawers that have already slid in; they fade back rather than slide when returned to. */
     private val opened = mutableSetOf<Any>()
 
@@ -80,7 +89,14 @@ class SheetSceneStrategy(private val isOnBackStack: (NavKey) -> Boolean) : Scene
                 motion.show()
                 opened += key
             }
-            SheetHost(motion, onDismiss = onBack) { entry.Content() }
+            // Coming back to a drawer from a screen opened over it, NavDisplay can compose the
+            // drawer under a lifecycle whose parent is already destroyed. That lifecycle never
+            // starts, so the form stops collecting its state and ignores every tap. The drawer
+            // follows the app's lifecycle instead; it leaves composition whenever it is covered.
+            val owner = rememberLifecycleOwner(parent = host)
+            CompositionLocalProvider(LocalLifecycleOwner provides owner) {
+                SheetHost(motion, onDismiss = onBack) { entry.Content() }
+            }
         }
 
         override suspend fun onRemove() {
