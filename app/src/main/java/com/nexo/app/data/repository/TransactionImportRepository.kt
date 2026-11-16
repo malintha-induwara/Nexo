@@ -3,11 +3,13 @@ package com.nexo.app.data.repository
 import android.net.Uri
 import com.nexo.app.core.model.DateOrder
 import com.nexo.app.core.model.ImportPreview
+import com.nexo.app.core.model.StoredFile
 import java.io.File
 
 /** Tab-separated transaction files waiting in the import folder, their preview, and saving them to the ledger. */
 interface TransactionImportRepository {
-    fun files(): List<File>
+    /** The files waiting in the import folder, newest first. */
+    suspend fun getFiles(): List<StoredFile>
 
     fun file(name: String): File
 

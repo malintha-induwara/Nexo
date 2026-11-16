@@ -563,7 +563,7 @@ internal fun EntryFields(
         }
         if (photosAllowed && s.photos.isNotEmpty()) {
             Box(Modifier.padding(horizontal = Space.gutter, vertical = Space.m)) {
-                PhotoThumbs(s.photos, actions.photoFile, removable = !s.viewing, onOpen = {
+                PhotoThumbs(s.photos, state.photoFiles, removable = !s.viewing, onOpen = {
                     dialogs.viewerIndex = it
                 }, onRemove = actions.removePhoto, onLongPress = actions.enterEdit)
             }

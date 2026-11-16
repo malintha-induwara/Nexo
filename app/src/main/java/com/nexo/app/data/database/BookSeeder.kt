@@ -17,10 +17,8 @@ import com.nexo.app.data.database.entity.SettingEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Clock
 import javax.inject.Inject
-import javax.inject.Singleton
 
 /** Seeds a fresh book. */
-@Singleton
 class BookSeeder @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: NexoDatabase,

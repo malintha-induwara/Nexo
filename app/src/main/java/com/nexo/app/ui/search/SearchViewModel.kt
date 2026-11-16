@@ -1,5 +1,6 @@
 package com.nexo.app.ui.search
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.period.DateRange
@@ -12,12 +13,14 @@ import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.domain.Classifier
 import com.nexo.app.domain.entry.GetNoteSuggestionsUseCase
+import com.nexo.app.ui.common.LocalDateSerializer
+import com.nexo.app.ui.common.savedStateFlow
 import com.nexo.app.ui.entry.NoteSuggestion
-import com.nexo.app.ui.transactions.BulkEditActions
-import com.nexo.app.ui.transactions.FilterCriteria
-import com.nexo.app.ui.transactions.TransactionRowMapper
-import com.nexo.app.ui.transactions.TxRowUi
-import com.nexo.app.ui.transactions.bulkEditActions
+import com.nexo.app.ui.transactionlist.BulkEditActions
+import com.nexo.app.ui.transactionlist.FilterCriteria
+import com.nexo.app.ui.transactionlist.TransactionRowMapper
+import com.nexo.app.ui.transactionlist.TxRowUi
+import com.nexo.app.ui.transactionlist.bulkEditActions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.time.Clock
@@ -25,7 +28,6 @@ import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -33,14 +35,20 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class SearchPeriod { TOTAL, WEEKLY, MONTHLY, ANNUALLY, PERIOD }
 
+@Serializable
 data class SearchCriteria(
     val query: String = "",
     val period: SearchPeriod = SearchPeriod.TOTAL,
+    @Serializable(with = LocalDateSerializer::class)
     val anchor: LocalDate,
+    @Serializable(with = LocalDateSerializer::class)
     val from: LocalDate = anchor.withDayOfMonth(1),
+    @Serializable(with = LocalDateSerializer::class)
     val to: LocalDate = anchor,
     val categories: FilterCriteria = FilterCriteria(),
     val accounts: Set<String> = emptySet(),
@@ -75,16 +83,22 @@ class SearchViewModel @Inject constructor(
     private val transactions: TransactionsRepository,
     private val getNoteSuggestions: GetNoteSuggestionsUseCase,
     private val clock: Clock,
+    savedState: SavedStateHandle,
 ) : ViewModel() {
-    /** Kept for event handlers that need the reference data synchronously. */
+    /**
+     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
+     * is current whenever the screen is there to call them.
+     */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
-        SharingStarted.Eagerly,
+        SharingStarted.WhileSubscribed(5_000),
         RefData(),
     )
-    private val criteria = MutableStateFlow(SearchCriteria(anchor = LocalDate.now(clock)))
-    private val executed = MutableStateFlow(SearchCriteria(anchor = LocalDate.now(clock)))
-    private val selection = MutableStateFlow<Set<String>>(emptySet())
+    private val criteria =
+        savedState.savedStateFlow("criteria", SearchCriteria(anchor = LocalDate.now(clock)))
+    private val executed =
+        savedState.savedStateFlow("executed", SearchCriteria(anchor = LocalDate.now(clock)))
+    private val selection = savedState.savedStateFlow("selection", emptySet<String>())
 
     val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, selection)
 
@@ -122,7 +136,7 @@ class SearchViewModel @Inject constructor(
     private suspend fun loadSuggestions(): List<NoteSuggestion> =
         getNoteSuggestions().map { NoteSuggestion(it.note, it.count, it.lastDate) }
 
-    fun range(r: RefData, c: SearchCriteria): DateRange {
+    private fun range(r: RefData, c: SearchCriteria): DateRange {
         val e = r.settings.periods
         return when (c.period) {
             SearchPeriod.TOTAL -> DateRange(LocalDate.of(1972, 1, 1), LocalDate.of(2099, 1, 1))

@@ -16,6 +16,8 @@ import com.nexo.app.ui.designsystem.component.PadInput
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.NavResult
+import com.nexo.app.ui.tags.TagDialog
+import java.io.File
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -161,6 +163,12 @@ data class EntryUiState(
     val device: DeviceSettings? = null,
     val suggestions: List<NoteSuggestion> = emptyList(),
     val tags: List<Tag> = emptyList(),
+    /** The dialog open over the tag picker. */
+    val tagDialog: TagDialog? = null,
+    /** Where the form's stored photos are on disk, by file name. */
+    val photoFiles: Map<String, File> = emptyMap(),
+    /** Whether the last export to the gallery worked; shown once, then cleared. */
+    val photoExported: Boolean? = null,
     /** Shown once, then cleared with [EntryViewModel.onUserMessageShown]. */
     val userMessage: UserMessage? = null,
     /** Handled once, then cleared with [EntryViewModel.onNavigationHandled]. */

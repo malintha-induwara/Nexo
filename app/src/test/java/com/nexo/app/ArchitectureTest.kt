@@ -50,7 +50,7 @@ class ArchitectureTest {
         "data" to listOf("core", "data"),
         "domain" to listOf("core", "domain", "data.repository"),
         "ui" to listOf("core", "domain", "data.repository", "ui"),
-        "system" to listOf("core", "data.repository", "data.sms", "data.work", "system"),
+        "system" to listOf("core", "data.repository", "system"),
     )
 
     @Test
@@ -114,6 +114,20 @@ class ArchitectureTest {
         val violations = sources.filter { it.name != "SystemZoneClock.kt" }.flatMap { source ->
             source.lines.mapIndexedNotNull { i, line ->
                 reads.find(line)?.let { "${source.path}:${i + 1} reads ${it.value}" }
+            }
+        }
+        assertNoViolations(violations)
+    }
+
+    /**
+     * A ViewModel owns the coroutine and answers through its uiState, so the work is not cut short
+     * when the composable that asked for it leaves.
+     */
+    @Test
+    fun viewModelsExposeNoSuspendFunctions() {
+        val violations = sources.filter { it.name.endsWith("ViewModel.kt") }.flatMap { source ->
+            source.lines.mapIndexedNotNull { i, line ->
+                if (line.startsWith("    suspend fun ")) "${source.path}:${i + 1}" else null
             }
         }
         assertNoViolations(violations)

@@ -1,10 +1,10 @@
 package com.nexo.app.data.sms
 
 import com.nexo.app.core.model.FeeMode
+import com.nexo.app.core.model.SmsMessage
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.data.sms.parser.BodyDate
 import com.nexo.app.data.sms.parser.ParsedSms
-import com.nexo.app.data.sms.parser.SmsMessage
 import com.nexo.app.data.sms.parser.SmsParser
 import java.io.File
 import java.util.Locale

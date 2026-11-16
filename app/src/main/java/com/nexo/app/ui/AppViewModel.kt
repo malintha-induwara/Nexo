@@ -1,5 +1,6 @@
 package com.nexo.app.ui
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation3.runtime.NavKey
@@ -20,7 +21,26 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+/** A PIN the lock screen entered that did not unlock. [id] tells two identical answers apart. */
+data class PinAttempt(val result: PinResult, val id: Int)
+
+/** What the lock screen does about biometric unlock next. */
+sealed interface BiometricRequest {
+    /** Show the system prompt for this keystore-bound cipher. */
+    data class Prompt(val cipher: Cipher) : BiometricRequest
+
+    /** The key was invalidated by an enrolment change, so biometric unlock has been switched off. */
+    data object Invalidated : BiometricRequest
+}
+
+/** Each is handled once by the lock screen, then cleared. */
+data class LockScreenUiState(
+    val pinAttempt: PinAttempt? = null,
+    val biometric: BiometricRequest? = null,
+)
 
 data class AppUiState(
     /** Null until the device preferences load; the splash screen stays up until then. */
@@ -29,6 +49,7 @@ data class AppUiState(
     val locked: Boolean = false,
     /** Screens to open once the app is unlocked (shortcuts, notifications). */
     val pending: List<NavKey> = emptyList(),
+    val lock: LockScreenUiState = LockScreenUiState(),
 )
 
 /** Activity-scoped state: device settings, book settings for colours, the app lock and pending deep-link targets. */
@@ -38,22 +59,36 @@ class AppViewModel @Inject constructor(
     refs: ReferenceDataRepository,
     private val lock: AppLockRepository,
     private val book: BookRepository,
+    private val savedState: SavedStateHandle,
 ) : ViewModel() {
     private val pending = MutableStateFlow<List<NavKey>>(emptyList())
+    private val lockScreen = MutableStateFlow(LockScreenUiState())
+    private var pinAttempts = 0
 
     val uiState: StateFlow<AppUiState> = combine(
         prefs.getDeviceSettingsStream(),
         refs.getRefDataStream().map { it.settings },
         lock.getLockedStream(),
         pending,
+        lockScreen,
         ::AppUiState,
     ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppUiState())
 
+    /**
+     * Whether the screens the launch intent asked for were opened. It outlives the process, so a
+     * target still waiting behind the lock screen when Android killed the app is routed again.
+     */
+    val launchHandled: Boolean get() = savedState[LAUNCH_HANDLED] ?: false
+
     fun setPending(keys: List<NavKey>) {
         pending.value = keys
+        if (keys.isNotEmpty()) savedState[LAUNCH_HANDLED] = false
     }
 
-    fun consumePending(): List<NavKey> = pending.value.also { pending.value = emptyList() }
+    fun onPendingHandled() {
+        pending.value = emptyList()
+        savedState[LAUNCH_HANDLED] = true
+    }
 
     fun markWhatsNewSeen() {
         viewModelScope.launch { prefs.setWhatsNewVersion(BuildConfig.VERSION_CODE) }
@@ -63,20 +98,45 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch { prefs.setHideAmounts(v) }
     }
 
-    /** Cipher for the biometric unlock prompt, or null when the key is missing or was invalidated. */
-    fun unlockCipher(): Cipher? = lock.getUnlockCipher()
+    /** See [AppLockRepository.expectReturn]. */
+    fun expectReturn() = lock.expectReturn()
 
     fun unlock() = lock.unlock()
 
-    suspend fun verifyPin(pin: String): PinResult = lock.verifyPin(pin)
+    /** The right PIN unlocks; any other answer is shown by the lock screen. */
+    fun submitPin(pin: String) {
+        viewModelScope.launch {
+            val result = lock.verifyPin(pin)
+            if (result != PinResult.Success) {
+                lockScreen.update { it.copy(pinAttempt = PinAttempt(result, ++pinAttempts)) }
+            }
+        }
+    }
+
+    fun onPinAttemptShown() = lockScreen.update { it.copy(pinAttempt = null) }
+
+    /** Asks for the biometric prompt; without a usable key, biometric unlock is switched off. */
+    fun requestBiometricUnlock() {
+        viewModelScope.launch {
+            val cipher = lock.getUnlockCipher()
+            if (cipher == null) lock.setBiometricsEnabled(false)
+            lockScreen.update {
+                it.copy(
+                    biometric = cipher?.let(BiometricRequest::Prompt)
+                        ?: BiometricRequest.Invalidated,
+                )
+            }
+        }
+    }
+
+    fun onBiometricRequestHandled() = lockScreen.update { it.copy(biometric = null) }
 
     /** Forgotten PIN: erases everything on the device. */
     fun eraseAll() {
         viewModelScope.launch { book.eraseAll() }
     }
 
-    /** The biometric key was invalidated by an enrolment change. */
-    fun disableBiometrics() {
-        viewModelScope.launch { lock.setBiometricsEnabled(false) }
+    private companion object {
+        const val LAUNCH_HANDLED = "launch_handled"
     }
 }

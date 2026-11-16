@@ -28,7 +28,6 @@ class MainShellTest {
             NexoPreview {
                 MainShell(
                     state = MainShellUiState(QueueBadge(count = 3)),
-                    onBack = { events += "back" },
                     onAddTransaction = { events += "add" },
                     onOpenSmsQueue = { events += "queue" },
                     tabContent = { tab, signal -> Text("page $tab $signal") },

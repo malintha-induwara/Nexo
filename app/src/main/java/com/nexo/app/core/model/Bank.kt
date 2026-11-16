@@ -1,5 +1,6 @@
 package com.nexo.app.core.model
 
+import java.time.ZoneId
 import java.util.Locale
 
 /**
@@ -65,6 +66,9 @@ enum class Bank(
 }
 
 object Banks {
+    /** Sri Lankan banks date their messages and rate boards in local time (UTC+05:30). */
+    val ZONE: ZoneId = ZoneId.of("Asia/Colombo")
+
     private val senderJunk = Regex("[^A-Z0-9+]")
     private val bySender: Map<String, Bank> = Bank.entries.flatMap { b ->
         b.senders.map { it to b }

@@ -1,4 +1,4 @@
-package com.nexo.app.ui.transactions
+package com.nexo.app.ui.transactionlist
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box

@@ -11,11 +11,10 @@ class DefaultPhotosRepository @Inject constructor(
     private val files: PhotoFileDataSource,
     private val photoDao: PhotoDao,
 ) : PhotosRepository {
-    override fun getPhotoFile(fileName: String): File = files.file(fileName)
+    override suspend fun getPhotoFiles(fileNames: Collection<String>): Map<String, File> =
+        files.files(fileNames)
 
-    override fun isSupported(uri: Uri): Boolean = files.isSupported(uri)
-
-    override fun displayName(uri: Uri): String? = files.displayName(uri)
+    override suspend fun isSupported(uri: Uri): Boolean = files.isSupported(uri)
 
     override suspend fun canRead(uri: Uri): Boolean = files.canRead(uri)
 

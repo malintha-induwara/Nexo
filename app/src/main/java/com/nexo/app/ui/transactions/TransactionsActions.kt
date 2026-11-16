@@ -1,6 +1,7 @@
 package com.nexo.app.ui.transactions
 
 import com.nexo.app.core.common.period.MonthPeriod
+import com.nexo.app.ui.transactionlist.FilterCriteria
 import java.time.LocalDate
 import java.time.YearMonth
 

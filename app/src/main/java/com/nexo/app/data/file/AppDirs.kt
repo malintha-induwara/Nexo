@@ -5,9 +5,7 @@ import com.nexo.app.data.database.NexoDatabase
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
 class AppDirs @Inject constructor(@ApplicationContext private val context: Context) {
     private fun dir(name: String) = File(context.filesDir, name).apply { mkdirs() }
 

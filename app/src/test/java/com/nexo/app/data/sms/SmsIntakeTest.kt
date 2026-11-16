@@ -7,8 +7,10 @@ import com.nexo.app.core.common.SystemZoneClock
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.DeviceSettings
+import com.nexo.app.core.model.IncomingSms
 import com.nexo.app.core.model.Missing
 import com.nexo.app.core.model.SmsKind
+import com.nexo.app.core.model.SmsMessage
 import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.core.model.missing
 import com.nexo.app.core.model.needsDetails
@@ -21,7 +23,6 @@ import com.nexo.app.data.database.entity.SmsSourceEntity
 import com.nexo.app.data.database.entity.asExternalModel
 import com.nexo.app.data.repository.DefaultSmsRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
-import com.nexo.app.data.sms.parser.SmsMessage
 import com.nexo.app.testing.fixedClock
 import com.nexo.app.testing.referenceDataRepository
 import com.nexo.app.testing.smsRepository

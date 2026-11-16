@@ -1,5 +1,6 @@
 package com.nexo.app.ui.stats
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
@@ -15,15 +16,16 @@ import com.nexo.app.data.repository.MemosRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.domain.Classifier
+import com.nexo.app.ui.common.savedStateFlow
 import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.navigation.StatsDetailKey
 import com.nexo.app.ui.navigation.StatsDetailKind
 import com.nexo.app.ui.navigation.StatsScope
-import com.nexo.app.ui.transactions.BulkEditActions
-import com.nexo.app.ui.transactions.DayGroup
-import com.nexo.app.ui.transactions.TransactionRowMapper
-import com.nexo.app.ui.transactions.bulkEditActions
+import com.nexo.app.ui.transactionlist.BulkEditActions
+import com.nexo.app.ui.transactionlist.DayGroup
+import com.nexo.app.ui.transactionlist.TransactionRowMapper
+import com.nexo.app.ui.transactionlist.bulkEditActions
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -32,7 +34,6 @@ import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -66,20 +67,25 @@ class StatsDetailViewModel @AssistedInject constructor(
     private val transactions: TransactionsRepository,
     private val memos: MemosRepository,
     private val clock: Clock,
+    savedState: SavedStateHandle,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
         fun create(key: StatsDetailKey): StatsDetailViewModel
     }
 
-    /** Kept for event handlers that need the reference data synchronously. */
+    /**
+     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
+     * is current whenever the screen is there to call them.
+     */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
-        SharingStarted.Eagerly,
+        SharingStarted.WhileSubscribed(5_000),
         RefData(),
     )
     private val query =
-        MutableStateFlow(
+        savedState.savedStateFlow(
+            "query",
             StatsQuery(
                 key.scope,
                 LocalDate.parse(key.end),
@@ -87,8 +93,8 @@ class StatsDetailViewModel @AssistedInject constructor(
                 LocalDate.parse(key.end),
             ),
         )
-    private val selected = MutableStateFlow("all")
-    private val selection = MutableStateFlow<Set<String>>(emptySet())
+    private val selected = savedState.savedStateFlow("selected", "all")
+    private val selection = savedState.savedStateFlow("selection", emptySet<String>())
     val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, selection)
 
     private val isTransfer =

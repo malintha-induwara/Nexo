@@ -12,6 +12,7 @@ import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.common.period.toIsoText
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.InputOrder
+import com.nexo.app.core.model.PhotoItem
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.RepeatSchedule
 import com.nexo.app.core.model.RepeatType
@@ -21,7 +22,6 @@ import com.nexo.app.data.repository.ReceiptRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.RepeatRulesRepository
 import com.nexo.app.data.repository.SmsRepository
-import com.nexo.app.data.repository.TagResult
 import com.nexo.app.data.repository.TagsRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
@@ -41,6 +41,8 @@ import com.nexo.app.ui.designsystem.component.PadKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.NavResult
+import com.nexo.app.ui.tags.TagActions
+import com.nexo.app.ui.tags.TagEditor
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -55,11 +57,14 @@ import java.util.UUID
 import kotlin.math.abs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -90,10 +95,13 @@ class EntryViewModel @AssistedInject constructor(
     private val form =
         MutableStateFlow(EntryForm(date = LocalDate.now(clock), time = loader.timeNow()))
 
-    /** Kept for event handlers that need the reference data synchronously. */
+    /**
+     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
+     * is current whenever the screen is there to call them.
+     */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
-        SharingStarted.Eagerly,
+        SharingStarted.WhileSubscribed(5_000),
         RefData(),
     )
 
@@ -102,13 +110,41 @@ class EntryViewModel @AssistedInject constructor(
     private val userMessage = MutableStateFlow<UserMessage?>(null)
     private val navigation = MutableStateFlow<EntryNavigation?>(null)
     private val results = MutableStateFlow<List<NavResult>>(emptyList())
+    private val photoExported = MutableStateFlow<Boolean?>(null)
+
+    private val tagEditor = TagEditor(tags, viewModelScope) {
+        uiState.value.tags.filter { !it.isDeleted }
+    }
+
+    /** What the tag picker can do. */
+    val tagActions: TagActions = tagEditor.actions
+
+    /** Looked up again only when the form's stored photos change. */
+    private val photoFiles: Flow<Map<String, File>> = form
+        .map { f -> f.photos.filterIsInstance<PhotoItem.Stored>().map { it.fileName } }
+        .distinctUntilChanged()
+        .map(photos::getPhotoFiles)
 
     val uiState: StateFlow<EntryUiState> = combine(
         combine(form, ref, prefs.getDeviceSettingsStream(), ::Triple),
-        combine(suggestions, tags.getTagsStream(), ::Pair),
+        combine(suggestions, tags.getTagsStream(), tagEditor.dialog, ::Triple),
+        combine(photoFiles, photoExported, ::Pair),
         combine(userMessage, navigation, results, ::Triple),
-    ) { (form, r, device), (suggestions, tagList), (message, navigation, results) ->
-        EntryUiState(form, r, device, suggestions, tagList, message, navigation, results)
+    ) { (form, r, device), (suggestions, tagList, tagDialog), (files, exported), effects ->
+        val (message, navigation, results) = effects
+        EntryUiState(
+            form = form,
+            ref = r,
+            device = device,
+            suggestions = suggestions,
+            tags = tagList,
+            tagDialog = tagDialog,
+            photoFiles = files,
+            photoExported = exported,
+            userMessage = message,
+            navigation = navigation,
+            results = results,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EntryUiState(form.value))
 
     private var initialized = false
@@ -183,21 +219,14 @@ class EntryViewModel @AssistedInject constructor(
         navigation.value = EntryNavigation.Open(key, replace)
     }
 
-    fun isPhotoSupported(uri: Uri): Boolean = photos.isSupported(uri)
+    /** Saves a copy of a stored photo to the phone's gallery. */
+    fun exportPhoto(fileName: String) {
+        viewModelScope.launch { photoExported.value = photos.exportToGallery(fileName) }
+    }
 
-    fun photoFile(fileName: String): File = photos.getPhotoFile(fileName)
-
-    suspend fun exportPhoto(fileName: String): Boolean = photos.exportToGallery(fileName)
-
-    suspend fun addTag(raw: String): TagResult = tags.add(raw)
-
-    suspend fun renameTag(id: String, raw: String): TagResult = tags.rename(id, raw)
-
-    suspend fun tagUsageCount(id: String): Int = tags.usageCount(id)
-
-    suspend fun deleteTag(id: String) = tags.delete(id)
-
-    suspend fun reorderTags(ids: List<String>) = tags.reorder(ids)
+    fun onPhotoExportShown() {
+        photoExported.value = null
+    }
 
     /** Deny from the form. Nothing is written to the ledger. */
     fun denySms() = viewModelScope.launch {
@@ -363,6 +392,17 @@ class EntryViewModel @AssistedInject constructor(
     // ---- Receipt scan --------------------------------------------------------------------------------------------------
 
     private var scanJob: Job? = null
+
+    /** A file picked from the gallery is read as a receipt, unless it is no image Nexo can store. */
+    fun scanPickedPhoto(uri: Uri) {
+        viewModelScope.launch {
+            if (photos.isSupported(uri)) {
+                scanReceipt(uri)
+            } else {
+                showMessage(R.string.unsupported_file_format)
+            }
+        }
+    }
 
     /** Reads [uri] on the device; the confirm sheet shows while it runs and then shows what was read. */
     fun scanReceipt(uri: Uri) {

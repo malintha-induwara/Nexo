@@ -1,5 +1,6 @@
 package com.nexo.app.ui.sms
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
@@ -23,6 +24,7 @@ import com.nexo.app.domain.sms.ApproveResult
 import com.nexo.app.domain.sms.ApproveSmsUseCase
 import com.nexo.app.domain.sms.FeePlan
 import com.nexo.app.domain.sms.GetSmsFeePlanUseCase
+import com.nexo.app.ui.common.savedStateFlow
 import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.designsystem.joinToUiText
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,8 +40,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 
 /** Filter chips. The first two show the queue (pending items); the rest show decided items still kept. */
+@Serializable
 enum class QueueFilter(val label: Int, val status: SmsStatus) {
     ATTENTION(R.string.sms_filter_attention, SmsStatus.PENDING),
     ALL(R.string.sms_filter_all, SmsStatus.PENDING),
@@ -95,21 +99,25 @@ class SmsQueueViewModel @Inject constructor(
     private val approveSms: ApproveSmsUseCase,
     private val transactions: TransactionsRepository,
     private val inbox: SmsInboxRepository,
+    savedState: SavedStateHandle,
 ) : ViewModel() {
 
-    /** Kept for event handlers that need these synchronously. */
+    /**
+     * Kept for event handlers that need these synchronously. They feed [uiState], so they are
+     * current whenever the screen is there to call them.
+     */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
-        SharingStarted.Eagerly,
+        SharingStarted.WhileSubscribed(5_000),
         RefData(),
     )
     private val pending: StateFlow<List<SmsItem>> =
         sms.getItemsStream(
             listOf(SmsStatus.PENDING),
-        ).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val filter = MutableStateFlow(QueueFilter.ALL)
-    private val selection = MutableStateFlow<Set<String>>(emptySet())
+    private val filter = savedState.savedStateFlow("filter", QueueFilter.ALL)
+    private val selection = savedState.savedStateFlow("selection", emptySet<String>())
     private val notice = MutableStateFlow<QueueNotice?>(null)
     private val feePrompts = MutableStateFlow<List<FeePrompt>>(emptyList())
     private val permitted = MutableStateFlow(inbox.hasPermission())

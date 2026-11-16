@@ -34,7 +34,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,6 +46,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.model.LockTimeout
@@ -67,7 +67,6 @@ import com.nexo.app.ui.lock.PinKeypad
 import com.nexo.app.ui.navigation.LocalNavigator
 import java.time.DayOfWeek
 import java.time.LocalTime
-import kotlinx.coroutines.launch
 
 @Composable
 private fun themeModeLabel(m: ThemeMode) = stringResource(
@@ -127,15 +126,18 @@ fun ReminderRoute(vm: ReminderViewModel = hiltViewModel()) {
                 vm.setReminder(true, d.reminderHour, d.reminderMinute, d.reminderDays)
             }
         }
+    LifecycleResumeEffect(Unit) {
+        vm.refreshPermissions()
+        onPauseOrDispose {}
+    }
     ReminderScreen(
         state = state,
         is24Hour = DateFormat.is24HourFormat(context),
-        canScheduleExactAlarms = vm::canScheduleExactAlarms,
         onBack = nav::back,
         onAlarm = { on ->
             val d = state.device
             if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                !vm.canPostNotifications()
+                !state.canPostNotifications
             ) {
                 permission.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else if (d != null) {
@@ -162,7 +164,6 @@ fun ReminderRoute(vm: ReminderViewModel = hiltViewModel()) {
 internal fun ReminderScreen(
     state: ReminderUiState,
     is24Hour: Boolean,
-    canScheduleExactAlarms: () -> Boolean,
     onBack: () -> Unit,
     onAlarm: (on: Boolean) -> Unit,
     onSetReminder: (enabled: Boolean, hour: Int, minute: Int, days: Set<Int>) -> Unit,
@@ -173,7 +174,7 @@ internal fun ReminderScreen(
     var time by rememberSaveable { mutableStateOf(false) }
     var exactPrompt by rememberSaveable { mutableStateOf(false) }
     fun apply(enabled: Boolean, h: Int, m: Int, days: Set<Int>) = onSetReminder(enabled, h, m, days)
-    LaunchedEffect(Unit) { if (!canScheduleExactAlarms()) exactPrompt = true }
+    LaunchedEffect(Unit) { if (!state.canScheduleExactAlarms) exactPrompt = true }
     Scaffold(topBar = {
         NexoTopBar(stringResource(R.string.alarm_setting), onBack = onBack)
     }) { p ->
@@ -243,30 +244,30 @@ fun LockSettingsRoute(vm: LockSettingsViewModel = hiltViewModel()) {
     val promptTitle =
         stringResource(R.string.biometric_prompt_title, stringResource(R.string.app_name))
     val cancel = stringResource(R.string.action_cancel)
+    LaunchedEffect(state.biometricSetup) {
+        val cipher = state.biometricSetup ?: return@LaunchedEffect
+        (context as? FragmentActivity)?.let { activity ->
+            BiometricPrompter.prompt(
+                activity,
+                promptTitle,
+                cancel,
+                cipher,
+                onSuccess = { vm.setBiometricsEnabled(true) },
+            )
+        }
+        vm.onBiometricSetupHandled()
+    }
     LockSettingsScreen(
         state = state,
         biometricsAvailable = BiometricPrompter.isAvailable(context),
         onBack = nav::back,
         onBiometrics = { on ->
-            if (!on) {
-                vm.setBiometricsEnabled(false)
-            } else {
-                val activity = context as? FragmentActivity
-                val cipher = activity?.let { vm.createBiometricKey() }
-                if (activity != null && cipher != null) {
-                    BiometricPrompter.prompt(
-                        activity,
-                        promptTitle,
-                        cancel,
-                        cipher,
-                        onSuccess = { vm.setBiometricsEnabled(true) },
-                    )
-                }
-            }
+            if (on) vm.startBiometricSetup() else vm.setBiometricsEnabled(false)
         },
         onLockTimeout = vm::setLockTimeout,
         onSetPin = vm::setPin,
-        isCurrentPin = vm::isCurrentPin,
+        onCheckPin = vm::checkPin,
+        onPinCheckHandled = vm::onPinCheckHandled,
         onLockNow = vm::lockNow,
     )
 }
@@ -280,7 +281,8 @@ internal fun LockSettingsScreen(
     onBiometrics: (on: Boolean) -> Unit,
     onLockTimeout: (LockTimeout) -> Unit,
     onSetPin: (pin: String?) -> Unit,
-    isCurrentPin: suspend (pin: String) -> Boolean,
+    onCheckPin: (pin: String) -> Unit,
+    onPinCheckHandled: () -> Unit,
     onLockNow: () -> Unit,
 ) {
     val device = state.device
@@ -349,7 +351,9 @@ internal fun LockSettingsScreen(
     if (confirmRemove) {
         PinFlowDialog(
             mode = "verify",
-            verify = isCurrentPin,
+            check = state.pinCheck,
+            onVerify = onCheckPin,
+            onCheckHandled = onPinCheckHandled,
             descending = d.numberPadDescending,
             onDone = {
                 onSetPin(null)
@@ -359,10 +363,18 @@ internal fun LockSettingsScreen(
         )
     }
     pinFlow?.let { mode ->
-        PinFlowDialog(mode, isCurrentPin, d.numberPadDescending, onDone = { pin ->
-            onSetPin(pin)
-            pinFlow = null
-        }, onDismiss = { pinFlow = null })
+        PinFlowDialog(
+            mode = mode,
+            check = state.pinCheck,
+            onVerify = onCheckPin,
+            onCheckHandled = onPinCheckHandled,
+            descending = d.numberPadDescending,
+            onDone = { pin ->
+                onSetPin(pin)
+                pinFlow = null
+            },
+            onDismiss = { pinFlow = null },
+        )
     }
 }
 
@@ -379,12 +391,15 @@ private fun timeoutLabel(t: LockTimeout) = stringResource(
 
 /**
  * PIN keypad flow: "new" = enter + confirm; "change" = verify current, then new; "verify" = verify only.
- * [onDone] receives the new PIN (or the verified one for "verify").
+ * [onDone] receives the new PIN (or the verified one for "verify"). [onVerify] asks whether a PIN is
+ * the current one; the answer comes back as [check].
  */
 @Composable
 private fun PinFlowDialog(
     mode: String,
-    verify: suspend (String) -> Boolean,
+    check: PinCheck?,
+    onVerify: (pin: String) -> Unit,
+    onCheckHandled: () -> Unit,
     descending: Boolean,
     onDone: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -395,7 +410,21 @@ private fun PinFlowDialog(
     var shake by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf<Int?>(null) }
     var checking by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
+    LaunchedEffect(check) {
+        if (check == null || !checking) return@LaunchedEffect
+        if (!check.correct) {
+            shake++
+            message = R.string.lock_wrong_pin
+        } else if (mode == "verify") {
+            onDone(pin)
+        } else {
+            step = 1
+            message = null
+        }
+        pin = ""
+        checking = false
+        onCheckHandled()
+    }
     val title = when (step) {
         0 -> R.string.pin_enter_current
         1 -> R.string.pin_enter_new
@@ -427,23 +456,8 @@ private fun PinFlowDialog(
                         when (step) {
                             // Hashing is slow, so the dots stay full until the answer is in.
                             0 -> {
-                                val entered = pin
                                 checking = true
-                                scope.launch {
-                                    if (verify(entered)) {
-                                        if (mode == "verify") {
-                                            onDone(entered)
-                                        } else {
-                                            step = 1
-                                            message = null
-                                        }
-                                    } else {
-                                        shake++
-                                        message = R.string.lock_wrong_pin
-                                    }
-                                    pin = ""
-                                    checking = false
-                                }
+                                onVerify(pin)
                                 return@PinKeypad
                             }
 
@@ -493,7 +507,6 @@ private fun ReminderScreenPreview() = NexoPreview {
             PreviewData.device.copy(reminderEnabled = true, reminderDays = setOf(1, 2, 3, 4, 5)),
         ),
         is24Hour = false,
-        canScheduleExactAlarms = { true },
         onBack = {},
         onAlarm = {},
         onSetReminder = { _, _, _, _ -> },
@@ -513,7 +526,8 @@ private fun LockSettingsScreenPreview() = NexoPreview {
         onBiometrics = {},
         onLockTimeout = {},
         onSetPin = {},
-        isCurrentPin = { false },
+        onCheckPin = {},
+        onPinCheckHandled = {},
         onLockNow = {},
     )
 }

@@ -6,12 +6,11 @@ import java.io.File
 
 /** Transaction photos: files in the private photo folder, shared between rows that attach the same picture. */
 interface PhotosRepository {
-    fun getPhotoFile(fileName: String): File
+    /** Where each stored photo is on disk. */
+    suspend fun getPhotoFiles(fileNames: Collection<String>): Map<String, File>
 
     /** Whether the picked file looks like an image type Nexo stores; unknown types are allowed. */
-    fun isSupported(uri: Uri): Boolean
-
-    fun displayName(uri: Uri): String?
+    suspend fun isSupported(uri: Uri): Boolean
 
     /** Whether [uri] can still be opened; a picked file's permission ends with the process. */
     suspend fun canRead(uri: Uri): Boolean

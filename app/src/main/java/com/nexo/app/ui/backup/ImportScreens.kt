@@ -57,7 +57,7 @@ import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.designsystem.component.NexoTopBar
 import com.nexo.app.ui.designsystem.preview.NexoPreview
 import com.nexo.app.ui.designsystem.preview.PreviewData
-import com.nexo.app.ui.lock.expectReturn
+import com.nexo.app.ui.lock.LocalExpectReturn
 import com.nexo.app.ui.navigation.AccountFormKey
 import com.nexo.app.ui.navigation.AccountListKey
 import com.nexo.app.ui.navigation.CategoryFormKey
@@ -76,6 +76,7 @@ import java.time.format.DateTimeFormatter
 fun ImportListRoute(vm: ImportViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val context = LocalContext.current
+    val expectReturn = LocalExpectReturn.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.refreshFiles() }
     LaunchedEffect(state.result) {
@@ -91,7 +92,7 @@ fun ImportListRoute(vm: ImportViewModel = hiltViewModel()) {
         onBack = nav::back,
         onHelp = { nav.navigate(HelpPageKey("import")) },
         onPickFile = {
-            context.expectReturn()
+            expectReturn()
             picker.launch(
                 arrayOf("text/*", "application/octet-stream", "text/tab-separated-values"),
             )
@@ -174,10 +175,10 @@ internal fun ImportListScreen(
                             Text(
                                 Formats.dateTime(
                                     Instant.ofEpochMilli(
-                                        f.lastModified(),
+                                        f.modifiedAt,
                                     ).atZone(clock.zone).toLocalDateTime(),
                                 ) +
-                                    " · ${f.length() / 1000} KB",
+                                    " · ${f.sizeBytes / 1000} KB",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.outline,
                             )

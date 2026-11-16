@@ -1,4 +1,4 @@
-package com.nexo.app.ui.transactions
+package com.nexo.app.ui.transactionlist
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
@@ -36,7 +36,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
@@ -361,41 +360,6 @@ fun MemoStrip(memos: List<Memo>, onClick: () -> Unit, modifier: Modifier = Modif
                 )
             }
         }
-    }
-}
-
-@Composable
-fun RepeatPreviewRow(
-    p: RepeatPreview,
-    main: Currency,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = LocalNexoColors.current
-    Row(
-        modifier.fillMaxWidth().heightIn(
-            min = Sizes.row,
-        ).clickable(onClick = onClick).padding(horizontal = Space.gutter, vertical = Space.s),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconTile(Icons.Rounded.Repeat, colors.textSecondary)
-        Spacer(Modifier.width(Space.m))
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.repeat), style = NexoType.RowTitle, color = colors.text)
-            val detail = buildList {
-                add(p.dates.joinToString(", ") { "${it.monthValue}/${it.dayOfMonth}" })
-                if (p.names.isNotEmpty()) add(p.names.joinToString(", "))
-            }.joinToString(" · ")
-            Text(
-                detail,
-                style = NexoType.Meta,
-                color = colors.textTertiary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Spacer(Modifier.width(Space.m))
-        AmountText(p.amount, main, color = colors.textSecondary, sign = AmountParts.Sign.NONE)
     }
 }
 

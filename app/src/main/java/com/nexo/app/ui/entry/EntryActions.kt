@@ -3,9 +3,8 @@ package com.nexo.app.ui.entry
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.RepeatType
-import com.nexo.app.data.repository.TagResult
 import com.nexo.app.ui.designsystem.component.PadKey
-import java.io.File
+import com.nexo.app.ui.tags.TagActions
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalTime
@@ -58,15 +57,9 @@ class EntryActions(
     // Tags and photos.
     val setTags: (List<String>) -> Unit = {},
     val removeTag: (String) -> Unit = {},
-    val tags: TagActions = TagActions(
-        add = { TagResult.Empty },
-        rename = { _, _ -> TagResult.Empty },
-        usageCount = { 0 },
-        delete = {},
-        reorder = {},
-    ),
-    val photoFile: (String) -> File = ::File,
-    val exportPhoto: suspend (String) -> Boolean = { false },
+    val tags: TagActions = TagActions(),
+    val exportPhoto: (fileName: String) -> Unit = {},
+    val onPhotoExportShown: () -> Unit = {},
     val removePhoto: (Int) -> Unit = {},
     // Saving and the other bottom buttons.
     val save: (continueAfter: Boolean) -> Unit = {},

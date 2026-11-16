@@ -6,10 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.model.DateOrder
 import com.nexo.app.core.model.ImportPreview
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.StoredFile
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionImportRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.io.File
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,7 +23,7 @@ data class ImportUiState(
     val ref: RefData = RefData(),
     val busy: Boolean = false,
     /** Import files added to the app, waiting to be reviewed. */
-    val imports: List<File> = emptyList(),
+    val imports: List<StoredFile> = emptyList(),
     val preview: ImportPreview? = null,
     /** Handled once, then cleared with [ImportViewModel.onResultHandled]. */
     val result: BackupResult? = null,
@@ -41,7 +41,12 @@ class ImportViewModel @Inject constructor(
         s.copy(ref = r)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ImportUiState())
 
-    fun refreshFiles() = state.update { it.copy(imports = importer.files()) }
+    fun refreshFiles() = viewModelScope.launch { loadFiles() }
+
+    private suspend fun loadFiles() {
+        val files = importer.getFiles()
+        state.update { it.copy(imports = files) }
+    }
 
     fun onResultHandled() = state.update { it.copy(result = null) }
 
@@ -51,8 +56,8 @@ class ImportViewModel @Inject constructor(
             block()
         } finally {
             state.update { it.copy(busy = false) }
-            refreshFiles()
         }
+        loadFiles()
         if (result != null) state.update { it.copy(result = result) }
     }
 

@@ -1,17 +1,13 @@
 package com.nexo.app.system
 
-import android.content.Context
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.nexo.app.core.common.ApplicationScope
+import com.nexo.app.core.work.BackgroundWork
 import com.nexo.app.data.repository.AppLockRepository
 import com.nexo.app.data.repository.RepeatRulesRepository
 import com.nexo.app.data.repository.SmsInboxRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
-import com.nexo.app.data.work.AutoBackupWorker
-import com.nexo.app.data.work.FxSyncWorker
-import com.nexo.app.data.work.SmsCatchUpWorker
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Clock
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,7 +22,7 @@ import kotlinx.coroutines.launch
  */
 @Singleton
 class AppLifecycleTasks @Inject constructor(
-    @ApplicationContext private val context: Context,
+    private val work: BackgroundWork,
     private val lock: AppLockRepository,
     private val prefs: UserPreferencesRepository,
     private val repeats: RepeatRulesRepository,
@@ -48,9 +44,9 @@ class AppLifecycleTasks @Inject constructor(
                 .distinctUntilChanged()
                 .collect { active ->
                     if (active) {
-                        SmsCatchUpWorker.schedule(context)
+                        work.scheduleSmsCatchUp()
                     } else if (scheduled) {
-                        SmsCatchUpWorker.cancel(context)
+                        work.cancelSmsCatchUp()
                     }
                     scheduled = active
                 }
@@ -68,7 +64,7 @@ class AppLifecycleTasks @Inject constructor(
         scope.launch {
             smsInbox.refresh()
             val s = prefs.getDeviceSettings()
-            if (s.setupDone && s.smsCaptureEnabled) FxSyncWorker.enqueue(context)
+            if (s.setupDone && s.smsCaptureEnabled) work.requestFxSync()
         }
     }
 
@@ -77,7 +73,7 @@ class AppLifecycleTasks @Inject constructor(
         scope.launch {
             val s = prefs.getDeviceSettings()
             if (s.setupDone && clock.millis() - s.lastAutoBackup > AUTO_BACKUP_EVERY_MS) {
-                AutoBackupWorker.enqueue(context)
+                work.requestAutoBackup()
             }
         }
     }

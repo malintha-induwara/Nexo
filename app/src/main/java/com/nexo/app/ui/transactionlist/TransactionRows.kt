@@ -1,4 +1,4 @@
-package com.nexo.app.ui.transactions
+package com.nexo.app.ui.transactionlist
 
 import com.nexo.app.R
 import com.nexo.app.core.common.money.AmountFormatter

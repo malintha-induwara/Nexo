@@ -3,9 +3,8 @@ package com.nexo.app.ui.backup
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nexo.app.core.model.RestoreResult
+import com.nexo.app.core.model.StoredFile
 import com.nexo.app.data.repository.BackupRepository
-import com.nexo.app.data.repository.RepeatRulesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
 import javax.inject.Inject
@@ -18,25 +17,23 @@ import kotlinx.coroutines.launch
 data class RestoreUiState(
     val busy: Boolean = false,
     /** Automatic backups on the device, newest first. */
-    val backups: List<File> = emptyList(),
+    val backups: List<StoredFile> = emptyList(),
     /** Handled once, then cleared with [RestoreViewModel.onResultHandled]. */
     val result: BackupResult? = null,
 )
 
 /** Writing a backup to a file, and restoring from a file or an automatic backup. */
 @HiltViewModel
-class RestoreViewModel @Inject constructor(
-    private val backups: BackupRepository,
-    private val repeats: RepeatRulesRepository,
-) : ViewModel() {
+class RestoreViewModel @Inject constructor(private val backups: BackupRepository) : ViewModel() {
     private val state = MutableStateFlow(RestoreUiState())
     val uiState: StateFlow<RestoreUiState> = state.asStateFlow()
 
-    fun refreshFiles() = state.update { it.copy(backups = backups.autoBackups()) }
+    fun refreshFiles() = viewModelScope.launch { loadFiles() }
 
-    fun backupFileName(): String = backups.backupFileName()
-
-    fun isBackupName(name: String): Boolean = backups.isBackupName(name)
+    private suspend fun loadFiles() {
+        val files = backups.getAutoBackups()
+        state.update { it.copy(backups = files) }
+    }
 
     fun onResultHandled() = state.update { it.copy(result = null) }
 
@@ -46,29 +43,26 @@ class RestoreViewModel @Inject constructor(
             block()
         } finally {
             state.update { it.copy(busy = false) }
-            refreshFiles()
         }
+        loadFiles()
         if (result != null) state.update { it.copy(result = result) }
     }
 
     fun writeBackup(uri: Uri) = work { BackupResult.BackupWritten(backups.writeBackup(uri)) }
 
-    fun restore(uri: Uri) = work {
-        BackupResult.Restored(backups.restore(uri).also { afterRestore(it) })
+    /** A picked file waits for the user's confirmation, unless its name says it is no backup. */
+    fun pickRestoreFile(uri: Uri) = viewModelScope.launch {
+        val result =
+            if (backups.isBackup(uri)) BackupResult.RestorePicked(uri) else BackupResult.NotABackup
+        state.update { it.copy(result = result) }
     }
 
-    fun restoreFile(file: File) = work {
-        BackupResult.Restored(backups.restoreFile(file).also { afterRestore(it) })
-    }
+    fun restore(uri: Uri) = work { BackupResult.Restored(backups.restore(uri)) }
 
-    private suspend fun afterRestore(r: RestoreResult) {
-        if (r == RestoreResult.Success) {
-            repeats.generateIfNewDay(force = true)
-        }
-    }
+    fun restoreFile(file: File) = work { BackupResult.Restored(backups.restoreFile(file)) }
 
-    fun deleteBackups(files: Collection<File>) = work {
-        files.forEach { it.delete() }
+    fun deleteBackups(names: Collection<String>) = work {
+        backups.deleteAutoBackups(names)
         null
     }
 }

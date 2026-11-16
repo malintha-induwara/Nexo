@@ -36,10 +36,13 @@ class BudgetSettingsViewModel @Inject constructor(
     private val repo: BudgetsRepository,
     private val clock: Clock,
 ) : ViewModel() {
-    /** Kept for event handlers that need the reference data synchronously. */
+    /**
+     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
+     * is current whenever the screen is there to call them.
+     */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
-        SharingStarted.Eagerly,
+        SharingStarted.WhileSubscribed(5_000),
         RefData(),
     )
     private val added = MutableStateFlow(false)

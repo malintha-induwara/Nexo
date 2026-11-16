@@ -1,12 +1,13 @@
 package com.nexo.app.data.sms.parser
 
+import com.nexo.app.core.model.Banks
 import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlin.math.abs
 
 /** The transaction time written in the body, read as Sri Lankan time (UTC+05:30). */
 object BodyDate {
-    val ZONE: ZoneId = ZoneId.of("Asia/Colombo")
+    val ZONE: ZoneId = Banks.ZONE
     private const val WINDOW_MS = 3L * 24 * 60 * 60 * 1000
 
     private val dmy = Regex("""(\d{2})/(\d{2})/(\d{2})""")

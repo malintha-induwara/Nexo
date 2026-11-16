@@ -28,6 +28,11 @@ import com.nexo.app.domain.BudgetCalc
 import com.nexo.app.domain.Classifier
 import com.nexo.app.domain.InOut
 import com.nexo.app.domain.Totals
+import com.nexo.app.ui.common.savedStateFlow
+import com.nexo.app.ui.transactionlist.BulkEditActions
+import com.nexo.app.ui.transactionlist.FilterCriteria
+import com.nexo.app.ui.transactionlist.TransactionRowMapper
+import com.nexo.app.ui.transactionlist.bulkEditActions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.time.Clock
@@ -84,15 +89,18 @@ class TransactionsViewModel @Inject constructor(
     /** Memo just written by the editor, for its highlight. */
     private val savedMemo = MutableStateFlow<String?>(null)
 
-    /** Kept for event handlers that need the reference data synchronously. */
+    /**
+     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
+     * is current whenever the screen is there to call them.
+     */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
-        SharingStarted.Eagerly,
+        SharingStarted.WhileSubscribed(5_000),
         RefData(),
     )
 
     /** The sub-tab the user picked; null means the book's start screen. */
-    private val _tab = MutableStateFlow<SubTab?>(null)
+    private val _tab = savedState.savedStateFlow<SubTab?>("tab", null)
 
     /** Waits for the real reference data, so the start screen never flashes the wrong sub-tab. */
     private val tab: Flow<SubTab> = combine(_tab, refs.getRefDataStream()) { t, r ->
@@ -100,9 +108,9 @@ class TransactionsViewModel @Inject constructor(
             ?: startTab(r)
     }.distinctUntilChanged()
 
-    private val filter = MutableStateFlow(FilterCriteria())
-    private val filterOpen = MutableStateFlow(false)
-    private val selection = MutableStateFlow<Set<String>>(emptySet())
+    private val filter = savedState.savedStateFlow("filter", FilterCriteria())
+    private val filterOpen = savedState.savedStateFlow("filterOpen", false)
+    private val selection = savedState.savedStateFlow("selection", emptySet<String>())
 
     val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, selection)
 

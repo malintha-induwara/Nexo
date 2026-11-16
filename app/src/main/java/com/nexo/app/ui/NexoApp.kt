@@ -29,6 +29,7 @@ import com.nexo.app.ui.designsystem.component.AmountPrivacy
 import com.nexo.app.ui.designsystem.component.LocalAmountPrivacy
 import com.nexo.app.ui.designsystem.component.NavMotion
 import com.nexo.app.ui.designsystem.theme.NexoTheme
+import com.nexo.app.ui.lock.LocalExpectReturn
 import com.nexo.app.ui.lock.LockScreen
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MainKey
@@ -52,7 +53,11 @@ fun NexoApp(app: AppViewModel, clock: Clock) {
     val privacy = remember(privacyButton, hideAmounts) {
         AmountPrivacy(privacyButton, hideAmounts) { app.setHideAmounts(!hideAmounts) }
     }
-    CompositionLocalProvider(LocalClock provides clock, LocalAmountPrivacy provides privacy) {
+    CompositionLocalProvider(
+        LocalClock provides clock,
+        LocalAmountPrivacy provides privacy,
+        LocalExpectReturn provides app::expectReturn,
+    ) {
         NexoTheme(mode = d?.themeMode ?: ThemeMode.SYSTEM, colorSet = book.colorSet) {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                 if (d == null) return@Box
@@ -109,16 +114,19 @@ fun NexoApp(app: AppViewModel, clock: Clock) {
                 }
                 LaunchedEffect(locked, pending) {
                     if (!locked && pending.isNotEmpty()) {
-                        app.consumePending().forEach(navigator::navigate)
+                        pending.forEach(navigator::navigate)
+                        app.onPendingHandled()
                     }
                 }
                 if (locked) {
                     LockScreen(
                         device = d,
-                        unlockCipher = app::unlockCipher,
+                        lock = state.lock,
+                        onSubmitPin = app::submitPin,
+                        onPinAttemptShown = app::onPinAttemptShown,
+                        onRequestBiometric = app::requestBiometricUnlock,
+                        onBiometricRequestHandled = app::onBiometricRequestHandled,
                         onUnlock = app::unlock,
-                        onVerifyPin = app::verifyPin,
-                        onBiometricsInvalidated = app::disableBiometrics,
                         onEraseAll = app::eraseAll,
                     )
                 }

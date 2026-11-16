@@ -1,5 +1,6 @@
 package com.nexo.app.ui.sms
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
@@ -19,6 +20,8 @@ import com.nexo.app.domain.sms.ApproveResult
 import com.nexo.app.domain.sms.ApproveSmsUseCase
 import com.nexo.app.domain.sms.FeePlan
 import com.nexo.app.domain.sms.GetSmsFeePlanUseCase
+import com.nexo.app.ui.common.LocalDateSerializer
+import com.nexo.app.ui.common.restoreAndSave
 import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.designsystem.joinToUiText
 import com.nexo.app.ui.navigation.SmsHistoryKey
@@ -35,7 +38,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class HistoryRange(val label: Int, val days: Long?) {
     WEEK(R.string.sms_history_range_7, 7),
     MONTH(R.string.sms_history_range_30, 30),
@@ -44,6 +49,7 @@ enum class HistoryRange(val label: Int, val days: Long?) {
     GAP(R.string.sms_history_range_gap, null),
 }
 
+@Serializable
 enum class HistoryKind(val label: Int) {
     ALL(R.string.sms_history_kind_all),
     PURCHASES(R.string.sms_history_kind_purchases),
@@ -90,6 +96,16 @@ data class SmsHistoryUiState(
     val result: HistoryResult? = null,
 )
 
+/** The picker's range and filters; the rows are read from the inbox again. */
+@Serializable
+private data class SavedHistory(
+    val range: HistoryRange,
+    @Serializable(with = LocalDateSerializer::class) val from: LocalDate,
+    @Serializable(with = LocalDateSerializer::class) val to: LocalDate,
+    val kind: HistoryKind,
+    val card: String?,
+)
+
 @HiltViewModel(assistedFactory = SmsHistoryViewModel.Factory::class)
 class SmsHistoryViewModel @AssistedInject constructor(
     @Assisted private val key: SmsHistoryKey,
@@ -100,6 +116,7 @@ class SmsHistoryViewModel @AssistedInject constructor(
     private val approveSms: ApproveSmsUseCase,
     private val inbox: SmsInboxRepository,
     private val clock: Clock,
+    savedState: SavedStateHandle,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -109,12 +126,21 @@ class SmsHistoryViewModel @AssistedInject constructor(
     private val gap: Boolean = key.gapFrom > 0 && key.gapUntil > key.gapFrom
 
     /** Everything but the reference data, which comes from its own stream. */
+    private val saved: SavedHistory? = savedState.restoreAndSave("place") {
+        screenState.value.let {
+            SavedHistory(it.range, it.custom.first, it.custom.second, it.kind, it.card)
+        }
+    }
+
     private val screenState = MutableStateFlow(
         SmsHistoryUiState(
             gap = gap,
-            custom = LocalDate.now(clock).let { it.minusDays(30) to it },
-            range = if (gap) HistoryRange.GAP else HistoryRange.MONTH,
+            custom = saved?.let { it.from to it.to }
+                ?: LocalDate.now(clock).let { it.minusDays(30) to it },
+            range = saved?.range ?: if (gap) HistoryRange.GAP else HistoryRange.MONTH,
             permitted = inbox.hasPermission(),
+            kind = saved?.kind ?: HistoryKind.ALL,
+            card = saved?.card,
         ),
     )
     private val feePrompts = MutableStateFlow<List<FeePrompt>>(emptyList())

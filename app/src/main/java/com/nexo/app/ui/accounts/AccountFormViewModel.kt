@@ -119,10 +119,13 @@ class AccountFormViewModel @AssistedInject constructor(
         fun create(key: AccountFormKey): AccountFormViewModel
     }
 
-    /** Kept for event handlers that need the reference data synchronously. */
+    /**
+     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
+     * is current whenever the screen is there to call them.
+     */
     private val ref = refs.getRefDataStream().stateIn(
         viewModelScope,
-        SharingStarted.Eagerly,
+        SharingStarted.WhileSubscribed(5_000),
         RefData(),
     )
     private val form = MutableStateFlow(AccountFormUiState())
@@ -216,7 +219,8 @@ class AccountFormViewModel @AssistedInject constructor(
         )
     }
 
-    fun groupType(): GroupType = ref.value.groupById[form.value.groupId]?.type ?: GroupType.NORMAL
+    private fun groupType(): GroupType =
+        ref.value.groupById[form.value.groupId]?.type ?: GroupType.NORMAL
 
     fun setGroup(id: String) = form.update { it.copy(groupId = id, pickGroup = false) }
     fun dismissGroupPicker() = form.update { it.copy(pickGroup = false) }

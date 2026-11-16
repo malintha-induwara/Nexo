@@ -40,10 +40,10 @@ interface AppLockRepository {
     suspend fun setPin(pin: String?)
 
     /** Cipher for the unlock prompt, or null when the biometric key is missing or was invalidated. */
-    fun getUnlockCipher(): Cipher?
+    suspend fun getUnlockCipher(): Cipher?
 
     /** Creates a fresh biometric key and returns the cipher to confirm it with, or null if that failed. */
-    fun createBiometricKey(): Cipher?
+    suspend fun createBiometricKey(): Cipher?
 
     /** Turning biometric unlock off also deletes its key. */
     suspend fun setBiometricsEnabled(enabled: Boolean)

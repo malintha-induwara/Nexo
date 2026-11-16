@@ -6,22 +6,25 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
 import androidx.room.withTransaction
+import com.nexo.app.core.common.ApplicationScope
 import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
+import com.nexo.app.core.common.runToCompletion
+import com.nexo.app.core.model.BackupFiles
 import com.nexo.app.core.model.BackupFormat
 import com.nexo.app.core.model.RestoreResult
+import com.nexo.app.core.model.StoredFile
 import com.nexo.app.data.backup.LegacyImporter
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.file.AppDirs
+import com.nexo.app.data.file.PickedFileDataSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.time.Clock
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.withContext
 
 /** Backup / restore of the finance database. Backups are plain copies of the database file. */
@@ -31,23 +34,12 @@ class DefaultBackupRepository @Inject constructor(
     private val dirs: AppDirs,
     private val prefs: UserPreferencesRepository,
     private val legacy: LegacyImporter,
+    private val repeats: RepeatRulesRepository,
+    private val picked: PickedFileDataSource,
+    @ApplicationScope private val scope: CoroutineScope,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
     private val clock: Clock,
 ) : BackupRepository {
-    /** "Nexo(<date>-<HHmmss>).nexobak" with a locale-dependent date part. */
-    override fun backupFileName(prefix: String): String {
-        val now = LocalDateTime.now(clock)
-        val date = now.toLocalDate().format(
-            DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(Locale.getDefault()),
-        )
-            .replace(" ", "")
-            .replace(Regex("[^\\p{Nd}]"), "-")
-            .replace(Regex("-+"), "-")
-            .trim('-')
-        val time = now.format(DateTimeFormatter.ofPattern("HHmmss"))
-        return "$prefix($date-$time).${BackupRepository.EXTENSION}"
-    }
-
     /** Flushes the WAL so the main file is a consistent copy. */
     private fun checkpoint() {
         db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(TRUNCATE)").use {
@@ -55,15 +47,18 @@ class DefaultBackupRepository @Inject constructor(
         }
     }
 
-    override suspend fun writeBackup(target: Uri): Boolean = withContext(ioDispatcher) {
-        runCatching {
-            checkpoint()
-            context.contentResolver.openOutputStream(target, "wt")?.use { out ->
-                dirs.database.inputStream().use { it.copyTo(out) }
-            }
-                ?: error("no stream")
-            true
-        }.getOrDefault(false)
+    /** A half-written file would look like a backup, so the copy is not cut short. */
+    override suspend fun writeBackup(target: Uri): Boolean = scope.runToCompletion {
+        withContext(ioDispatcher) {
+            runCatching {
+                checkpoint()
+                context.contentResolver.openOutputStream(target, "wt")?.use { out ->
+                    dirs.database.inputStream().use { it.copyTo(out) }
+                }
+                    ?: error("no stream")
+                true
+            }.getOrDefault(false)
+        }
     }
 
     override suspend fun writeBackup(target: File): Boolean = withContext(ioDispatcher) {
@@ -77,54 +72,52 @@ class DefaultBackupRepository @Inject constructor(
 
     /** Copy in the temp folder for the share sheet. */
     override suspend fun shareCopy(): File? = withContext(ioDispatcher) {
-        val f = File(dirs.temp, "nexo_backup.${BackupRepository.EXTENSION}")
+        val f = File(dirs.temp, "nexo_backup.${BackupFiles.EXTENSION}")
         if (writeBackup(f)) f else null
     }
 
     /** Automatic daily backup: keeps the 14 newest files. */
     override suspend fun autoBackup(): Boolean = withContext(ioDispatcher) {
-        val ok = writeBackup(File(dirs.backups, backupFileName()))
+        val ok = writeBackup(File(dirs.backups, BackupFiles.name(LocalDateTime.now(clock))))
         if (ok) {
             prefs.setLastAutoBackup(clock.millis())
-            autoBackups().drop(KEEP).forEach { it.delete() }
+            listAutoBackups().drop(KEEP).forEach { it.file.delete() }
         }
         ok
     }
 
-    override fun autoBackups(): List<File> = dirs.backups.listFiles()?.filter {
-        isBackupName(it.name) &&
-            !it.name.endsWith("journal")
-    }
-        ?.sortedByDescending { it.lastModified() }.orEmpty()
+    override suspend fun getAutoBackups(): List<StoredFile> =
+        withContext(ioDispatcher) { listAutoBackups() }
 
-    override fun isBackupName(name: String): Boolean {
-        if (name.contains("weple.sqlite")) return false
-        val accepted =
-            listOf(
-                ".${BackupRepository.EXTENSION}",
-                ".mmbak",
-                ".sqlite",
-                ".MoneyManager",
-                ".moneymanager",
-                ".MoneyManager2",
-                ".moneymanager2",
-            )
-        return accepted.any { name.endsWith(it) } || name.endsWith("sql")
+    private fun listAutoBackups(): List<StoredFile> = dirs.backups.listFiles()?.filter {
+        BackupFiles.isBackupName(it.name) && !it.name.endsWith("journal")
+    }?.map(StoredFile::of)?.sortedByDescending { it.modifiedAt }.orEmpty()
+
+    override suspend fun deleteAutoBackups(names: Collection<String>) = withContext(ioDispatcher) {
+        names.forEach { File(dirs.backups, File(it).name).delete() }
     }
 
-    override suspend fun restore(uri: Uri): RestoreResult = withContext(ioDispatcher) {
-        val temp = File(dirs.temp, "restore_candidate.db")
-        runCatching {
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                temp.outputStream().use { input.copyTo(it) }
-            }
-                ?: return@withContext RestoreResult.Failed(null)
-        }.onFailure { return@withContext RestoreResult.Failed(it.message) }
-        restoreFile(temp).also { temp.delete() }
+    override suspend fun isBackup(uri: Uri): Boolean =
+        picked.displayName(uri)?.let(BackupFiles::isBackupName) ?: true
+
+    override suspend fun restore(uri: Uri): RestoreResult = scope.runToCompletion {
+        withContext(ioDispatcher) {
+            val temp = File(dirs.temp, "restore_candidate.db")
+            val copied = runCatching {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    temp.outputStream().use { input.copyTo(it) }
+                } != null
+            }.getOrElse { return@withContext RestoreResult.Failed(it.message) }
+            if (!copied) return@withContext RestoreResult.Failed(null)
+            restoreNow(temp).also { temp.delete() }
+        }
     }
 
-    override suspend fun restoreFile(file: File): RestoreResult = withContext(ioDispatcher) {
-        when (detect(file)) {
+    override suspend fun restoreFile(file: File): RestoreResult =
+        scope.runToCompletion { restoreNow(file) }
+
+    private suspend fun restoreNow(file: File): RestoreResult = withContext(ioDispatcher) {
+        val result = when (detect(file)) {
             BackupFormat.NEXO -> runCatching {
                 copyNexo(file)
                 RestoreResult.Success
@@ -136,6 +129,9 @@ class DefaultBackupRepository @Inject constructor(
 
             BackupFormat.UNKNOWN -> RestoreResult.NotABackup
         }
+        // The restored book's repeats are due from its own last day, not from this device's.
+        if (result == RestoreResult.Success) repeats.generateIfNewDay(force = true)
+        result
     }
 
     fun detect(file: File): BackupFormat = runCatching {

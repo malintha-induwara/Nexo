@@ -1,6 +1,7 @@
 package com.nexo.app.ui.sms
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.nexo.app.R
 import com.nexo.app.core.model.Certainty
@@ -87,6 +88,7 @@ class SmsQueueViewModelTest {
                 b.approveSms,
                 b.transactions,
                 b.inbox,
+                SavedStateHandle(),
             )
         backgroundScope.launch { vm.uiState.collect {} }
         vm.uiState.first { s -> s.pending.any { it.id == waitFor } }

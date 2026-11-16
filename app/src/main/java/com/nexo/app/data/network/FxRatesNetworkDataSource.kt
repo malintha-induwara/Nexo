@@ -11,7 +11,6 @@ import java.time.LocalDate
 import java.util.Currency
 import java.util.Locale
 import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -26,7 +25,6 @@ import kotlinx.serialization.json.jsonObject
  * AllRatesToday Sri Lankan bank boards. The request carries nothing about the user: no amounts, no merchants.
  * Rates are LKR per one unit of the foreign currency.
  */
-@Singleton
 class FxRatesNetworkDataSource @Inject constructor(
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -60,9 +58,6 @@ class FxRatesNetworkDataSource @Inject constructor(
     companion object {
         private const val BASE = "https://allratestoday.com/api/v1/bank-rates/lk"
         private const val TIMEOUT_MS = 15_000
-
-        /** Public page that the attribution links to (the API terms require a visible link). */
-        const val ATTRIBUTION_URL = "https://allratestoday.com/"
 
         /** The currencies Nexo's parsers can read; only these are kept, so the history stays small. */
         val CURRENCIES = setOf("USD", "EUR", "GBP", "SGD", "AUD", "INR")

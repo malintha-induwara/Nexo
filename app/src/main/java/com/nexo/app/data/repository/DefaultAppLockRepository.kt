@@ -11,6 +11,7 @@ import java.time.Clock
 import javax.crypto.Cipher
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -110,10 +111,16 @@ class DefaultAppLockRepository @Inject constructor(
         if (pin == null) lockState.value = false
     }
 
-    override fun getUnlockCipher(): Cipher? = biometricKey.cipher()
+    override suspend fun getUnlockCipher(): Cipher? = biometricKey.cipher()
 
-    override fun createBiometricKey(): Cipher? {
-        runCatching { biometricKey.createKey() }
+    override suspend fun createBiometricKey(): Cipher? {
+        try {
+            biometricKey.createKey()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // No key: the cipher below comes back null.
+        }
         return biometricKey.cipher()
     }
 

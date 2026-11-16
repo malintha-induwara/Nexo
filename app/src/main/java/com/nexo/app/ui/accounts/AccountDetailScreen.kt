@@ -81,15 +81,15 @@ import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MemoListKey
-import com.nexo.app.ui.transactions.BulkAction
-import com.nexo.app.ui.transactions.BulkDialogs
-import com.nexo.app.ui.transactions.BulkEditActions
-import com.nexo.app.ui.transactions.DayGroup
-import com.nexo.app.ui.transactions.DayGroupList
-import com.nexo.app.ui.transactions.SelectionBar
-import com.nexo.app.ui.transactions.TxRow
-import com.nexo.app.ui.transactions.TxRowUi
-import com.nexo.app.ui.transactions.selectedNet
+import com.nexo.app.ui.transactionlist.BulkAction
+import com.nexo.app.ui.transactionlist.BulkDialogs
+import com.nexo.app.ui.transactionlist.BulkEditActions
+import com.nexo.app.ui.transactionlist.DayGroup
+import com.nexo.app.ui.transactionlist.DayGroupList
+import com.nexo.app.ui.transactionlist.SelectionBar
+import com.nexo.app.ui.transactionlist.TxRow
+import com.nexo.app.ui.transactionlist.TxRowUi
+import com.nexo.app.ui.transactionlist.selectedNet
 import java.time.LocalDate
 import java.time.YearMonth
 import java.util.Locale
@@ -153,7 +153,7 @@ fun AccountDetailRoute(key: AccountDetailKey) {
     }
     AccountDetailScreen(
         ui = ui,
-        periods = vm.engineFor(ui.ref, ui.account),
+        periods = ui.ref.periodsFor(ui.account),
         deleted = key.deleted,
         isNone = key.accountId == null,
         actions = actions,

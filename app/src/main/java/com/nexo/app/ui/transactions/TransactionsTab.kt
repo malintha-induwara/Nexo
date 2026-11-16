@@ -4,8 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -15,52 +13,33 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.StickyNote2
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.FilterList
-import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FilterList
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.NorthEast
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SouthWest
 import androidx.compose.material.icons.rounded.StarOutline
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -72,39 +51,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
-import com.nexo.app.core.common.money.AmountFormatter
-import com.nexo.app.core.common.period.MonthPeriod
 import com.nexo.app.core.model.Currency
-import com.nexo.app.core.model.Memo
-import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.StartScreen
 import com.nexo.app.core.model.SwipeMode
-import com.nexo.app.domain.BudgetBlockData
-import com.nexo.app.ui.budgets.BudgetBlock
-import com.nexo.app.ui.designsystem.LocalClock
-import com.nexo.app.ui.designsystem.component.AmountText
-import com.nexo.app.ui.designsystem.component.EmptyState
-import com.nexo.app.ui.designsystem.component.FlowAmount
 import com.nexo.app.ui.designsystem.component.Formats
-import com.nexo.app.ui.designsystem.component.GroupCard
 import com.nexo.app.ui.designsystem.component.HeroAmount
 import com.nexo.app.ui.designsystem.component.HeroLabel
 import com.nexo.app.ui.designsystem.component.MonthPickerDialog
@@ -117,13 +78,9 @@ import com.nexo.app.ui.designsystem.component.rememberCollapsingHeaderState
 import com.nexo.app.ui.designsystem.component.rememberHaptics
 import com.nexo.app.ui.designsystem.component.shrinkToFit
 import com.nexo.app.ui.designsystem.preview.NexoPreview
-import com.nexo.app.ui.designsystem.theme.LocalIsDark
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
-import com.nexo.app.ui.designsystem.theme.MoneyColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
-import com.nexo.app.ui.designsystem.theme.NexoPalette
-import com.nexo.app.ui.designsystem.theme.NexoShapes
 import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
 import com.nexo.app.ui.navigation.BookmarksKey
@@ -145,9 +102,12 @@ import com.nexo.app.ui.navigation.SmsQueueKey
 import com.nexo.app.ui.shell.LocalShell
 import com.nexo.app.ui.sms.QueueBadge
 import com.nexo.app.ui.sms.SmsInboxAction
-import java.time.DayOfWeek
+import com.nexo.app.ui.transactionlist.BulkAction
+import com.nexo.app.ui.transactionlist.BulkDialogs
+import com.nexo.app.ui.transactionlist.BulkEditActions
+import com.nexo.app.ui.transactionlist.SelectionBar
+import com.nexo.app.ui.transactionlist.selectedNet
 import java.time.LocalDate
-import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.sign
 import kotlinx.coroutines.delay
@@ -660,570 +620,6 @@ fun subTabLabel(t: SubTab): Int = when (t) {
     SubTab.MONTHLY -> R.string.monthly
     SubTab.TOTAL -> R.string.total
     SubTab.NOTE -> R.string.note
-}
-
-@Composable
-private fun DailyContent(
-    data: HomeData,
-    main: Currency,
-    selection: Set<String>,
-    onToggleSelect: (String) -> Unit,
-    focusDate: LocalDate?,
-    onFocused: () -> Unit,
-    highlightId: String?,
-    bottom: Dp,
-    onMemoStrip: (LocalDate) -> Unit,
-    onOpenEntry: (txId: String) -> Unit,
-    onAddEntry: (LocalDate) -> Unit,
-    onOpenRepeats: () -> Unit,
-) {
-    val haptics = rememberHaptics()
-    val state = rememberLazyListState()
-    // Scroll once this snapshot holds the day (it may arrive a frame after the period changes).
-    LaunchedEffect(focusDate, data) {
-        val date = focusDate ?: return@LaunchedEffect
-        if (data.period?.range?.let { date in it } != true) return@LaunchedEffect
-        var index = if (data.repeatPreview != null) 1 else 0
-        for (g in data.days) {
-            if (!g.date.isAfter(date)) break
-            index += 1 + g.rows.size
-        }
-        runCatching { state.animateScrollToItem(index) }
-        onFocused()
-    }
-    DayGroupList(
-        groups = data.days,
-        main = main,
-        selection = selection,
-        state = state,
-        onRowClick = { row ->
-            if (selection.isNotEmpty()) {
-                haptics.tick()
-                onToggleSelect(row.id)
-            } else {
-                onOpenEntry(row.id)
-            }
-        },
-        onRowLongClick = { row ->
-            haptics.longPress()
-            onToggleSelect(row.id)
-        },
-        onDayClick = { d ->
-            if (selection.isEmpty()) onAddEntry(d)
-        },
-        onMemoClick = onMemoStrip,
-        header = data.repeatPreview?.let { p ->
-            {
-                item(key = "repeat_preview") {
-                    RepeatPreviewRow(p, main, onOpenRepeats, Modifier.animateItem())
-                }
-            }
-        },
-        bottomPadding = bottom.value.toInt(),
-        highlightId = highlightId,
-    )
-}
-
-/**
- * Month grid. No ruled lines: days sit on the page, and a day with transactions or memos
- * becomes a soft tile, so activity is what stands out. Today's number is an inverted pill.
- * Each cell still shows income, expenses and the day's net.
- */
-@Composable
-private fun CalendarContent(
-    data: HomeData,
-    main: Currency,
-    weekStart: DayOfWeek,
-    bottom: Dp,
-    onDay: (LocalDate) -> Unit,
-) {
-    val money = LocalMoneyColors.current
-    val colors = LocalNexoColors.current
-    Column(Modifier.fillMaxSize().padding(horizontal = Space.s)) {
-        Row(Modifier.fillMaxWidth().padding(top = Space.s, bottom = Space.s)) {
-            (0 until 7).forEach { i ->
-                val d = weekStart.plus(i.toLong())
-                Text(
-                    Formats.weekdayShort(d).uppercase(Locale.getDefault()),
-                    Modifier.weight(1f),
-                    color = when (d) {
-                        DayOfWeek.SUNDAY -> NexoPalette.Sunday
-                        DayOfWeek.SATURDAY -> NexoPalette.Saturday
-                        else -> colors.textTertiary
-                    },
-                    style = NexoType.Caps,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                )
-            }
-        }
-        val weeks = data.cells.chunked(7)
-        Column(
-            Modifier.fillMaxSize().padding(bottom = bottom),
-            verticalArrangement = Arrangement.spacedBy(CalendarGap),
-        ) {
-            weeks.forEach { week ->
-                Row(
-                    Modifier.fillMaxWidth().weight(1f).heightIn(min = 64.dp),
-                    horizontalArrangement = Arrangement.spacedBy(CalendarGap),
-                ) {
-                    week.forEach { cell ->
-                        CalendarDay(cell, main, money, Modifier.weight(1f).fillMaxHeight()) {
-                            onDay(cell.date)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-private val CalendarGap = 3.dp
-
-@Composable
-private fun CalendarDay(
-    cell: CalendarCell,
-    main: Currency,
-    money: MoneyColors,
-    modifier: Modifier,
-    onClick: () -> Unit,
-) {
-    val colors = LocalNexoColors.current
-    val active = cell.hasTx || cell.memoColors.isNotEmpty()
-    val dim = if (cell.inPeriod) 1f else 0.45f
-    // Long figures step the type down; shrinkToFit below catches anything that still overflows.
-    val longest = listOf(cell.income, cell.expense, cell.income - cell.expense).maxOf {
-        AmountFormatter.number(it, main.decimals).length
-    }
-    val size = if (longest >= 9) ((27 - longest) / 2f).coerceAtLeast(6f) else 9.5f
-    val figure = NexoType.AmountSmall.copy(
-        fontSize = size.sp,
-        lineHeight = (size + 3.5f).sp,
-        fontWeight = FontWeight.SemiBold,
-    )
-    Column(
-        modifier
-            .clip(NexoShapes.tile)
-            .background(if (active) colors.surface.copy(alpha = dim) else Color.Transparent)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 2.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        val label = if (cell.date.dayOfMonth == 1) {
-            Formats.monthDay(cell.date)
-        } else {
-            cell.date.dayOfMonth.toString()
-        }
-        Box(
-            Modifier
-                .height(24.dp)
-                .widthIn(min = 24.dp)
-                .clip(CircleShape)
-                .then(if (cell.isToday) Modifier.background(colors.primary) else Modifier)
-                .padding(horizontal = 6.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = if (cell.isToday) FontWeight.Bold else FontWeight.Medium,
-                maxLines = 1,
-                color = when {
-                    cell.isToday -> colors.onPrimary
-                    !cell.inPeriod -> colors.textTertiary.copy(alpha = 0.7f)
-                    cell.date.dayOfWeek == DayOfWeek.SUNDAY -> NexoPalette.Sunday
-                    else -> colors.text
-                },
-            )
-        }
-        if (cell.memoColors.isNotEmpty()) {
-            Row(
-                Modifier.padding(top = 3.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                cell.memoColors.take(4).forEach { MemoDot(it, 5) }
-                if (cell.memoColors.size > 4) {
-                    Text(
-                        "+${cell.memoColors.size - 4}",
-                        fontSize = 8.sp,
-                        color = colors.textTertiary,
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.weight(1f))
-        if (cell.income != 0.0) {
-            Text(
-                AmountFormatter.number(cell.income, main.decimals),
-                Modifier.shrinkToFit(),
-                style = figure,
-                color = money.income.copy(alpha = dim),
-                maxLines = 1,
-            )
-        }
-        if (cell.expense != 0.0) {
-            Text(
-                AmountFormatter.number(cell.expense, main.decimals),
-                Modifier.shrinkToFit(),
-                style = figure,
-                color = money.expense.copy(alpha = dim),
-                maxLines = 1,
-            )
-        }
-        if ((cell.income != 0.0 && cell.expense != 0.0) ||
-            (cell.hasTx && cell.income == 0.0 && cell.expense == 0.0)
-        ) {
-            Text(
-                AmountFormatter.number(cell.income - cell.expense, main.decimals),
-                Modifier.shrinkToFit(),
-                style = figure,
-                color = colors.textSecondary.copy(alpha = dim),
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-/** One card per month: its income, expenses and net, opening to the weeks inside it. */
-@Composable
-private fun MonthlyContent(
-    data: HomeData,
-    main: Currency,
-    selected: LocalDate,
-    bottom: Dp,
-    onWeek: (MonthPeriod) -> Unit,
-) {
-    val clock = LocalClock.current
-    val haptics = rememberHaptics()
-    var expanded by rememberSaveable(data.year) {
-        mutableStateOf(data.months.firstOrNull { selected in it.period.range }?.period?.key ?: -1)
-    }
-    if (data.months.isEmpty()) {
-        EmptyState()
-        return
-    }
-    val today = LocalDate.now(clock)
-    LazyColumn(contentPadding = PaddingValues(top = Space.xs, bottom = bottom)) {
-        items(data.months, key = { it.period.key }) { m ->
-            MonthCard(
-                month = m,
-                main = main,
-                open = expanded == m.period.key,
-                showRange = today in m.period.range || m.period.label.monthValue == 12,
-                onToggle = {
-                    haptics.tick()
-                    expanded =
-                        if (expanded == m.period.key) -1 else m.period.key
-                },
-                onWeek = { onWeek(m.period) },
-                modifier = Modifier.padding(horizontal = Space.l, vertical = Space.xs),
-            )
-        }
-    }
-}
-
-@Composable
-private fun MonthCard(
-    month: MonthRow,
-    main: Currency,
-    open: Boolean,
-    showRange: Boolean,
-    onToggle: () -> Unit,
-    onWeek: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = LocalNexoColors.current
-    val money = LocalMoneyColors.current
-    val interactions = remember { MutableInteractionSource() }
-    val turn by animateFloatAsState(if (open) 180f else 0f, NexoMotion.snappy(), label = "chevron")
-    GroupCard(modifier, interactions = interactions) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clickable(interactionSource = interactions, indication = null, onClick = onToggle)
-                .padding(start = Space.l, end = Space.m, top = 14.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    Formats.monthShort(month.period.label.monthValue),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.text,
-                )
-                if (showRange) {
-                    Text(
-                        Formats.range(month.period.start, month.period.end),
-                        style = NexoType.Meta,
-                        color = colors.textTertiary,
-                    )
-                }
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                FlowAmount(month.income, main, money.income)
-                FlowAmount(month.expense, main, money.expense)
-                AmountText(
-                    month.income - month.expense,
-                    main,
-                    style = NexoType.AmountSmall,
-                    color = colors.textSecondary,
-                )
-            }
-            Icon(
-                Icons.Rounded.KeyboardArrowDown,
-                null,
-                tint = colors.textTertiary,
-                modifier = Modifier.padding(start = Space.xs).size(20.dp).graphicsLayer {
-                    rotationZ = turn
-                },
-            )
-        }
-        AnimatedVisibility(
-            visible = open,
-            enter = expandVertically(NexoMotion.snappy()) + fadeIn(NexoMotion.enter()),
-            exit = shrinkVertically(NexoMotion.snappy()) + fadeOut(NexoMotion.exit()),
-        ) {
-            Column(Modifier.padding(start = Space.s, end = Space.s, bottom = Space.s)) {
-                month.weeks.forEach { w -> WeekLine(w, main, onWeek) }
-            }
-        }
-    }
-}
-
-/** A week inside a month card: its dates, then income, expenses and net in three columns. */
-@Composable
-private fun WeekLine(week: WeekRow, main: Currency, onClick: () -> Unit) {
-    val colors = LocalNexoColors.current
-    val money = LocalMoneyColors.current
-    val net = week.income - week.expense
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(NexoShapes.control)
-            .background(if (week.containsToday) colors.primarySoft else Color.Transparent)
-            .clickable(onClick = onClick)
-            .padding(horizontal = Space.s, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Text(
-            Formats.range(week.range.start, week.range.end),
-            style = NexoType.Meta,
-            color = if (week.containsToday) colors.primaryText else colors.textSecondary,
-            maxLines = 1,
-            modifier = Modifier.width(88.dp),
-        )
-        Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-            FlowAmount(
-                week.income,
-                main,
-                money.income,
-                Modifier.shrinkToFit(),
-                NexoType.AmountSmall,
-            )
-        }
-        Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-            FlowAmount(
-                week.expense,
-                main,
-                money.expense,
-                Modifier.shrinkToFit(),
-                NexoType.AmountSmall,
-            )
-        }
-        Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-            FlowAmount(net, main, colors.text, Modifier.shrinkToFit(), NexoType.AmountSmall)
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun NoteContent(
-    memos: List<Memo>,
-    saved: String?,
-    onSavedShown: () -> Unit,
-    bottom: Dp,
-    onOpenMemo: (memoId: String) -> Unit,
-) {
-    val dark = LocalIsDark.current
-    if (memos.isEmpty()) {
-        EmptyState(stringResource(R.string.no_memos))
-        return
-    }
-    LazyColumn(
-        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = bottom),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        var lastDate: String? = null
-        memos.forEach { m ->
-            if (!m.pinned && m.date != lastDate) {
-                lastDate = m.date
-                val d = LocalDate.parse(m.date)
-                item(key = "d_${m.date}") {
-                    Text(
-                        "${Formats.monthDay(d)} (${Formats.weekdayShort(d)})",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp, start = 4.dp),
-                    )
-                }
-            }
-            item(key = m.id) {
-                val flash = remember { Animatable(0f) }
-                LaunchedEffect(saved) {
-                    if (saved == m.id) {
-                        flash.animateTo(1f)
-                        flash.animateTo(0f)
-                        onSavedShown()
-                    }
-                }
-                Card(
-                    onClick = { onOpenMemo(m.id) },
-                    colors = CardDefaults.cardColors(
-                        containerColor = NexoPalette.memo(m.color, dark),
-                    ),
-                    modifier = Modifier.fillMaxWidth().border(
-                        if (flash.value > 0f) {
-                            2.dp
-                        } else {
-                            0.dp
-                        },
-                        MaterialTheme.colorScheme.primary.copy(alpha = flash.value),
-                        CardDefaults.shape,
-                    ),
-                ) {
-                    Column(Modifier.padding(14.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (m.pinned) {
-                                Icon(
-                                    Icons.Outlined.PushPin,
-                                    null,
-                                    Modifier.size(16.dp).padding(end = 4.dp),
-                                )
-                            }
-                            if (m.title.isNotBlank()) {
-                                Text(
-                                    m.title,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                        if (m.content.isNotBlank()) {
-                            Text(
-                                m.content.trimEnd('\n'),
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 6,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TotalContent(
-    data: HomeData,
-    main: Currency,
-    budgetBlock: BudgetBlockData?,
-    ref: RefData,
-    bottom: Dp,
-    actions: TransactionsActions,
-) {
-    LazyColumn(
-        contentPadding = PaddingValues(12.dp, 12.dp, 12.dp, bottom),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            data.period?.let {
-                BudgetBlock(
-                    it,
-                    budgetBlock,
-                    ref,
-                    onOpenSettings = actions.openBudgetSettings,
-                    onEditBudget = actions.editBudget,
-                    onAddTotal = actions.addTotalBudget,
-                    onOpenDetail = actions.openBudgetDetail,
-                )
-            }
-        }
-        item {
-            val s = data.summary ?: return@item
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            stringResource(R.string.tab_accounts),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.weight(1f),
-                        )
-                        data.period?.let {
-                            Text(
-                                Formats.range(it.start, it.end),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline,
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    SummaryLine(stringResource(R.string.compared_expenses), "${s.comparedPercent}%")
-                    SummaryLine(
-                        stringResource(R.string.expenses_of, s.cashLabel),
-                        AmountFormatter.format(s.cash, main),
-                    )
-                    if (s.debit != 0.0) {
-                        SummaryLine(
-                            stringResource(R.string.expenses_debit_card),
-                            AmountFormatter.format(s.debit, main),
-                        )
-                    }
-                    if (s.cardIn != 0.0) {
-                        val cardOut = AmountFormatter.format(s.cardOut, main)
-                        val cardIn = AmountFormatter.format(s.cardIn, main)
-                        SummaryLine(stringResource(R.string.expenses_card_pay), "$cardOut($cardIn)")
-                    } else {
-                        SummaryLine(
-                            stringResource(R.string.expenses_card),
-                            AmountFormatter.format(s.cardOut, main),
-                        )
-                    }
-                    SummaryLine(
-                        stringResource(R.string.transfer_of, s.cashLabel),
-                        AmountFormatter.format(s.transfer, main),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = {
-                        data.period?.let { actions.exportToExcel(it.start, it.end) }
-                    }, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.export_to_excel))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SummaryLine(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-        Text(
-            label,
-            Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-    }
 }
 
 @Preview

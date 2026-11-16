@@ -80,14 +80,14 @@ import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.MemoEditorKey
 import com.nexo.app.ui.navigation.SearchKey
-import com.nexo.app.ui.transactions.BulkAction
-import com.nexo.app.ui.transactions.BulkDialogs
-import com.nexo.app.ui.transactions.BulkEditActions
-import com.nexo.app.ui.transactions.FilterCriteria
-import com.nexo.app.ui.transactions.SelectionBar
-import com.nexo.app.ui.transactions.TxRow
-import com.nexo.app.ui.transactions.TxRowUi
-import com.nexo.app.ui.transactions.selectedNet
+import com.nexo.app.ui.transactionlist.BulkAction
+import com.nexo.app.ui.transactionlist.BulkDialogs
+import com.nexo.app.ui.transactionlist.BulkEditActions
+import com.nexo.app.ui.transactionlist.FilterCriteria
+import com.nexo.app.ui.transactionlist.SelectionBar
+import com.nexo.app.ui.transactionlist.TxRow
+import com.nexo.app.ui.transactionlist.TxRowUi
+import com.nexo.app.ui.transactionlist.selectedNet
 
 @Composable
 fun SearchRoute(key: SearchKey, vm: SearchViewModel = hiltViewModel()) {

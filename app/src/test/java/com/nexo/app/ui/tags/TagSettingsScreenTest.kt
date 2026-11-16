@@ -28,14 +28,10 @@ class TagSettingsScreenTest {
                 TagSettingsScreen(
                     state = TagSettingsUiState(tags = PreviewData.tags),
                     onBack = { events += "back" },
-                    onStartAdd = { events += "add" },
-                    onStartRename = { events += "rename ${it.name}" },
-                    onMove = { _, _ -> },
-                    onDelete = {},
-                    onAdd = {},
-                    onRename = {},
-                    onConfirmDelete = {},
-                    onDismissDialog = {},
+                    actions = TagActions(
+                        startAdd = { events += "add" },
+                        startRename = { events += "rename ${it.name}" },
+                    ),
                 )
             }
         }

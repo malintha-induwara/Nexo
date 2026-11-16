@@ -9,9 +9,6 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.security.MessageDigest
 
-/** One incoming SMS. [timestamp] is the sender-side time (inbox `date_sent`), so realtime and inbox reads agree. */
-data class SmsMessage(val sender: String, val body: String, val timestamp: Long)
-
 /** Why a message produced no queue item. */
 enum class IgnoreReason {
     /** Not a known bank sender or a user-added one. */

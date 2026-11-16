@@ -51,6 +51,7 @@ import com.nexo.app.ui.designsystem.component.SegmentedPill
 import com.nexo.app.ui.designsystem.theme.LocalMoneyColors
 import com.nexo.app.ui.designsystem.theme.Space
 import com.nexo.app.ui.designsystem.theme.nexo
+import com.nexo.app.ui.transactionlist.FilterCriteria
 
 private data class FilterItem(
     val key: String,

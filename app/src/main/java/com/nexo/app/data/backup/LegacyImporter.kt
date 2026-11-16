@@ -53,7 +53,6 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -77,7 +76,6 @@ private class Row(private val c: Cursor) {
  * Imports a Money Manager Android backup (uid-based schema, versions 16–19) into Nexo.
  * Tombstones (delete flag 1) are skipped, sync bookkeeping and the plain-text passcode rows are never read.
  */
-@Singleton
 class LegacyImporter @Inject constructor(
     private val db: NexoDatabase,
     private val seeder: BookSeeder,

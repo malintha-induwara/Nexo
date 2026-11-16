@@ -4,10 +4,10 @@ import com.nexo.app.core.model.Bank
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.SmsKind
+import com.nexo.app.core.model.SmsMessage
 import com.nexo.app.core.model.SmsReason
 import com.nexo.app.data.sms.parser.IgnoreReason
 import com.nexo.app.data.sms.parser.ParsedSms
-import com.nexo.app.data.sms.parser.SmsMessage
 import com.nexo.app.data.sms.parser.SmsParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

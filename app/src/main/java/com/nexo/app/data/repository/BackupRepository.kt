@@ -2,12 +2,11 @@ package com.nexo.app.data.repository
 
 import android.net.Uri
 import com.nexo.app.core.model.RestoreResult
+import com.nexo.app.core.model.StoredFile
 import java.io.File
 
 /** Backups of the whole book (the database file), automatic daily copies, and restoring Nexo or legacy backups. */
 interface BackupRepository {
-    fun backupFileName(prefix: String = "Nexo"): String
-
     suspend fun writeBackup(target: Uri): Boolean
 
     suspend fun writeBackup(target: File): Boolean
@@ -18,16 +17,16 @@ interface BackupRepository {
     /** Writes today's automatic backup and prunes old ones. */
     suspend fun autoBackup(): Boolean
 
-    fun autoBackups(): List<File>
+    /** The automatic backups on the device, newest first. */
+    suspend fun getAutoBackups(): List<StoredFile>
 
-    fun isBackupName(name: String): Boolean
+    suspend fun deleteAutoBackups(names: Collection<String>)
 
+    /** Whether a picked file is named like a backup. A file whose name can't be read is let through. */
+    suspend fun isBackup(uri: Uri): Boolean
+
+    /** Replaces the book with the backup. Once started it finishes, even if the caller goes away. */
     suspend fun restore(uri: Uri): RestoreResult
 
     suspend fun restoreFile(file: File): RestoreResult
-
-    companion object {
-        const val EXTENSION = "nexobak"
-        const val MIME = "application/vnd.nexo.backup"
-    }
 }

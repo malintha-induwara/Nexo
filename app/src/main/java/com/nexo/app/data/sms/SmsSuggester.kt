@@ -10,13 +10,11 @@ import com.nexo.app.data.database.dao.SmsDao
 import com.nexo.app.data.repository.FxRatesRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Fills a new queue item's account, destination and category:
  * card digits first, then the bank's default account; categories only from what the user taught Nexo.
  */
-@Singleton
 class SmsSuggester @Inject constructor(
     private val dao: SmsDao,
     private val refs: ReferenceDataRepository,

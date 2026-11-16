@@ -1,4 +1,4 @@
-package com.nexo.app.ui.transactions
+package com.nexo.app.ui.transactionlist
 
 import com.nexo.app.data.repository.TransactionsRepository
 import java.time.LocalDate

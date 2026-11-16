@@ -5,6 +5,7 @@ import com.nexo.app.core.model.Banks
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.FeeRoute
 import com.nexo.app.core.model.SmsKind
+import com.nexo.app.core.model.SmsMessage
 import com.nexo.app.core.model.SmsReason
 import java.math.BigDecimal
 

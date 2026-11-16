@@ -5,12 +5,14 @@ import androidx.room.Room
 import com.nexo.app.core.common.SystemZoneClock
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.notifications.Notifier
+import com.nexo.app.core.work.BackgroundWork
 import com.nexo.app.data.backup.LegacyImporter
 import com.nexo.app.data.database.BookSeeder
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.datastore.DevicePreferencesDataSource
 import com.nexo.app.data.file.AppDirs
 import com.nexo.app.data.file.PhotoFileDataSource
+import com.nexo.app.data.file.PickedFileDataSource
 import com.nexo.app.data.network.FxRatesNetworkDataSource
 import com.nexo.app.data.receipt.ReceiptTextDataSource
 import com.nexo.app.data.repository.DefaultAccountsRepository
@@ -32,8 +34,11 @@ import com.nexo.app.data.repository.DefaultTransactionsRepository
 import com.nexo.app.data.repository.DefaultUserPreferencesRepository
 import com.nexo.app.data.repository.FxRatesRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
+import com.nexo.app.data.repository.TransactionBulkEdits
+import com.nexo.app.data.repository.TransactionWriter
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
+import com.nexo.app.data.resource.TextResourceDataSource
 import com.nexo.app.data.sms.SmsInboxDataSource
 import com.nexo.app.data.sms.SmsSuggester
 import com.nexo.app.domain.entry.GetNoteSuggestionsUseCase
@@ -66,17 +71,27 @@ fun transactionsRepository(
     db: NexoDatabase,
     refs: ReferenceDataRepository,
     clock: Clock = SystemZoneClock,
-): TransactionsRepository = DefaultTransactionsRepository(
-    context,
-    db,
-    refs,
-    DefaultBookSettingsRepository(db.settingDao()),
-    DefaultPhotosRepository(
-        PhotoFileDataSource(context, AppDirs(context), Dispatchers.IO),
-        db.photoDao(),
-    ),
-    clock,
-)
+): TransactionsRepository {
+    val photos = DefaultPhotosRepository(photoFileDataSource(context), db.photoDao())
+    val writer = TransactionWriter(
+        TextResourceDataSource(context),
+        db,
+        refs,
+        DefaultBookSettingsRepository(db.settingDao()),
+        photos,
+        clock,
+    )
+    return DefaultTransactionsRepository(
+        db,
+        writer,
+        TransactionBulkEdits(db, refs, photos, writer, clock),
+    )
+}
+
+fun pickedFileDataSource(context: Context) = PickedFileDataSource(context, Dispatchers.IO)
+
+fun photoFileDataSource(context: Context) =
+    PhotoFileDataSource(context, AppDirs(context), pickedFileDataSource(context), Dispatchers.IO)
 
 fun userPreferencesRepository(context: Context): UserPreferencesRepository =
     DefaultUserPreferencesRepository(DevicePreferencesDataSource(context))
@@ -97,13 +112,14 @@ fun smsRepository(
     prefs: UserPreferencesRepository = userPreferencesRepository(context),
     fx: FxRatesRepository = fxRatesRepository(context, db, refs, prefs),
     clock: Clock = SystemZoneClock,
+    work: BackgroundWork = FakeBackgroundWork(),
 ): DefaultSmsRepository = DefaultSmsRepository(
-    context,
     db.smsDao(),
     prefs,
     refs,
     SmsSuggester(db.smsDao(), refs, fx),
     FakeNotifier(),
+    work,
     clock,
 )
 
@@ -128,11 +144,7 @@ class TestBook(
 
     val prefs = userPreferencesRepository(context)
     val refs = referenceDataRepository(db, scope)
-    val photos =
-        DefaultPhotosRepository(
-            PhotoFileDataSource(context, AppDirs(context), Dispatchers.IO),
-            db.photoDao(),
-        )
+    val photos = DefaultPhotosRepository(photoFileDataSource(context), db.photoDao())
     val transactions = transactionsRepository(context, db, refs, clock)
     val fx = fxRatesRepository(context, db, refs, prefs, clock)
     val sms = smsRepository(context, db, refs, prefs, fx, clock)
@@ -160,7 +172,8 @@ class TestBook(
             db,
             refs,
             AppDirs(context),
-            photos,
+            pickedFileDataSource(context),
+            scope,
             Dispatchers.IO,
             clock,
         )
@@ -176,6 +189,9 @@ class TestBook(
             AppDirs(context),
             prefs,
             LegacyImporter(db, BookSeeder(context, db, clock), Dispatchers.IO, clock),
+            repeats,
+            pickedFileDataSource(context),
+            scope,
             Dispatchers.IO,
             clock,
         )
@@ -190,7 +206,7 @@ class TestBook(
         getFeePlan,
         clock,
     )
-    val saveEntry = SaveEntryUseCase(transactions, sms, importer)
+    val saveEntry = SaveEntryUseCase(transactions, sms, importer, scope)
     val getNoteSuggestions = GetNoteSuggestionsUseCase(refs, transactions, clock)
     val approveSms =
         ApproveSmsUseCase(
@@ -198,6 +214,7 @@ class TestBook(
             refs,
             transactions,
             GetSmsDraftUseCase(GetSmsLedgerAmountUseCase(), clock),
+            scope,
         )
 
     override fun close() = db.close()
@@ -229,4 +246,25 @@ class FakeNotifier : Notifier {
     override fun canPost(): Boolean = true
 
     override fun canScheduleExactAlarms(): Boolean = true
+}
+
+/** Records which jobs were asked for instead of handing them to WorkManager. */
+class FakeBackgroundWork : BackgroundWork {
+    val requests = mutableListOf<String>()
+
+    override fun scheduleSmsCatchUp() {
+        requests += "schedule sms catch-up"
+    }
+
+    override fun cancelSmsCatchUp() {
+        requests += "cancel sms catch-up"
+    }
+
+    override fun requestFxSync() {
+        requests += "fx sync"
+    }
+
+    override fun requestAutoBackup() {
+        requests += "auto backup"
+    }
 }

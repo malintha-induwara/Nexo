@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResult
@@ -25,9 +24,8 @@ import androidx.core.content.FileProvider
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
-import com.nexo.app.R
 import com.nexo.app.ui.designsystem.LocalClock
-import com.nexo.app.ui.lock.expectReturn
+import com.nexo.app.ui.lock.LocalExpectReturn
 import java.io.File
 import java.time.Clock
 
@@ -46,6 +44,7 @@ class ReceiptScanner internal constructor(
     private val gallery: ManagedActivityResultLauncher<PickVisualMediaRequest, Uri?>,
     private val cameraUri: MutableState<String?>,
     private val onUnavailable: State<() -> Unit>,
+    private val expectReturn: () -> Unit,
 ) {
     /** The document scanner; [onUnavailable] offers the camera and gallery instead when it cannot start. */
     fun scan() {
@@ -56,7 +55,7 @@ class ReceiptScanner internal constructor(
         }
         receiptScanner().getStartScanIntent(activity)
             .addOnSuccessListener { sender ->
-                context.expectReturn()
+                expectReturn()
                 runCatching {
                     document.launch(IntentSenderRequest.Builder(sender).build())
                 }.onFailure {
@@ -71,25 +70,29 @@ class ReceiptScanner internal constructor(
         val file = File(dir, "camera_${clock.millis()}.jpg")
         val uri = FileProvider.getUriForFile(context, context.packageName + ".files", file)
         cameraUri.value = uri.toString()
-        context.expectReturn()
+        expectReturn()
         camera.launch(uri)
     }
 
     fun pickPhoto() {
-        context.expectReturn()
+        expectReturn()
         gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
 }
 
-/** [onScanned] gets the page or photo to read; [isSupported] screens out files that are not images. */
+/**
+ * [onScanned] gets a scanned page or a photo just taken; [onPicked] a file from the gallery, which
+ * may turn out not to be an image.
+ */
 @Composable
 fun rememberReceiptScanner(
     onScanned: (Uri) -> Unit,
-    isSupported: (Uri) -> Boolean,
+    onPicked: (Uri) -> Unit,
     onUnavailable: () -> Unit,
 ): ReceiptScanner {
     val context = LocalContext.current
     val clock = LocalClock.current
+    val expectReturn = LocalExpectReturn.current
     val currentOnUnavailable = rememberUpdatedState(onUnavailable)
     val document =
         rememberLauncherForActivityResult(
@@ -106,17 +109,19 @@ fun rememberReceiptScanner(
     }
     val gallery =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            if (uri != null) {
-                if (isSupported(uri)) {
-                    onScanned(uri)
-                } else {
-                    Toast.makeText(context, R.string.unsupported_file_format, Toast.LENGTH_SHORT)
-                        .show()
-                }
-            }
+            uri?.let(onPicked)
         }
-    return remember(context, clock, document, camera, gallery, cameraUri) {
-        ReceiptScanner(context, clock, document, camera, gallery, cameraUri, currentOnUnavailable)
+    return remember(context, clock, document, camera, gallery, cameraUri, expectReturn) {
+        ReceiptScanner(
+            context,
+            clock,
+            document,
+            camera,
+            gallery,
+            cameraUri,
+            currentOnUnavailable,
+            expectReturn,
+        )
     }
 }
 

@@ -11,6 +11,8 @@ import com.nexo.app.domain.BudgetBlockData
 import com.nexo.app.domain.BudgetRow
 import com.nexo.app.domain.InOut
 import com.nexo.app.ui.designsystem.preview.PreviewData
+import com.nexo.app.ui.transactionlist.BulkEditActions
+import com.nexo.app.ui.transactionlist.TransactionRowMapper
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth

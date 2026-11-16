@@ -5,11 +5,13 @@ import android.net.Uri
 import android.text.format.DateFormat
 import androidx.room.withTransaction
 import com.nexo.app.R
+import com.nexo.app.core.common.ApplicationScope
 import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.core.common.money.Conversion
 import com.nexo.app.core.common.money.Money
 import com.nexo.app.core.common.period.toIsoText
+import com.nexo.app.core.common.runToCompletion
 import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.DateOrder
@@ -19,10 +21,12 @@ import com.nexo.app.core.model.ImportPreview
 import com.nexo.app.core.model.ImportRow
 import com.nexo.app.core.model.ParsedRow
 import com.nexo.app.core.model.RefData
+import com.nexo.app.core.model.StoredFile
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.TransactionEntity
 import com.nexo.app.data.file.AppDirs
+import com.nexo.app.data.file.PickedFileDataSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.math.BigDecimal
@@ -36,6 +40,7 @@ import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.withContext
 
 /** Tab-separated spreadsheet import. Accepts the 11-column layout and Nexo's own 12-column export. */
@@ -44,21 +49,22 @@ class DefaultTransactionImportRepository @Inject constructor(
     private val db: NexoDatabase,
     private val refs: ReferenceDataRepository,
     private val dirs: AppDirs,
-    private val photos: PhotosRepository,
+    private val picked: PickedFileDataSource,
+    @ApplicationScope private val scope: CoroutineScope,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
     private val clock: Clock,
 ) : TransactionImportRepository {
-    override fun files(): List<File> = dirs.imports.listFiles()?.filter {
-        it.name.endsWith(".tsv", true) ||
-            it.name.endsWith(".txt", true)
+    override suspend fun getFiles(): List<StoredFile> = withContext(ioDispatcher) {
+        dirs.imports.listFiles()?.filter {
+            it.name.endsWith(".tsv", true) || it.name.endsWith(".txt", true)
+        }?.map(StoredFile::of)?.sortedByDescending { it.modifiedAt }.orEmpty()
     }
-        ?.sortedByDescending { it.lastModified() }.orEmpty()
 
     override fun file(name: String) = File(dirs.imports, name)
 
     /** Copies a picked file into the import folder, renaming on clashes. Returns null when it isn't .tsv / .txt. */
     override suspend fun add(uri: Uri): File? = withContext(ioDispatcher) {
-        val name = photos.displayName(uri) ?: return@withContext null
+        val name = picked.displayName(uri) ?: return@withContext null
         if (!name.endsWith(".tsv", true) && !name.endsWith(".txt", true)) return@withContext null
         val base = name.substringBeforeLast('.')
         val ext = name.substringAfterLast('.')
@@ -338,6 +344,10 @@ class DefaultTransactionImportRepository @Inject constructor(
 
     /** Saves every valid row; failing rows stay in the file. Returns (saved, failed). */
     override suspend fun saveAll(fileName: String, order: DateOrder?): Pair<Int, Int> =
+        scope.runToCompletion { saveRows(fileName, order) }
+
+    /** The rows and the rewritten file belong together: saved rows left in the file would be saved twice. */
+    private suspend fun saveRows(fileName: String, order: DateOrder?): Pair<Int, Int> =
         withContext(ioDispatcher) {
             val f = file(fileName)
             val preview = load(fileName, order)

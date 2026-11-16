@@ -30,7 +30,7 @@ import com.nexo.app.core.model.CategoryKind
 import com.nexo.app.core.model.RefData
 import com.nexo.app.ui.designsystem.component.IncomeExpensePill
 import com.nexo.app.ui.designsystem.theme.nexo
-import com.nexo.app.ui.transactions.FilterCriteria
+import com.nexo.app.ui.transactionlist.FilterCriteria
 
 data class CheckItem(
     val id: String,

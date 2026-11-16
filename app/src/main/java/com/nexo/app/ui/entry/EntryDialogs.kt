@@ -123,16 +123,23 @@ internal fun EntryDialogs(state: EntryUiState, actions: EntryActions, dialogs: E
         }
     }
     if (dialogs.tags) {
-        TagSelectSheet(tags, s.tagIds, actions.tags, onDone = actions.setTags, onDismiss = {
-            dialogs.tags = false
-        })
+        TagSelectSheet(
+            tags = tags,
+            initial = s.tagIds,
+            dialog = state.tagDialog,
+            actions = actions.tags,
+            onDone = actions.setTags,
+            onDismiss = { dialogs.tags = false },
+        )
     }
     if (dialogs.viewerIndex >= 0) {
         PhotoViewer(
             s.photos,
             dialogs.viewerIndex,
-            actions.photoFile,
-            actions.exportPhoto,
+            photoFiles = state.photoFiles,
+            exported = state.photoExported,
+            onExport = actions.exportPhoto,
+            onExportShown = actions.onPhotoExportShown,
             onDismiss = { dialogs.viewerIndex = -1 },
         )
     }

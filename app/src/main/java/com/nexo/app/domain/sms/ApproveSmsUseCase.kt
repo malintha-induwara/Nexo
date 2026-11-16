@@ -1,5 +1,7 @@
 package com.nexo.app.domain.sms
 
+import com.nexo.app.core.common.ApplicationScope
+import com.nexo.app.core.common.runToCompletion
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeDraft
@@ -10,20 +12,29 @@ import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.SmsRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
 
-/** Approves queue items: the only code that turns them into ledger rows. */
+/**
+ * Approves queue items: the only code that turns them into ledger rows. Writing the row and marking
+ * the item approved belong together, so an approval that has started finishes even if the screen
+ * closes meanwhile.
+ */
 class ApproveSmsUseCase @Inject constructor(
     private val sms: SmsRepository,
     private val refs: ReferenceDataRepository,
     private val transactions: TransactionsRepository,
     private val getDraft: GetSmsDraftUseCase,
+    @ApplicationScope private val scope: CoroutineScope,
 ) {
     /**
      * Writes the item to the ledger. With a [fee], the fee becomes its own Bank fee expense from the source account,
      * linked to the transfer or the purchase. For an FX difference recorded as a fee, the purchase stays at the
      * estimate; "include in purchase" books the actual amount with no fee row.
      */
-    suspend operator fun invoke(itemId: String, fee: FeeChoice? = null): ApproveResult {
+    suspend operator fun invoke(itemId: String, fee: FeeChoice? = null): ApproveResult =
+        scope.runToCompletion { approve(itemId, fee) }
+
+    private suspend fun approve(itemId: String, fee: FeeChoice?): ApproveResult {
         val item =
             sms.getItem(itemId)?.takeIf { it.status == SmsStatus.PENDING }
                 ?: return ApproveResult.Gone

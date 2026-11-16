@@ -1,5 +1,6 @@
 package com.nexo.app.ui.memo
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.period.MonthPeriod
@@ -10,6 +11,7 @@ import com.nexo.app.data.repository.BookSettingsRepository
 import com.nexo.app.data.repository.MemosRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
+import com.nexo.app.ui.common.savedStateFlow
 import com.nexo.app.ui.navigation.MemoListKey
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -19,7 +21,6 @@ import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -45,6 +46,7 @@ class MemoListViewModel @AssistedInject constructor(
     private val bookSettings: BookSettingsRepository,
     private val prefs: UserPreferencesRepository,
     private val clock: Clock,
+    savedState: SavedStateHandle,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -52,16 +54,20 @@ class MemoListViewModel @AssistedInject constructor(
     }
 
     private val date =
-        MutableStateFlow(
+        savedState.savedStateFlow(
+            "date",
             key.date?.let {
                 runCatching { LocalDate.parse(it) }.getOrNull()
             } ?: LocalDate.now(clock),
         )
 
-    /** Kept for event handlers that need the reference data synchronously. */
+    /**
+     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
+     * is current whenever the screen is there to call them.
+     */
     private val ref = refs.getRefDataStream().stateIn(
         viewModelScope,
-        SharingStarted.Eagerly,
+        SharingStarted.WhileSubscribed(5_000),
         RefData(),
     )
 

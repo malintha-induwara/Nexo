@@ -3,8 +3,10 @@ package com.nexo.app.data.repository
 import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
+import com.nexo.app.core.common.ApplicationScope
 import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
+import com.nexo.app.core.common.runToCompletion
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.file.AppDirs
 import com.nexo.app.data.file.PhotoFileDataSource
@@ -13,6 +15,7 @@ import java.io.File
 import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.withContext
 
 /** Photo export / import through a user-picked folder. */
@@ -21,9 +24,8 @@ class DefaultPhotoBackupRepository @Inject constructor(
     private val dirs: AppDirs,
     private val db: NexoDatabase,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
+    @ApplicationScope private val scope: CoroutineScope,
 ) : PhotoBackupRepository {
-    override fun localCount(): Int = dirs.photos.listFiles()?.size ?: 0
-
     private fun children(tree: Uri): List<Triple<String, String, String>> {
         val parent = DocumentsContract.buildChildDocumentsUriUsingTree(
             tree,
@@ -51,6 +53,10 @@ class DefaultPhotoBackupRepository @Inject constructor(
 
     /** Copies referenced photos that the folder doesn't have yet. */
     override suspend fun export(tree: Uri, progress: (Int, Int) -> Unit): Int =
+        scope.runToCompletion { copyOut(tree, progress) }
+
+    /** A copy cut short leaves an empty file that later exports would take for the photo. */
+    private suspend fun copyOut(tree: Uri, progress: (Int, Int) -> Unit): Int =
         withContext(ioDispatcher) {
             val referenced = db.photoDao().getAll().map { it.fileName }.toSet()
             val files = dirs.photos.listFiles()?.filter { it.name in referenced }.orEmpty()
@@ -81,6 +87,9 @@ class DefaultPhotoBackupRepository @Inject constructor(
 
     /** Copies every image file of the folder into the photo folder, overwriting same-named files. */
     override suspend fun import(tree: Uri, progress: (Int, Int) -> Unit): Int =
+        scope.runToCompletion { copyIn(tree, progress) }
+
+    private suspend fun copyIn(tree: Uri, progress: (Int, Int) -> Unit): Int =
         withContext(ioDispatcher) {
             val images = children(tree).filter { (_, name, _) ->
                 name.substringAfterLast('.', "").lowercase(Locale.ROOT) in

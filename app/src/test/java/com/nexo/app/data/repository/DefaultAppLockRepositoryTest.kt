@@ -36,7 +36,7 @@ class DefaultAppLockRepositoryTest {
     private fun lock() = DefaultAppLockRepository(
         prefs,
         scope,
-        BiometricKeyDataSource(),
+        BiometricKeyDataSource(Dispatchers.Unconfined),
         Dispatchers.Unconfined,
         fixedClock,
     )

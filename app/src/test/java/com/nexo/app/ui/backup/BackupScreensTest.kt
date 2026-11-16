@@ -5,10 +5,10 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.nexo.app.core.model.StoredFile
 import com.nexo.app.ui.designsystem.preview.NexoPreview
 import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.navigation.ExcelExportKey
-import java.io.File
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -76,7 +76,7 @@ class BackupScreensTest {
 
     @Test
     fun autoBackupHistoryRestoresTheChosenBackupOnceConfirmed() {
-        val restored = mutableListOf<File>()
+        val restored = mutableListOf<StoredFile>()
         rule.setContent {
             NexoPreview {
                 AutoBackupHistoryScreen(

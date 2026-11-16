@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.nexo.app.core.common.money.CatalogCurrency
 import com.nexo.app.core.common.money.CurrencyCatalog
 import com.nexo.app.core.common.money.Money
+import com.nexo.app.core.model.BackupFiles
 import com.nexo.app.core.model.Currency
 import com.nexo.app.core.model.SymbolPosition
 import com.nexo.app.data.database.NexoDatabase
@@ -14,6 +15,7 @@ import java.io.File
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Clock
+import java.time.LocalDateTime
 import java.util.UUID
 import javax.inject.Inject
 
@@ -117,7 +119,7 @@ class DefaultCurrenciesRepository @Inject constructor(
      * and every rate becomes old rate × r. A safety backup is taken first and restored on failure.
      */
     override suspend fun changeMainWithRate(target: CatalogCurrency, r: Double): Boolean {
-        val safety = File(dirs.backups, backups.backupFileName())
+        val safety = File(dirs.backups, BackupFiles.name(LocalDateTime.now(clock)))
         if (!backups.writeBackup(safety)) return false
         prefs.setLastAutoBackup(now())
         val ref = refs.getRefData()

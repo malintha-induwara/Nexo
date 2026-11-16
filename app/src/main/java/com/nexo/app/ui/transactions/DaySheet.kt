@@ -62,6 +62,9 @@ import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoPalette
 import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
+import com.nexo.app.ui.transactionlist.DayGroup
+import com.nexo.app.ui.transactionlist.TransactionRowMapper
+import com.nexo.app.ui.transactionlist.TxRow
 import java.time.LocalDate
 import java.util.Locale
 

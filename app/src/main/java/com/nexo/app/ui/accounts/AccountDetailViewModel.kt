@@ -1,5 +1,6 @@
 package com.nexo.app.ui.accounts
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
@@ -21,13 +22,14 @@ import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.domain.Balances
 import com.nexo.app.domain.CardFigures
 import com.nexo.app.domain.CardStatement
+import com.nexo.app.ui.common.savedStateFlow
 import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.designsystem.component.Formats
 import com.nexo.app.ui.navigation.AccountDetailKey
-import com.nexo.app.ui.transactions.BulkEditActions
-import com.nexo.app.ui.transactions.DayGroup
-import com.nexo.app.ui.transactions.TransactionRowMapper
-import com.nexo.app.ui.transactions.bulkEditActions
+import com.nexo.app.ui.transactionlist.BulkEditActions
+import com.nexo.app.ui.transactionlist.DayGroup
+import com.nexo.app.ui.transactionlist.TransactionRowMapper
+import com.nexo.app.ui.transactionlist.bulkEditActions
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -45,7 +47,9 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class DetailTab { DAILY, MONTHLY, ANNUALLY }
 
 data class PeriodRowUi(
@@ -90,6 +94,14 @@ data class AccountDetailUiState(
     val card: CardFigures? = null,
 )
 
+/** A credit card's periods run between its settlement days; every other account follows the book. */
+internal fun RefData.periodsFor(account: Account?): PeriodEngine =
+    if (account != null && groupType(account.id) == GroupType.CREDIT_CARD) {
+        PeriodEngine(account.settlementDay, weekStart = settings.weekStartDay)
+    } else {
+        settings.periods
+    }
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel(assistedFactory = AccountDetailViewModel.Factory::class)
 class AccountDetailViewModel @AssistedInject constructor(
@@ -99,27 +111,32 @@ class AccountDetailViewModel @AssistedInject constructor(
     private val transactions: TransactionsRepository,
     private val accounts: AccountsRepository,
     private val clock: Clock,
+    savedState: SavedStateHandle,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
         fun create(key: AccountDetailKey): AccountDetailViewModel
     }
 
-    /** Kept for event handlers that need the reference data synchronously. */
+    /**
+     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
+     * is current whenever the screen is there to call them.
+     */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
-        SharingStarted.Eagerly,
+        SharingStarted.WhileSubscribed(5_000),
         RefData(),
     )
-    private val tab = MutableStateFlow(DetailTab.DAILY)
+    private val tab = savedState.savedStateFlow("tab", DetailTab.DAILY)
     private val anchor =
-        MutableStateFlow(
+        savedState.savedStateFlow(
+            "anchor",
             key.date?.let {
                 runCatching { LocalDate.parse(it) }.getOrNull()
             } ?: LocalDate.now(clock),
         )
-    private val charts = MutableStateFlow(false)
-    private val selection = MutableStateFlow<Set<String>>(emptySet())
+    private val charts = savedState.savedStateFlow("charts", false)
+    private val selection = savedState.savedStateFlow("selection", emptySet<String>())
     private val restored = MutableStateFlow(false)
     val bulkActions: BulkEditActions = bulkEditActions(transactions, viewModelScope, selection)
 
@@ -156,14 +173,6 @@ class AccountDetailViewModel @AssistedInject constructor(
 
     private data class Quad(val r: RefData, val t: DetailTab, val a: LocalDate, val c: Boolean)
 
-    fun engineFor(r: RefData, a: Account?): PeriodEngine = if (a != null &&
-        r.groupType(a.id) == GroupType.CREDIT_CARD
-    ) {
-        PeriodEngine(a.settlementDay, weekStart = r.settings.weekStartDay)
-    } else {
-        r.settings.periods
-    }
-
     private suspend fun compute(
         r: RefData,
         tab: DetailTab,
@@ -190,7 +199,7 @@ class AccountDetailViewModel @AssistedInject constructor(
                 it.date
             }, { it.dateTime }, { it.createdAt }),
         )
-        val engine = engineFor(r, account)
+        val engine = r.periodsFor(account)
         val measure = { t: Transaction -> Balances.rowMeasure(r, t, account) }
         val signed = { t: Transaction -> if (t.kind.isInflow) measure(t) else -measure(t) }
         fun net(rows: List<Transaction>) = rows.fold(BigDecimal.ZERO) { acc, t ->
@@ -429,13 +438,13 @@ class AccountDetailViewModel @AssistedInject constructor(
 
     fun openMonth(m: YearMonth) {
         val a = ref.value.accountById[key.accountId]
-        anchor.value = engineFor(ref.value, a).monthPeriodFor(m).end
+        anchor.value = ref.value.periodsFor(a).monthPeriodFor(m).end
         tab.value = DetailTab.DAILY
     }
 
     fun openYear(y: Int) {
         val a = ref.value.accountById[key.accountId]
-        anchor.value = engineFor(ref.value, a).yearRange(y).start.plusDays(15)
+        anchor.value = ref.value.periodsFor(a).yearRange(y).start.plusDays(15)
         tab.value = DetailTab.MONTHLY
     }
 
@@ -445,7 +454,7 @@ class AccountDetailViewModel @AssistedInject constructor(
 
     fun step(forward: Boolean) {
         val r = ref.value
-        val e = engineFor(r, r.accountById[key.accountId])
+        val e = r.periodsFor(r.accountById[key.accountId])
         anchor.update { d ->
             when (tab.value) {
                 DetailTab.DAILY -> e.monthPeriodContaining(d).let {

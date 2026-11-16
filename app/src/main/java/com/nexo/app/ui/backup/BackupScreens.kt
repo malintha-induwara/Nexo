@@ -3,7 +3,6 @@ package com.nexo.app.ui.backup
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -47,8 +46,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.core.common.period.DateRange
+import com.nexo.app.core.model.BackupFiles
 import com.nexo.app.core.model.RestoreResult
-import com.nexo.app.data.repository.BackupRepository
+import com.nexo.app.core.model.StoredFile
 import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.EmptyState
@@ -59,7 +59,7 @@ import com.nexo.app.ui.designsystem.component.SectionHeader
 import com.nexo.app.ui.designsystem.component.SettingRow
 import com.nexo.app.ui.designsystem.preview.NexoPreview
 import com.nexo.app.ui.designsystem.preview.PreviewData
-import com.nexo.app.ui.lock.expectReturn
+import com.nexo.app.ui.lock.LocalExpectReturn
 import com.nexo.app.ui.navigation.AutoBackupHistoryKey
 import com.nexo.app.ui.navigation.BackupDeviceKey
 import com.nexo.app.ui.navigation.ExcelExportKey
@@ -75,6 +75,7 @@ import java.text.NumberFormat
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 fun shareFile(context: Context, file: File, mime: String, subject: String, body: String) {
     val uri = FileProvider.getUriForFile(context, context.packageName + ".files", file)
@@ -132,7 +133,6 @@ class BackupActions(
     val onExportPhotos: () -> Unit = {},
     val onImportPhotos: () -> Unit = {},
     val onHelp: () -> Unit = {},
-    val localPhotoCount: () -> Int = { 0 },
     val onCompleteReset: (deletePhotos: Boolean) -> Unit = {},
     val onContentsReset: (deletePhotos: Boolean) -> Unit = {},
     val onPhotosCopiedShown: () -> Unit = {},
@@ -143,8 +143,10 @@ fun BackupRoute(vm: BackupViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val clock = LocalClock.current
     val context = LocalContext.current
+    val expectReturn = LocalExpectReturn.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     var photoResult by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(Unit) { vm.refreshPhotoCount() }
     val subject = stringResource(R.string.backup_mail_subject)
     val body = stringResource(R.string.backup_mail_body)
     LaunchedEffect(state.result) {
@@ -152,7 +154,7 @@ fun BackupRoute(vm: BackupViewModel = hiltViewModel()) {
             is BackupResult.ShareReady -> shareFile(
                 context,
                 r.file,
-                BackupRepository.MIME,
+                BackupFiles.MIME,
                 subject,
                 body,
             )
@@ -186,15 +188,14 @@ fun BackupRoute(vm: BackupViewModel = hiltViewModel()) {
             onExcelExport = { nav.navigate(ExcelExportKey()) },
             onImportExcel = { nav.navigate(ImportListKey) },
             onExportPhotos = {
-                context.expectReturn()
+                expectReturn()
                 exportTree.launch(null)
             },
             onImportPhotos = {
-                context.expectReturn()
+                expectReturn()
                 importTree.launch(null)
             },
             onHelp = { nav.navigate(HelpPageKey("backup")) },
-            localPhotoCount = vm::localPhotoCount,
             onCompleteReset = vm::completeReset,
             onContentsReset = vm::contentsReset,
             onPhotosCopiedShown = { photoResult = null },
@@ -251,7 +252,7 @@ internal fun BackupScreen(state: BackupUiState, photosCopied: Int?, actions: Bac
     }
     val flow = resetFlow
     if (flow != null) {
-        val photoCount = actions.localPhotoCount()
+        val photoCount = state.photoCount
         val finish = {
             resetFlow = null
             if (flow == "all") {
@@ -315,7 +316,7 @@ internal fun BackupScreen(state: BackupUiState, photosCopied: Int?, actions: Bac
 fun BackupDeviceRoute(vm: RestoreViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
     val clock = LocalClock.current
-    val context = LocalContext.current
+    val expectReturn = LocalExpectReturn.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     var message by remember { mutableStateOf<Int?>(null) }
     var pending by remember { mutableStateOf<Uri?>(null) }
@@ -329,6 +330,10 @@ fun BackupDeviceRoute(vm: RestoreViewModel = hiltViewModel()) {
 
             is BackupResult.Restored -> result = r.result
 
+            is BackupResult.RestorePicked -> pending = r.uri
+
+            BackupResult.NotABackup -> message = R.string.restore_not_backup
+
             else -> return@LaunchedEffect
         }
         vm.onResultHandled()
@@ -340,14 +345,7 @@ fun BackupDeviceRoute(vm: RestoreViewModel = hiltViewModel()) {
             uri?.let(vm::writeBackup)
         }
     val open = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            val name = displayName(context, uri)
-            if (name != null && !vm.isBackupName(name)) {
-                message = R.string.restore_not_backup
-            } else {
-                pending = uri
-            }
-        }
+        uri?.let(vm::pickRestoreFile)
     }
     BackupDeviceScreen(
         state = state,
@@ -356,11 +354,11 @@ fun BackupDeviceRoute(vm: RestoreViewModel = hiltViewModel()) {
         restoreResult = result,
         onBack = nav::back,
         onBackup = {
-            context.expectReturn()
-            create.launch(vm.backupFileName())
+            expectReturn()
+            create.launch(BackupFiles.name(LocalDateTime.now(clock)))
         },
         onPickBackupFile = {
-            context.expectReturn()
+            expectReturn()
             open.launch(arrayOf("*/*"))
         },
         onAutoBackupHistory = { nav.navigate(AutoBackupHistoryKey) },
@@ -424,7 +422,7 @@ internal fun BackupDeviceScreen(
                     stringResource(R.string.auto_backup_history),
                     Formats.dateTime(
                         Instant.ofEpochMilli(
-                            newest.lastModified(),
+                            newest.modifiedAt,
                         ).atZone(clock.zone).toLocalDateTime(),
                     ),
                     onClick = onAutoBackupHistory,
@@ -443,18 +441,6 @@ internal fun BackupDeviceScreen(
         MessageDialog(restoreMessage(r), onDismiss = onResultShown)
     }
 }
-
-fun displayName(context: Context, uri: Uri): String? = runCatching {
-    context.contentResolver.query(
-        uri,
-        arrayOf(OpenableColumns.DISPLAY_NAME),
-        null,
-        null,
-        null,
-    )?.use { c ->
-        if (c.moveToFirst()) c.getString(0) else null
-    }
-}.getOrNull() ?: uri.lastPathSegment
 
 @Composable
 fun RestoreFileRoute(key: RestoreFileKey, vm: RestoreViewModel = hiltViewModel()) {
@@ -526,7 +512,7 @@ fun AutoBackupHistoryRoute(vm: RestoreViewModel = hiltViewModel()) {
         restoreResult = result,
         onBack = nav::back,
         onDelete = vm::deleteBackups,
-        onRestore = vm::restoreFile,
+        onRestore = { vm.restoreFile(it.file) },
         onResultShown = {
             val r = result
             result = null
@@ -542,8 +528,8 @@ internal fun AutoBackupHistoryScreen(
     state: RestoreUiState,
     restoreResult: RestoreResult?,
     onBack: () -> Unit,
-    onDelete: (List<File>) -> Unit,
-    onRestore: (File) -> Unit,
+    onDelete: (names: Set<String>) -> Unit,
+    onRestore: (StoredFile) -> Unit,
     onResultShown: () -> Unit,
 ) {
     val clock = LocalClock.current
@@ -552,7 +538,7 @@ internal fun AutoBackupHistoryScreen(
     var editing by remember { mutableStateOf(false) }
     var checked by remember { mutableStateOf(setOf<String>()) }
     var confirmDelete by remember { mutableStateOf(false) }
-    var restore by remember { mutableStateOf<File?>(null) }
+    var restore by remember { mutableStateOf<StoredFile?>(null) }
     Scaffold(topBar = {
         NexoTopBar(stringResource(R.string.auto_backup_history), onBack = {
             if (editing) {
@@ -604,12 +590,12 @@ internal fun AutoBackupHistoryScreen(
                         Text(
                             Formats.dateTime(
                                 Instant.ofEpochMilli(
-                                    f.lastModified(),
+                                    f.modifiedAt,
                                 ).atZone(clock.zone).toLocalDateTime(),
                             ),
                         )
                         Text(
-                            "${NumberFormat.getIntegerInstance().format(f.length() / 1000)} KB",
+                            "${NumberFormat.getIntegerInstance().format(f.sizeBytes / 1000)} KB",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline,
                         )
@@ -622,12 +608,7 @@ internal fun AutoBackupHistoryScreen(
     BusyOverlay(busy, null)
     if (confirmDelete) {
         ConfirmDialog(stringResource(R.string.confirm_delete), onConfirm = {
-            onDelete(
-                files.filter {
-                    it.name in
-                        checked
-                },
-            )
+            onDelete(checked)
             checked = emptySet()
             editing = false
         }, onDismiss = { confirmDelete = false })
@@ -723,11 +704,8 @@ internal fun ExcelExportScreen(
 }
 
 /** A file for previews: a name, a time and a size, without anything on disk. */
-internal fun previewFile(name: String, modified: Instant, bytes: Long): File = object : File(name) {
-    override fun lastModified() = modified.toEpochMilli()
-
-    override fun length() = bytes
-}
+internal fun previewFile(name: String, modified: Instant, bytes: Long): StoredFile =
+    StoredFile(File(name), modified.toEpochMilli(), bytes)
 
 private val previewBackups = listOf(
     previewFile("nexo_auto_2.nexobak", Instant.parse("2026-11-14T03:00:00Z"), 184_000),

@@ -1,10 +1,9 @@
 package com.nexo.app.data.repository
 
+import com.nexo.app.core.model.Banks
 import com.nexo.app.core.model.FxSnapshot
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsItem
-import com.nexo.app.data.network.FxRatesNetworkDataSource
-import com.nexo.app.data.sms.parser.BodyDate
 import java.time.Instant
 import java.time.LocalDate
 
@@ -33,13 +32,12 @@ interface FxRatesRepository {
     suspend fun fillPending(allowNetwork: Boolean = false): Int
 
     companion object {
-        /** Shown wherever a bank-board rate is used. */
-        const val ATTRIBUTION_URL = FxRatesNetworkDataSource.ATTRIBUTION_URL
+        /** Shown wherever a bank-board rate is used: the API terms require a visible link to this page. */
+        const val ATTRIBUTION_URL = "https://allratestoday.com/"
 
         const val REFRESH_MS = 6 * 60 * 60 * 1000L
 
         /** The bank-board day of an instant (boards are dated in Sri Lanka time). */
-        fun dayOf(ms: Long): LocalDate =
-            Instant.ofEpochMilli(ms).atZone(BodyDate.ZONE).toLocalDate()
+        fun dayOf(ms: Long): LocalDate = Instant.ofEpochMilli(ms).atZone(Banks.ZONE).toLocalDate()
     }
 }

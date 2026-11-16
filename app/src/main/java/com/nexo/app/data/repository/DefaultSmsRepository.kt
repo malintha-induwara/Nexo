@@ -1,6 +1,5 @@
 package com.nexo.app.data.repository
 
-import android.content.Context
 import android.util.Log
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.DenyReason
@@ -9,12 +8,14 @@ import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeMode
 import com.nexo.app.core.model.FeePreset
 import com.nexo.app.core.model.FeeRoute
+import com.nexo.app.core.model.IncomingSms
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
 import com.nexo.app.core.model.SmsSource
 import com.nexo.app.core.model.SmsStatus
 import com.nexo.app.core.notifications.Notifier
+import com.nexo.app.core.work.BackgroundWork
 import com.nexo.app.data.database.dao.SmsDao
 import com.nexo.app.data.database.entity.FeePresetEntity
 import com.nexo.app.data.database.entity.SmsItemEntity
@@ -23,7 +24,6 @@ import com.nexo.app.data.database.entity.SmsSeenEntity
 import com.nexo.app.data.database.entity.SmsSourceEntity
 import com.nexo.app.data.database.entity.asEntity
 import com.nexo.app.data.database.entity.asExternalModel
-import com.nexo.app.data.sms.IncomingSms
 import com.nexo.app.data.sms.RoomSmsStore
 import com.nexo.app.data.sms.SmsCorrelator
 import com.nexo.app.data.sms.SmsSuggester
@@ -31,8 +31,6 @@ import com.nexo.app.data.sms.learningKey
 import com.nexo.app.data.sms.parser.Redactor
 import com.nexo.app.data.sms.parser.SmsParser
 import com.nexo.app.data.sms.seenKey
-import com.nexo.app.data.work.FxSyncWorker
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Clock
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -43,12 +41,12 @@ import kotlinx.coroutines.sync.withLock
 
 @Singleton
 class DefaultSmsRepository @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val dao: SmsDao,
     private val prefs: UserPreferencesRepository,
     private val refs: ReferenceDataRepository,
     private val suggester: SmsSuggester,
     private val notifier: Notifier,
+    private val work: BackgroundWork,
     private val clock: Clock,
 ) : SmsRepository {
     private fun now() = clock.millis()
@@ -126,7 +124,7 @@ class DefaultSmsRepository @Inject constructor(
         if (notify) {
             if (changed > 0) notifyPending()
             // A new foreign-currency item asks for fresh rates once the phone is online.
-            if (foreign) FxSyncWorker.enqueue(context)
+            if (foreign) work.requestFxSync()
         }
         changed
     }

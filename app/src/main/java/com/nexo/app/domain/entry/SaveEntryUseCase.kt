@@ -1,5 +1,7 @@
 package com.nexo.app.domain.entry
 
+import com.nexo.app.core.common.ApplicationScope
+import com.nexo.app.core.common.runToCompletion
 import com.nexo.app.core.model.Certainty
 import com.nexo.app.core.model.EntryType
 import com.nexo.app.core.model.FeeChoice
@@ -12,6 +14,7 @@ import com.nexo.app.data.repository.TransactionImportRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 
 /** A transaction from the entry form, and the other records that saving it settles. */
 data class EntrySave(
@@ -48,13 +51,20 @@ sealed interface SaveEntryResult {
     data object Failed : SaveEntryResult
 }
 
-/** Saves the entry form's transaction, then settles what depended on it. */
+/**
+ * Saves the entry form's transaction, then settles what depended on it. The steps belong
+ * together, so once started they all run even if the form closes meanwhile.
+ */
 class SaveEntryUseCase @Inject constructor(
     private val transactions: TransactionsRepository,
     private val sms: SmsRepository,
     private val importer: TransactionImportRepository,
+    @ApplicationScope private val scope: CoroutineScope,
 ) {
-    suspend operator fun invoke(save: EntrySave): SaveEntryResult {
+    suspend operator fun invoke(save: EntrySave): SaveEntryResult =
+        scope.runToCompletion { saveAndSettle(save) }
+
+    private suspend fun saveAndSettle(save: EntrySave): SaveEntryResult {
         // Only the row itself counts as failing: once it is written, retrying would duplicate it.
         val id = try {
             transactions.save(if (save.smsReview != null) withBankFee(save.draft) else save.draft)

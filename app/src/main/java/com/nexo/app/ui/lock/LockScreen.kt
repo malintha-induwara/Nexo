@@ -27,7 +27,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,28 +39,29 @@ import androidx.fragment.app.FragmentActivity
 import com.nexo.app.R
 import com.nexo.app.core.model.DeviceSettings
 import com.nexo.app.data.repository.PinResult
+import com.nexo.app.ui.BiometricRequest
+import com.nexo.app.ui.LockScreenUiState
 import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.TextFieldDialog
-import javax.crypto.Cipher
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 /** Lock screen shown over everything. Back sends the app to the background. */
 @Composable
 fun LockScreen(
     device: DeviceSettings,
-    unlockCipher: () -> Cipher?,
+    lock: LockScreenUiState,
+    onSubmitPin: (String) -> Unit,
+    onPinAttemptShown: () -> Unit,
+    onRequestBiometric: () -> Unit,
+    onBiometricRequestHandled: () -> Unit,
     onUnlock: () -> Unit,
-    onVerifyPin: suspend (String) -> PinResult,
-    onBiometricsInvalidated: () -> Unit,
     onEraseAll: () -> Unit,
 ) {
     val clock = LocalClock.current
     val context = LocalContext.current
     val resources = LocalResources.current
     val activity = context as? FragmentActivity
-    val scope = rememberCoroutineScope()
     var pin by remember { mutableStateOf("") }
     var shake by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -77,17 +77,25 @@ fun LockScreen(
     BackHandler { activity?.moveTaskToBack(true) }
 
     val biometricAvailable = device.biometricsEnabled && BiometricPrompter.isAvailable(context)
-    fun promptBiometric() {
-        if (activity == null) return
-        val cipher = unlockCipher()
-        if (cipher != null) {
-            BiometricPrompter.prompt(activity, promptTitle, usePin, cipher, onSuccess = onUnlock)
-        } else {
-            onBiometricsInvalidated()
-            message = invalidated
+    LaunchedEffect(Unit) { if (biometricAvailable) onRequestBiometric() }
+    LaunchedEffect(lock.biometric) {
+        when (val request = lock.biometric) {
+            is BiometricRequest.Prompt -> if (activity != null) {
+                BiometricPrompter.prompt(
+                    activity,
+                    promptTitle,
+                    usePin,
+                    request.cipher,
+                    onSuccess = onUnlock,
+                )
+            }
+
+            BiometricRequest.Invalidated -> message = invalidated
+
+            null -> return@LaunchedEffect
         }
+        onBiometricRequestHandled()
     }
-    LaunchedEffect(Unit) { if (biometricAvailable) promptBiometric() }
     LaunchedEffect(waitUntil) {
         while (waitUntil > clock.millis()) {
             now = clock.millis()
@@ -96,8 +104,9 @@ fun LockScreen(
         now = clock.millis()
     }
 
-    fun submit(value: String) = scope.launch {
-        when (val r = onVerifyPin(value)) {
+    LaunchedEffect(lock.pinAttempt) {
+        val attempt = lock.pinAttempt ?: return@LaunchedEffect
+        when (val r = attempt.result) {
             PinResult.Success -> Unit
 
             is PinResult.Wrong -> {
@@ -122,6 +131,7 @@ fun LockScreen(
             }
         }
         pin = ""
+        onPinAttemptShown()
     }
 
     Box(
@@ -174,11 +184,11 @@ fun LockScreen(
                 onDigit = { d ->
                     if (remaining > 0) return@PinKeypad
                     if (pin.length < 4) pin += d
-                    if (pin.length == 4) submit(pin)
+                    if (pin.length == 4) onSubmitPin(pin)
                 },
                 onBackspace = { pin = pin.dropLast(1) },
                 descending = device.numberPadDescending,
-                onBiometric = if (biometricAvailable) ({ promptBiometric() }) else null,
+                onBiometric = if (biometricAvailable) onRequestBiometric else null,
             )
             Spacer(Modifier.height(16.dp))
             TextButton(onClick = { forgot = 1 }) { Text(stringResource(R.string.lock_forgot_pin)) }

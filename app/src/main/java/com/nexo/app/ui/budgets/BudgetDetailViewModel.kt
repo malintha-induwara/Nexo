@@ -1,5 +1,6 @@
 package com.nexo.app.ui.budgets
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.money.Money
@@ -15,9 +16,10 @@ import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.repository.BudgetsRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
+import com.nexo.app.ui.common.savedStateFlow
 import com.nexo.app.ui.navigation.BudgetDetailKey
-import com.nexo.app.ui.transactions.DayGroup
-import com.nexo.app.ui.transactions.TransactionRowMapper
+import com.nexo.app.ui.transactionlist.DayGroup
+import com.nexo.app.ui.transactionlist.TransactionRowMapper
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -26,7 +28,6 @@ import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -59,6 +60,7 @@ class BudgetDetailViewModel @AssistedInject constructor(
     repo: BudgetsRepository,
     private val transactions: TransactionsRepository,
     private val clock: Clock,
+    savedState: SavedStateHandle,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -67,11 +69,11 @@ class BudgetDetailViewModel @AssistedInject constructor(
 
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
-        SharingStarted.Eagerly,
+        SharingStarted.WhileSubscribed(5_000),
         RefData(),
     )
-    private val budgetId = MutableStateFlow(key.budgetId)
-    private val month = MutableStateFlow(YearMonth.parse(key.month))
+    private val budgetId = savedState.savedStateFlow("budget", key.budgetId)
+    private val month = savedState.savedStateFlow("month", YearMonth.parse(key.month))
 
     val uiState: StateFlow<BudgetDetailUiState> = combine(
         ref,

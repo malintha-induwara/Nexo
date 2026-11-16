@@ -9,8 +9,8 @@ import com.nexo.app.core.model.CashFlow
 import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.designsystem.preview.NexoPreview
 import com.nexo.app.ui.designsystem.preview.PreviewData
-import com.nexo.app.ui.transactions.BulkEditActions
-import com.nexo.app.ui.transactions.TxRowUi
+import com.nexo.app.ui.transactionlist.BulkEditActions
+import com.nexo.app.ui.transactionlist.TxRowUi
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

@@ -69,6 +69,7 @@ class SmsApprovalTest {
                 refs,
                 transactions,
                 GetSmsDraftUseCase(GetSmsLedgerAmountUseCase(), SystemZoneClock),
+                scope,
             )
         getFeePlan = GetSmsFeePlanUseCase(sms, refs)
     }

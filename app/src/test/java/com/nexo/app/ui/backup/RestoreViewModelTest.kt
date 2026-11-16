@@ -1,13 +1,16 @@
 package com.nexo.app.ui.backup
 
 import android.content.Context
+import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
+import com.nexo.app.core.model.BackupFiles
 import com.nexo.app.core.model.RestoreResult
 import com.nexo.app.data.file.AppDirs
 import com.nexo.app.testing.MainDispatcherRule
 import com.nexo.app.testing.TestBook
 import com.nexo.app.testing.fixedClock
 import java.io.File
+import java.time.LocalDateTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -48,16 +51,17 @@ class RestoreViewModelTest {
         book.close()
     }
 
-    private fun restore() = RestoreViewModel(book.backups, book.repeats)
+    private fun restore() = RestoreViewModel(book.backups)
 
     @Test
     fun automaticBackupsAreListedAndDeleted() = runTest {
-        val file = File(dirs.backups, book.backups.backupFileName()).apply { writeText("copy") }
+        val name = BackupFiles.name(LocalDateTime.now(fixedClock))
+        val file = File(dirs.backups, name).apply { writeText("copy") }
         val vm = restore()
-        vm.refreshFiles()
-        assertEquals(listOf(file), vm.uiState.value.backups)
+        vm.refreshFiles().join()
+        assertEquals(listOf(file), vm.uiState.value.backups.map { it.file })
 
-        vm.deleteBackups(listOf(file)).join()
+        vm.deleteBackups(listOf(name)).join()
 
         assertFalse(file.exists())
         assertTrue(vm.uiState.value.backups.isEmpty())
@@ -77,5 +81,24 @@ class RestoreViewModelTest {
 
         vm.onResultHandled()
         assertNull(vm.uiState.value.result)
+    }
+
+    @Test
+    fun aPickedFileNamedLikeABackupWaitsForConfirmation() = runTest {
+        val uri = Uri.fromFile(File(dirs.temp, "Nexo(1).nexobak"))
+        val vm = restore()
+
+        vm.pickRestoreFile(uri).join()
+
+        assertEquals(BackupResult.RestorePicked(uri), vm.uiState.value.result)
+    }
+
+    @Test
+    fun aPickedFileThatIsNoBackupIsTurnedAway() = runTest {
+        val vm = restore()
+
+        vm.pickRestoreFile(Uri.fromFile(File(dirs.temp, "holiday.jpg"))).join()
+
+        assertEquals(BackupResult.NotABackup, vm.uiState.value.result)
     }
 }

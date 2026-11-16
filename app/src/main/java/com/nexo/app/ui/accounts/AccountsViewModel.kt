@@ -1,5 +1,6 @@
 package com.nexo.app.ui.accounts
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.period.DateRange
@@ -14,13 +15,14 @@ import com.nexo.app.domain.AccountFigure
 import com.nexo.app.domain.AccountsSummary
 import com.nexo.app.domain.AccountsSummaryCalculator
 import com.nexo.app.domain.Balances
+import com.nexo.app.ui.common.LocalDateSerializer
+import com.nexo.app.ui.common.savedStateFlow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -28,13 +30,19 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class AccountsMode { ALL, WEEKLY, MONTHLY, ANNUALLY, PERIOD }
 
+@Serializable
 data class AccountsQuery(
     val mode: AccountsMode = AccountsMode.ALL,
+    @Serializable(with = LocalDateSerializer::class)
     val anchor: LocalDate,
+    @Serializable(with = LocalDateSerializer::class)
     val from: LocalDate = anchor,
+    @Serializable(with = LocalDateSerializer::class)
     val to: LocalDate = anchor,
 )
 
@@ -63,14 +71,19 @@ class AccountsViewModel @Inject constructor(
     refs: ReferenceDataRepository,
     private val prefs: UserPreferencesRepository,
     private val clock: Clock,
+    savedState: SavedStateHandle,
 ) : ViewModel() {
-    /** Kept for event handlers that need the reference data synchronously. */
+    /**
+     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
+     * is current whenever the screen is there to call them.
+     */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
-        SharingStarted.Eagerly,
+        SharingStarted.WhileSubscribed(5_000),
         RefData(),
     )
-    private val query = MutableStateFlow(AccountsQuery(anchor = LocalDate.now(clock)))
+    private val query =
+        savedState.savedStateFlow("query", AccountsQuery(anchor = LocalDate.now(clock)))
 
     private val data = combine(ref, query, transactions.getChangeStampStream()) { r, q, _ ->
         r to q
@@ -90,7 +103,7 @@ class AccountsViewModel @Inject constructor(
             AccountsUiState(query = query.value),
         )
 
-    fun range(r: RefData, q: AccountsQuery): DateRange? {
+    private fun range(r: RefData, q: AccountsQuery): DateRange? {
         val e = r.settings.periods
         return when (q.mode) {
             AccountsMode.ALL -> null

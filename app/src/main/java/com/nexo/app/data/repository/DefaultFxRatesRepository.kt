@@ -14,7 +14,6 @@ import com.nexo.app.data.database.entity.asEntity
 import com.nexo.app.data.database.entity.asExternalModel
 import com.nexo.app.data.network.FxRatesNetworkDataSource
 import com.nexo.app.data.sms.RateChooser
-import com.nexo.app.data.sms.parser.BodyDate
 import java.time.Clock
 import java.time.Instant
 import javax.inject.Inject
@@ -67,8 +66,8 @@ class DefaultFxRatesRepository @Inject constructor(
         if (item.certainty != Certainty.ESTIMATED || item.actualAmount != null) return item
         val r = ref ?: refs.getRefData()
         val side = if (item.kind.isInflow) RateSide.BUY else RateSide.SELL
-        val day = Instant.ofEpochMilli(item.occurredAt).atZone(BodyDate.ZONE).toLocalDate()
-        val endOfDay = day.plusDays(1).atStartOfDay(BodyDate.ZONE).toInstant().toEpochMilli() - 1
+        val day = Instant.ofEpochMilli(item.occurredAt).atZone(Banks.ZONE).toLocalDate()
+        val endOfDay = day.plusDays(1).atStartOfDay(Banks.ZONE).toInstant().toEpochMilli() - 1
         var board =
             recent(
                 dao.boardAtOrBefore(item.currency, endOfDay).map(FxSnapshotEntity::asExternalModel),

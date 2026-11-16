@@ -1,5 +1,6 @@
 package com.nexo.app.ui.accounts
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.core.common.period.MonthPeriod
@@ -9,6 +10,7 @@ import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
+import com.nexo.app.ui.common.savedStateFlow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.time.Clock
@@ -16,7 +18,6 @@ import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -37,14 +38,18 @@ class TotalStatsViewModel @Inject constructor(
     refs: ReferenceDataRepository,
     private val transactions: TransactionsRepository,
     private val clock: Clock,
+    savedState: SavedStateHandle,
 ) : ViewModel() {
-    /** Kept for event handlers that need the reference data synchronously. */
+    /**
+     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
+     * is current whenever the screen is there to call them.
+     */
     private val ref = refs.getRefDataStream().stateIn(
         viewModelScope,
-        SharingStarted.Eagerly,
+        SharingStarted.WhileSubscribed(5_000),
         RefData(),
     )
-    private val anchor = MutableStateFlow(LocalDate.now(clock))
+    private val anchor = savedState.savedStateFlow("anchor", LocalDate.now(clock))
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<TotalStatsUiState> = combine(

@@ -1,7 +1,5 @@
 package com.nexo.app.ui.shell
 
-import android.app.Activity
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -48,7 +46,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -60,7 +57,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -70,7 +66,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexo.app.R
 import com.nexo.app.ui.accounts.AccountsTabRoute
-import com.nexo.app.ui.designsystem.LocalClock
 import com.nexo.app.ui.designsystem.component.BarItem
 import com.nexo.app.ui.designsystem.component.PillBottomBar
 import com.nexo.app.ui.designsystem.component.PillBottomBarHeight
@@ -124,21 +119,8 @@ val LocalShell = staticCompositionLocalOf { ShellController() }
 fun MainShellRoute(vm: MainShellViewModel = hiltViewModel()) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val nav = LocalNavigator.current
-    val context = LocalContext.current
-    val clock = LocalClock.current
-    var lastBack by remember { mutableLongStateOf(0L) }
-    val pressAgain = stringResource(R.string.press_back_again)
     MainShell(
         state = state,
-        onBack = {
-            val now = clock.millis()
-            if (now - lastBack < 5_000) {
-                (context as? Activity)?.finish()
-            } else {
-                lastBack = now
-                Toast.makeText(context, pressAgain, Toast.LENGTH_SHORT).show()
-            }
-        },
         onAddTransaction = { nav.navigate(EntryKey(fromAdd = true)) },
         onOpenSmsQueue = { nav.navigate(SmsQueueKey) },
         tabContent = { tab, todaySignal ->
@@ -154,12 +136,12 @@ fun MainShellRoute(vm: MainShellViewModel = hiltViewModel()) {
 
 /**
  * App shell with the four top-level tabs. Re-selecting a tab sends a "go to today" signal.
- * [onBack] runs for Back once the add menu is closed; [tabContent] draws a tab's page.
+ * [tabContent] draws a tab's page. Back is left to the system here, so it leaves the app with the
+ * predictive back-to-home animation; only the open add menu takes it.
  */
 @Composable
 internal fun MainShell(
     state: MainShellUiState,
-    onBack: () -> Unit,
     onAddTransaction: () -> Unit,
     onOpenSmsQueue: () -> Unit,
     tabContent: @Composable (tab: MainTab, todaySignal: Int) -> Unit,
@@ -175,13 +157,7 @@ internal fun MainShell(
     var addMenu by remember { mutableStateOf(false) }
     val haptics = rememberHaptics()
 
-    BackHandler {
-        if (addMenu) {
-            addMenu = false
-            return@BackHandler
-        }
-        onBack()
-    }
+    BackHandler(enabled = addMenu) { addMenu = false }
 
     val navInset: Dp = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     controller.bottomInset = PillBottomBarHeight + navInset + 8.dp
@@ -336,7 +312,6 @@ private fun AddMenuRow(icon: ImageVector, label: String, count: Int, onClick: ()
 private fun MainShellPreview() = NexoPreview {
     MainShell(
         state = MainShellUiState(QueueBadge(count = 3)),
-        onBack = {},
         onAddTransaction = {},
         onOpenSmsQueue = {},
         tabContent = { tab, _ ->

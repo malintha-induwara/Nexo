@@ -1,5 +1,6 @@
 package com.nexo.app.ui.stats
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexo.app.R
@@ -12,6 +13,8 @@ import com.nexo.app.core.model.TxKind
 import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.TransactionsRepository
 import com.nexo.app.domain.Classifier
+import com.nexo.app.ui.common.LocalDateSerializer
+import com.nexo.app.ui.common.savedStateFlow
 import com.nexo.app.ui.designsystem.UiText
 import com.nexo.app.ui.navigation.StatsDetailKind
 import com.nexo.app.ui.navigation.StatsScope
@@ -23,7 +26,6 @@ import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -31,6 +33,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.serialization.Serializable
 
 data class StatsRow(
     val key: String?,
@@ -50,10 +53,14 @@ data class StatsData(
     val expenseTotal: Double get() = expense.sumOf { it.amount }
 }
 
+@Serializable
 data class StatsQuery(
     val scope: StatsScope = StatsScope.MONTHLY,
+    @Serializable(with = LocalDateSerializer::class)
     val anchor: LocalDate,
+    @Serializable(with = LocalDateSerializer::class)
     val from: LocalDate = anchor,
+    @Serializable(with = LocalDateSerializer::class)
     val to: LocalDate = anchor,
 )
 
@@ -159,15 +166,20 @@ class StatsViewModel @Inject constructor(
     refs: ReferenceDataRepository,
     transactions: TransactionsRepository,
     private val clock: Clock,
+    savedState: SavedStateHandle,
 ) : ViewModel() {
-    /** Kept for event handlers that need the reference data synchronously. */
+    /**
+     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
+     * is current whenever the screen is there to call them.
+     */
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
-        SharingStarted.Eagerly,
+        SharingStarted.WhileSubscribed(5_000),
         RefData(),
     )
-    private val query = MutableStateFlow(StatsQuery(anchor = LocalDate.now(clock)))
-    private val income = MutableStateFlow(false)
+    private val query =
+        savedState.savedStateFlow("query", StatsQuery(anchor = LocalDate.now(clock)))
+    private val income = savedState.savedStateFlow("income", false)
 
     private val data = combine(ref, query) { r, q -> r to q }.flatMapLatest { (r, q) ->
         val range = scopeRange(r.settings.periods, q)
@@ -182,6 +194,7 @@ class StatsViewModel @Inject constructor(
             SharingStarted.WhileSubscribed(5_000),
             StatsUiState(
                 query = query.value,
+                income = income.value,
                 data = StatsData(LocalDate.now(clock).let { DateRange(it, it) }),
             ),
         )

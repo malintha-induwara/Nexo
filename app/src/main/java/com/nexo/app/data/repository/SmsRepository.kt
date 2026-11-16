@@ -5,11 +5,11 @@ import com.nexo.app.core.model.FeeChoice
 import com.nexo.app.core.model.FeeMode
 import com.nexo.app.core.model.FeePreset
 import com.nexo.app.core.model.FeeRoute
+import com.nexo.app.core.model.IncomingSms
 import com.nexo.app.core.model.RefData
 import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsSource
 import com.nexo.app.core.model.SmsStatus
-import com.nexo.app.data.sms.IncomingSms
 import kotlinx.coroutines.flow.Flow
 
 /**

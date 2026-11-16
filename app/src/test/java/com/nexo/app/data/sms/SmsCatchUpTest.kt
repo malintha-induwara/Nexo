@@ -6,12 +6,13 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.nexo.app.core.common.money.CurrencyCatalog
+import com.nexo.app.core.model.IncomingSms
+import com.nexo.app.core.model.SmsMessage
 import com.nexo.app.data.database.BookSeeder
 import com.nexo.app.data.database.NexoDatabase
 import com.nexo.app.data.database.entity.asExternalModel
 import com.nexo.app.data.repository.DefaultSmsInboxRepository
 import com.nexo.app.data.repository.UserPreferencesRepository
-import com.nexo.app.data.sms.parser.SmsMessage
 import com.nexo.app.testing.fxRatesRepository
 import com.nexo.app.testing.referenceDataRepository
 import com.nexo.app.testing.smsRepository

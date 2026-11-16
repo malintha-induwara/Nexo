@@ -97,7 +97,7 @@ fun EntryRoute(key: EntryKey) {
     }
     val scanner = rememberReceiptScanner(
         onScanned = vm::scanReceipt,
-        isSupported = vm::isPhotoSupported,
+        onPicked = vm::scanPickedPhoto,
         onUnavailable = { dialogs.scanMenu = true },
     )
     val actions = remember(vm, nav, scanner) { entryActions(vm, nav, scanner) }
@@ -153,15 +153,9 @@ private fun entryActions(vm: EntryViewModel, nav: Navigator, scanner: ReceiptSca
         clearRepInst = vm::clearRepInst,
         setTags = vm::setTags,
         removeTag = vm::removeTag,
-        tags = TagActions(
-            vm::addTag,
-            vm::renameTag,
-            vm::tagUsageCount,
-            vm::deleteTag,
-            vm::reorderTags,
-        ),
-        photoFile = vm::photoFile,
+        tags = vm.tagActions,
         exportPhoto = vm::exportPhoto,
+        onPhotoExportShown = vm::onPhotoExportShown,
         removePhoto = vm::removePhoto,
         save = vm::save,
         confirmRepeatSave = vm::confirmRepeatSave,

@@ -6,7 +6,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import com.nexo.app.ui.designsystem.preview.NexoPreview
 import com.nexo.app.ui.designsystem.preview.PreviewData
-import com.nexo.app.ui.transactions.BulkEditActions
+import com.nexo.app.ui.transactionlist.BulkEditActions
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

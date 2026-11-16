@@ -48,7 +48,6 @@ class AppearanceScreensTest {
                 ReminderScreen(
                     state = ReminderUiState(PreviewData.device),
                     is24Hour = false,
-                    canScheduleExactAlarms = { true },
                     onBack = {},
                     onAlarm = { events += it },
                     onSetReminder = { _, _, _, _ -> },
@@ -73,7 +72,8 @@ class AppearanceScreensTest {
                     onBiometrics = {},
                     onLockTimeout = {},
                     onSetPin = {},
-                    isCurrentPin = { false },
+                    onCheckPin = {},
+                    onPinCheckHandled = {},
                     onLockNow = { locked = true },
                 )
             }

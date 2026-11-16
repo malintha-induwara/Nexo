@@ -39,13 +39,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -55,14 +53,12 @@ import com.nexo.app.R
 import com.nexo.app.core.model.PhotoItem
 import com.nexo.app.core.model.RepeatType
 import com.nexo.app.core.model.Tag
-import com.nexo.app.data.repository.TagResult
-import com.nexo.app.data.repository.TagsRepository
-import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.MessageDialog
-import com.nexo.app.ui.designsystem.component.TextFieldDialog
 import com.nexo.app.ui.designsystem.theme.nexo
+import com.nexo.app.ui.tags.TagActions
+import com.nexo.app.ui.tags.TagDialog
+import com.nexo.app.ui.tags.TagDialogs
 import java.io.File
-import kotlinx.coroutines.launch
 
 @Composable
 fun repeatLabel(t: RepeatType): String = stringResource(
@@ -90,19 +86,22 @@ fun repeatLabel(t: RepeatType): String = stringResource(
 fun TagSelectSheet(
     tags: List<Tag>,
     initial: List<String>,
+    dialog: TagDialog?,
     actions: TagActions,
     onDone: (List<String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-    var selected by remember { mutableStateOf(initial) }
-    var editMode by remember { mutableStateOf(false) }
-    var adding by remember { mutableStateOf(false) }
-    var renaming by remember { mutableStateOf<Tag?>(null) }
-    var deleting by remember { mutableStateOf<Tag?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
-    val exists = stringResource(R.string.tag_exists)
     val live = tags.filter { !it.isDeleted }
+    var picked by remember { mutableStateOf(initial) }
+    var editMode by remember { mutableStateOf(false) }
+    // A tag added from this sheet is checked as soon as it appears in the list.
+    var known by remember { mutableStateOf(live.map { it.id }.toSet()) }
+    LaunchedEffect(live) {
+        val ids = live.map { it.id }.toSet()
+        picked = picked + (ids - known)
+        known = ids
+    }
+    val selected = picked.filter { it in known }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -117,9 +116,9 @@ fun TagSelectSheet(
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(onClick = {
-                    adding = true
-                }) { Icon(Icons.Filled.Add, stringResource(R.string.add_tag)) }
+                IconButton(onClick = actions.startAdd) {
+                    Icon(Icons.Filled.Add, stringResource(R.string.add_tag))
+                }
                 IconButton(onClick = {
                     editMode = !editMode
                 }) { Icon(Icons.Outlined.Edit, stringResource(R.string.action_edit)) }
@@ -136,9 +135,9 @@ fun TagSelectSheet(
                     Row(
                         Modifier.fillMaxWidth().clickable {
                             if (editMode) {
-                                renaming = tag
+                                actions.startRename(tag)
                             } else {
-                                selected =
+                                picked =
                                     if (tag.id in selected) selected - tag.id else selected + tag.id
                             }
                         }.padding(horizontal = 8.dp),
@@ -166,37 +165,19 @@ fun TagSelectSheet(
                         }
                         if (editMode) {
                             IconButton(onClick = {
-                                scope.launch {
-                                    actions.reorder(
-                                        live.map { it.id }.toMutableList().apply {
-                                            if (index > 0) {
-                                                add(index - 1, removeAt(index))
-                                            }
-                                        },
-                                    )
-                                }
+                                actions.move(index, -1)
                             }, enabled = index > 0) {
                                 Icon(Icons.Filled.ArrowUpward, stringResource(R.string.move_up))
                             }
                             IconButton(
-                                onClick = {
-                                    scope.launch {
-                                        actions.reorder(
-                                            live.map { it.id }.toMutableList().apply {
-                                                if (index < size - 1) {
-                                                    add(index + 1, removeAt(index))
-                                                }
-                                            },
-                                        )
-                                    }
-                                },
+                                onClick = { actions.move(index, 1) },
                                 enabled =
                                     index < live.size - 1,
                             ) {
                                 Icon(Icons.Filled.ArrowDownward, stringResource(R.string.move_down))
                             }
                             IconButton(onClick = {
-                                deleting = tag
+                                actions.requestDelete(tag)
                             }) {
                                 Icon(Icons.Outlined.Delete, stringResource(R.string.action_delete))
                             }
@@ -207,100 +188,20 @@ fun TagSelectSheet(
             Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
                 TextButton(onClick = {
-                    onDone(selected.filter { id -> live.any { it.id == id } })
+                    onDone(selected)
                     onDismiss()
                 }) { Text(stringResource(R.string.action_ok)) }
             }
         }
     }
-    if (adding) {
-        TextFieldDialog(
-            title = stringResource(R.string.add_tag),
-            initial = "",
-            maxLength = TagsRepository.MAX_LENGTH,
-            error = error,
-            filter = TagsRepository::filter,
-            onConfirm = { name ->
-                scope.launch {
-                    when (val r = actions.add(name)) {
-                        is TagResult.Ok -> {
-                            adding = false
-                            error = null
-                            selected = selected + r.id
-                        }
-
-                        TagResult.Exists -> error = exists
-
-                        TagResult.Empty -> adding = false
-                    }
-                }
-            },
-            onDismiss = {
-                adding = false
-                error = null
-            },
-        )
-    }
-    renaming?.let { tag ->
-        TextFieldDialog(
-            title = stringResource(R.string.rename_tag),
-            initial = tag.name,
-            maxLength = TagsRepository.MAX_LENGTH,
-            error = error,
-            filter = TagsRepository::filter,
-            onConfirm = { name ->
-                scope.launch {
-                    when (actions.rename(tag.id, name)) {
-                        is TagResult.Ok -> {
-                            renaming = null
-                            error = null
-                        }
-
-                        TagResult.Exists -> error = exists
-
-                        TagResult.Empty -> renaming = null
-                    }
-                }
-            },
-            onDismiss = {
-                renaming = null
-                error = null
-            },
-        )
-    }
-    deleting?.let { tag ->
-        var used by remember(tag.id) { mutableStateOf<Int?>(null) }
-        LaunchedEffect(tag.id) { used = actions.usageCount(tag.id) }
-        when (used) {
-            null -> Unit
-
-            0 -> LaunchedEffect(Unit) {
-                actions.delete(tag.id)
-                selected = selected - tag.id
-                deleting = null
-            }
-
-            else -> ConfirmDialog(
-                message = stringResource(R.string.tag_in_use_delete),
-                onConfirm = {
-                    scope.launch {
-                        actions.delete(tag.id)
-                        selected = selected - tag.id
-                    }
-                },
-                onDismiss = { deleting = null },
-                confirmText = stringResource(R.string.action_ok),
-                dismissText = stringResource(R.string.action_cancel),
-            )
-        }
-    }
+    TagDialogs(dialog, actions)
 }
 
 /** Up to three thumbnails with remove icons. */
 @Composable
 fun PhotoThumbs(
     photos: List<PhotoItem>,
-    photoFile: (String) -> File,
+    photoFiles: Map<String, File>,
     removable: Boolean,
     onOpen: (Int) -> Unit,
     onRemove: (Int) -> Unit,
@@ -311,7 +212,7 @@ fun PhotoThumbs(
             Box(Modifier.size(72.dp)) {
                 AsyncImage(
                     model = when (p) {
-                        is PhotoItem.Stored -> photoFile(p.fileName)
+                        is PhotoItem.Stored -> photoFiles[p.fileName]
                         is PhotoItem.Picked -> p.uri
                     },
                     contentDescription = null,
@@ -339,19 +240,21 @@ fun PhotoThumbs(
     }
 }
 
-/** Full-screen photo pager with export for saved photos. */
+/**
+ * Full-screen photo pager with export for saved photos. [exported] is whether the last export to
+ * the gallery worked, shown until [onExportShown].
+ */
 @Composable
 fun PhotoViewer(
     photos: List<PhotoItem>,
     start: Int,
-    photoFile: (String) -> File,
-    onExport: suspend (String) -> Boolean,
+    photoFiles: Map<String, File>,
+    exported: Boolean?,
+    onExport: (fileName: String) -> Unit,
+    onExportShown: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val pager = rememberPagerState(initialPage = start) { photos.size }
-    val scope = rememberCoroutineScope()
-    var savedMessage by remember { mutableStateOf<Boolean?>(null) }
-    LocalContext.current
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -361,7 +264,7 @@ fun PhotoViewer(
                 val p = photos[page]
                 AsyncImage(
                     model = when (p) {
-                        is PhotoItem.Stored -> photoFile(p.fileName)
+                        is PhotoItem.Stored -> photoFiles[p.fileName]
                         is PhotoItem.Picked -> p.uri
                     },
                     contentDescription = null,
@@ -372,9 +275,7 @@ fun PhotoViewer(
             Row(Modifier.align(Alignment.TopEnd)) {
                 val current = photos.getOrNull(pager.currentPage)
                 if (current is PhotoItem.Stored) {
-                    IconButton(onClick = {
-                        scope.launch { savedMessage = onExport(current.fileName) }
-                    }) {
+                    IconButton(onClick = { onExport(current.fileName) }) {
                         Icon(
                             Icons.Outlined.Download,
                             stringResource(R.string.save_to_gallery),
@@ -407,12 +308,10 @@ fun PhotoViewer(
             }
         }
     }
-    savedMessage?.let { ok ->
+    exported?.let { ok ->
         MessageDialog(
             stringResource(if (ok) R.string.saved else R.string.save_failed),
-            onDismiss = {
-                savedMessage = null
-            },
+            onDismiss = onExportShown,
         )
     }
 }

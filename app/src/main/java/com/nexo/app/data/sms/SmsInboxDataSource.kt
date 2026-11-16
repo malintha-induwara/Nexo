@@ -4,15 +4,14 @@ import android.content.Context
 import android.provider.Telephony
 import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
-import com.nexo.app.data.sms.parser.SmsMessage
+import com.nexo.app.core.model.IncomingSms
+import com.nexo.app.core.model.SmsMessage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
 /** Reads the SMS inbox (READ_SMS). Oldest first. */
-@Singleton
 open class SmsInboxDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,

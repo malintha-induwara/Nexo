@@ -10,8 +10,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import android.provider.OpenableColumns
-import android.webkit.MimeTypeMap
 import com.nexo.app.core.common.Dispatcher
 import com.nexo.app.core.common.NexoDispatchers
 import com.nexo.app.core.model.StoredPhoto
@@ -22,42 +20,30 @@ import java.security.MessageDigest
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
 /** Photo files in the private photo folder, plus the shared gallery export. Knows nothing about which rows use them. */
-@Singleton
 class PhotoFileDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dirs: AppDirs,
+    private val picked: PickedFileDataSource,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     fun file(fileName: String): File = File(dirs.photos, fileName)
 
-    fun displayName(uri: Uri): String? = runCatching {
-        context.contentResolver.query(
-            uri,
-            arrayOf(OpenableColumns.DISPLAY_NAME),
-            null,
-            null,
-            null,
-        )?.use { c ->
-            if (c.moveToFirst()) c.getString(0) else null
+    suspend fun files(fileNames: Collection<String>): Map<String, File> = if (fileNames.isEmpty()) {
+        emptyMap()
+    } else {
+        withContext(ioDispatcher) {
+            val dir = dirs.photos
+            fileNames.associateWith { File(dir, it) }
         }
-    }.getOrNull() ?: uri.lastPathSegment
-
-    fun extensionOf(uri: Uri): String? {
-        val name = displayName(uri)
-        val ext = name?.substringAfterLast('.', "")?.lowercase(Locale.ROOT)?.takeIf {
-            it.isNotEmpty()
-        }
-        if (ext != null) return ext
-        val mime = context.contentResolver.getType(uri) ?: return null
-        return MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)
     }
 
-    fun isSupported(uri: Uri): Boolean = extensionOf(uri)?.let { it in SUPPORTED } ?: true
+    suspend fun extensionOf(uri: Uri): String? = picked.extensionOf(uri)
+
+    suspend fun isSupported(uri: Uri): Boolean = extensionOf(uri)?.let { it in SUPPORTED } ?: true
 
     suspend fun canRead(uri: Uri): Boolean = withContext(ioDispatcher) {
         runCatching { context.contentResolver.openFileDescriptor(uri, "r")?.use { true } }

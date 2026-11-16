@@ -77,8 +77,8 @@ import com.nexo.app.ui.navigation.BudgetEditorKey
 import com.nexo.app.ui.navigation.EntryKey
 import com.nexo.app.ui.navigation.EntryMode
 import com.nexo.app.ui.navigation.LocalNavigator
-import com.nexo.app.ui.transactions.CategoryPickerDialog
-import com.nexo.app.ui.transactions.DayGroupList
+import com.nexo.app.ui.transactionlist.CategoryPickerDialog
+import com.nexo.app.ui.transactionlist.DayGroupList
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlin.math.abs

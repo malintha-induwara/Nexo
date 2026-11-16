@@ -41,7 +41,7 @@ class MainActivity : AppCompatActivity() {
                 }.distinctUntilChanged().collect(::syncSystemNightMode)
             }
         }
-        if (savedInstanceState == null) app.setPending(IntentRouter.route(intent))
+        if (!app.launchHandled) app.setPending(IntentRouter.route(intent))
         setContent {
             NexoApp(app = app, clock = clock)
         }
