@@ -8,7 +8,7 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 
-/** Inclusive date range. */
+// Both ends inclusive.
 data class DateRange(val start: LocalDate, val end: LocalDate) {
     operator fun contains(date: LocalDate): Boolean = !date.isBefore(start) && !date.isAfter(end)
     val startText: String get() = start.toIsoText()
@@ -21,22 +21,19 @@ data class DateRange(val start: LocalDate, val end: LocalDate) {
     }
 }
 
-/** A month period named after one calendar month (its label). */
+// [label] is the calendar month the period is named after.
 data class MonthPeriod(val range: DateRange, val label: YearMonth) {
     val start: LocalDate get() = range.start
     val end: LocalDate get() = range.end
 
-    /** Budget month key: year * 100 + month. */
+    // Budget month key: year * 100 + month.
     val key: Int get() = label.year * 100 + label.monthValue
 }
 
 fun LocalDate.toIsoText(): String = format(DateTimeFormatter.ISO_LOCAL_DATE)
 fun String.toLocalDate(): LocalDate = LocalDate.parse(this)
 
-/**
- * Accounting periods.
- * [startDay] is the month start day S (1–31), [weekendRule] the weekend adjustment W.
- */
+// [startDay] is the day accounting months start on (1–31).
 class PeriodEngine(
     startDay: Int,
     private val weekendRule: WeekendRule = WeekendRule.NONE,
@@ -94,7 +91,6 @@ class PeriodEngine(
     private fun rawPeriod(d: LocalDate): DateRange =
         DateRange(adjustStart(nominalStart(d)), adjustEnd(nominalEnd(d)))
 
-    /** The month period containing [date]. */
     fun monthPeriodContaining(date: LocalDate): MonthPeriod {
         var range = rawPeriod(date)
         if (date.isBefore(range.start)) {
@@ -117,7 +113,6 @@ class PeriodEngine(
     fun previous(period: MonthPeriod): MonthPeriod =
         monthPeriodContaining(period.start.minusDays(10))
 
-    /** The period labelled [month]. */
     fun monthPeriodFor(month: YearMonth): MonthPeriod {
         val base = if (s != 1 && s >= 20) month.minusMonths(1) else month
         val probe = base.atDay(1).plusDays((s + 10 - 1).toLong())
@@ -130,7 +125,6 @@ class PeriodEngine(
         }
     }
 
-    /** The twelve periods labelled January…December of [year]. */
     fun yearPeriods(year: Int): List<MonthPeriod> =
         (1..12).map { monthPeriodFor(YearMonth.of(year, it)) }
 
@@ -139,7 +133,6 @@ class PeriodEngine(
         monthPeriodFor(YearMonth.of(year, 12)).end,
     )
 
-    /** Year whose year-range contains [date]. */
     fun yearOf(date: LocalDate): Int = monthPeriodContaining(date).label.year
 
     fun weekContaining(date: LocalDate): DateRange {

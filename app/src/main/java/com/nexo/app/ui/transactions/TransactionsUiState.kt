@@ -43,7 +43,6 @@ data class MonthRow(
 
 data class RepeatPreview(val dates: List<LocalDate>, val names: List<String>, val amount: Double)
 
-/** Accounts card of the Total page. */
 data class TotalSummary(
     val comparedPercent: Int,
     val cashLabel: String,
@@ -68,7 +67,7 @@ data class HomeData(
     val totals: InOut = InOut(),
     val memos: List<Memo> = emptyList(),
     val summary: TotalSummary? = null,
-    /** Unfiltered rows of the displayed period, used by the filter panel and the day sheet. */
+    // Unfiltered, for the filter panel and the day sheet.
     val periodRows: List<Transaction> = emptyList(),
     val gridRows: List<Transaction> = emptyList(),
     val carryOver: Double = 0.0,
@@ -77,19 +76,18 @@ data class HomeData(
 
 data class TransactionsUiState(
     val ref: RefData = RefData(),
-    /** Null until the reference data says which sub-tab the book starts on. */
+    // Null until the reference data says which sub-tab the book starts on.
     val tab: SubTab? = null,
     val data: HomeData,
     val selectedDate: LocalDate,
     val filter: FilterCriteria = FilterCriteria(),
     val filterOpen: Boolean = false,
     val selection: Set<String> = emptySet(),
-    /** Day the Daily list scrolls to once; cleared with [TransactionsViewModel.onFocusHandled]. */
+    // Scrolled to once; cleared with [TransactionsViewModel.onFocusHandled].
     val focusDate: LocalDate? = null,
-    /** Row the entry form just saved, for its highlight. */
+    // Row the entry form just saved, for its highlight.
     val lastSaved: String? = null,
-    /** Memo the editor just saved, for its highlight. */
+    // Memo the editor just saved, for its highlight.
     val savedMemo: String? = null,
-    /** Budgets for the Total page's period. */
     val budgetBlock: BudgetBlockData? = null,
 )

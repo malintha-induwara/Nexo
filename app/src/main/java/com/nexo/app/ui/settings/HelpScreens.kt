@@ -117,7 +117,7 @@ fun HelpPageRoute(key: HelpPageKey) {
     HelpPageScreen(page = key.page, onBack = nav::back)
 }
 
-/** Offline page viewer: shows only pages shipped in the app and blocks every network load. */
+// Shows only pages shipped in the app and blocks every network load.
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 internal fun HelpPageScreen(page: String, onBack: () -> Unit) {

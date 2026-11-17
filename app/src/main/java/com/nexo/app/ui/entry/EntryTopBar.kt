@@ -32,7 +32,7 @@ import com.nexo.app.ui.designsystem.theme.Space
 import com.nexo.app.ui.navigation.EntryMode
 import java.util.Locale
 
-/** Close, the type switch, and revert or bookmarks; under it, the kind of entry when it is not a plain one. */
+// Under the bar, the kind of entry when it is not a plain one.
 @Composable
 internal fun EntryTopBar(
     s: EntryForm,
@@ -49,7 +49,6 @@ internal fun EntryTopBar(
         s.repeatMode -> stringResource(R.string.repeat)
         else -> null
     }
-    // Top: close, type, bookmarks / revert.
     Row(
         Modifier.fillMaxWidth().height(60.dp).padding(horizontal = Space.m),
         verticalAlignment = Alignment.CenterVertically,

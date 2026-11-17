@@ -66,13 +66,10 @@ import kotlinx.coroutines.launch
 @Immutable
 data class BarItem(val label: String, val icon: ImageVector, val selectedIcon: ImageVector)
 
-/** Height the bar occupies above the navigation bar inset, including its outer margin. */
+// Above the navigation bar inset, including the outer margin.
 val PillBottomBarHeight = Sizes.bottomBar + Space.m * 2
 
-/**
- * Floating pill bar: two tabs, the add button, two tabs. A rounded highlight slides to the selected
- * tab. The area behind the bar fades to the page background so list content can scroll under it.
- */
+// The area behind the bar fades to the page background so list content can scroll under it.
 @Composable
 fun PillBottomBar(
     items: List<BarItem>,
@@ -81,7 +78,7 @@ fun PillBottomBar(
     onAdd: () -> Unit,
     addLabel: String,
     modifier: Modifier = Modifier,
-    /** Holding the add button; [addLongPressLabel] names it for accessibility services. */
+    // [addLongPressLabel] names it for accessibility services.
     onAddLongPress: (() -> Unit)? = null,
     addLongPressLabel: String? = null,
 ) {
@@ -109,7 +106,7 @@ fun PillBottomBar(
         }
     }
     val barColor = if (colors.isDark) colors.raised else colors.surface
-    // A wash of the text colour rather than the next grey step, which is barely visible on the dark bar.
+    // A wash of the text colour: the next grey step is barely visible on the dark bar.
     val thumbColor = colors.text.copy(alpha = if (colors.isDark) 0.10f else 0.07f)
 
     Box(
@@ -156,9 +153,8 @@ fun PillBottomBar(
                         .background(thumbColor),
                 )
             }
-            // Tabs are sized by their labels and the highlight hugs the label, so a long one ("Accounts", or any label at
-            // a large font size) stays inside it. The add button stays centred while both sides fit; when space is
-            // tight the label padding and then the add slot give way before any label is shortened.
+            // The highlight hugs each label so long ones stay inside it. When space is tight the
+            // label padding and then the add slot give way before any label is shortened.
             Layout(
                 modifier = Modifier.fillMaxSize().selectableGroup(),
                 content = {
@@ -263,7 +259,6 @@ fun PillBottomBar(
 
 private val THUMB_INSET = 5.dp
 
-/** Padding between a tab's label and the edge of its highlight. */
 private val TAB_PADDING = 12.dp
 private val MIN_TAB_PADDING = 5.dp
 private val ADD_SLOT = 64.dp

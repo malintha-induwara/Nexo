@@ -10,26 +10,22 @@ import com.nexo.app.core.model.TxDraft
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 
-/**
- * The ledger: every income, expense, transfer, fee and balance adjustment. Writes keep the integrity rules
- * (both transfer legs, fee rows, installment groups, tags and photos).
- */
+// The ledger. Writes keep the integrity rules: both transfer legs, fee rows,
+// installment groups, tags and photos.
 interface TransactionsRepository {
-    // Streams
     fun getLedgerStream(range: DateRange): Flow<Ledger>
 
-    /** Rows of [accountIds] (either side) within [range]. */
+    // Rows of [accountIds] on either side within [range].
     fun getAccountsLedgerStream(accountIds: List<String>, range: DateRange): Flow<Ledger>
 
-    /** Rows with no account (the "None" pseudo-account). */
+    // Rows with no account (the "None" pseudo-account).
     fun getUnassignedLedgerStream(): Flow<Ledger>
 
-    /** Changes whenever a row is added, removed or updated; for screens that recompute from one-shot reads. */
+    // Ticks on every row change; for screens that recompute from one-shot reads.
     fun getChangeStampStream(): Flow<Long>
 
     fun getAggregatesUpToStream(end: String): Flow<List<TxAggregate>>
 
-    // One-shot reads
     suspend fun getTransaction(id: String): Transaction?
 
     suspend fun getTransferLegs(transferGroupId: String): List<Transaction>
@@ -38,7 +34,7 @@ interface TransactionsRepository {
 
     suspend fun getFeeRow(feeGroupId: String): Transaction?
 
-    /** Tag ids of one transaction, in display order. */
+    // In display order.
     suspend fun getTagIds(transactionId: String): List<String>
 
     suspend fun getPhotos(transactionId: String): List<Photo>
@@ -49,7 +45,7 @@ interface TransactionsRepository {
 
     suspend fun getWithoutAccount(): List<Transaction>
 
-    /** Income/expense rows missing a category or an account, dated on or before [upTo]. */
+    // Income/expense rows missing a category or account, dated on or before [upTo].
     suspend fun getUnassigned(upTo: String): List<Transaction>
 
     suspend fun getRange(start: String, end: String): List<Transaction>
@@ -69,18 +65,16 @@ interface TransactionsRepository {
 
     suspend fun getAggregatesBefore(before: String): List<TxAggregate>
 
-    /** Tag links and photo flags for already loaded rows. */
+    // Tag links and photo flags for rows already loaded.
     suspend fun getLedgerFor(rows: List<Transaction>): Ledger
 
-    // Writes
-
-    /** Saves the draft and returns the primary row id. */
+    // Returns the primary row id.
     suspend fun save(draft: TxDraft): String
 
-    /** The bank-fee category's id, created on first use. */
+    // Created on first use.
     suspend fun bankFeeCategory(): String
 
-    /** Adds a fee row under [parentId]; returns its id, or null when the parent is gone. */
+    // Null when the parent is gone.
     suspend fun addFee(parentId: String, amount: Double, note: String? = null): String?
 
     suspend fun delete(ids: Collection<String>, wholeInstallmentGroup: Boolean = false)

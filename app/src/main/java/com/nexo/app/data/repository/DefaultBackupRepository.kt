@@ -27,7 +27,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.withContext
 
-/** Backup / restore of the finance database. Backups are plain copies of the database file. */
+// Backups are plain copies of the database file.
 class DefaultBackupRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: NexoDatabase,
@@ -40,14 +40,14 @@ class DefaultBackupRepository @Inject constructor(
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
     private val clock: Clock,
 ) : BackupRepository {
-    /** Flushes the WAL so the main file is a consistent copy. */
+    // Flushes the WAL so the main file is a consistent copy.
     private fun checkpoint() {
         db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(TRUNCATE)").use {
             it.moveToFirst()
         }
     }
 
-    /** A half-written file would look like a backup, so the copy is not cut short. */
+    // Runs to completion: a half-written file would look like a backup.
     override suspend fun writeBackup(target: Uri): Boolean = scope.runToCompletion {
         withContext(ioDispatcher) {
             runCatching {
@@ -70,13 +70,12 @@ class DefaultBackupRepository @Inject constructor(
         }.getOrDefault(false)
     }
 
-    /** Copy in the temp folder for the share sheet. */
     override suspend fun shareCopy(): File? = withContext(ioDispatcher) {
         val f = File(dirs.temp, "nexo_backup.${BackupFiles.EXTENSION}")
         if (writeBackup(f)) f else null
     }
 
-    /** Automatic daily backup: keeps the 14 newest files. */
+    // Keeps the 14 newest files.
     override suspend fun autoBackup(): Boolean = withContext(ioDispatcher) {
         val ok = writeBackup(File(dirs.backups, BackupFiles.name(LocalDateTime.now(clock))))
         if (ok) {
@@ -157,7 +156,7 @@ class DefaultBackupRepository @Inject constructor(
         }
     }.getOrDefault(BackupFormat.UNKNOWN)
 
-    /** Replaces every Nexo table with the backup's rows (same schema; columns are intersected for safety). */
+    // Same schema; columns are intersected for safety.
     private suspend fun copyNexo(file: File) {
         val src = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY)
         src.use { source ->
@@ -215,7 +214,7 @@ class DefaultBackupRepository @Inject constructor(
             "tags",
             "photos",
             "repeat_rules", "favorites", "budgets", "budget_amounts", "memos", "settings",
-            // Bank SMS capture. OTP hints and the record of messages already taken in are transient and stay out.
+            // Bank SMS capture; OTP hints and seen-message hashes are transient and stay out.
             "sms_items", "sms_sources", "sms_merchant_rules", "fee_presets", "fx_snapshots",
         )
     }

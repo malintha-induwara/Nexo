@@ -74,7 +74,6 @@ fun timeDisplayLabel(t: TimeDisplay) = stringResource(
     },
 )
 
-/** What the configuration screen can do; each action defaults to nothing. */
 class ConfigurationActions(
     val onBack: () -> Unit = {},
     val onCategories: (CategoryKind) -> Unit = {},
@@ -135,7 +134,7 @@ fun ConfigurationRoute(vm: ConfigurationViewModel = hiltViewModel()) {
     )
 }
 
-/** [languageTag] is the in-app language, empty when the app follows the system. */
+// languageTag is empty when the app follows the system language.
 @Composable
 internal fun ConfigurationScreen(
     state: ConfigurationUiState,
@@ -518,7 +517,7 @@ private fun languageLabel(tag: String): String = stringResource(
     }?.second ?: R.string.language_system,
 )
 
-/** In-app language via per-app locales. Only bundled translations are listed. */
+// Per-app locales; only bundled translations are listed.
 @Composable
 private fun LanguageDialog(
     current: String,

@@ -17,7 +17,6 @@ import kotlinx.coroutines.launch
 
 data class DeletedItemsUiState(val ref: RefData = RefData())
 
-/** Deleted accounts and groups: restore them or remove them for good. */
 @HiltViewModel
 class DeletedItemsViewModel @Inject constructor(
     private val repo: AccountsRepository,

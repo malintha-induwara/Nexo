@@ -5,7 +5,6 @@ import com.nexo.app.core.model.AccountStatus
 import com.nexo.app.core.model.GroupStatus
 import com.nexo.app.core.model.GroupType
 
-/** Accounts and account groups. */
 interface AccountsRepository {
     suspend fun saveGroup(id: String?, name: String, type: GroupType)
 
@@ -15,12 +14,12 @@ interface AccountsRepository {
 
     suspend fun nextAccountOrder(): Int
 
-    /** Saves an account; a currency change re-derives account amounts of its rows and linked debit cards. */
+    // A currency change re-derives the account amounts of its rows and linked debit cards.
     suspend fun saveAccount(account: Account)
 
     suspend fun setStatus(id: String, status: AccountStatus)
 
-    /** Order = position in the whole list, group may change. */
+    // Order is the position in the whole list; the group may change.
     suspend fun reorderAccounts(order: List<Pair<String, String>>)
 
     suspend fun setTransferExpense(id: String, flag: Boolean)

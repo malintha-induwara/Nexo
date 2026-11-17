@@ -5,7 +5,7 @@ import java.math.RoundingMode
 import kotlin.math.abs
 
 object Money {
-    /** Half-up rounding to [decimals] digits, done in decimal arithmetic so binary noise never flips a digit. */
+    // Decimal arithmetic, so binary noise never flips a digit.
     fun round(value: Double, decimals: Int): Double {
         if (value.isNaN() || value.isInfinite()) return 0.0
         return BigDecimal.valueOf(

@@ -14,11 +14,11 @@ import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 
 /**
- * Debug builds only. The real SMS_RECEIVED broadcast can't be sent from adb, so this feeds a message into the same
- * intake (switch and start point still apply; the SMS permission check is skipped):
+ * adb can't send SMS_RECEIVED, so this feeds a message into the same intake, minus the
+ * permission check:
  *
  *     adb shell am broadcast -n com.nexo.app/.system.DebugSmsReceiver \
- *       --es sender COMBANK --es body "Dear Cardholder, Purchase at ..."   [--el timestamp <epoch ms>]
+ *       --es sender COMBANK --es body "Dear Cardholder, ..." [--el timestamp <epoch ms>]
  *     adb logcat -s DebugSmsReceiver
  */
 @AndroidEntryPoint
@@ -39,7 +39,7 @@ class DebugSmsReceiver : BroadcastReceiver() {
             val changed = sms.receive(
                 listOf(IncomingSms(SmsMessage(sender, body, timestamp), now)),
             )
-            // Plain (non-ordered) broadcasts can't carry a result back; read it with `adb logcat -s DebugSmsReceiver`.
+            // Plain broadcasts can't carry a result back, so it goes to logcat.
             Log.i("DebugSmsReceiver", "queue items changed: $changed")
         }
     }

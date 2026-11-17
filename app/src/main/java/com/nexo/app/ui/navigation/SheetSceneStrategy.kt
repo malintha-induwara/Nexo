@@ -47,21 +47,13 @@ import com.nexo.app.ui.designsystem.theme.NexoShapes
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
-/**
- * Shows a destination as a drawer: it slides up from the bottom over the previous screen, which
- * stays visible and dimmed behind it, and slides back down when closed (back, the scrim, or
- * dragging the handle). The drawer is drawn in the same window as the screens, not as a dialog.
- *
- * Moving on from the drawer to another screen fades it out, and coming back fades it in, so it
- * only ever slides when it is actually opened or closed.
- *
- * [host] is the lifecycle the drawer's content follows; see [SheetScene.content].
- */
+// A drawer in the same window as the screens, not a dialog. It only slides when opened or
+// closed and fades otherwise. [host] is the lifecycle its content follows.
 class SheetSceneStrategy(
     private val host: LifecycleOwner,
     private val isOnBackStack: (NavKey) -> Boolean,
 ) : SceneStrategy<NavKey> {
-    /** Drawers that have already slid in; they fade back rather than slide when returned to. */
+    // They fade back rather than slide when returned to.
     private val opened = mutableSetOf<Any>()
 
     override fun SceneStrategyScope<NavKey>.calculateScene(
@@ -89,10 +81,8 @@ class SheetSceneStrategy(
                 motion.show()
                 opened += key
             }
-            // Coming back to a drawer from a screen opened over it, NavDisplay can compose the
-            // drawer under a lifecycle whose parent is already destroyed. That lifecycle never
-            // starts, so the form stops collecting its state and ignores every tap. The drawer
-            // follows the app's lifecycle instead; it leaves composition whenever it is covered.
+            // NavDisplay can compose a returning drawer under a destroyed parent lifecycle that
+            // never starts and freezes the form, so the drawer follows the app's lifecycle.
             val owner = rememberLifecycleOwner(parent = host)
             CompositionLocalProvider(LocalLifecycleOwner provides owner) {
                 SheetHost(motion, onDismiss = onBack) { entry.Content() }
@@ -113,13 +103,13 @@ class SheetSceneStrategy(
     companion object {
         object SheetKey : NavMetadataKey<NavKey>
 
-        /** Entry metadata that shows the destination for [key] as a drawer. */
+        // Entry metadata that shows the destination for [key] as a drawer.
         fun sheet(key: NavKey): Map<String, Any> = metadata { put(SheetKey, key) }
     }
 }
 
 private class SheetMotion(returning: Boolean) {
-    /** 0 = fully open, 1 = fully below the screen. Dragging the handle moves this directly. */
+    // 0 = fully open, 1 = fully below the screen.
     val hidden = Animatable(if (returning) 0f else 1f)
     val alpha = Animatable(if (returning) 0f else 1f)
     var height = 1f
@@ -138,12 +128,8 @@ private class SheetMotion(returning: Boolean) {
     }
 
     companion object {
-        /**
-         * How close a spring on [hidden] must get before it may stop, as a fraction of the drawer's
-         * height: under half a pixel on a phone. A spring left on the default (0.01) ends about
-         * 20px short and jumps the rest in one frame, so the drawer crawls, stalls, then snaps.
-         * Fixed rather than derived from [height], which is not yet measured when [show] starts.
-         */
+        // Under half a pixel of drawer height; the default (0.01) stops ~20px short and snaps.
+        // Fixed because [height] is not measured yet when [show] starts.
         const val SETTLED = 0.0002f
     }
 }
@@ -152,7 +138,7 @@ private class SheetMotion(returning: Boolean) {
 private fun SheetHost(motion: SheetMotion, onDismiss: () -> Unit, content: @Composable () -> Unit) {
     val colors = LocalNexoColors.current
     val scope = rememberCoroutineScope()
-    // The screen underneath is still composed and has its own back handling; this one sits above it.
+    // The screen underneath still has its own back handling; this one sits above it.
     BackHandler(onBack = onDismiss)
     Box(Modifier.fillMaxSize()) {
         Box(
@@ -184,7 +170,7 @@ private fun SheetHost(motion: SheetMotion, onDismiss: () -> Unit, content: @Comp
                     indication = null,
                 ) {},
         ) {
-            // Only the handle strip drags the drawer, so a swipe over the form or keypad cannot close it by accident.
+            // Only the handle drags, so a swipe over the form or keypad can't close it by accident.
             Box(
                 Modifier
                     .fillMaxWidth()

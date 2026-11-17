@@ -9,7 +9,7 @@ sealed interface TagResult {
     data object Empty : TagResult
 }
 
-/** Free-form tags; names are unique ignoring case. */
+// Names are unique ignoring case.
 interface TagsRepository {
     fun getTagsStream(): Flow<List<Tag>>
 
@@ -28,7 +28,7 @@ interface TagsRepository {
         private val forbidden =
             setOf('{', '}', '[', ']', '(', ')', '"', '\'', '‘', '’', '“', '”', '@', '#', ',')
 
-        /** Removes forbidden characters and every kind of whitespace. */
+        // Removes forbidden characters and every kind of whitespace.
         fun filter(input: String): String = input.filterNot {
             it in forbidden || it.isWhitespace() ||
                 Character.isSpaceChar(it)

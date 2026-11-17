@@ -60,7 +60,6 @@ private data class FilterItem(
     val indent: Boolean = false,
 )
 
-/** Main-screen filter panel. */
 @Composable
 fun FilterPanel(
     ref: RefData,
@@ -128,7 +127,6 @@ fun FilterPanel(
                     onCollapsedChange(true)
                 }) { Text(stringResource(R.string.filter)) }
             }
-            // Gauges strip
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,

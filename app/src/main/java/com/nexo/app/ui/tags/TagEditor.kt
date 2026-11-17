@@ -10,34 +10,29 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** The dialog open over a tag list. */
 sealed interface TagDialog {
     data class Add(val nameTaken: Boolean = false) : TagDialog
 
     data class Rename(val tag: Tag, val nameTaken: Boolean = false) : TagDialog
 
-    /** The tag is used by transactions: ask before removing it from them. */
+    // The tag is used by transactions: ask before removing it from them.
     data class ConfirmDelete(val tag: Tag) : TagDialog
 }
 
-/** What a tag list can do; each action defaults to nothing. */
 class TagActions(
     val startAdd: () -> Unit = {},
     val startRename: (Tag) -> Unit = {},
     val add: (name: String) -> Unit = {},
     val rename: (name: String) -> Unit = {},
-    /** Unused tags go at once; a tag in use asks first. */
+    // Unused tags go at once; a tag in use asks first.
     val requestDelete: (Tag) -> Unit = {},
     val confirmDelete: () -> Unit = {},
     val dismissDialog: () -> Unit = {},
     val move: (index: Int, by: Int) -> Unit = { _, _ -> },
 )
 
-/**
- * Adding, renaming, reordering and deleting tags, for the tag settings and the entry form's tag
- * picker alike. The edits run in a ViewModel's [scope]; [shown] is the list as the screen shows it,
- * which is what reordering moves within.
- */
+// Shared by the tag settings and the entry form's tag picker. shown is the list as on screen,
+// which is what reordering moves within.
 class TagEditor(
     private val repo: TagsRepository,
     private val scope: CoroutineScope,

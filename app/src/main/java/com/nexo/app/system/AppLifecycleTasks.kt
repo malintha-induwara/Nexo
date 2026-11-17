@@ -16,10 +16,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
-/**
- * What the app does as its process starts, comes to the foreground and goes to the background.
- * It observes the whole process, so moving between screens doesn't count as leaving.
- */
+// Observes the whole process, so moving between screens doesn't count as leaving.
 @Singleton
 class AppLifecycleTasks @Inject constructor(
     private val work: BackgroundWork,
@@ -31,12 +28,12 @@ class AppLifecycleTasks @Inject constructor(
     private val clock: Clock,
     @ApplicationScope private val scope: CoroutineScope,
 ) : DefaultLifecycleObserver {
-    /** Once per process: repeats are generated at every cold start, then once per calendar day. */
+    // Repeats are generated at every cold start, then once per calendar day.
     override fun onCreate(owner: LifecycleOwner) {
         scope.launch {
             if (setupDone()) repeats.generateIfNewDay(force = true)
         }
-        // The background inbox check runs exactly while capture is active, whatever switched it on or off.
+        // The background inbox check runs exactly while capture is active.
         scope.launch {
             var scheduled = false
             prefs.getDeviceSettingsStream()

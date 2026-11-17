@@ -63,7 +63,7 @@ import java.time.LocalDate
 
 enum class BulkAction { DATE, CATEGORY, ACCOUNT, NOTE }
 
-/** Σ selected income − Σ selected expense in main currency. */
+// Selected income minus selected expense, in the main currency.
 fun selectedNet(rows: List<TxRowUi>, ids: Set<String>): Double =
     rows.filter { it.id in ids }.fold(0.0) { acc, r ->
         when (r.flow) {
@@ -73,7 +73,6 @@ fun selectedNet(rows: List<TxRowUi>, ids: Set<String>): Double =
         }
     }
 
-/** Edit bar shown during multi-select. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectionBar(
@@ -168,7 +167,6 @@ fun SelectionBar(
     }
 }
 
-/** Dialogs behind the delete icon and the "Edit All …" menu. */
 @Composable
 fun BulkDialogs(
     action: BulkAction?,
@@ -300,7 +298,7 @@ fun CategoryPickerDialog(
     )
 }
 
-/** One account, or a From/To pair that turns the selection into transfers. */
+// One account, or a From/To pair that turns the selection into transfers.
 @Composable
 fun AccountPickerDialog(
     ref: RefData,

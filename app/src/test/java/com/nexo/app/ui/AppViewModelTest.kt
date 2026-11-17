@@ -82,7 +82,7 @@ class AppViewModelTest {
         saved,
     )
 
-    /** The handle a new process gets back from what the old one saved. */
+    // The handle a new process gets back from what the old one saved.
     private fun SavedStateHandle.afterProcessDeath() =
         SavedStateHandle.createHandle(savedStateProvider().saveState(), null)
 

@@ -86,7 +86,7 @@ fun weekdayColor(d: DayOfWeek): Color = when (d) {
     else -> MaterialTheme.colorScheme.outline
 }
 
-/** "Today · Tue, Nov 10", "Yesterday · …" or "Fri, Nov 6". */
+// "Today · Tue, Nov 10", "Yesterday · …" or "Fri, Nov 6".
 @Composable
 fun dayLabel(date: LocalDate): String {
     val clock = LocalClock.current
@@ -99,7 +99,7 @@ fun dayLabel(date: LocalDate): String {
     }
 }
 
-/** Upper-case day label with the day's income and expenses on the right. Tapping it adds an entry on that day. */
+// Tapping it adds an entry on that day.
 @Composable
 fun DayHeader(
     group: DayGroup,
@@ -141,7 +141,6 @@ fun DayHeader(
     }
 }
 
-/** The tile at the start of a transaction row. */
 @Composable
 fun RowTile(row: TxRowUi) {
     val colors = LocalNexoColors.current
@@ -163,12 +162,8 @@ fun RowTile(row: TxRowUi) {
     }
 }
 
-/**
- * One transaction: tile, title (the note, or the category when there is none), a meta line
- * (category, account, time, tags) and the amount, signed and coloured by direction.
- * [highlight] briefly washes the row, used when it has just been saved.
- * [runningBalance] is the account's balance after this transaction, shown in brackets under the amount.
- */
+// [highlight] briefly washes a row that was just saved. [runningBalance] is the account's
+// balance after this transaction.
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TxRow(
@@ -363,7 +358,6 @@ fun MemoStrip(memos: List<Memo>, onClick: () -> Unit, modifier: Modifier = Modif
     }
 }
 
-/** Day-grouped list used on every screen that lists transactions. */
 @Composable
 fun DayGroupList(
     groups: List<DayGroup>,

@@ -50,10 +50,7 @@ import com.nexo.app.ui.designsystem.theme.Space
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 
-/**
- * In-app number pad: a 4×4 grid of rounded keys on a surface sheet. Every key gives a
- * haptic tick and a press scale; Done carries [accent] (the entry type's colour).
- */
+// Done carries [accent], the entry type's colour.
 @Composable
 fun NumberPad(
     title: String,

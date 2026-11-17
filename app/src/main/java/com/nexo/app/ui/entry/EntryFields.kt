@@ -125,7 +125,6 @@ import java.text.NumberFormat
 import java.time.LocalDate
 import java.util.Locale
 
-/** The note, the amount and every field pill, then the details: description, FX note and original text. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun EntryFields(
@@ -151,7 +150,6 @@ internal fun EntryFields(
     var noteFocused by remember { mutableStateOf(false) }
     Column(modifier.verticalScroll(rememberScrollState())) {
         Spacer(Modifier.height(Space.l))
-        // Note: the entry's title, set above the amount.
         NoteField(
             value = s.note,
             onValueChange = actions.setNote,
@@ -218,7 +216,6 @@ internal fun EntryFields(
             }
         }
 
-        // The amount.
         AmountDisplay(
             s = s,
             currency = txCurrency,
@@ -281,7 +278,7 @@ internal fun EntryFields(
         }
 
         Spacer(Modifier.height(Space.l))
-        // Field pills, in the configured input order, then when and how often.
+        // Field pills in the configured input order, then date and repeat.
         FlowRow(
             Modifier.fillMaxWidth().padding(horizontal = Space.l),
             horizontalArrangement = Arrangement.spacedBy(
@@ -489,8 +486,7 @@ internal fun EntryFields(
             }
         }
 
-        // Details: tags and Scan receipt as pills, then the description and any photos already attached.
-        // Same gap and side padding as the rows above, so all the pill rows read as one evenly spaced block.
+        // Same gap and side padding as the rows above, so all pill rows read as one block.
         Spacer(Modifier.height(Space.s))
         val photosAllowed = !s.repeatMode && s.repeat == RepeatType.NONE
         FlowRow(
@@ -648,7 +644,7 @@ private fun categoryText(ref: RefData, s: EntryForm): String {
     return if (sub != null) "$main › $sub" else main
 }
 
-/** The keypad buffer as display parts: locale grouping, the typed decimals, the currency symbol. */
+// Locale grouping, the decimals as typed, and the currency symbol.
 private fun bufferParts(buffer: String, currency: Currency): AmountParts {
     val separator = DecimalFormatSymbols.getInstance().decimalSeparator
     val negative = buffer.startsWith("-")
@@ -668,7 +664,7 @@ private fun bufferParts(buffer: String, currency: Currency): AmountParts {
     )
 }
 
-/** "0.00" in the currency's shape, shown dimmed before anything is typed. */
+// "0.00" in the currency's shape, shown dimmed before anything is typed.
 private fun placeholderParts(currency: Currency): AmountParts {
     val separator = DecimalFormatSymbols.getInstance().decimalSeparator
     val prefix = currency.symbolPosition == SymbolPosition.PREFIX
@@ -682,10 +678,6 @@ private fun placeholderParts(currency: Currency): AmountParts {
     )
 }
 
-/**
- * The amount as the screen's centrepiece. Each keystroke gives it a small punch; a rejected key
- * shakes it. While the keypad is open a short bar under it breathes in the entry's colour.
- */
 @Composable
 private fun AmountDisplay(
     s: EntryForm,
@@ -768,7 +760,6 @@ private fun AmountDisplay(
     }
 }
 
-/** The note, set as a centred title above the amount. */
 @Composable
 private fun NoteField(
     value: String,
@@ -825,10 +816,7 @@ private fun NoteField(
     }
 }
 
-/**
- * A field as a pill: icon or tile, value (or its name, dimmed, when empty). The active field is
- * ringed in the entry's colour. [onClear] adds a small remove control.
- */
+// Shows the field's name, dimmed, when empty; [onClear] adds a small remove control.
 @Composable
 private fun FieldPill(
     text: String,

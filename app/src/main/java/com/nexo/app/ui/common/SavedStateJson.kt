@@ -35,7 +35,7 @@ object YearMonthSerializer : KSerializer<YearMonth> {
     override fun deserialize(decoder: Decoder): YearMonth = YearMonth.parse(decoder.decodeString())
 }
 
-/** JSON for the saved state: it also writes the dates and months screens keep as their place. */
+// Also encodes the dates and months screens keep as their place.
 val SavedStateJson: Json = Json {
     serializersModule = SerializersModule {
         contextual(LocalDate::class, LocalDateSerializer)
@@ -46,10 +46,7 @@ val SavedStateJson: Json = Json {
 @PublishedApi
 internal const val SAVED_JSON = "json"
 
-/**
- * Input kept in the saved state as one JSON snapshot, so a half-filled form survives Android
- * killing the app in the background. Snapshots that no longer decode are ignored.
- */
+// Lets a half-filled form survive process death; snapshots that no longer decode are ignored.
 inline fun <reified T> SavedStateHandle.getJson(key: String): T? =
     get<String>(key)?.let { runCatching { SavedStateJson.decodeFromString<T>(it) }.getOrNull() }
 
@@ -57,11 +54,8 @@ inline fun <reified T> SavedStateHandle.setJson(key: String, value: T) {
     set(key, SavedStateJson.encodeToString(value))
 }
 
-/**
- * A state flow that comes back with its last value after Android killed the app in the background:
- * where the user was on a screen (a period, a filter, a selection). It is written out only when
- * the system asks for the state, not on every change. A value that no longer decodes is dropped.
- */
+// Restores where the user was after process death. Written only when the system saves state;
+// a value that no longer decodes is dropped.
 inline fun <reified T> SavedStateHandle.savedStateFlow(
     key: String,
     initial: T,
@@ -72,10 +66,8 @@ inline fun <reified T> SavedStateHandle.savedStateFlow(
     return flow
 }
 
-/**
- * The same for a screen whose place is spread over its state: [snapshot] is taken when the system
- * asks for the state, and the one taken before the app was killed, if any, is returned.
- */
+// For a place spread over a screen's state: [snapshot] is taken when the system saves state;
+// returns the one saved before process death, if any.
 inline fun <reified T> SavedStateHandle.restoreAndSave(
     key: String,
     crossinline snapshot: () -> T,

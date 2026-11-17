@@ -41,7 +41,7 @@ import com.nexo.app.ui.designsystem.theme.NexoMotion
 import com.nexo.app.ui.designsystem.theme.Space
 import com.nexo.app.ui.navigation.EntryMode
 
-/** The keypad, an account or category picker, or the save buttons, swapped with a short rise. */
+// The keypad, an account or category picker, or the save buttons.
 @Composable
 internal fun EntryBottomArea(
     state: EntryUiState,
@@ -55,7 +55,6 @@ internal fun EntryBottomArea(
     val ref = state.ref
     val device = state.device
     val haptics = rememberHaptics()
-    // Bottom: keypad, pickers or actions, swapped with a short rise.
     AnimatedContent(
         targetState = when (s.panel) {
             Panel.AMOUNT, Panel.FEE -> BottomKind.PAD

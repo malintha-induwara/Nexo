@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/** Runs [block] on [scope] and keeps the receiver alive until it is done. */
+// Keeps the receiver alive until [block] is done.
 internal fun BroadcastReceiver.handleAsync(scope: CoroutineScope, block: suspend () -> Unit) {
     val pending = goAsync()
     scope.launch {

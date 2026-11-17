@@ -4,14 +4,11 @@ import com.nexo.app.core.model.Currency
 
 data class Amounts(val amount: Double, val main: Double, val account: Double)
 
-/** Three-amount derivation. */
 object Conversion {
     fun effectiveRate(c: Currency): Double = if (c.rate == 0.0) 1.0 else c.rate
 
-    /**
-     * [rate] = main units per one unit of [tx] (the form's rate, defaulting to the stored rate).
-     * [crossRate], when given, is the original account/transaction ratio preserved on edit.
-     */
+    // [rate] is main units per one [tx] unit. [crossRate] keeps the original account/transaction
+    // ratio on edit.
     fun compute(
         typed: Double,
         tx: Currency,
@@ -35,7 +32,7 @@ object Conversion {
         return Amounts(amount, mainAmount, acct)
     }
 
-    /** Account amount for the other side of a transfer. */
+    // For the other side of a transfer.
     fun accountAmount(
         amount: Double,
         mainAmount: Double,

@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** Repeat rules; generation materialises them into transactions, one run at a time. */
+// Generation into transactions runs one at a time.
 @Singleton
 class DefaultRepeatRulesRepository @Inject constructor(
     private val db: NexoDatabase,

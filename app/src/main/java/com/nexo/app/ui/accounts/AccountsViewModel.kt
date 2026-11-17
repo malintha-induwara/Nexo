@@ -50,7 +50,7 @@ data class AccountsData(
     val loaded: Boolean = false,
     val figures: List<AccountFigure> = emptyList(),
     val summary: AccountsSummary = AccountsSummary(0.0, 0.0, emptyMap()),
-    /** Change vs the previous period, per account (period modes). */
+    // Change vs the previous period, per account (period modes).
     val changes: Map<String, Double> = emptyMap(),
     val unassigned: Double? = null,
     val range: DateRange? = null,
@@ -73,10 +73,7 @@ class AccountsViewModel @Inject constructor(
     private val clock: Clock,
     savedState: SavedStateHandle,
 ) : ViewModel() {
-    /**
-     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
-     * is current whenever the screen is there to call them.
-     */
+    // Read synchronously by event handlers; it feeds uiState, so it's current while shown.
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),

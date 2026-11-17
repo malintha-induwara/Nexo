@@ -72,10 +72,6 @@ import com.nexo.app.ui.designsystem.theme.Space
 
 private const val DAY_MS = 24 * 60 * 60 * 1000L
 
-/**
- * One Review Queue item: tile, title, account and time, a status line (certainty badge, what's missing, ageing),
- * and the amount. The foreign amount sits under an estimate. Tapping the amount edits it.
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SmsQueueRow(
@@ -87,7 +83,7 @@ fun SmsQueueRow(
     onLongClick: (() -> Unit)?,
     onAmountClick: (() -> Unit)?,
     trailing: (@Composable () -> Unit)? = null,
-    /** Replaces the status line's text, e.g. "Possibly already added" in the history picker. */
+    // Replaces the status line, e.g. "Possibly already added" in the history picker.
     note: String? = null,
 ) {
     val colors = LocalNexoColors.current

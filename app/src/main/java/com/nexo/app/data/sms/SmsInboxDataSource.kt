@@ -11,13 +11,12 @@ import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
-/** Reads the SMS inbox (READ_SMS). Oldest first. */
 open class SmsInboxDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
 
-    /** Messages received in (`after`, `until`) and at or after [from]. */
+    // Oldest first.
     open suspend fun read(
         after: Long,
         from: Long,
@@ -48,7 +47,7 @@ open class SmsInboxDataSource @Inject constructor(
             val sent = c.getColumnIndexOrThrow(Telephony.Sms.DATE_SENT)
             while (c.moveToNext() && out.size < limit) {
                 val received = c.getLong(date)
-                // date_sent matches the realtime broadcast's timestamp, so both paths build the same dedupe key.
+                // date_sent matches the broadcast's timestamp, so both paths share a dedupe key.
                 val timestamp = c.getLong(sent).takeIf { it > 0 } ?: received
                 out +=
                     IncomingSms(

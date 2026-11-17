@@ -56,7 +56,6 @@ import java.time.LocalDateTime
 import java.time.YearMonth
 import java.time.temporal.ChronoUnit
 
-/** Proportional "Today" marker. */
 fun todayFraction(period: MonthPeriod, now: LocalDateTime): Float? {
     val start = period.start.atStartOfDay()
     val end = period.end.plusDays(1).atStartOfDay()
@@ -65,7 +64,7 @@ fun todayFraction(period: MonthPeriod, now: LocalDateTime): Float? {
     return (ChronoUnit.MINUTES.between(start, now) / total).coerceIn(0f, 1f)
 }
 
-/** The Total page's budget panel. A total without a budget yet opens [onAddTotal]. */
+// A total without a budget yet opens [onAddTotal].
 @Composable
 fun BudgetBlock(
     period: MonthPeriod,
@@ -143,7 +142,6 @@ fun BudgetBlock(
     }
 }
 
-/** One budget row: progress bar with rate, today line, used and remaining / excess. */
 @Composable
 fun BudgetRowView(
     row: BudgetRow,
@@ -190,7 +188,7 @@ fun BudgetRowView(
                 )
             }
         }
-        // A thin meter: the fill is what has been used, the tick is where today falls in the month.
+        // The fill is what has been used; the tick is where today falls in the month.
         Box(Modifier.fillMaxWidth().padding(vertical = 8.dp).height(if (small) 6.dp else 8.dp)) {
             Box(Modifier.matchParentSize().clip(CircleShape).background(colors.raised))
             if (row.fill > 0f) {

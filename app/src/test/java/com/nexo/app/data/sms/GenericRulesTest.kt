@@ -14,7 +14,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Synthetic examples and known pitfalls, through the general rules. */
 class GenericRulesTest {
     private val parser = SmsParser()
     private fun parse(sender: String, body: String) =
@@ -96,7 +95,7 @@ class GenericRulesTest {
 
     @Test
     fun cardAndLoanPayments() {
-        // Messages outside the fixed formats fall through to the general rules, whichever bank sent them.
+        // Unknown formats fall through to the general rules, whichever bank sent them.
         val cc =
             movement(
                 "COMBANK",

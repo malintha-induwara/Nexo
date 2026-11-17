@@ -58,7 +58,7 @@ data class ImportRow(
     val error: ImportError?,
     val parsed: ParsedRow?,
 ) {
-    /** Rows with fewer than 6 cells are listed but skipped on save. */
+    // Listed, but skipped on save.
     val skippable: Boolean get() = cells.size < 6
 }
 

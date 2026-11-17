@@ -337,11 +337,11 @@ class DefaultSmsRepository @Inject constructor(
         const val DENIED_KEEP_MS = 30 * DAY_MS
         const val EXPIRED_KEEP_MS = 7 * DAY_MS
 
-        /** Long enough for late cancellations and editing an FX estimate later. */
+        // Long enough for late cancellations and later edits to an FX estimate.
         const val APPROVED_KEEP_MS = 90 * DAY_MS
         const val HINT_KEEP_MS = 15 * 60 * 1000L
 
-        /** An hour past the re-read window: the broadcast and the inbox don't stamp a message with the same second. */
+        // One hour past the re-read window, as broadcast and inbox stamp times differently.
         const val SEEN_KEEP_MS = (SmsRepository.REREAD_HOURS + 1) * 60 * 60 * 1000L
     }
 }

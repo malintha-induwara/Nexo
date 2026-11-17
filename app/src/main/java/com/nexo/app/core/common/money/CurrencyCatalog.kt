@@ -4,7 +4,7 @@ import com.nexo.app.core.model.SymbolPosition
 import java.util.Currency
 import java.util.Locale
 
-/** One built-in currency: [mainSymbol] is used when it is the main currency, [subSymbol] when it is a sub-currency. */
+// [mainSymbol] is used when it is the main currency, [subSymbol] when it is a sub-currency.
 data class CatalogCurrency(
     val code: String,
     val mainSymbol: String,
@@ -187,7 +187,6 @@ STN|Db|STN|P|2
 
     fun find(code: String?): CatalogCurrency? = code?.let { byCode[it.uppercase(Locale.ROOT)] }
 
-    /** Currency of the device region, falling back to USD. */
     fun forLocale(locale: Locale = Locale.getDefault()): CatalogCurrency {
         val code = runCatching { Currency.getInstance(locale).currencyCode }.getOrNull()
         return find(code) ?: byCode.getValue("USD")

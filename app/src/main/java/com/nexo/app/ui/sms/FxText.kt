@@ -13,7 +13,7 @@ import com.nexo.app.core.model.SmsItem
 import com.nexo.app.data.repository.FxRatesRepository
 import com.nexo.app.ui.designsystem.component.Formats
 
-/** "Commercial Bank sell 336.50 · Nov 14". Null when the item has no rate. */
+// e.g. "Commercial Bank sell 336.50 · Nov 14"; null when the item has no rate.
 fun fxRateLine(context: Context, item: SmsItem): String? {
     val rate = item.fxRate ?: return null
     val value = AmountFormatter.number(rate, 2)
@@ -41,7 +41,7 @@ fun fxRateLine(context: Context, item: SmsItem): String? {
     return context.getString(R.string.fx_rate_line, source, side, value, day).trimEnd(' ', '·')
 }
 
-/** "USD 20.00 ≈ Rs 6,730.00 · Commercial Bank sell 336.50 · Nov 14". */
+// e.g. "USD 20.00 ≈ Rs 6,730.00 · Commercial Bank sell 336.50 · Nov 14".
 fun fxEstimateNote(context: Context, item: SmsItem, ref: RefData): String? {
     val estimate = item.estimatedAmount ?: return null
     val original = "${item.currency} ${AmountFormatter.number(item.amount, 2)}"
@@ -54,7 +54,7 @@ fun fxEstimateNote(context: Context, item: SmsItem, ref: RefData): String? {
     )
 }
 
-/** Whether a rate shown came from AllRatesToday, which then needs its visible link. */
+// Rates from AllRatesToday must show its attribution link.
 val SmsItem.rateFromApi: Boolean get() = fxSource != null && fxSource != RateChoice.MANUAL
 
 fun openRatesAttribution(context: Context) {

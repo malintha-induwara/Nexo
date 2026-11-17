@@ -1,10 +1,7 @@
 package com.nexo.app.data.receipt
 
-/**
- * One line of recognised text, in image pixels. [angle] is the line's tilt in degrees, measured clockwise from the
- * image's x axis (y points down), so a line that runs down to the right has a positive angle. [height] is the line's own
- * height, not that of its axis-aligned box, which grows with the tilt.
- */
+// In image pixels. [angle] is clockwise degrees from the x axis (y points down); [height] is the
+// line's own height, not its axis-aligned box's, which grows with tilt.
 data class OcrLine(
     val text: String,
     val centerX: Float,
@@ -14,7 +11,7 @@ data class OcrLine(
     val angle: Float = 0f,
 ) {
     companion object {
-        /** An untilted line from its box edges. */
+        // An untilted line from its box edges.
         fun box(text: String, left: Float, top: Float, right: Float, bottom: Float): OcrLine =
             OcrLine(text, (left + right) / 2f, (top + bottom) / 2f, right - left, bottom - top)
     }

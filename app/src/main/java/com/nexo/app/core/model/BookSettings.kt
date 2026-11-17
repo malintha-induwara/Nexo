@@ -3,7 +3,7 @@ package com.nexo.app.core.model
 import com.nexo.app.core.common.period.PeriodEngine
 import java.time.DayOfWeek
 
-/** Per-book settings stored in the `settings` table (they travel with backups). */
+// Stored in the settings table, so they travel with backups.
 data class BookSettings(
     val monthStartDay: Int = 1,
     val weekendRule: WeekendRule = WeekendRule.NONE,
@@ -23,9 +23,9 @@ data class BookSettings(
     val transferIncome: Boolean = true,
     val subcategories: Boolean = false,
     val repeatReflect: RepeatReflect = RepeatReflect.ON_DATE,
-    /** Account that SMS cash withdrawals go to; "" = the first account in the Cash group. */
+    // "" = the first account in the Cash group.
     val smsCashAccountId: String = "",
-    /** System "Bank Fee" category, created on first use; "" = not created yet. */
+    // System "Bank Fee" category, created on first use; "" = not created yet.
     val bankFeeCategoryId: String = "",
 ) {
     val periods: PeriodEngine by lazy { PeriodEngine(monthStartDay, weekendRule, weekStartDay) }
@@ -77,7 +77,6 @@ data class BookSettings(
     }
 
     companion object {
-        /** Values written when a fresh book is seeded. */
         val SEED = BookSettings(timeDisplay = TimeDisplay.INPUT_DESC)
 
         fun fromMap(map: Map<String, String>): BookSettings {

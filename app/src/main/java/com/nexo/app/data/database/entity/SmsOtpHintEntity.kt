@@ -5,7 +5,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.nexo.app.core.model.SmsOtpHint
 
-/** The merchant name from an OTP message, kept for 15 minutes. The code itself is never stored. */
+// Merchant name from an OTP message, kept 15 minutes; the code is never stored.
 @Entity(tableName = "sms_otp_hints", indices = [Index("at")])
 data class SmsOtpHintEntity(
     @PrimaryKey val id: String,

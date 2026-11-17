@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** Where a category screen goes once a change is written. */
 sealed interface CategoryNavigation {
     data object Back : CategoryNavigation
 
@@ -25,7 +24,6 @@ sealed interface CategoryNavigation {
 
 data class CategoryUiState(
     val ref: RefData = RefData(),
-    /** Handled once, then cleared with [CategoryViewModel.onNavigationHandled]. */
     val navigation: CategoryNavigation? = null,
 )
 
@@ -52,7 +50,7 @@ class CategoryViewModel @Inject constructor(
 
     fun delete(id: String) = viewModelScope.launch { repo.delete(id) }
 
-    /** Adds a category when [existingId] is null, otherwise updates it; then the form closes. */
+    // Adds when existingId is null, otherwise updates; then the form closes.
     fun save(
         kind: CategoryKind,
         existingId: String?,
@@ -69,7 +67,7 @@ class CategoryViewModel @Inject constructor(
         navigation.value = CategoryNavigation.Back
     }
 
-    /** The category and its subcategories move under [targetId], whose subcategory list opens. */
+    // Its subcategories move too; the target's subcategory list then opens.
     fun moveUnder(sourceId: String, targetId: String) = viewModelScope.launch {
         repo.toSub(sourceId, targetId)
         navigation.value = CategoryNavigation.SubcategoriesOf(targetId)

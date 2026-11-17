@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.stateIn
 
 data class SettingsUiState(val device: DeviceSettings? = null)
 
-/** The More tab. */
+// Backs the More tab.
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     prefs: UserPreferencesRepository,

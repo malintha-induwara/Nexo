@@ -25,7 +25,6 @@ class DefaultFavoritesRepository @Inject constructor(
     override suspend fun getFavorite(id: String): Favorite? =
         db.favoriteDao().getById(id)?.asExternalModel()
 
-    /** Creates a bookmark, reviving an identical one instead of duplicating it. */
     override suspend fun addFromTransaction(tx: Transaction) {
         val kind = if (tx.kind == TxKind.TRANSFER_IN) TxKind.TRANSFER_OUT else tx.kind
         val account = if (tx.kind == TxKind.TRANSFER_IN) tx.counterpartAccountId else tx.accountId

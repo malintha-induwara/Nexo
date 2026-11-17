@@ -1,12 +1,11 @@
 package com.nexo.app.core.model
 
-/** What a ledger row shows in its category column. */
 sealed interface CategoryLabel {
     data object Transfer : CategoryLabel
 
     data object ModifiedBalance : CategoryLabel
 
-    /** [main] is null when the row has no category ("None"); [sub] is set only while subcategories are on. */
+    // [main] is null for "None"; [sub] is set only while subcategories are on.
     data class Category(val main: String?, val sub: String?) : CategoryLabel
 }
 
@@ -27,7 +26,6 @@ fun RefData.categoryLabel(tx: Transaction): CategoryLabel = when {
     )
 }
 
-/** One day's rows in the order the user chose to see them. */
 fun List<Transaction>.sortedForDay(order: TimeDisplay): List<Transaction> {
     val minute = { t: Transaction -> t.dateTime / 60_000 }
     val cmp: Comparator<Transaction> = when {

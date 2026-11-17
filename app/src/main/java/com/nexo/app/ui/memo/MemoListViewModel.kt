@@ -61,10 +61,7 @@ class MemoListViewModel @AssistedInject constructor(
             } ?: LocalDate.now(clock),
         )
 
-    /**
-     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
-     * is current whenever the screen is there to call them.
-     */
+    // Read synchronously by event handlers; it feeds uiState, so it's current while shown.
     private val ref = refs.getRefDataStream().stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),

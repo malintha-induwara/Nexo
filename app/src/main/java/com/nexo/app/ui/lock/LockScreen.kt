@@ -46,7 +46,7 @@ import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.TextFieldDialog
 import kotlinx.coroutines.delay
 
-/** Lock screen shown over everything. Back sends the app to the background. */
+// Shown over everything; back sends the app to the background.
 @Composable
 fun LockScreen(
     device: DeviceSettings,

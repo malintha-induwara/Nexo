@@ -51,7 +51,7 @@ data class BudgetDetailUiState(
     val days: List<DayGroup> = emptyList(),
 )
 
-/** [BudgetDetailKey.budgetId] may be "virtual_<categoryId>" for a virtual parent. */
+// [BudgetDetailKey.budgetId] may be "virtual_<categoryId>" for a virtual parent.
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel(assistedFactory = BudgetDetailViewModel.Factory::class)
 class BudgetDetailViewModel @AssistedInject constructor(

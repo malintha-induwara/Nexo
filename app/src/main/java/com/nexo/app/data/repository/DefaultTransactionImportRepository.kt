@@ -43,7 +43,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.withContext
 
-/** Tab-separated spreadsheet import. Accepts the 11-column layout and Nexo's own 12-column export. */
+// Tab-separated import; accepts the 11-column layout and Nexo's own 12-column export.
 class DefaultTransactionImportRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: NexoDatabase,
@@ -62,7 +62,7 @@ class DefaultTransactionImportRepository @Inject constructor(
 
     override fun file(name: String) = File(dirs.imports, name)
 
-    /** Copies a picked file into the import folder, renaming on clashes. Returns null when it isn't .tsv / .txt. */
+    // Renames on clashes; null when it isn't .tsv or .txt.
     override suspend fun add(uri: Uri): File? = withContext(ioDispatcher) {
         val name = picked.displayName(uri) ?: return@withContext null
         if (!name.endsWith(".tsv", true) && !name.endsWith(".txt", true)) return@withContext null
@@ -105,7 +105,7 @@ class DefaultTransactionImportRepository @Inject constructor(
         return text.split(Regex("\r\n|\n|\r"))
     }
 
-    /** Data lines (header removed, empty lines skipped). */
+    // Header removed, empty lines skipped.
     private fun dataLines(file: File): Pair<String, List<String>> {
         val lines = readLines(file)
         val header = lines.firstOrNull().orEmpty()
@@ -342,11 +342,10 @@ class DefaultTransactionImportRepository @Inject constructor(
         LocalDate.of(year, m.toInt(), d.toInt()).atTime(time)
     }.getOrNull()
 
-    /** Saves every valid row; failing rows stay in the file. Returns (saved, failed). */
     override suspend fun saveAll(fileName: String, order: DateOrder?): Pair<Int, Int> =
         scope.runToCompletion { saveRows(fileName, order) }
 
-    /** The rows and the rewritten file belong together: saved rows left in the file would be saved twice. */
+    // Rows and the rewritten file go together, or saved rows left in it get saved twice.
     private suspend fun saveRows(fileName: String, order: DateOrder?): Pair<Int, Int> =
         withContext(ioDispatcher) {
             val f = file(fileName)
@@ -404,7 +403,7 @@ class DefaultTransactionImportRepository @Inject constructor(
                     } else {
                         TxKind.TRANSFER_OUT
                     }
-                    // The next line may be this transfer's counterpart: consume it for the mirror's account amount.
+                    // The next line may be the transfer's counterpart: its account amount is used.
                     val next = preview.rows.getOrNull(preview.rows.indexOf(row) + 1)?.takeIf { n ->
                         val np = n.parsed
                         n.error == null &&

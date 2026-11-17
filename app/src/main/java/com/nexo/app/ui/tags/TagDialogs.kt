@@ -7,7 +7,6 @@ import com.nexo.app.data.repository.TagsRepository
 import com.nexo.app.ui.designsystem.component.ConfirmDialog
 import com.nexo.app.ui.designsystem.component.TextFieldDialog
 
-/** The add, rename and delete dialogs of a tag list. */
 @Composable
 fun TagDialogs(dialog: TagDialog?, actions: TagActions) {
     val exists = stringResource(R.string.tag_exists)

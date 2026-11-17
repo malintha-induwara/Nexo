@@ -25,7 +25,7 @@ class ReceiptRowsTest {
 
     @Test
     fun aTiltedPhotoStillLinesUp() {
-        // The whole receipt turned 6° clockwise: the price sits lower than its label by more than a line height.
+        // Turned 6° clockwise: the price sits lower than its label by more than a line height.
         val angle = Math.toRadians(6.0)
         fun turned(text: String, x: Float, y: Float, w: Float) = OcrLine(
             text,

@@ -6,7 +6,7 @@ import com.nexo.app.core.model.Budget
 
 @Entity(tableName = "budgets")
 data class BudgetEntity(
-    /** "total" for the overall budget, otherwise "cat_<categoryId>". One budget per target. */
+    // "total" or "cat_<categoryId>": one budget per target.
     @PrimaryKey val id: String,
     val categoryId: String?,
     val orderSeq: Int,

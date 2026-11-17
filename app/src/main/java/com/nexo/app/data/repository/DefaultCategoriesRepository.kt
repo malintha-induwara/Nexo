@@ -37,7 +37,6 @@ class DefaultCategoriesRepository @Inject constructor(
         return id
     }
 
-    /** [emoji] and [colorIndex] are written as given; null means "derive automatically" (see CategoryVisuals). */
     override suspend fun update(
         id: String,
         name: String,
@@ -61,7 +60,6 @@ class DefaultCategoriesRepository @Inject constructor(
         )
     }
 
-    /** Soft delete; a main category takes its subcategories with it. */
     override suspend fun delete(id: String) = db.withTransaction {
         val all = db.categoryDao().getAll()
         val rows = all.filter { it.id == id || it.parentId == id }
@@ -91,7 +89,6 @@ class DefaultCategoriesRepository @Inject constructor(
         )
     }
 
-    /** The source and all its subcategories move under [targetId]. */
     override suspend fun toSub(sourceId: String, targetId: String) = db.withTransaction {
         if (sourceId == targetId) return@withTransaction
         val all = db.categoryDao().getAll()

@@ -52,14 +52,8 @@ import com.nexo.app.ui.designsystem.theme.NexoShapes
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
-/**
- * A bottom sheet drawn inside the screen rather than in its own window. Because it is part of
- * the screen's content it moves with the screen during navigation: it leaves with the screen on
- * a push and is simply there again on the way back, with no second open animation.
- *
- * Dismissed by the scrim, the back button, or dragging down (from the header, or from a list
- * inside that is already scrolled to its top). Fill the parent: place it last in a full-size Box.
- */
+// Drawn in the screen, not a window, so it moves with the screen during navigation and is
+// simply there again on the way back. Place it last in a full-size Box.
 @Composable
 fun InlineBottomSheet(
     visible: Boolean,

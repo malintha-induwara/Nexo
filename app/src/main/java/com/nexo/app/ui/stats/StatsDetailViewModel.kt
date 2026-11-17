@@ -74,10 +74,7 @@ class StatsDetailViewModel @AssistedInject constructor(
         fun create(key: StatsDetailKey): StatsDetailViewModel
     }
 
-    /**
-     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
-     * is current whenever the screen is there to call them.
-     */
+    // For handlers that need it synchronously; it feeds [uiState], so it stays current.
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
@@ -187,7 +184,7 @@ class StatsDetailViewModel @AssistedInject constructor(
                 r.accountById[t.accountId]?.groupId == key.targetId
     }
 
-    /** Breakdown key of a row: subcategory / "other", or the account for transfer groups. */
+    // The subcategory or "other", or the account for transfer groups.
     private fun subKey(r: RefData, t: Transaction): String = when (key.kind) {
         StatsDetailKind.TRANSFER_EXPENSE_GROUP -> t.counterpartAccountId ?: ""
         StatsDetailKind.TRANSFER_INCOME_GROUP -> t.accountId ?: ""

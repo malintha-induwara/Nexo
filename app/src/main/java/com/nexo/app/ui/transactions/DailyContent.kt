@@ -30,7 +30,7 @@ internal fun DailyContent(
 ) {
     val haptics = rememberHaptics()
     val state = rememberLazyListState()
-    // Scroll once this snapshot holds the day (it may arrive a frame after the period changes).
+    // The day may arrive a frame after the period changes, so wait until this snapshot holds it.
     LaunchedEffect(focusDate, data) {
         val date = focusDate ?: return@LaunchedEffect
         if (data.period?.range?.let { date in it } != true) return@LaunchedEffect

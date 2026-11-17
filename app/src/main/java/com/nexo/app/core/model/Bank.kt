@@ -3,11 +3,8 @@ package com.nexo.app.core.model
 import java.time.ZoneId
 import java.util.Locale
 
-/**
- * Sri Lankan banks and fintechs.
- * [senders] are normalised sender IDs; [aliases] are the word-bounded names used to spot the bank in a body;
- * [rateCode] is the bank's id in the AllRatesToday bank-rates API.
- */
+// [senders] are normalised sender IDs, [aliases] the names that spot the bank in a body, and
+// [rateCode] its id in the AllRatesToday rates API.
 enum class Bank(
     val displayName: String,
     val senders: List<String> = emptyList(),
@@ -61,12 +58,12 @@ enum class Bank(
     LB_FINANCE("LB Finance", aliases = listOf("LB FINANCE")),
     SINGER_FINANCE("Singer Finance", aliases = listOf("SINGER FINANCE")),
 
-    /** A user-added sender whose bank couldn't be recognised. */
+    // A user-added sender whose bank couldn't be recognised.
     OTHER("Other bank"),
 }
 
 object Banks {
-    /** Sri Lankan banks date their messages and rate boards in local time (UTC+05:30). */
+    // Banks date their messages and rate boards in local time.
     val ZONE: ZoneId = ZoneId.of("Asia/Colombo")
 
     private val senderJunk = Regex("[^A-Z0-9+]")
@@ -80,7 +77,7 @@ object Banks {
         }
     }.toMap()
 
-    /** Longest names first so "PEOPLES BANK" wins over "PEOPLES"; word boundaries stop "citizens" matching CITI. */
+    // Longest first so "PEOPLES BANK" beats "PEOPLES"; \b stops "citizens" matching CITI.
     private val vocabulary = Regex(
         byAlias.keys.sortedByDescending {
             it.length
@@ -88,13 +85,11 @@ object Banks {
         RegexOption.IGNORE_CASE,
     )
 
-    /** Upper-case, then drop everything except A-Z, 0-9 and '+'. */
     fun normalizeSender(sender: String): String =
         sender.uppercase(Locale.ROOT).replace(senderJunk, "")
 
     fun fromSender(sender: String): Bank? = bySender[normalizeSender(sender)]
 
-    /** First bank named in [text], word-bounded. */
     fun findIn(text: String): Bank? =
         vocabulary.find(text)?.let { byAlias[it.value.uppercase(Locale.ROOT)] }
 

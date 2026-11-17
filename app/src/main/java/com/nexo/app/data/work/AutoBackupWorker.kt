@@ -11,7 +11,6 @@ import com.nexo.app.data.repository.BackupRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
-/** Daily on-device backup job. */
 @HiltWorker
 class AutoBackupWorker @AssistedInject constructor(
     @Assisted context: Context,

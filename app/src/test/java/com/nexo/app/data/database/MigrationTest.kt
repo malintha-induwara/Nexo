@@ -18,11 +18,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Builds a real older database from its exported schema, then opens it with the current Room
- * database. Room runs the auto-migrations and validates every table against the current schema,
- * so a bad migration fails here.
- */
+// Opens a database built from an older exported schema; Room migrates and validates every table,
+// so a bad migration fails here.
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class MigrationTest {

@@ -34,7 +34,6 @@ import com.nexo.app.ui.designsystem.component.NexoDatePickerDialog
 import com.nexo.app.ui.designsystem.component.NexoTimePickerDialog
 import com.nexo.app.ui.designsystem.component.rememberHaptics
 
-/** The pickers, sheets and dialogs that open over the form. */
 @Composable
 internal fun EntryDialogs(state: EntryUiState, actions: EntryActions, dialogs: EntryDialogState) {
     val s = state.form

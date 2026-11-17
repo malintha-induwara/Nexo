@@ -14,11 +14,8 @@ import com.nexo.app.data.repository.TransactionsRepository
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 
-/**
- * Approves queue items: the only code that turns them into ledger rows. Writing the row and marking
- * the item approved belong together, so an approval that has started finishes even if the screen
- * closes meanwhile.
- */
+// The only code that turns queue items into ledger rows. Once started, an approval finishes
+// even if the screen closes, so the row and the approved mark stay together.
 class ApproveSmsUseCase @Inject constructor(
     private val sms: SmsRepository,
     private val refs: ReferenceDataRepository,
@@ -26,11 +23,8 @@ class ApproveSmsUseCase @Inject constructor(
     private val getDraft: GetSmsDraftUseCase,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
-    /**
-     * Writes the item to the ledger. With a [fee], the fee becomes its own Bank fee expense from the source account,
-     * linked to the transfer or the purchase. For an FX difference recorded as a fee, the purchase stays at the
-     * estimate; "include in purchase" books the actual amount with no fee row.
-     */
+    // A [fee] becomes its own linked Bank fee expense. For an FX difference recorded as a fee the
+    // purchase stays at the estimate; "include in purchase" books the actual amount instead.
     suspend operator fun invoke(itemId: String, fee: FeeChoice? = null): ApproveResult =
         scope.runToCompletion { approve(itemId, fee) }
 
@@ -71,7 +65,7 @@ class ApproveSmsUseCase @Inject constructor(
         return ApproveResult.Done(txId, feeId)
     }
 
-    /** Approves every complete item with [fee]; incomplete ones stay in the queue. Returns how many were approved. */
+    // Incomplete items stay in the queue. Returns how many were approved.
     suspend operator fun invoke(ids: Collection<String>, fee: FeeChoice? = null): Int =
         ids.count { invoke(it, fee) is ApproveResult.Done }
 }

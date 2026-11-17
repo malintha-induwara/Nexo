@@ -9,7 +9,6 @@ import java.text.DecimalFormatSymbols
 import java.util.Locale
 import kotlin.math.abs
 
-/** Formats amounts: half-up rounding, locale grouping, fixed decimals, symbol placement. */
 object AmountFormatter {
     private val cache = HashMap<Pair<Locale, Int>, DecimalFormat>()
 
@@ -25,7 +24,7 @@ object AmountFormatter {
         }
     }
 
-    /** Number only, e.g. "1,234.50". Keeps a minus sign for values between -1 and 0. */
+    // Number only, e.g. "1,234.50". Keeps the minus sign for values between -1 and 0.
     fun number(value: Double, decimals: Int): String {
         val rounded = BigDecimal.valueOf(
             value,
@@ -51,7 +50,7 @@ object AmountFormatter {
         format(value, currency.symbol, currency.symbolPosition, currency.decimals)
     }
 
-    /** Exchange-rate display: two decimals when ≥ 1, otherwise enough to show two significant digits. */
+    // Two decimals when ≥ 1, otherwise enough to show two significant digits.
     fun rate(rate: Double): String {
         if (rate == 0.0) return "0"
         val abs = abs(rate)

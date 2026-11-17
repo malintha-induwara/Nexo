@@ -16,45 +16,37 @@ import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 
-/** A transaction from the entry form, and the other records that saving it settles. */
+// A transaction from the entry form, and the other records that saving it settles.
 data class EntrySave(
     val draft: TxDraft,
-    /** A Review Queue item checked on the form; saving approves it. */
+    // Saving approves it.
     val smsReview: SmsReview? = null,
-    /** An approved SMS row still booked at an FX estimate. */
+    // An approved SMS row still booked at an FX estimate.
     val estimateEdit: EstimateEdit? = null,
-    /**
-     * While reviewing rows with no category: the row as it was. When it gains a category, the
-     * other uncategorised rows with the same note take that category too.
-     */
+    // When it gains a category, uncategorised rows with the same note take it too.
     val uncategorizedOriginal: Transaction? = null,
-    /** A row from an import file that needed fixing; once saved it leaves the file. */
+    // Once saved, it leaves the import file.
     val importLine: ImportLine? = null,
 )
 
-/**
- * [amount] is the amount as confirmed on the form (null when left empty) and [fee] a bank fee
- * typed for a purchase or deposit. A transfer's fee travels in the draft instead.
- */
+// [amount] is null when left empty. [fee] is a bank fee typed for a purchase or deposit; a
+// transfer's fee travels in the draft instead.
 data class SmsReview(val itemId: String, val item: SmsItem?, val amount: Double?, val fee: Double?)
 
-/** [amount] is the amount on the form (null when left empty), [savedAmount] the stored one. */
+// [amount] is the amount on the form (null when left empty), [savedAmount] the stored one.
 data class EstimateEdit(val item: SmsItem, val savedAmount: Double?, val amount: Double?)
 
 data class ImportLine(val fileName: String, val index: Int)
 
 sealed interface SaveEntryResult {
-    /** [sameNoteAssigned] other rows took the new category along with this one. */
+    // [sameNoteAssigned]: how many other rows took the new category too.
     data class Saved(val id: String, val sameNoteAssigned: Int = 0) : SaveEntryResult
 
-    /** The row could not be written, so nothing else was touched either. */
+    // The row could not be written, so nothing else was touched either.
     data object Failed : SaveEntryResult
 }
 
-/**
- * Saves the entry form's transaction, then settles what depended on it. The steps belong
- * together, so once started they all run even if the form closes meanwhile.
- */
+// Once started, all steps run even if the form closes meanwhile.
 class SaveEntryUseCase @Inject constructor(
     private val transactions: TransactionsRepository,
     private val sms: SmsRepository,
@@ -85,13 +77,13 @@ class SaveEntryUseCase @Inject constructor(
         return SaveEntryResult.Saved(id, sameNote)
     }
 
-    /** An SMS transfer's fee goes to the system Bank fee category. */
+    // An SMS transfer's fee goes to the system Bank fee category.
     private suspend fun withBankFee(draft: TxDraft): TxDraft {
         val fee = draft.fee ?: return draft
         return draft.copy(fee = fee.copy(categoryId = transactions.bankFeeCategory()))
     }
 
-    /** The rest of approving a queue item from the form, once its row is saved as [txId]. */
+    // The rest of approving a queue item, once its row is saved as [txId].
     private suspend fun approve(review: SmsReview, draft: TxDraft, txId: String) {
         val item = review.item
         val estimate = item?.estimatedAmount
@@ -111,7 +103,7 @@ class SaveEntryUseCase @Inject constructor(
         }
     }
 
-    /** Gives the other uncategorised rows with [original]'s note the category it was given. */
+    // Gives the other uncategorised rows with [original]'s note the same category.
     private suspend fun assignSameNote(original: Transaction, draft: TxDraft): Int {
         val categoryId = draft.categoryId ?: return 0
         if (original.categoryId != null || draft.note.isBlank()) return 0

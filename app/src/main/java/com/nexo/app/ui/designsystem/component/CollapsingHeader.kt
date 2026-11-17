@@ -18,19 +18,16 @@ import androidx.compose.ui.unit.Velocity
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 import kotlin.math.roundToInt
 
-/**
- * A header that folds away as the list below scrolls up and opens again when the list is pulled
- * back to the top. After a fling it settles fully open or fully closed.
- * Attach [connection] with `Modifier.nestedScroll` on the scrolling area and [collapsingHeader] on the header.
- */
+// Attach [connection] with `Modifier.nestedScroll` on the scrolling area and
+// [collapsingHeader] on the header. After a fling it settles fully open or closed.
 @Stable
 class CollapsingHeaderState {
-    /** Natural height of the header, measured each layout pass. Not snapshot state: only gestures read it. */
+    // Not snapshot state: only gestures read it.
     internal var heightPx = 0f
     var offset by mutableFloatStateOf(0f)
         private set
 
-    /** 0 = fully open, 1 = fully folded. */
+    // 0 = fully open, 1 = fully folded.
     val fraction: Float get() = if (heightPx <= 0f) 0f else (-offset / heightPx).coerceIn(0f, 1f)
 
     private fun consume(dy: Float): Float {
@@ -72,7 +69,7 @@ class CollapsingHeaderState {
 @Composable
 fun rememberCollapsingHeaderState(): CollapsingHeaderState = remember { CollapsingHeaderState() }
 
-/** Clips the header to its folded height; the content drifts up at half speed and fades as it folds. */
+// The content drifts up at half speed and fades as the header folds.
 fun Modifier.collapsingHeader(state: CollapsingHeaderState): Modifier = this
     .clipToBounds()
     .layout { measurable, constraints ->

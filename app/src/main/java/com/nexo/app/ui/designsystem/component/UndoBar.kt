@@ -29,13 +29,10 @@ import com.nexo.app.ui.designsystem.theme.NexoShapes
 import com.nexo.app.ui.designsystem.theme.Space
 import kotlinx.coroutines.delay
 
-/** What an [UndoBar] shows. A new instance restarts the timer even with the same text. */
+// A new instance restarts the timer even with the same text.
 class UndoMessage(val text: String, val action: String? = null, val onAction: () -> Unit = {})
 
-/**
- * A short message with an optional action, drawn in the screen (not a window), rising from the bottom.
- * Hides itself after [durationMs]; place it last in a full-size Box, aligned to the bottom.
- */
+// Drawn in the screen, not a window. Place it last in a full-size Box, aligned to the bottom.
 @Composable
 fun UndoBar(
     message: UndoMessage?,

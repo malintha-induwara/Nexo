@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.nexo.app.core.model.SmsMerchantRule
 
-/** Learned merchant → category. Keyed on the cleaned merchant key. */
+// Learned merchant → category, keyed on the cleaned merchant key.
 @Entity(tableName = "sms_merchant_rules")
 data class SmsMerchantRuleEntity(
     @PrimaryKey val merchantKey: String,

@@ -10,7 +10,7 @@ import com.nexo.app.core.model.GroupType
 import com.nexo.app.ui.designsystem.preview.PreviewData
 import com.nexo.app.ui.designsystem.theme.nexo
 
-/** The preview book plus a savings group, a deleted account and a deleted group. */
+// The preview book plus a savings group, a deleted account and a deleted group.
 internal val previewSettingsRef = PreviewData.ref.copy(
     groups = PreviewData.groups +
         listOf(

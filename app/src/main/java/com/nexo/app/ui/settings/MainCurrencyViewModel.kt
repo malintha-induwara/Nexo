@@ -22,15 +22,11 @@ import kotlinx.coroutines.launch
 
 data class MainCurrencyUiState(
     val ref: RefData = RefData(),
-    /** A main-currency change is running. */
     val busy: Boolean = false,
-    /** Shown once, then cleared with [MainCurrencyViewModel.onUserMessageShown]. */
     val userMessage: UserMessage? = null,
-    /** A change was written: the screen goes back, then calls [MainCurrencyViewModel.onClosedHandled]. */
     val closed: Boolean = false,
 )
 
-/** The main currency: its format, and changing it for another. */
 @HiltViewModel
 class MainCurrencyViewModel @Inject constructor(
     refs: ReferenceDataRepository,
@@ -51,7 +47,7 @@ class MainCurrencyViewModel @Inject constructor(
         effects.update { it.copy(closed = true) }
     }
 
-    /** "Data retention": amounts convert with [rate]; a safety backup is restored if anything fails. */
+    // A safety backup is restored if anything fails.
     fun changeMainWithRate(target: CatalogCurrency, rate: Double) = viewModelScope.launch {
         effects.update { it.copy(busy = true) }
         val ok = repo.changeMainWithRate(target, rate)
@@ -66,7 +62,6 @@ class MainCurrencyViewModel @Inject constructor(
         }
     }
 
-    /** "Data initialization": everything is reset with [target] as the main currency. */
     fun changeMainWithReset(target: CatalogCurrency) = viewModelScope.launch {
         effects.update { it.copy(busy = true) }
         repo.changeMainWithReset(target)

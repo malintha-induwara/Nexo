@@ -23,10 +23,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormatSymbols
 
-/**
- * Generic numeric entry sheet (pad + optional calculator). Used for account amounts, budget amounts,
- * day-of-month, installment months and exchange rates.
- */
+// Numeric entry sheet: keypad plus optional calculator.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AmountSheet(

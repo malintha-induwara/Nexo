@@ -8,11 +8,8 @@ import com.nexo.app.core.model.TxAggregate
 import com.nexo.app.core.model.TxKind
 import java.math.BigDecimal
 
-/**
- * Income / expense classification. Transfers are judged on their outgoing leg:
- * [accountId] is the source and [counterpartId] the destination.
- * An account with no group (or "None") is treated as non-card in lump-sum mode.
- */
+// Transfers are judged on their outgoing leg. An account with no group (or "None") counts as
+// non-card in lump-sum mode.
 class Classifier(private val ref: RefData) {
     private val lumpSum = ref.settings.cardAccounting == CardAccounting.LUMP_SUM
     private val transferIncome = ref.settings.transferIncome
@@ -55,7 +52,7 @@ class Classifier(private val ref: RefData) {
         }
     }
 
-    /** True when a transfer counts on the stats screen as a transfer-expense row. */
+    // How a transfer counts on the stats screen, by its transfer-expense accounts.
     fun transferStatsFlow(src: String?, dst: String?): CashFlow {
         val srcFlag = ref.isFlagged(src)
         val dstFlag = ref.isFlagged(dst)
@@ -78,7 +75,7 @@ data class InOut(val income: Double = 0.0, val expense: Double = 0.0) {
     operator fun plus(other: InOut) = InOut(income + other.income, expense + other.expense)
 }
 
-/** Income/expense totals from aggregates or rows, in main currency. */
+// In main currency.
 object Totals {
     fun fromAggregates(ref: RefData, rows: List<TxAggregate>): InOut {
         val c = Classifier(ref)

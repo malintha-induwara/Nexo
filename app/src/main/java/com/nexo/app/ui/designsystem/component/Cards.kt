@@ -21,11 +21,8 @@ import com.nexo.app.ui.designsystem.theme.NexoMotion
 import com.nexo.app.ui.designsystem.theme.NexoShapes
 import com.nexo.app.ui.designsystem.theme.NexoType
 
-/**
- * A rounded card for something that gathers transactions under it: a month, a year, an account.
- * Single transactions stay plain rows. [highlighted] marks the current period.
- * [interactions] lets a caller drive the press feedback from one part of the card, e.g. its header.
- */
+// [highlighted] marks the current period. [interactions] lets a caller drive the press
+// feedback from one part of the card, e.g. its header.
 @Composable
 fun GroupCard(
     modifier: Modifier = Modifier,
@@ -62,7 +59,7 @@ fun GroupCard(
     )
 }
 
-/** An income or expense figure in its colour; zero is dimmed so the periods with activity stand out. */
+// Zero is dimmed so the periods with activity stand out.
 @Composable
 fun FlowAmount(
     value: Double,

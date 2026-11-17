@@ -25,7 +25,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
-/** Reads the text of a receipt photo on the device with ML Kit text recognition (Latin script, model bundled). */
+// On-device ML Kit text recognition (Latin script, bundled model).
 @Singleton
 class ReceiptTextDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -35,7 +35,7 @@ class ReceiptTextDataSource @Inject constructor(
         TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     }
 
-    /** The recognised lines with their positions. Throws [IOException] when the photo cannot be opened or decoded. */
+    // Throws IOException when the photo cannot be opened or decoded.
     suspend fun recognize(uri: Uri): List<OcrLine> {
         val bitmap =
             withContext(ioDispatcher) { decodeUpright(uri) }
@@ -48,10 +48,8 @@ class ReceiptTextDataSource @Inject constructor(
         return text.textBlocks.flatMap { it.lines }.map(::toOcrLine)
     }
 
-    /**
-     * The photo at no more than [MAX_SIDE] pixels on its long side (a power-of-two step down, so a 12 MP photo keeps
-     * its full size), turned upright from its EXIF orientation so line positions read top to bottom.
-     */
+    // Power-of-two downscale to MAX_SIDE (a 12 MP photo keeps full size), turned upright from EXIF
+    // so line positions read top to bottom.
     private fun decodeUpright(uri: Uri): Bitmap? {
         val resolver = context.contentResolver
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -102,7 +100,7 @@ class ReceiptTextDataSource @Inject constructor(
         return upright
     }
 
-    /** Centre, size and tilt from the line's corners (top-left, top-right, bottom-right, bottom-left); its box otherwise. */
+    // Corners run top-left, top-right, bottom-right, bottom-left; the bounding box is the fallback.
     private fun toOcrLine(line: Text.Line): OcrLine {
         val corners = line.cornerPoints
         if (corners == null || corners.size != 4) {

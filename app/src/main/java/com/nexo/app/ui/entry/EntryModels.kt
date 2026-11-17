@@ -23,14 +23,12 @@ import java.time.LocalTime
 
 enum class Panel { NONE, ACCOUNT, TO_ACCOUNT, CATEGORY, AMOUNT, FEE }
 
-/** Visual slots of the account / category / amount block. */
 enum class Field { ACCOUNT, CATEGORY, FROM, TO, AMOUNT, FEE }
 
 data class InstallmentInfo(val index: Int, val count: Int, val balance: Double, val total: Double)
 
 data class NoteSuggestion(val note: String, val count: Int, val lastDate: String)
 
-/** The entry form being edited. */
 data class EntryForm(
     val loaded: Boolean = false,
     val mode: EntryMode = EntryMode.NEW,
@@ -45,7 +43,7 @@ data class EntryForm(
     val categoryId: String? = null,
     val amount: Double? = null,
     val currencyId: String = "",
-    /** Main-currency units per transaction-currency unit for this entry; null = stored rate. */
+    // Main-currency units per transaction-currency unit; null uses the stored rate.
     val rate: Double? = null,
     val note: String = "",
     val description: String = "",
@@ -72,20 +70,20 @@ data class EntryForm(
     val inputOrder: InputOrder = InputOrder.ACCOUNT_FIRST,
     val presetAccountId: String? = null,
     val presetCategoryId: String? = null,
-    /** The foreign amount and rate behind an SMS item booked at an FX estimate; [fxFromApi] adds the attribution link. */
+    // The foreign amount and rate behind an SMS item booked at an FX estimate.
     val fxNote: FxNote? = null,
     val fxFromApi: Boolean = false,
     val scan: ScanUi? = null,
 ) {
     val isTransfer: Boolean get() = type == EntryType.TRANSFER
 
-    /** Scan receipt is offered wherever an expense or income amount can come from a photo of a bill; it is how photos are attached. */
+    // Scan receipt is also how photos are attached.
     val scanAllowed: Boolean
         get() = !isTransfer && !isBalance && !isBalanceAdjustment && !repeatMode &&
             repeat == RepeatType.NONE &&
             photos.size < 3
 
-    /** Transfers carry a fee; so does an SMS expense, as a linked bank-fee row. */
+    // Transfers carry a fee; so does an SMS expense, as a linked bank-fee row.
     val feeAllowed: Boolean get() = isTransfer ||
         (mode == EntryMode.SMS && type == EntryType.EXPENSE)
     val isBalance: Boolean get() = balanceKind != null
@@ -136,7 +134,7 @@ data class EntryForm(
     }
 }
 
-/** A receipt photo being read, then waiting for the user to confirm or correct what was read. */
+// A receipt being read, then waiting for the user to confirm or correct the reading.
 sealed interface ScanUi {
     val uri: Uri
 
@@ -144,17 +142,16 @@ sealed interface ScanUi {
     data class Done(override val uri: Uri, val read: ReceiptRead) : ScanUi
 }
 
-/** The FX estimate behind an SMS amount; [editHint] adds "edit the amount to record the actual one". */
+// [editHint] adds "edit the amount to record the actual one".
 data class FxNote(val item: SmsItem, val editHint: Boolean)
 
-/** Where the form goes once it is done. */
 sealed interface EntryNavigation {
     data object Close : EntryNavigation
 
     data class Open(val key: EntryKey, val replace: Boolean = true) : EntryNavigation
 }
 
-/** Strings the form needs as data; the screen resolves them, since ViewModels hold no Context. */
+// Resolved by the screen, since ViewModels hold no Context.
 data class EntryTexts(val paymentNote: String)
 
 data class EntryUiState(
@@ -163,16 +160,14 @@ data class EntryUiState(
     val device: DeviceSettings? = null,
     val suggestions: List<NoteSuggestion> = emptyList(),
     val tags: List<Tag> = emptyList(),
-    /** The dialog open over the tag picker. */
     val tagDialog: TagDialog? = null,
-    /** Where the form's stored photos are on disk, by file name. */
     val photoFiles: Map<String, File> = emptyMap(),
-    /** Whether the last export to the gallery worked; shown once, then cleared. */
+    // Whether the last gallery export worked; shown once, then cleared.
     val photoExported: Boolean? = null,
-    /** Shown once, then cleared with [EntryViewModel.onUserMessageShown]. */
+    // Shown once, then cleared with [EntryViewModel.onUserMessageShown].
     val userMessage: UserMessage? = null,
-    /** Handled once, then cleared with [EntryViewModel.onNavigationHandled]. */
+    // Handled once, then cleared with [EntryViewModel.onNavigationHandled].
     val navigation: EntryNavigation? = null,
-    /** Handed to the screens under the form, then cleared with [EntryViewModel.onResultsDelivered]. */
+    // For the screens under the form; cleared with [EntryViewModel.onResultsDelivered].
     val results: List<NavResult> = emptyList(),
 )

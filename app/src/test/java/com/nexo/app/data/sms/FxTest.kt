@@ -35,7 +35,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Bank-rate parsing, rate choice and estimates. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class FxTest {

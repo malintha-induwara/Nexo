@@ -27,7 +27,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
-/** Excel export: 12 columns, income / expense / transfer-out rows, list order. */
+// 12 columns; income, expense and transfer-out rows in list order.
 class DefaultExcelExportRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val transactions: TransactionsRepository,
@@ -36,7 +36,7 @@ class DefaultExcelExportRepository @Inject constructor(
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
     private val clock: Clock,
 ) : ExcelExportRepository {
-    /** Device date order as an Excel number format, e.g. "yyyy/mm/dd" or "mm/dd/yyyy". */
+    // Device date order as an Excel number format, e.g. "yyyy/mm/dd".
     private fun excelDatePattern(): String {
         val p = DateFormat.getBestDateTimePattern(Locale.getDefault(), "yyyyMMdd")
         val order = p.filter { it == 'y' || it == 'M' || it == 'd' }.toList().distinct()

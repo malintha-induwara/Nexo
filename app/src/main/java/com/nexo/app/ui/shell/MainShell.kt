@@ -98,18 +98,15 @@ enum class MainTab(val label: Int, val icon: ImageVector, val selectedIcon: Imag
     MORE(R.string.tab_more, Icons.Outlined.MoreHoriz, Icons.Rounded.MoreHoriz),
 }
 
-/**
- * Lets tab content talk to the shell: hide the bottom bar (filter panel, multi-select),
- * take over the add button (the Notes view adds a memo), and read how much space the floating bar
- * covers so lists can scroll underneath it.
- */
+// Lets tab content hide the bottom bar, take over the add button, and read how much space the
+// floating bar covers.
 class ShellController(hidden: MutableState<Boolean> = mutableStateOf(false)) {
-    /** Saved with the screen, so the bar is already hidden on the first frame when coming back to it. */
+    // Saved with the screen, so the bar is already hidden on the first frame back.
     var bottomBarHidden by hidden
     var addOverride by mutableStateOf<(() -> Unit)?>(null)
     var addLabelOverride by mutableStateOf<Int?>(null)
 
-    /** Bottom padding a scrolling list needs to clear the floating bar. */
+    // Bottom padding a list needs to scroll clear of the floating bar.
     var bottomInset by mutableStateOf(0.dp)
 }
 
@@ -134,11 +131,8 @@ fun MainShellRoute(vm: MainShellViewModel = hiltViewModel()) {
     )
 }
 
-/**
- * App shell with the four top-level tabs. Re-selecting a tab sends a "go to today" signal.
- * [tabContent] draws a tab's page. Back is left to the system here, so it leaves the app with the
- * predictive back-to-home animation; only the open add menu takes it.
- */
+// Re-selecting a tab sends a "go to today" signal. Back is left to the system so it gets the
+// predictive back-to-home animation; only the open add menu takes it.
 @Composable
 internal fun MainShell(
     state: MainShellUiState,
@@ -175,10 +169,10 @@ internal fun MainShell(
                 },
                 label = "tab",
             ) { t ->
-                // Every tab draws under the floating bar; its list pads its end by [ShellController.bottomInset].
+                // Tabs draw under the floating bar; lists pad by [ShellController.bottomInset].
                 Box(Modifier.fillMaxSize()) { tabContent(t, todaySignal) }
             }
-            // Holding the add button: the add action, and the way into the Review Queue whether or not anything waits.
+            // Long-press menu: the add action, and the way into the Review Queue even when empty.
             AnimatedVisibility(
                 addMenu,
                 enter = fadeIn(NexoMotion.enter()),
@@ -273,7 +267,7 @@ internal fun MainShell(
     }
 }
 
-/** A row of the add button's long-press menu; [count] shows as a badge when something waits. */
+// [count] shows as a badge when something waits.
 @Composable
 private fun AddMenuRow(icon: ImageVector, label: String, count: Int, onClick: () -> Unit) {
     val colors = LocalNexoColors.current

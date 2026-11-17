@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.stateIn
 
 data class MainShellUiState(val smsBadge: QueueBadge = QueueBadge())
 
-/** The main screen's own state: the Review Queue badge on the add button and the Transactions header. */
 @HiltViewModel
 class MainShellViewModel @Inject constructor(sms: SmsRepository) : ViewModel() {
     val uiState: StateFlow<MainShellUiState> = sms.getItemsStream(listOf(SmsStatus.PENDING))

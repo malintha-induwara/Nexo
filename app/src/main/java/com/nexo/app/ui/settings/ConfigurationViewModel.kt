@@ -20,7 +20,6 @@ import kotlinx.coroutines.launch
 
 data class ConfigurationUiState(val ref: RefData = RefData(), val device: DeviceSettings? = null)
 
-/** Book configuration and the month-start screen. */
 @HiltViewModel
 class ConfigurationViewModel @Inject constructor(
     refs: ReferenceDataRepository,
@@ -45,7 +44,7 @@ class ConfigurationViewModel @Inject constructor(
 
     fun setPrivacyButton(on: Boolean) = viewModelScope.launch { prefs.setPrivacyButton(on) }
 
-    /** Forgets the notes typed so far; suggestions only learn from notes written after now. */
+    // Suggestions only learn from notes written after now.
     fun resetAutocomplete() = update { it.copy(autocompleteResetAt = clock.millis()) }
 
     fun setQuickAddNotification(on: Boolean) = viewModelScope.launch {

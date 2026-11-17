@@ -170,10 +170,8 @@ private fun entryActions(vm: EntryViewModel, nav: Navigator, scanner: ReceiptSca
         markTransferGuideShown = vm::markTransferGuideShown,
     )
 
-/**
- * The entry form. [asDrawer] when it opens over another screen from an add button;
- * [reviewingUnassigned] when it steps through rows missing a category or account.
- */
+// [asDrawer]: opened over another screen from an add button. [reviewingUnassigned]: stepping
+// through rows missing a category or account.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun EntryScreen(
@@ -217,7 +215,6 @@ internal fun EntryScreen(
     }
     val txCurrency = ref.currency(s.currencyId)
 
-    /** Keypad input with a shake and a reject buzz when the key cannot change the amount. */
     fun pressKey(k: PadKey) {
         val r = s.pad.press(k)
         if (r.input == s.pad && !r.negateExisting && !r.clearField) {
@@ -227,9 +224,9 @@ internal fun EntryScreen(
         actions.padKey(k)
     }
 
-    // An edited entry loads from the database a moment after the screen appears; fade it in rather than pop.
+    // An edited entry loads a moment after the screen appears; fade it in rather than pop.
     val reveal by animateFloatAsState(if (s.loaded) 1f else 0f, tween(180), label = "entryReveal")
-    // As a drawer (opened from an add button) the sheet supplies the background and already sits below the status bar.
+    // As a drawer the sheet supplies the background and already sits below the status bar.
     Box(
         if (asDrawer) {
             Modifier.fillMaxSize()
@@ -300,7 +297,7 @@ internal fun EntryScreen(
             EntryBottomArea(state, actions, dialogs, typeColor, reviewingUnassigned, ::pressKey)
         }
 
-        // Scan receipt's confirm sheet. The last reading stays drawn while the sheet slides away.
+        // The last reading stays drawn while the sheet slides away.
         val shownScan = remember { arrayOfNulls<ScanUi>(1) }
         if (s.scan != null) shownScan[0] = s.scan
         InlineBottomSheet(

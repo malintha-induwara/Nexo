@@ -67,7 +67,6 @@ import com.nexo.app.ui.navigation.MainKey
 import com.nexo.app.ui.navigation.SubCurrenciesKey
 import java.time.LocalDate
 
-/** What the account form can ask for; the route backs each with the ViewModel or navigation. */
 class AccountFormActions(
     val onBack: () -> Unit = {},
     val onToggleHidden: () -> Unit = {},

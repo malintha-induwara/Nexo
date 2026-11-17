@@ -44,7 +44,6 @@ import com.nexo.app.ui.designsystem.theme.LocalHeaderColors
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.Space
 
-/** A 40dp round button on a raised fill: back, close and other single-icon actions in headers. */
 @Composable
 fun RoundIconButton(
     icon: ImageVector,
@@ -126,10 +125,7 @@ fun NexoTopBar(
     )
 }
 
-/**
- * "‹ title ›" used by every period-based screen. The title slides in the direction of the
- * step; a tappable title shows a small caret.
- */
+// "‹ title ›" for period screens; the title slides with the step, a caret marks it tappable.
 @Composable
 fun PeriodNavigator(
     title: String,
@@ -210,7 +206,7 @@ private fun StepButton(icon: ImageVector, description: String, color: Color, onC
     }
 }
 
-/** A quiet pill with a caret that opens a chooser, e.g. the period mode in a tab header. */
+// Opens a chooser, e.g. the period mode in a tab header.
 @Composable
 fun ModePill(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val colors = LocalNexoColors.current

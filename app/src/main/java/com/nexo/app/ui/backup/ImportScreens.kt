@@ -227,7 +227,6 @@ private fun errorText(row: ImportRow): String? {
     }
 }
 
-/** What the import preview can do; each action defaults to nothing. */
 class ImportPreviewActions(
     val onBack: () -> Unit = {},
     val onSave: () -> Unit = {},
@@ -306,7 +305,6 @@ fun ImportPreviewRoute(key: ImportPreviewKey, vm: ImportViewModel = hiltViewMode
     )
 }
 
-/** Import preview with row fixing. */
 @Composable
 internal fun ImportPreviewScreen(state: ImportUiState, actions: ImportPreviewActions) {
     val clock = LocalClock.current

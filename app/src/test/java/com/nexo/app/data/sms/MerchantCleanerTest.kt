@@ -7,7 +7,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Merchant cleanup and redaction, on invented descriptors. */
+// Invented descriptors only.
 class MerchantCleanerTest {
     private fun purchase(raw: String) = MerchantCleaner.clean(raw, atm = false)
 

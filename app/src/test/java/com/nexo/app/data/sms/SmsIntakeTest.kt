@@ -41,7 +41,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Gating, suggestions and stored text, against a seeded in-memory book (main currency LKR). */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class SmsIntakeTest {

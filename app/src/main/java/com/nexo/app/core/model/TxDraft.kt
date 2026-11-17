@@ -5,7 +5,7 @@ import java.time.LocalDateTime
 sealed interface PhotoItem {
     data class Stored(val fileName: String, val checksum: String, val size: Long) : PhotoItem
 
-    /** A picture the user just picked, by its content URI, not yet copied into the photo folder. */
+    // Not yet copied into the photo folder.
     data class Picked(val uri: String) : PhotoItem
 }
 
@@ -16,12 +16,11 @@ data class FeeDraft(
     val categoryId: String? = null,
 )
 
-/** Everything the entry form saves. */
 data class TxDraft(
-    /** Row being edited. For transfers this is the outgoing leg. */
+    // For transfers, the outgoing leg.
     val editingId: String? = null,
     val type: EntryType,
-    /** Keeps a balance row (7/8) as such when it is edited without switching type. */
+    // Keeps a balance row as such when it is edited without switching type.
     val balanceKind: TxKind? = null,
     val isBalanceAdjustment: Boolean = false,
     val accountId: String?,
@@ -30,7 +29,7 @@ data class TxDraft(
     val dateTime: LocalDateTime,
     val amount: Double,
     val currencyId: String,
-    /** Main-currency units per one transaction-currency unit; null = the stored rate. */
+    // Main-currency units per transaction-currency unit; null = the stored rate.
     val rate: Double? = null,
     val note: String = "",
     val description: String = "",

@@ -22,14 +22,12 @@ import kotlinx.coroutines.launch
 data class ImportUiState(
     val ref: RefData = RefData(),
     val busy: Boolean = false,
-    /** Import files added to the app, waiting to be reviewed. */
+    // Files added to the app, waiting to be reviewed.
     val imports: List<StoredFile> = emptyList(),
     val preview: ImportPreview? = null,
-    /** Handled once, then cleared with [ImportViewModel.onResultHandled]. */
     val result: BackupResult? = null,
 )
 
-/** Spreadsheet imports: the list of added files and the preview of one. */
 @HiltViewModel
 class ImportViewModel @Inject constructor(
     private val importer: TransactionImportRepository,
@@ -68,7 +66,6 @@ class ImportViewModel @Inject constructor(
         null
     }
 
-    /** Reads the import file into [ImportUiState.preview]. */
     fun loadPreview(name: String, order: DateOrder?) = viewModelScope.launch {
         val preview = importer.load(name, order)
         state.update { it.copy(preview = preview) }

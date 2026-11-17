@@ -7,20 +7,19 @@ import com.nexo.app.core.model.TxKind
 import com.nexo.app.domain.Classifier
 import kotlinx.serialization.Serializable
 
-/** Which categories and accounts a list of transactions is narrowed to. */
 @Serializable
 data class FilterCriteria(
     val incomeAll: Boolean = false,
     val expenseAll: Boolean = false,
-    /** Main or sub category ids. */
+    // Main or sub category ids.
     val categories: Set<String> = emptySet(),
-    /** Main category ids whose "Other" (no subcategory) entry is selected. */
+    // Main category ids whose "Other" (no subcategory) entry is selected.
     val otherOf: Set<String> = emptySet(),
     val noneIncome: Boolean = false,
     val noneExpense: Boolean = false,
     val modifiedIncome: Boolean = false,
     val modifiedExpense: Boolean = false,
-    /** Transfer-expense accounts: transfers into them (expense side) / out of them (income side). */
+    // Transfer-expense accounts: transfers into them (expense) and out of them (income).
     val teExpense: Set<String> = emptySet(),
     val teIncome: Set<String> = emptySet(),
     val accounts: Set<String> = emptySet(),

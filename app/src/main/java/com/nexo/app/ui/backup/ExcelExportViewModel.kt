@@ -19,7 +19,6 @@ import kotlinx.coroutines.launch
 data class ExcelExportUiState(
     val ref: RefData = RefData(),
     val busy: Boolean = false,
-    /** Handled once, then cleared with [ExcelExportViewModel.onResultHandled]. */
     val result: BackupResult? = null,
 )
 

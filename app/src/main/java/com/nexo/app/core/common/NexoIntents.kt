@@ -1,6 +1,5 @@
 package com.nexo.app.core.common
 
-/** Intent actions and extras shared by the notifications and shortcuts that open the app. */
 object NexoIntents {
     const val ACTION_ADD = "com.nexo.app.action.ADD"
     const val ACTION_SEARCH = "com.nexo.app.action.SEARCH"

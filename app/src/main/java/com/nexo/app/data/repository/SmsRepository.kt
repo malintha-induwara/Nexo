@@ -12,10 +12,8 @@ import com.nexo.app.core.model.SmsSource
 import com.nexo.app.core.model.SmsStatus
 import kotlinx.coroutines.flow.Flow
 
-/**
- * The Review Queue: items captured from bank SMS, what Nexo learned from earlier decisions (card → account,
- * merchant → category) and the bank-fee presets. Nothing here writes to the ledger.
- */
+// The Review Queue plus what was learned from decisions (card → account, merchant →
+// category) and fee presets. Nothing here writes to the ledger.
 interface SmsRepository {
     fun getItemsStream(statuses: List<SmsStatus>): Flow<List<SmsItem>>
 
@@ -27,29 +25,26 @@ interface SmsRepository {
 
     suspend fun getItemForTransaction(transactionId: String): SmsItem?
 
-    /**
-     * The single path from an SMS to the queue: gate → parse → correlate → suggest → store → notify. A message is
-     * taken in once, however often it is handed over. Returns how many items were created or changed. [notify] also
-     * posts the notification and schedules rate syncs.
-     */
+    // The one path from SMS to queue: gate → parse → correlate → suggest → store → notify.
+    // Each message is taken in once; returns how many items were created or changed.
     suspend fun receive(batch: List<IncomingSms>, notify: Boolean = true): Int
 
-    /** Fills an item's account, destination and category from what Nexo learned, and its FX estimate. */
+    // Fills account, destination and category from what was learned, plus the FX estimate.
     suspend fun prepare(item: SmsItem, ref: RefData? = null): SmsItem
 
-    /** Dedupe keys among [keys] that are already in the queue or its history. */
+    // Keys already in the queue or its history.
     suspend fun getKnownDedupeKeys(keys: List<String>): Set<String>
 
-    /** Stores picked past messages as pending items; returns the ids stored. */
+    // Stores picked past messages as pending items; returns their ids.
     suspend fun keep(items: List<SmsItem>): List<String>
 
-    /** Queue window and the retention of decided items. */
+    // Expires items past the queue window and purges old decided items.
     suspend fun sweep(now: Long)
 
-    /** The queue was opened: later arrivals count for the notification, which is cleared now. */
+    // Later arrivals count for the notification, which is cleared now.
     suspend fun markQueueSeen()
 
-    /** Records the ledger row an item became, and learns its card account and merchant category. */
+    // Records the ledger row and learns the card's account and the merchant's category.
     suspend fun markApproved(
         item: SmsItem,
         transactionId: String,
@@ -57,7 +52,7 @@ interface SmsRepository {
         categoryId: String?,
     )
 
-    /** Same, for an item reviewed in the entry form; ignored once the item is no longer pending. */
+    // For an item reviewed in the entry form; ignored once it is no longer pending.
     suspend fun markApproved(
         itemId: String,
         transactionId: String,
@@ -65,18 +60,16 @@ interface SmsRepository {
         categoryId: String?,
     )
 
-    /** Returns the items as they were, for Undo. */
+    // Returns the items as they were, for Undo.
     suspend fun deny(ids: Collection<String>, reason: DenyReason? = null): List<SmsItem>
 
-    /** Undo of a deny, or "Restore to queue" for an expired item (the window restarts). */
+    // Undo of a deny, or "Restore to queue" for an expired item (the window restarts).
     suspend fun restore(ids: Collection<String>)
 
     suspend fun setDenyReason(ids: Collection<String>, reason: DenyReason?)
 
-    /**
-     * Edits the amount. On a foreign-currency estimate it records the real account-currency figure and makes the item
-     * exact. An unverified item stays unverified: only Approve settles that.
-     */
+    // On a foreign-currency estimate this records the real account-currency figure and
+    // makes the item exact. Only Approve settles an unverified item.
     suspend fun setAmount(itemId: String, value: Double)
 
     suspend fun setAccounts(ids: Collection<String>, accountId: String)
@@ -85,7 +78,7 @@ interface SmsRepository {
 
     fun getSourcesStream(): Flow<List<SmsSource>>
 
-    /** "Which account is the card ending 1111?" — remembered, and applied to every pending item on that card. */
+    // Remembered, and applied to every pending item on that card.
     suspend fun mapCard(bank: String, last4: String, accountId: String)
 
     suspend fun unmapCard(bank: String, last4: String)
@@ -96,17 +89,14 @@ interface SmsRepository {
 
     suspend fun setFeeMode(accountId: String, route: FeeRoute, mode: FeeMode)
 
-    /** Fee preset: the last fee on this route from this account, and "Remember" turning it into always / never. */
+    // The last fee on this route and account; "Remember" turns it into always / never.
     suspend fun recordFee(item: SmsItem, accountId: String?, choice: FeeChoice)
 
     companion object {
-        /** Days an item stays in the queue before it expires. */
         const val QUEUE_WINDOW_DAYS = 30
 
-        /**
-         * Hours of the inbox that every check reads again. Android keeps messages that carry a code from other apps
-         * for three hours, and nothing announces their release.
-         */
+        // Android holds messages with a code back from other apps for three hours and doesn't
+        // announce their release.
         const val REREAD_HOURS = 24
     }
 }

@@ -72,7 +72,6 @@ fun BookmarksRoute(key: BookmarksKey, vm: BookmarksViewModel = hiltViewModel()) 
         onBack = nav::back,
         onOpen = { id ->
             if (key.pickForForm) {
-                // Hands the bookmark to the entry form that opened this list.
                 nav.results.post(NavResult.FavoritePicked(id))
                 nav.back()
             } else {
@@ -234,7 +233,6 @@ private fun favoriteSubtitle(ref: RefData, f: Favorite): String {
     return if (f.note.isNotBlank()) "$cat · ${accountLabel(ref, f.accountId)}" else cat
 }
 
-/** Made-up bookmarks for previews and tests: a grocery run, a salary and a cash top-up. */
 internal val previewBookmarksState = BookmarksUiState(
     ref = PreviewData.ref,
     favorites = listOf(

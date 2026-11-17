@@ -15,11 +15,11 @@ import java.time.LocalDate
 import java.time.YearMonth
 import kotlin.math.abs
 
-/** Net (inflows − outflows) of one account's own rows, in main and in account currency. */
+// Inflows minus outflows of one account's own rows, in main and in account currency.
 data class Net(val main: Double = 0.0, val account: Double = 0.0)
 
 object Balances {
-    /** Net per account (key null = the "None" pseudo-account). */
+    // Key null is the "None" pseudo-account.
     fun netByAccount(rows: List<TxAggregate>): Map<String?, Net> {
         val main = HashMap<String?, BigDecimal>()
         val acct = HashMap<String?, BigDecimal>()
@@ -35,7 +35,7 @@ object Balances {
         }
     }
 
-    /** Balance of [account] in its own currency, including debit cards linked to it. */
+    // In the account's own currency, including debit cards linked to it.
     fun balance(ref: RefData, account: Account, net: Map<String?, Net>): Double {
         val useMain = account.currencyId == ref.mainCurrency.id
         val ids = listOf(account.id) + ref.linkedDebitCards(account.id).map { it.id }
@@ -47,10 +47,9 @@ object Balances {
         )
     }
 
-    /** Net of the "None" pseudo-account in main currency. */
     fun unassigned(net: Map<String?, Net>): Double = net[null]?.main ?: 0.0
 
-    /** Value converted to the main currency at the current rate. */
+    // Converted at the current rate.
     fun toMain(ref: RefData, value: Double, accountId: String): Double {
         val c = ref.accountCurrency(accountId)
         val rounded = Money.round(value, c.decimals)
@@ -65,7 +64,7 @@ object Balances {
     fun signed(row: Transaction, value: Double): Double = if (row.kind.isInflow) value else -value
 }
 
-/** One account as shown on the Accounts tab. Values are in the account's currency. */
+// Values are in the account's currency.
 data class AccountFigure(
     val account: Account,
     val groupType: GroupType,
@@ -77,7 +76,7 @@ data class AccountFigure(
 data class GroupFigure(
     val groupId: String,
     val subtotal: Double,
-    /** Credit-card groups: Σ(payable + other). */
+    // Credit-card groups: payable plus other.
     val payableSubtotal: Double = 0.0,
 )
 
@@ -141,7 +140,7 @@ object AccountsSummaryCalculator {
         return AccountsSummary(assets.toDouble(), liabilities.toDouble(), groups)
     }
 
-    /** Figures for "All" mode: balances without date limit, card statements as of [today], debit cards by current month. */
+    // Balances without a date limit, card statements as of [today], debit cards by this month.
     fun allModeFigures(
         ref: RefData,
         net: Map<String?, Net>,
@@ -179,7 +178,7 @@ object AccountsSummaryCalculator {
         }
     }
 
-    /** Figures for period modes: cumulative balances as of the period end, no statement split. */
+    // Cumulative balances as of the period end, with no statement split.
     fun periodFigures(ref: RefData, net: Map<String?, Net>): List<AccountFigure> =
         ref.orderedAccounts().mapNotNull { a ->
             val type = ref.groupType(a.id) ?: return@mapNotNull null
@@ -193,7 +192,7 @@ object AccountsSummaryCalculator {
         }
 }
 
-/** Credit-card statement figures, negative = owed. */
+// Negative means owed.
 data class CardFigures(
     val payable: Double,
     val outstanding: Double,
@@ -201,7 +200,7 @@ data class CardFigures(
     val current: DateRange,
     val previous: DateRange,
 ) {
-    /** Pre-fill overdue + payable. */
+    // Pre-filled as overdue plus payable.
     val payAmount: Double
         get() {
             val owed = Money.add(payable, other)
@@ -210,7 +209,7 @@ data class CardFigures(
 }
 
 object CardStatement {
-    /** [rows] = all rows of the card and its linked debit cards. Prepayment tags are not used in Nexo. */
+    // [rows] are all rows of the card and its linked debit cards.
     fun compute(
         ref: RefData,
         card: Account,
@@ -268,7 +267,7 @@ object CardStatement {
         )
     }
 
-    /** Payment date for a statement ending on [end]: first payment-day date strictly after it. */
+    // The first payment-day date strictly after [end].
     fun paymentDate(end: LocalDate, paymentDay: Int): LocalDate {
         var month = YearMonth.from(end)
         repeat(3) {

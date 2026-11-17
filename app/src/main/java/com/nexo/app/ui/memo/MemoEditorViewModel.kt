@@ -37,13 +37,12 @@ data class MemoEditorUiState(
     val color: MemoColor = MemoColor.WHITE,
     val pinned: Boolean = false,
     val pinnedAt: Long = 0,
-    /** The memo was saved or deleted: the screen goes back, then calls [MemoEditorViewModel.onClosed]. */
     val closed: Boolean = false,
-    /** Handed to the screens under the editor as it closes. */
+    // Handed to the screens under the editor as it closes.
     val results: List<NavResult> = emptyList(),
 )
 
-/** What the user typed into the memo; the rest is loaded again from the nav key. */
+// Only what the user typed is saved; the rest is reloaded from the nav key.
 @Serializable
 private data class SavedMemo(
     val title: String,
@@ -83,7 +82,7 @@ class MemoEditorViewModel @AssistedInject constructor(
     private var original: Memo? = null
     private var initialized = false
 
-    /** Loads the memo once; safe to call again. */
+    // Loads the memo once; safe to call again.
     @MainThread
     fun initialize() {
         if (initialized) return
@@ -130,7 +129,7 @@ class MemoEditorViewModel @AssistedInject constructor(
         }
     }
 
-    /** Saved on back; an emptied existing memo is deleted. */
+    // An emptied existing memo is deleted.
     fun saveAndClose() = viewModelScope.launch {
         val s = _uiState.value
         val empty = s.title.isBlank() && s.content.isBlank()

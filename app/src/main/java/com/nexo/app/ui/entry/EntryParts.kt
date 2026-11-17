@@ -80,7 +80,6 @@ fun repeatLabel(t: RepeatType): String = stringResource(
     },
 )
 
-/** Select Tag sheet: check tags in order, add, and edit (rename, reorder, delete). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TagSelectSheet(
@@ -197,7 +196,7 @@ fun TagSelectSheet(
     TagDialogs(dialog, actions)
 }
 
-/** Up to three thumbnails with remove icons. */
+// Up to three thumbnails with remove icons.
 @Composable
 fun PhotoThumbs(
     photos: List<PhotoItem>,
@@ -240,10 +239,7 @@ fun PhotoThumbs(
     }
 }
 
-/**
- * Full-screen photo pager with export for saved photos. [exported] is whether the last export to
- * the gallery worked, shown until [onExportShown].
- */
+// [exported] is whether the last gallery export worked, shown until [onExportShown].
 @Composable
 fun PhotoViewer(
     photos: List<PhotoItem>,

@@ -15,7 +15,6 @@ import kotlinx.coroutines.launch
 
 data class AppearanceUiState(val device: DeviceSettings? = null)
 
-/** Light, dark or system theme. */
 @HiltViewModel
 class AppearanceViewModel @Inject constructor(private val prefs: UserPreferencesRepository) :
     ViewModel() {

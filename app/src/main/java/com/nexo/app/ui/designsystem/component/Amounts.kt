@@ -44,10 +44,7 @@ private fun TextStyle.minor(scale: Float): TextStyle = copy(
     lineHeight = if (lineHeight.isSpecified) scale * lineHeight else lineHeight,
 )
 
-/**
- * An amount with the symbol and decimals set smaller and dimmer than the integer.
- * For static figures: list rows, totals, chips.
- */
+// Symbol and decimals smaller and dimmer than the integer. For static figures.
 @Composable
 fun AmountText(
     value: Double,
@@ -101,11 +98,8 @@ fun AmountText(
     )
 }
 
-/**
- * An amount whose digits roll to their new value: up when the amount grows, down when it
- * shrinks. Each digit sits in its own slot keyed by its distance from the right, so units
- * stay units as the number gains digits. Nunito's digits are tabular, so slots never jitter.
- */
+// Slots are keyed by distance from the right so units stay units as digits are added.
+// Nunito's digits are tabular, so slots never jitter.
 @Composable
 fun RollingAmount(
     value: Double,
@@ -128,7 +122,7 @@ fun RollingAmount(
     RollingAmount(parts, direction, modifier, style, color, minorScale, minorAlpha)
 }
 
-/** [RollingAmount] for text that is not a stored value, e.g. the keypad buffer while typing. */
+// For text that is not a stored value, e.g. the keypad buffer while typing.
 @Composable
 fun RollingAmount(
     parts: AmountParts,
@@ -207,10 +201,8 @@ private fun RowScope.DigitSlot(digit: Char, style: TextStyle, color: Color, dire
         progress.animateTo(1f, NexoMotion.snappy())
         outgoing = null
     }
-    // The slot states its baseline explicitly from the measured text. Left to inherit it, Compose
-    // maps each child's baseline through that child's graphicsLayer, so a layout pass that lands
-    // mid-roll (or as the outgoing digit sits a full line above) freezes a baseline one line off
-    // and the digit drops out of the row until something forces another layout.
+    // Set the baseline from the measured text: an inherited one passes through the child's
+    // graphicsLayer, so a mid-roll layout can freeze it a line off and the digit drops out.
     Layout(
         modifier = Modifier.alignByBaseline().clipToBounds(),
         content = {
@@ -253,10 +245,7 @@ private fun RowScope.DigitSlot(digit: Char, style: TextStyle, color: Color, dire
     }
 }
 
-/**
- * Lets content keep its natural size when it fits and scales it down uniformly when it is wider
- * than the space available, so a long balance never wraps or clips. Anchored at the start.
- */
+// Scales content down uniformly when it is too wide, so a long balance never wraps or clips.
 fun Modifier.shrinkToFit(): Modifier = this.layout { measurable, constraints ->
     val placeable = measurable.measure(
         constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity),

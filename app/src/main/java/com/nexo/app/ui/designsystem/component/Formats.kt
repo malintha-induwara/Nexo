@@ -12,7 +12,6 @@ import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.Locale
 
-/** Locale-aware date helpers used across screens. */
 object Formats {
     private val locale: Locale get() = Locale.getDefault()
 
@@ -24,7 +23,7 @@ object Formats {
     fun weekdayShort(d: DayOfWeek): String = d.getDisplayName(TextStyle.SHORT, locale)
     fun weekdayFull(d: DayOfWeek): String = d.getDisplayName(TextStyle.FULL, locale)
 
-    /** "5/17/24 (Fri)". */
+    // "5/17/24 (Fri)".
     fun dateWithWeekday(d: LocalDate): String = "${shortDate(d)} (${weekdayShort(d)})"
 
     fun time(t: LocalTime, is24h: Boolean): String =
@@ -36,7 +35,7 @@ object Formats {
     fun monthFull(month: Int): String =
         Month.of(month).getDisplayName(TextStyle.FULL_STANDALONE, locale)
 
-    /** "M.D" style. */
+    // "M.D" style.
     fun monthDay(d: LocalDate): String =
         d.format(DateTimeFormatter.ofPattern(bestPattern("Md"), locale))
     fun yearMonthDots(d: LocalDate): String =
@@ -45,7 +44,7 @@ object Formats {
     fun rangeFull(start: LocalDate, end: LocalDate): String =
         "${shortDate(start)} ~ ${shortDate(end)}"
 
-    /** "Tue, Nov 10" (locale order), for day headers. */
+    // "Tue, Nov 10" (locale order), for day headers.
     fun dayMonth(d: LocalDate): String =
         d.format(DateTimeFormatter.ofPattern(bestPattern("MMMd"), locale))
     fun weekdayMonthDay(d: LocalDate): String =

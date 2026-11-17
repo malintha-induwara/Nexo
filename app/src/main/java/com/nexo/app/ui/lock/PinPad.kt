@@ -31,7 +31,6 @@ import androidx.compose.ui.unit.sp
 import com.nexo.app.R
 import kotlin.math.roundToInt
 
-/** Four dots that shake when [shake] changes. */
 @Composable
 fun PinDots(count: Int, shake: Int, color: Color = MaterialTheme.colorScheme.primary) {
     val offset = remember { Animatable(0f) }
@@ -60,7 +59,7 @@ fun PinDots(count: Int, shake: Int, color: Color = MaterialTheme.colorScheme.pri
     }
 }
 
-/** Digit keypad for PIN entry; honours the number-pad order. */
+// Honours the number-pad order.
 @Composable
 fun PinKeypad(
     onDigit: (Int) -> Unit,

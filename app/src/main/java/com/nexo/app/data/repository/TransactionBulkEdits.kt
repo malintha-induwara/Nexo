@@ -17,10 +17,7 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.map
 
-/**
- * Edits applied to many chosen rows at once: delete, and the "edit all" changes of date, note,
- * category and account. Transfer partners and fee rows follow the rows they belong to.
- */
+// Bulk delete and "edit all" changes; transfer partners and fee rows follow their rows.
 class TransactionBulkEdits @Inject constructor(
     private val db: NexoDatabase,
     private val refs: ReferenceDataRepository,
@@ -37,7 +34,7 @@ class TransactionBulkEdits @Inject constructor(
     private fun millis(dt: LocalDateTime): Long = dt.toEpochMillis(zone)
     private fun localDateTime(ms: Long): LocalDateTime = ms.toLocalDateTime(zone)
 
-    /** All row ids that belong with [rows]: transfer partners and fee rows. */
+    // Transfer partners and fee rows that belong with [rows].
     private suspend fun expand(
         rows: List<TransactionEntity>,
         wholeInstallment: Boolean,
@@ -87,7 +84,7 @@ class TransactionBulkEdits @Inject constructor(
         photos.deleteUnreferenced(cleanup)
     }
 
-    /** Edit All Dates: keeps each row's time of day; partners and fees move too. */
+    // Keeps each row's time of day; partners and fees move too.
     suspend fun setDate(ids: Collection<String>, date: LocalDate) {
         db.withTransaction {
             val rows = dao.getByIds(ids.toList())
@@ -103,7 +100,6 @@ class TransactionBulkEdits @Inject constructor(
         }
     }
 
-    /** Edit All Notes. */
     suspend fun setNote(ids: Collection<String>, note: String) {
         db.withTransaction {
             val rows = dao.getByIds(ids.toList())
@@ -115,7 +111,7 @@ class TransactionBulkEdits @Inject constructor(
         }
     }
 
-    /** Edit All Categories: the category decides income/expense; transfers are converted (partner and fee deleted). */
+    // The category decides income/expense; transfers convert (partner and fee deleted).
     suspend fun setCategory(ids: Collection<String>, categoryId: String) {
         val cleanup = HashSet<String>()
         val ref = refs.getRefData()
@@ -153,7 +149,6 @@ class TransactionBulkEdits @Inject constructor(
         photos.deleteUnreferenced(cleanup)
     }
 
-    /** Edit All Assets with one account. */
     suspend fun setAccount(ids: Collection<String>, accountId: String) {
         val ref = refs.getRefData()
         db.withTransaction {
@@ -184,7 +179,7 @@ class TransactionBulkEdits @Inject constructor(
         }
     }
 
-    /** Edit All Assets with a From/To pair: every row becomes a transfer between them. */
+    // Every row becomes a transfer between [from] and [to].
     suspend fun setTransfer(ids: Collection<String>, from: String, to: String) {
         val ref = refs.getRefData()
         db.withTransaction {

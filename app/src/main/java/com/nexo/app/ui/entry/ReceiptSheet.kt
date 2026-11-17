@@ -56,11 +56,7 @@ import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
 import java.util.Locale
 
-/**
- * Scan receipt's confirm step. While the photo is read it shows progress; then the total it found (tap to correct it),
- * the other amounts on the receipt (tap one to use it instead), and the shop with a tick to use or skip it as the note.
- * Use this fills the entry; Cancel, back, the scrim or a drag leave the entry as it was.
- */
+// Use this fills the entry; Cancel, back, the scrim or a drag leave it as it was.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ColumnScope.ReceiptSheetContent(

@@ -1,6 +1,6 @@
 package com.nexo.app.core.model
 
-/** Kind of a stored transaction row. A transfer is stored as one TRANSFER_OUT and one TRANSFER_IN row. */
+// A transfer is stored as one TRANSFER_OUT and one TRANSFER_IN row.
 enum class TxKind {
     INCOME,
     EXPENSE,
@@ -15,7 +15,7 @@ enum class TxKind {
     val isTransfer: Boolean get() = this == TRANSFER_OUT || this == TRANSFER_IN
     val isBalance: Boolean get() = this == BALANCE_INCREASE || this == BALANCE_DECREASE
 
-    /** Short code used inside deterministic repeat-instance ids (matches the original interop codes). */
+    // Part of deterministic repeat-instance ids and import codes; never renumber.
     val code: Int
         get() = when (this) {
             INCOME -> 0
@@ -27,10 +27,9 @@ enum class TxKind {
         }
 }
 
-/** Type the entry form works with. */
 enum class EntryType { INCOME, EXPENSE, TRANSFER }
 
-/** The form type a stored row opens as; balance changes open as income or expense. */
+// Balance changes open as income or expense.
 val TxKind.entryType: EntryType
     get() = when (this) {
         TxKind.INCOME, TxKind.BALANCE_INCREASE -> EntryType.INCOME
@@ -75,7 +74,7 @@ enum class MemoColor {
     GRAY,
 }
 
-/** Repeat schedule. [code] matches the original interop codes so imports map directly. */
+// [code] matches the import format so imports map directly.
 enum class RepeatType(val code: Int) {
     NONE(0),
     DAILY(5),
@@ -107,7 +106,6 @@ enum class RepeatType(val code: Int) {
     companion object {
         fun fromCode(code: Int): RepeatType? = entries.firstOrNull { it.code == code }
 
-        /** Display order of the repeat picker. */
         val pickerOrder: List<RepeatType> = entries.toList()
     }
 }
@@ -120,7 +118,6 @@ enum class SwipeMode { CHANGE_TAB, CHANGE_DATE, NONE }
 
 enum class ColorSet { A, B }
 
-/** Time input / list order setting. */
 enum class TimeDisplay(
     val code: Int,
     val timeInput: Boolean,
@@ -147,5 +144,4 @@ enum class CardAccounting { AT_USE, LUMP_SUM }
 
 enum class RepeatReflect { ON_DATE, FIRST_OF_PERIOD }
 
-/** How a transaction counts in income / expense totals. */
 enum class CashFlow { INCOME, EXPENSE, NEUTRAL }

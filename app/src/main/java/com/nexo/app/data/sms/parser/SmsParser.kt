@@ -10,19 +10,9 @@ import com.nexo.app.core.model.SmsReason
 import java.math.BigDecimal
 
 /**
- * Turns one SMS into a [ParsedSms]. Stateless: merging, enrichment and cancellation happen in the correlator.
- *
- * One rule set for every bank. Nothing below depends on which bank sent the message, only on how the message reads;
- * the bank is a label on the result. Order:
- *
- * 1. **Sender.** A known bank or a user-added sender; anything else is dropped.
- * 2. **Fixed formats.** Whole-sentence shapes where every field sits in a known place: card purchase, ATM withdrawal,
- *    fund-transfer request, cancellation, merchant OTP, declined attempt, approval-code transfer. They run before the
- *    ignore rules because an OTP or approval-code message can still name a movement.
- * 3. **Ignore rules.**
- * 4. **General rules.** Integer and European amounts, anchor-based amount choice that never picks a balance, validated
- *    merchant captures, debit/credit by first keyword, `X` masks, and fees read out of the body. Everything they
- *    produce is [Certainty.UNVERIFIED].
+ * Stateless, and one rule set for every bank: the bank is only a label on the result.
+ * Fixed formats run before the ignore rules, since OTP and approval-code messages can still name
+ * a movement. Whatever the general rules read is [Certainty.UNVERIFIED].
  */
 class SmsParser(customSenders: Collection<String> = emptyList()) {
     private val custom = customSenders.map(Banks::normalizeSender).filter {
@@ -175,7 +165,8 @@ class SmsParser(customSenders: Collection<String> = emptyList()) {
                 },
                 certainty = Certainty.UNVERIFIED, reason = SmsReason.APPROVAL_CODE,
                 occurredAt = msg.timestamp,
-                // No body time: the SMS time keeps two real transfers of the same amount apart. Retries merge in the correlator.
+                // SMS time, not body time, keeps two real transfers of one amount apart.
+                // Retries merge in the correlator.
                 dedupeKey = DedupeKeys.of(
                     bank,
                     "transfer_code",
@@ -189,10 +180,7 @@ class SmsParser(customSenders: Collection<String> = emptyList()) {
         return null
     }
 
-    /**
-     * The ATM's name names a different bank than the sender. A receipt footer that says the withdrawal was
-     * "performed at <sender's bank> ATMs" settles it the other way.
-     */
+    // A "performed at <bank> ATMs" footer naming the sender's bank overrides the ATM's name.
     private fun otherBankAtm(bank: Bank, atm: Merchant, body: String): Boolean {
         if (ownAtmFooter.find(body)?.let { Banks.findIn(it.g("atmBank")) } == bank) return false
         val atmBank = Banks.findIn(atm.raw)
@@ -249,7 +237,7 @@ class SmsParser(customSenders: Collection<String> = emptyList()) {
             feeRoute = if (kind == SmsKind.CARD_PAYMENT) FeeRoute.CC_PAYMENT else null,
             certainty = Certainty.UNVERIFIED, reason = reason,
             occurredAt = msg.timestamp,
-            // No fixed fields: the body itself, with the SMS time so a repeated alert on another day stays apart.
+            // SMS time keeps a repeated alert on another day apart.
             dedupeKey = DedupeKeys.of(
                 bank,
                 GENERIC,
@@ -263,7 +251,7 @@ class SmsParser(customSenders: Collection<String> = emptyList()) {
 
     private data class Picked(val amount: BigDecimal, val currency: String, val anchored: Boolean)
 
-    /** The amount nearest after an anchor word wins; anything right after a balance word is skipped. */
+    // The amount nearest after an anchor word wins; amounts right after a balance word are skipped.
     private fun pickAmount(text: String): Picked? {
         data class Hit(val start: Int, val amount: BigDecimal, val currency: String)
         val hits = buildList {
@@ -298,7 +286,7 @@ class SmsParser(customSenders: Collection<String> = emptyList()) {
         return Picked(chosen.amount, chosen.currency, anchored = best != null)
     }
 
-    /** Plain debit vs credit is decided by whichever keyword comes first. */
+    // Plain debit vs credit: whichever keyword comes first.
     private fun classify(text: String): Pair<SmsKind, Boolean> {
         if (creditCardPayment.containsMatchIn(text)) return SmsKind.CARD_PAYMENT to false
         if (loanPayment.containsMatchIn(text)) return SmsKind.LOAN_PAYMENT to false
@@ -326,7 +314,7 @@ class SmsParser(customSenders: Collection<String> = emptyList()) {
         }
     }
 
-    /** Leftmost valid capture across the alternatives; captures with account words, masked digits or balances fall through. */
+    // Leftmost valid capture wins; ones with account words, masked digits or balances fall through.
     private fun merchantOf(text: String): Merchant {
         val candidates = merchants.flatMapIndexed { i, r ->
             r.findAll(text).mapNotNull { m ->
@@ -347,7 +335,6 @@ class SmsParser(customSenders: Collection<String> = emptyList()) {
     private fun MatchResult.g(name: String): String = groups[name]?.value.orEmpty()
 
     companion object {
-        /** [ParsedSms.Movement.template] for messages read by the general rules. */
         const val GENERIC = "generic"
     }
 }
@@ -358,10 +345,8 @@ private fun rx(p: String) = Regex(p, RegexOption.IGNORE_CASE)
 
 // ---- Fixed-format patterns ----
 
-/**
- * Shared amount fragment. The comma-grouped form needs at least one group and comes first, and the trailing `(?![\d,])`
- * stops "LKR 1500.00" being read as 150.
- */
+// The comma-grouped form needs a group and goes first; the trailing (?![\d,]) stops
+// "LKR 1500.00" being read as 150.
 private const val AMT = """(?<cur>LKR|USD|EUR|GBP|SGD|AUD|INR|Rs\.?)\s?(?<amt>(?:\d{1,3}(?:,""" +
     """\d{3})+|\d+)(?:\.\d{1,2})?)(?![\d,])"""
 private const val CARD_DATE = """(?<date>\d{2}/\d{2}/\d{2}) (?<time>\d{1,2}:\d{2} [AP]M)"""
@@ -386,7 +371,7 @@ private val declined =
         """your card was declined due to .+?\. The attempted transaction amount was $AMT at .+? on \d{2}/\d{2}/\d{2}""",
     )
 
-/** An app transfer waiting for its approval code: "… Transfer within <bank> | to Other Banks LKR 1,000.00 attempted. Please use code …". */
+// "Transfer to Other Banks LKR 1,000.00 attempted. Please use code …"
 private val transferCode =
     rx(
         """\bTransfer (?<route>within .+?|to Other Banks) $AMT attempted\. Please use code \d{4,8}""",
@@ -395,12 +380,12 @@ private val ownAtmFooter = rx("""performed at (?<atmBank>.+?) ATMs\b""")
 
 // ---- General-rule patterns ----
 
-/** A message must name a payment; "transaction of" counts because real alerts use it. */
+// "transaction of" counts because real alerts use it.
 private val payment = rx(
     """(transaction\s+of|purchase|debited|debit ed|(?:\bdebit(?!\s+(?:cards?|accounts?)\b))|withdrawal|transaction for|transaction at|transaction approved|transaction\s+made|txn\s+for|pos(?:[/\-]atm)?\s+transaction|\bpos\b|amount\(approx\)|amt\s|vc\s*:|location:|credited|credit\s+rs|online transfer credit|online\s+transfer|transfer\s+of|mobile payment successful|mobile payment|bill payment successful|bill payment|reversal|auth pmt|pmt\b|fund\s+transfer|transferred|wire\s+transfer|cash\s+deposit|atm\s+deposit|deposited|\bdeposit\b|credit\s+card\s+payment|distributed|profit\s+amount|made\s+to\s+card|\btrxn\b|lankaQR|was\s+performed)""",
 )
 
-/** Rate and tariff notices: ignored unless a clear money-movement word is also there. */
+// Rate and tariff notices, ignored unless a clear movement word is also there.
 private val notice =
     rx(
         """(billing|wish\s+to\s+inform|will\s+be\s+revised|\btariff\b|for\s+(?:more\s+)?details|w\.e\.f\.|effective\s+from)""",
@@ -447,13 +432,13 @@ private val anchor =
     )
 private val balanceBefore = rx("""(bal|balance|avl|available|av\.\s*bal|limit)\W{0,6}(?:is\s+)?$""")
 
-/** A stated charge is read first and kept out of the amount search. */
+// Read first and kept out of the amount search.
 private val fee =
     rx(
         """(?:charges?|fee|commission|ceft\s+charge|service\s+charge)\s*(?:of|:)?\s*(?<cur>LKR|Rs\.?)\s?(?<amt>$NUM)(?![\d,])""",
     )
 
-/** Merchant alternatives, tried separately so a bad capture can fall through. */
+// Tried separately so a bad capture can fall through to the next.
 private val merchants = listOf(
     """:\s*\*\*\d+\s*:(.*?)\s*\((?:Apprx|Approx)\)""",
     """Location:\s*([^,]+)""",
@@ -475,7 +460,6 @@ private val badMerchant =
         """(a/?c\b|card\s+ending|\*+\d|X{2,}\d|\b(?:bal|balance|avl|available)\b|^\W*\d[\d\s,.]*$)""",
     )
 
-/** Card digits, and masked digits with `*` or `X`. */
 private val cardDigits =
     rx(
         """(?:card|a/?c|account)\s+(?:no\.?\s*)?(?:ending(?:\s+with)?|ending\s+in)?\s*[#:]?\s*[X\*]*(\d{4})\b""",

@@ -5,20 +5,10 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 /**
- * Reads the total, the date and the shop name from the rows of an English receipt. Stateless; the rules follow what
- * open-source receipt parsers agree on.
- *
- * 1. **Clean each row.** Currency marks go ("Rs.4,250.00" would otherwise hide the number behind the dot), spaces
- *    around a decimal point close up, and letters read in place of digits inside a number are put back ("4,25O.00").
- *    Label words get the opposite repair ("T0TAL").
- * 2. **Label each row** by whole words: total (strong or plain), subtotal, cash, change, other payment, discount, item
- *    count, and tax or charges. Exclusions are tested first, so "Total Savings" and "Total Items" never count as a total.
- * 3. **Pick the total.** A total row has a total word and no exclusion. Its amount is the right-most one on the row, or
- *    the one on the next row when the label stands alone. Among total rows, an amount that the receipt's own arithmetic
- *    confirms (cash − change, subtotal + tax − discount) wins first, then a strong label over plain "total", then the
- *    lowest row, since a "TOTAL" halfway down is often a running subtotal.
- * 4. **No total row:** an amount on an unlabelled row that the arithmetic confirms, else the largest amount on a row that
- *    is not a payment, subtotal, tax, discount or count, marked as a guess.
+ * Exclusions are tested first, so "Total Savings" is never a total. Among total rows, an amount the
+ * receipt's own arithmetic confirms wins, then a strong label, then the lowest row (a "TOTAL"
+ * halfway down is often a running subtotal). With no total row, an arithmetic match wins, else
+ * the largest unlabelled amount, marked as a guess.
  */
 object ReceiptParser {
     private const val MAX_OTHERS = 6
@@ -64,7 +54,7 @@ object ReceiptParser {
             ?: (null to false)
     }
 
-    /** The right-most amount on a total row; failing that, the amount on the next row when that row carries no label. */
+    // Right-most amount on the row, else the next row's amount when that row has no label.
     private fun amountFor(row: Row, rows: List<Row>): BigDecimal? {
         (row.amounts.lastOrNull() ?: row.wholeAmounts.lastOrNull())?.takeIf {
             it.signum() > 0
@@ -80,7 +70,7 @@ object ReceiptParser {
         }
     }
 
-    /** Totals the receipt states on its own: cash less change, and subtotal plus tax and charges less discounts. */
+    // Cash less change, and subtotal plus tax and charges less discounts.
     private fun arithmetic(rows: List<Row>): List<BigDecimal> = buildList {
         val cash = rows.firstOrNull { it.cash && !it.change }?.amounts?.lastOrNull()
         val change = rows.firstOrNull { it.change }?.amounts?.lastOrNull()
@@ -98,17 +88,16 @@ object ReceiptParser {
         }
     }
 
-    /** One receipt row: its amounts (from the cleaned text) and its labels (from the word text). */
     private class Row(val index: Int, raw: String) {
         private val numbers = cleanNumbers(raw)
         private val words = cleanWords(raw)
 
-        /** Amounts with decimals, left to right. */
+        // With decimals only.
         val amounts: List<BigDecimal> = amount.findAll(numbers).mapNotNull {
             toAmount(it.value)
         }.toList()
 
-        /** Amounts that may be whole numbers, left to right; read only on a total row. */
+        // May be whole numbers; trusted only on a total row.
         val wholeAmounts: List<BigDecimal> = wholeAmount.findAll(numbers).mapNotNull {
             toAmount(it.value)
         }.toList()
@@ -125,7 +114,7 @@ object ReceiptParser {
         val discount = discountWord.containsMatchIn(words)
         val extra = extraWord.containsMatchIn(words) && !inclusiveWord.containsMatchIn(words)
 
-        /** "Total items 12" is a count; "Total (12 items) 4,250.00" is still a total. */
+        // "Total items 12" is a count; "Total (12 items) 4,250.00" is still a total.
         private val count = countWord.containsMatchIn(words) && amounts.isEmpty()
         private val payment = cash || change || paymentWord.containsMatchIn(words)
 
@@ -133,13 +122,12 @@ object ReceiptParser {
         val isTotal = strength > 0 && !excluded
     }
 
-    /** Whether [row] holds a date, so the merchant search skips it. */
     private fun hasDate(row: String): Boolean =
         listOf(isoDate, numericDate, dayMonthYear, monthDayYear).any { it.containsMatchIn(row) }
 
     // ---- Merchant ----
 
-    /** The first of the top rows that reads as a name: mostly letters, no amount, date, phone, web or receipt words. */
+    // First top row that reads as a name: mostly letters, no amount, date or receipt words.
     private fun merchant(rows: List<String>): String? =
         rows.take(MERCHANT_ROWS).firstNotNullOfOrNull { raw ->
             val row = raw.replace(
@@ -205,7 +193,7 @@ private fun wordLetter(c: Char): String = when (c) {
     else -> c.toString()
 }
 
-/** The last `.` or `,` is the decimal point when one or two digits follow it; every other separator groups thousands. */
+// The last . or , is the decimal point when one or two digits follow; others group thousands.
 private fun toAmount(raw: String): BigDecimal? {
     val last = raw.indexOfLast { it == '.' || it == ',' }
     val decimals = if (last >= 0) raw.length - last - 1 else 0
@@ -222,13 +210,13 @@ private val EDGE_MARKS = charArrayOf('-', '*', '#', '=', '_', '~', '|', '.', ','
 
 private fun rx(p: String) = Regex(p, RegexOption.IGNORE_CASE)
 
-/** A label or labels as whole words: "total" never matches inside "subtotal". */
+// Whole words only: "total" never matches inside "subtotal".
 private fun label(vararg alternatives: String) =
     Regex("""(?<![a-z])(?:${alternatives.joinToString("|")})(?![a-z])""")
 
 // ---- Number patterns ----
 
-/** Integer part: Indian grouping, Western grouping, or plain digits (nine at most, so barcodes never match). */
+// Indian grouping, Western grouping, or at most nine plain digits so barcodes never match.
 private const val NUM = """(?:\d{1,2}(?:,\d{2})+,\d{3}|\d{1,3}(?:[.,]\d{3})+|\d{1,9})"""
 private val amount = Regex("""(?<![\d.,])$NUM[.,]\d{1,2}(?![.,]?\d)(?!\s*%)""")
 private val wholeAmount = Regex("""(?<![\d.,])$NUM(?:[.,]\d{1,2})?(?![.,]?\d)(?!\s*%)""")
@@ -237,7 +225,7 @@ private val money = Regex("""$NUM[.,]\d{2}""")
 private val currency = rx("""(?<![a-z])(?:rs|lkr|slrs?)(?![a-z])\s*[.:]?\s*""")
 private val spacedDecimal = Regex("""(?<=\d)(?: +\. *|\. +)(?=\d{2}(?!\d))""")
 
-/** A run that may be a number with letters misread for digits; checked as a whole before anything changes. */
+// A number that may have letters misread for digits; checked as a whole before anything changes.
 private val numberish = Regex("""(?<![A-Za-z])[\dOoIl|][\dOoIl|SB.,]*[\dOoIl|SB](?![A-Za-z])""")
 private val digitInWord = Regex("""(?<=[a-z])[0158](?=[a-z])""")
 private val digitEndingWord = Regex("""(?<=[a-z]{3})1(?![\da-z])""")

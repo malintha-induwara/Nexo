@@ -9,7 +9,7 @@ import com.nexo.app.core.model.TxKind
 import java.math.BigDecimal
 
 data class BudgetRow(
-    /** Real budget id; null for a virtual parent or the computed total. */
+    // Null for a virtual parent or the computed total.
     val budgetId: String?,
     val categoryId: String?,
     val name: String,
@@ -29,7 +29,6 @@ data class BudgetRow(
 
 data class BudgetBlockData(val total: BudgetRow?, val rows: List<BudgetRow>)
 
-/** Budget rows for one month period. */
 object BudgetCalc {
     fun usedByCategory(
         ref: RefData,
@@ -47,9 +46,7 @@ object BudgetCalc {
         return main.mapValues { it.value.toDouble() } to sub.mapValues { it.value.toDouble() }
     }
 
-    /**
-     * [forSettings] keeps zero-amount rows (Budget Settings lists them) and skips the computed total.
-     */
+    // [forSettings] keeps zero-amount rows (Budget Settings lists them) and skips the total.
     fun compute(
         ref: RefData,
         budgets: List<Budget>,

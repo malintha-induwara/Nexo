@@ -16,18 +16,16 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** Whether a PIN typed in settings is the current one. [id] tells two identical answers apart. */
+// id tells two identical answers apart.
 data class PinCheck(val correct: Boolean, val id: Int)
 
 data class LockSettingsUiState(
     val device: DeviceSettings? = null,
-    /** Handled once by the PIN dialog, then cleared. */
     val pinCheck: PinCheck? = null,
-    /** A fresh biometric key to confirm with the system prompt; handled once, then cleared. */
+    // A fresh biometric key to confirm with the system prompt.
     val biometricSetup: Cipher? = null,
 )
 
-/** App lock: PIN, biometric unlock and timeout. */
 @HiltViewModel
 class LockSettingsViewModel @Inject constructor(
     private val prefs: UserPreferencesRepository,
@@ -48,10 +46,10 @@ class LockSettingsViewModel @Inject constructor(
         prefs.setLockTimeout(timeout)
     }
 
-    /** Sets or changes the PIN; null removes it together with biometric unlock. */
+    // Null removes the PIN together with biometric unlock.
     fun setPin(pin: String?) = viewModelScope.launch { lock.setPin(pin) }
 
-    /** Unlike the lock screen, a wrong answer here does not count as a failed attempt. */
+    // Unlike the lock screen, a wrong answer here does not count as a failed attempt.
     fun checkPin(pin: String) = viewModelScope.launch {
         pinCheck.value = PinCheck(lock.isCurrentPin(pin), ++pinChecks)
     }
@@ -62,7 +60,7 @@ class LockSettingsViewModel @Inject constructor(
 
     fun lockNow() = lock.lockNow()
 
-    /** Makes a fresh biometric key; turning biometrics on waits for the prompt that confirms it. */
+    // Biometrics turn on only once the system prompt confirms the new key.
     fun startBiometricSetup() = viewModelScope.launch {
         biometricSetup.value = lock.createBiometricKey()
     }

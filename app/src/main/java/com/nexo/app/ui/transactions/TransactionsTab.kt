@@ -173,7 +173,6 @@ private fun transactionsActions(vm: TransactionsViewModel, nav: Navigator) = Tra
     openBudgetDetail = { id, month -> nav.navigate(BudgetDetailKey(id, month.toString())) },
 )
 
-/** The Transactions tab: a period header, the sub-tab pages, the filter panel and the day sheet. */
 @Composable
 internal fun TransactionsTab(
     state: TransactionsUiState,
@@ -206,7 +205,7 @@ internal fun TransactionsTab(
 
     LaunchedEffect(currentTab, data.period?.key) { header.expand() }
     val selecting = selection.isNotEmpty()
-    // Not reset on dispose: the value is saved with the screen so the bar does not flash in on return.
+    // Not reset on dispose: saved with the screen so the bar does not flash in on return.
     val hideBar = filterOpen || selecting || daySheet != null
     LaunchedEffect(hideBar) { shell.bottomBarHidden = hideBar }
     // On the Notes view the bar's add button writes a memo instead of a transaction.
@@ -501,7 +500,7 @@ internal fun TransactionsTab(
                 }
             }
         }
-        // Part of this screen (not a dialog), so it travels with the screen during navigation.
+        // Not a dialog, so it travels with the screen during navigation.
         DaySheet(
             date = daySheet?.let(LocalDate::parse),
             data = data,
@@ -536,7 +535,7 @@ internal fun TransactionsTab(
     })
 }
 
-/** A 40dp header action; [active] fills it to show a mode is on (the filter). */
+// [active] fills it to show a mode is on, such as the filter.
 @Composable
 private fun HeaderAction(
     icon: ImageVector,
@@ -559,7 +558,7 @@ private fun HeaderAction(
     )
 }
 
-/** The period's net as the screen's one large number, with income and expenses beneath. */
+// The period's net as the screen's one large number, with income and expenses beneath.
 @Composable
 private fun NetHero(
     income: Double,

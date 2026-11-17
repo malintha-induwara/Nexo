@@ -131,7 +131,7 @@ private val previewHomeData = HomeData(
     ledger = Ledger(rows = previewTransactions),
 )
 
-/** The Daily page of this month: four transactions over two days, and a memo today. */
+// The Daily page of this month: four transactions over two days, and a memo today.
 internal val previewTransactionsState = TransactionsUiState(
     ref = PreviewData.ref,
     tab = SubTab.DAILY,
@@ -143,7 +143,6 @@ internal val previewTransactionsState = TransactionsUiState(
     ),
 )
 
-/** [previewTransactionsState] showing another sub-tab. */
 internal fun previewTransactionsStateOn(tab: SubTab) = previewTransactionsState.copy(
     tab = tab,
     data = previewHomeData.copy(tab = tab),

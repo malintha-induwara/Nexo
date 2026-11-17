@@ -7,7 +7,6 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import javax.crypto.Cipher
 
-/** Shows the system biometric prompt for a keystore-bound cipher. */
 object BiometricPrompter {
     fun isAvailable(context: Context): Boolean = BiometricManager.from(
         context,

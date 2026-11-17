@@ -36,19 +36,18 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import javax.inject.Inject
 
-/** What the form opens with, and the stored records that saving it will update or approve. */
+// What the form opens with, and the stored records that saving it will update or approve.
 data class LoadedEntry(
     val form: EntryForm,
-    /** The row being edited; null for anything new, including copies. */
+    // Null for anything new, including copies.
     val original: Transaction? = null,
     val originalRule: RepeatRule? = null,
-    /** The Review Queue item being reviewed in [EntryMode.SMS]. */
+    // The Review Queue item, in [EntryMode.SMS].
     val smsItem: SmsItem? = null,
-    /** An approved SMS transaction still booked at an FX estimate: editing its amount records the actual one. */
+    // An approved SMS row still at an FX estimate; editing its amount records the actual one.
     val linkedEstimate: SmsItem? = null,
 )
 
-/** Builds the entry form for each way it can be opened. */
 class EntryFormLoader @Inject constructor(
     private val transactions: TransactionsRepository,
     private val favorites: FavoritesRepository,
@@ -59,10 +58,8 @@ class EntryFormLoader @Inject constructor(
     private val getSmsFeePlan: GetSmsFeePlanUseCase,
     private val clock: Clock,
 ) {
-    /** Now to the minute, as the form shows and stores it. */
     fun timeNow(): LocalTime = LocalTime.now(clock).withSecond(0).withNano(0)
 
-    /** An empty form for this book, dated now. */
     fun blank(r: RefData): EntryForm = EntryForm(
         date = LocalDate.now(clock),
         time = timeNow(),
@@ -243,7 +240,6 @@ class EntryFormLoader @Inject constructor(
         return LoadedEntry(form, original = if (copy) null else tx)
     }
 
-    /** Fills [base] from a bookmark; [keepDate] keeps the date and time already on the form. */
     suspend fun applyFavorite(
         r: RefData,
         base: EntryForm,
@@ -286,7 +282,7 @@ class EntryFormLoader @Inject constructor(
         return s
     }
 
-    /** Pre-fills the fee of the most recent transfer between the same accounts. */
+    // The fee of the most recent transfer between the same accounts.
     suspend fun withLastFee(s: EntryForm): EntryForm {
         val from = s.accountId ?: return s
         val to = s.toAccountId ?: return s
@@ -354,13 +350,13 @@ class EntryFormLoader @Inject constructor(
         )
     }
 
-    /** The form opens with everything the SMS gave; saving approves the item. */
+    // Saving the form approves the item.
     private suspend fun loadSmsItem(key: EntryKey, r: RefData, base: EntryForm): LoadedEntry {
         val item = key.smsItemId?.let { sms.getItem(it) }
             ?: return LoadedEntry(newEntry(key, r, base))
         val (currency, amount) = getSmsLedgerAmount(item, r)
         val kind = item.kind
-        // A payment to someone outside Nexo starts as an expense; picking a destination account turns it into a transfer.
+        // A payment out starts as an expense; picking a destination account makes it a transfer.
         val transfer = kind.isTransfer && (kind != SmsKind.TRANSFER_OUT || item.toAccountId != null)
         val (from, to) = if (kind == SmsKind.TRANSFER_IN) {
             item.toAccountId to item.accountId
@@ -368,7 +364,6 @@ class EntryFormLoader @Inject constructor(
             item.accountId to item.toAccountId
         }
         val dt = item.occurredAt.toLocalDateTime(clock.zone)
-        // The fee field starts filled when the route's preset knows the fee.
         val presetFee = when (val plan = getSmsFeePlan(item)) {
             is FeePlan.Auto -> plan.amount
             is FeePlan.Ask -> plan.prefill.takeIf { !plan.fxDifference }
@@ -402,7 +397,7 @@ class EntryFormLoader @Inject constructor(
         return LoadedEntry(form, smsItem = item)
     }
 
-    /** The SMS item behind [txId] when it is still booked at an estimate. */
+    // The SMS item behind [txId] when it is still booked at an estimate.
     private suspend fun linkedEstimate(txId: String): SmsItem? =
         sms.getItemForTransaction(txId)?.takeIf { it.awaitingActual }
 
@@ -411,7 +406,6 @@ class EntryFormLoader @Inject constructor(
         return s.copy(fxNote = FxNote(item, editHint = true), fxFromApi = item.rateFromApi)
     }
 
-    /** Pre-fill from a spreadsheet import row. */
     private suspend fun loadImportRow(key: EntryKey, r: RefData, base: EntryForm): EntryForm {
         val file = key.importFile ?: return newEntry(key, r, base)
         val order = key.importOrder?.let { runCatching { DateOrder.valueOf(it) }.getOrNull() }

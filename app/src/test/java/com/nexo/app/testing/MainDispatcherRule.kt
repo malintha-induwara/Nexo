@@ -9,7 +9,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.rules.TestWatcher
 import org.junit.runner.Description
 
-/** Runs `viewModelScope` on [testDispatcher], which `runTest` then shares, so ViewModels can be tested off the main looper. */
+// Shares the dispatcher with runTest so ViewModels can be tested off the main looper.
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainDispatcherRule(val testDispatcher: TestDispatcher = UnconfinedTestDispatcher()) :
     TestWatcher() {

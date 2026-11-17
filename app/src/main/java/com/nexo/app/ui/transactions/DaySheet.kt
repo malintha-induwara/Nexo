@@ -68,10 +68,8 @@ import com.nexo.app.ui.transactionlist.TxRow
 import java.time.LocalDate
 import java.util.Locale
 
-/**
- * Calendar day sheet. [date] null hides it. The sheet is part of the Transactions
- * screen, so opening an entry from it and coming back animates as one screen.
- */
+// [date] null hides it. Part of the Transactions screen, so opening an entry from it and
+// coming back animates as one screen.
 @Composable
 fun DaySheet(
     date: LocalDate?,

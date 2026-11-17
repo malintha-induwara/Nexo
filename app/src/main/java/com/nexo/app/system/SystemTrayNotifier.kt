@@ -22,7 +22,6 @@ import java.time.Clock
 import java.time.LocalDateTime
 import javax.inject.Inject
 
-/** Posts the app's notifications to the system tray and sets the daily reminder alarm. */
 class SystemTrayNotifier @Inject constructor(
     @ApplicationContext private val context: Context,
     private val clock: Clock,
@@ -37,7 +36,7 @@ class SystemTrayNotifier @Inject constructor(
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
             context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
-    /** Every action routes through the lock first. */
+    // Every action routes through the lock first.
     override fun updateQuickAdd(enabled: Boolean) {
         if (!enabled) {
             manager.cancel(ID_QUICK_ADD)
@@ -86,7 +85,7 @@ class SystemTrayNotifier @Inject constructor(
         notify(ID_QUICK_ADD, n)
     }
 
-    /** Only a count, never message text or amounts. */
+    // Only a count, never message text or amounts.
     override fun postSmsReview(count: Int) {
         if (count <= 0) {
             manager.cancel(ID_SMS)
@@ -123,7 +122,7 @@ class SystemTrayNotifier @Inject constructor(
         notify(ID_REMINDER, n)
     }
 
-    /** One exact alarm at the next occurrence; inexact when exact alarms aren't allowed. */
+    // One exact alarm at the next occurrence; inexact when exact alarms aren't allowed.
     override fun scheduleReminder(enabled: Boolean, hour: Int, minute: Int) {
         val am = context.getSystemService(AlarmManager::class.java)
         val pi = PendingIntent.getBroadcast(

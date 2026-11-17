@@ -5,7 +5,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlin.math.abs
 
-/** The transaction time written in the body, read as Sri Lankan time (UTC+05:30). */
+// Body times are Sri Lankan time (UTC+05:30).
 object BodyDate {
     val ZONE: ZoneId = Banks.ZONE
     private const val WINDOW_MS = 3L * 24 * 60 * 60 * 1000
@@ -15,7 +15,7 @@ object BodyDate {
     private val ymd = Regex("""(\d{4})-(\d{2})-(\d{2})""")
     private val hms = Regex("""(\d{2}):(\d{2}):(\d{2})""")
 
-    /** `dd/mm/yy` + `hh:mm AM` (card messages). Never US order. */
+    // "dd/mm/yy" + "hh:mm AM" (card messages). Never US order.
     fun card(date: String, time: String): Long? = runCatching {
         val d = dmy.matchEntire(date)!!.groupValues
         val t = hm12.matchEntire(time.trim())!!.groupValues
@@ -24,7 +24,7 @@ object BodyDate {
         epoch(LocalDateTime.of(2000 + d[3].toInt(), d[2].toInt(), d[1].toInt(), hour, t[2].toInt()))
     }.getOrNull()
 
-    /** `yyyy-mm-dd` + `hh:mm:ss` (fund transfers). */
+    // "yyyy-mm-dd" + "hh:mm:ss" (fund transfers).
     fun iso(date: String, time: String): Long? = runCatching {
         val d = ymd.matchEntire(date)!!.groupValues
         val t = hms.matchEntire(time)!!.groupValues
@@ -40,7 +40,6 @@ object BodyDate {
         )
     }.getOrNull()
 
-    /** Use the body time when it lies within ±3 days of the SMS time, otherwise the SMS time. */
     fun choose(body: Long?, sms: Long): Long = if (body != null && abs(body - sms) <= WINDOW_MS) {
         body
     } else {

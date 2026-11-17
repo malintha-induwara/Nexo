@@ -65,9 +65,8 @@ enum class HistoryKind(val label: Int) {
     }
 }
 
-/** The result of "Add N transactions": written to the ledger, and left in the queue for details. */
 data class HistoryResult(val added: Int, val toQueue: Int) {
-    /** Null when nothing happened worth saying. */
+    // Null when there is nothing to report.
     val message: UiText?
         get() = buildList {
             if (added > 0) add(UiText.plural(R.plurals.sms_history_added, added))
@@ -77,26 +76,25 @@ data class HistoryResult(val added: Int, val toQueue: Int) {
 
 data class SmsHistoryUiState(
     val ref: RefData = RefData(),
-    /** Opened from the re-enable hint: the missed stretch is one of the ranges. */
+    // Opened from the re-enable hint, so the missed stretch is one of the ranges.
     val gap: Boolean = false,
     val range: HistoryRange = HistoryRange.MONTH,
     val custom: Pair<LocalDate, LocalDate>,
-    /** Null while reading the inbox. */
+    // Null while reading the inbox.
     val rows: List<HistoryRow>? = null,
     val permitted: Boolean = false,
     val kind: HistoryKind = HistoryKind.ALL,
     val card: String? = null,
-    /** Rows passing the kind and card filters. */
     val visible: List<HistoryRow> = emptyList(),
     val selection: Set<String> = emptySet(),
     val adding: Boolean = false,
-    /** The fee question on screen; the rest wait their turn. */
+    // One fee question at a time; the rest wait their turn.
     val feePrompt: FeePrompt? = null,
-    /** Set when "Add" is done; the screen reports it and leaves. */
+    // Set when "Add" is done; the screen reports it and leaves.
     val result: HistoryResult? = null,
 )
 
-/** The picker's range and filters; the rows are read from the inbox again. */
+// Only the range and filters are saved; the rows are read from the inbox again.
 @Serializable
 private data class SavedHistory(
     val range: HistoryRange,
@@ -125,7 +123,6 @@ class SmsHistoryViewModel @AssistedInject constructor(
     private val zone = clock.zone
     private val gap: Boolean = key.gapFrom > 0 && key.gapUntil > key.gapFrom
 
-    /** Everything but the reference data, which comes from its own stream. */
     private val saved: SavedHistory? = savedState.restoreAndSave("place") {
         screenState.value.let {
             SavedHistory(it.range, it.custom.first, it.custom.second, it.kind, it.card)
@@ -165,7 +162,7 @@ class SmsHistoryViewModel @AssistedInject constructor(
     private var added = 0
     private var toQueue = 0
 
-    /** Reads the inbox the first time the screen opens. */
+    // Reads the inbox only the first time the screen opens.
     fun initialize() {
         if (initialized) return
         initialized = true
@@ -246,7 +243,7 @@ class SmsHistoryViewModel @AssistedInject constructor(
         }
     }
 
-    /** Selects every visible row, or clears them when all are already selected. */
+    // Clears the selection instead when every visible row is already selected.
     fun selectAll(rows: List<HistoryRow>) {
         val ids = rows.filter { !it.cancelled }.map { it.item.id }.toSet()
         screenState.update { s ->
@@ -261,7 +258,7 @@ class SmsHistoryViewModel @AssistedInject constructor(
         }
     }
 
-    /** "Which account is the card ending 1111?": remembered for live capture too, and applied to these rows. */
+    // Remembered for live capture too, and applied to these rows.
     fun mapCard(card: CardRef, accountId: String) = viewModelScope.launch {
         sms.mapCard(card.bank, card.last4, accountId)
         val ref = refs.getRefData()
@@ -280,10 +277,7 @@ class SmsHistoryViewModel @AssistedInject constructor(
         }
     }
 
-    /**
-     * "Add N transactions": picking counts as approving. Fee presets apply as in bulk approve, with one question per route;
-     * rows that still lack an account or category wait in the Review Queue.
-     */
+    // Picking counts as approving; rows still lacking an account or category wait in the queue.
     fun add() = viewModelScope.launch {
         val state = screenState.value
         val chosen = state.rows.orEmpty().filter {
@@ -330,7 +324,7 @@ class SmsHistoryViewModel @AssistedInject constructor(
         if (prompts.isEmpty()) finish()
     }
 
-    /** A fee answer for the batch on screen; Cancel leaves those items in the Review Queue. */
+    // Null is Cancel, which leaves those items in the Review Queue.
     fun answerFee(choice: FeeChoice?) = viewModelScope.launch {
         val prompt = feePrompts.value.firstOrNull() ?: return@launch
         feePrompts.update { it.drop(1) }

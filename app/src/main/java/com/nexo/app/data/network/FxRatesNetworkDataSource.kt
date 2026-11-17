@@ -21,10 +21,8 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 
-/**
- * AllRatesToday Sri Lankan bank boards. The request carries nothing about the user: no amounts, no merchants.
- * Rates are LKR per one unit of the foreign currency.
- */
+// AllRatesToday Sri Lankan bank boards, in LKR per unit of foreign currency.
+// The request carries nothing about the user.
 class FxRatesNetworkDataSource @Inject constructor(
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -32,7 +30,8 @@ class FxRatesNetworkDataSource @Inject constructor(
 
     val hasKey: Boolean get() = key.isNotBlank()
 
-    /** The latest boards, or the stored boards for [date] (that day or the nearest of the 5 before). Null on any failure. */
+    // Latest boards, or the stored ones for [date] (or the nearest of the 5 days before).
+    // Null on any failure.
     suspend fun fetch(date: LocalDate? = null): List<FxSnapshot>? =
         withContext(ioDispatcher) { fetchBlocking(date) }
 
@@ -59,13 +58,11 @@ class FxRatesNetworkDataSource @Inject constructor(
         private const val BASE = "https://allratestoday.com/api/v1/bank-rates/lk"
         private const val TIMEOUT_MS = 15_000
 
-        /** The currencies Nexo's parsers can read; only these are kept, so the history stays small. */
+        // Only currencies the parsers can read are kept, so the history stays small.
         val CURRENCIES = setOf("USD", "EUR", "GBP", "SGD", "AUD", "INR")
 
-        /**
-         * Field quirks: `captured_at` (ISO-8601) is the snapshot time, `bank_updated_at` is ignored, non-ISO codes
-         * such as "UAE" are dropped, and any rate may be missing.
-         */
+        // captured_at is the snapshot time, bank_updated_at is ignored, non-ISO codes like
+        // "UAE" are dropped, and any rate may be missing.
         fun parse(text: String): List<FxSnapshot> {
             val root =
                 runCatching { Json.parseToJsonElement(text).jsonObject }.getOrNull()

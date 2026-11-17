@@ -8,7 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Synthetic receipts only; real bills stay out of the repository. */
+// Synthetic receipts only; real bills stay out of the repository.
 class ReceiptParserTest {
     private fun read(vararg rows: String) = ReceiptParser.parse(rows.toList())
     private fun amount(s: String) = BigDecimal(s).setScale(2)

@@ -12,7 +12,6 @@ import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
-/** What the system knows about a file the user picked. */
 class PickedFileDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
@@ -31,7 +30,7 @@ class PickedFileDataSource @Inject constructor(
         }.getOrNull() ?: uri.lastPathSegment
     }
 
-    /** The file's extension in lower case, from its name or else its type. */
+    // Lower case, from the name or else the MIME type.
     suspend fun extensionOf(uri: Uri): String? = withContext(ioDispatcher) {
         val ext = displayName(uri)?.substringAfterLast('.', "")?.lowercase(Locale.ROOT)
             ?.takeIf { it.isNotEmpty() }

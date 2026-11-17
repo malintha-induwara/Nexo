@@ -8,10 +8,8 @@ import java.time.Clock
 import java.time.Instant
 import javax.inject.Inject
 
-/**
- * Notes recent enough to suggest while typing: used within about 15 months and since autocomplete
- * was last reset. Empty when the book has autocomplete off.
- */
+// Notes used within about 15 months and since autocomplete was last reset; empty when the book
+// has autocomplete off.
 class GetNoteSuggestionsUseCase @Inject constructor(
     private val refs: ReferenceDataRepository,
     private val transactions: TransactionsRepository,

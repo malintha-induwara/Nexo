@@ -46,7 +46,6 @@ import com.nexo.app.ui.designsystem.theme.nexo
 import com.nexo.app.ui.navigation.AccountGroupFormKey
 import com.nexo.app.ui.navigation.LocalNavigator
 
-/** Account Group list with reorder and delete. */
 @Composable
 fun AccountGroupsRoute(vm: AccountGroupsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current

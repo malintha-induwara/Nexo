@@ -16,13 +16,11 @@ import kotlinx.coroutines.launch
 
 data class RestoreUiState(
     val busy: Boolean = false,
-    /** Automatic backups on the device, newest first. */
+    // Automatic backups on the device, newest first.
     val backups: List<StoredFile> = emptyList(),
-    /** Handled once, then cleared with [RestoreViewModel.onResultHandled]. */
     val result: BackupResult? = null,
 )
 
-/** Writing a backup to a file, and restoring from a file or an automatic backup. */
 @HiltViewModel
 class RestoreViewModel @Inject constructor(private val backups: BackupRepository) : ViewModel() {
     private val state = MutableStateFlow(RestoreUiState())
@@ -50,7 +48,7 @@ class RestoreViewModel @Inject constructor(private val backups: BackupRepository
 
     fun writeBackup(uri: Uri) = work { BackupResult.BackupWritten(backups.writeBackup(uri)) }
 
-    /** A picked file waits for the user's confirmation, unless its name says it is no backup. */
+    // Waits for the user's confirmation, unless the file's name says it is no backup.
     fun pickRestoreFile(uri: Uri) = viewModelScope.launch {
         val result =
             if (backups.isBackup(uri)) BackupResult.RestorePicked(uri) else BackupResult.NotABackup

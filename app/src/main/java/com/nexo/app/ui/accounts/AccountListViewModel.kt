@@ -21,11 +21,10 @@ import kotlinx.coroutines.launch
 
 data class AccountListUiState(
     val ref: RefData = RefData(),
-    /** Net per account (key null = the "None" pseudo-account). */
+    // The null key is the "None" pseudo-account.
     val balances: Map<String?, Net> = emptyMap(),
 )
 
-/** The account list: visibility, deletion and order, with each account's balance. */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AccountListViewModel @Inject constructor(
@@ -43,7 +42,7 @@ class AccountListViewModel @Inject constructor(
         repo.setStatus(id, status)
     }
 
-    /** Order = position in the whole list; the group may change. */
+    // Order is the position in the whole list; an account's group may change.
     fun reorderAccounts(order: List<Pair<String, String>>) =
         viewModelScope.launch { repo.reorderAccounts(order) }
 }

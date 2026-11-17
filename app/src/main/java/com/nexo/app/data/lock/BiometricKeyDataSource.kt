@@ -13,7 +13,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
-/** The keystore key behind biometric unlock. The platform invalidates it when biometric enrolments change. */
+// The keystore key behind biometric unlock; enrolment changes invalidate it.
 class BiometricKeyDataSource @Inject constructor(
     @Dispatcher(NexoDispatchers.IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -45,7 +45,7 @@ class BiometricKeyDataSource @Inject constructor(
         }
     }
 
-    /** A cipher bound to the key, or null when the key is missing or no longer valid. */
+    // Null when the key is missing or no longer valid.
     suspend fun cipher(): Cipher? = withContext(ioDispatcher) {
         val ks = KeyStore.getInstance(KEYSTORE).apply { load(null) }
         val key = ks.getKey(KEY_ALIAS, null) as? SecretKey ?: return@withContext null

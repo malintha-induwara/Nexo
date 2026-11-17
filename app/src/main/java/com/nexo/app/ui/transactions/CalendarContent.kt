@@ -46,11 +46,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.util.Locale
 
-/**
- * Month grid. No ruled lines: days sit on the page, and a day with transactions or memos
- * becomes a soft tile, so activity is what stands out. Today's number is an inverted pill.
- * Each cell still shows income, expenses and the day's net.
- */
+// No ruled lines: only days with transactions or memos get a tile, so activity stands out.
 @Composable
 internal fun CalendarContent(
     data: HomeData,

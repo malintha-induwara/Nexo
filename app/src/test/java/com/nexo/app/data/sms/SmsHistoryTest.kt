@@ -36,7 +36,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Picker scan over a fake inbox of synthetic messages. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class SmsHistoryTest {

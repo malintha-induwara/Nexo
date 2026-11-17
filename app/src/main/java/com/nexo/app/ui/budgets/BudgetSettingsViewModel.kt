@@ -25,21 +25,18 @@ data class BudgetSettingsUiState(
     val budgets: List<Budget> = emptyList(),
     val amounts: List<BudgetAmount> = emptyList(),
     val list: BudgetBlockData? = null,
-    /** A budget was added: the add screen goes back, then calls [BudgetSettingsViewModel.onAddedHandled]. */
+    // The add screen goes back, then calls [BudgetSettingsViewModel.onAddedHandled].
     val added: Boolean = false,
 )
 
-/** Shared by Budget Settings, Add Budget and the monthly editor. */
+// Shared by Budget Settings, Add Budget and the monthly editor.
 @HiltViewModel
 class BudgetSettingsViewModel @Inject constructor(
     refs: ReferenceDataRepository,
     private val repo: BudgetsRepository,
     private val clock: Clock,
 ) : ViewModel() {
-    /**
-     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
-     * is current whenever the screen is there to call them.
-     */
+    // For handlers that need it synchronously; it feeds [uiState], so it stays current.
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),

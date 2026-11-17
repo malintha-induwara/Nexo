@@ -88,10 +88,9 @@ private fun appInfoIntent(context: Context) = Intent(
     Uri.fromParts("package", context.packageName, null),
 )
 
-/** The dialogs of the Bank SMS settings; the permission result opens some of them, so the route holds which. */
+// Held by the route because the permission result opens some of them.
 internal enum class SmsSettingsDialog { ASK, OFFER, SETTINGS }
 
-/** What the Bank SMS settings can ask for; the route backs each with the ViewModel, navigation or the system. */
 class SmsSettingsActions(
     val onBack: () -> Unit = {},
     val onSetEnabled: (Boolean) -> Unit = {},
@@ -108,7 +107,6 @@ class SmsSettingsActions(
     val onSetFullText: (Boolean) -> Unit = {},
 )
 
-/** Settings → Bank SMS (capture switch, card mapping, privacy). */
 @Composable
 fun SmsSettingsRoute(vm: SmsSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -131,7 +129,7 @@ fun SmsSettingsRoute(vm: SmsSettingsViewModel = hiltViewModel()) {
                     dialog = SmsSettingsDialog.OFFER
                 }
             } else {
-                // No rationale after a denial means Android won't ask again (or the setting is restricted): send them to App info.
+                // No rationale after a denial: Android won't ask again, so open App info.
                 val activity = context.findActivity()
                 val blocked =
                     activity != null &&
@@ -347,7 +345,6 @@ internal fun SmsSettingsScreen(
     }
 }
 
-/** Settings → Bank SMS → Cards and accounts. */
 @Composable
 fun SmsCardsRoute(vm: SmsSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -430,7 +427,6 @@ internal fun SmsCardsScreen(
     }
 }
 
-/** Settings → Bank SMS → Bank fees: the remembered answers per account and route, each resettable to "ask". */
 @Composable
 fun SmsFeesRoute(vm: SmsSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -520,7 +516,6 @@ internal fun SmsFeesScreen(
     }
 }
 
-/** Settings → Bank SMS → Bank sender IDs: the built-in list, and senders the user adds. */
 @Composable
 fun SmsSendersRoute(vm: SmsSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -599,7 +594,7 @@ internal fun SmsSendersScreen(
     }
 }
 
-/** Made-up settings for previews and tests: two card mappings, two fee answers and a custom sender. */
+// Made-up settings for previews and tests.
 internal val previewSmsSettingsState = SmsSettingsUiState(
     ref = PreviewData.ref,
     device = PreviewData.device.copy(

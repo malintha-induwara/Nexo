@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "nexo_device")
 
-/** Device-only preferences in the `nexo_device` DataStore. Never part of a data backup. */
+// Device-only preferences; never part of a data backup.
 @Singleton
 class DevicePreferencesDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -164,7 +164,7 @@ class DevicePreferencesDataSource @Inject constructor(
 
     suspend fun setHideAmounts(v: Boolean) = context.dataStore.edit { it[K.hideAmounts] = v }
 
-    /** Turning the button off also shows the figures again, so they never stay hidden with no way back. */
+    // Turning the button off also shows the figures, so they never stay hidden.
     suspend fun setPrivacyButton(v: Boolean) = context.dataStore.edit {
         it[K.privacyButton] = v
         if (!v) it[K.hideAmounts] = false
@@ -174,7 +174,7 @@ class DevicePreferencesDataSource @Inject constructor(
         it[K.smsCaptureEnabled] = v
     }
 
-    /** Capture became active: a new start point. After an earlier stop, the gap becomes the re-enable hint. */
+    // A new start point; after an earlier stop, the gap becomes the re-enable hint.
     suspend fun markSmsCaptureStarted(now: Long) = context.dataStore.edit {
         val stopped = it[K.smsCaptureStoppedAt] ?: 0
         if (stopped in 1 until now) {

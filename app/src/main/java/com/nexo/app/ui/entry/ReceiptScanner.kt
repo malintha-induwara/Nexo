@@ -29,12 +29,8 @@ import com.nexo.app.ui.lock.LocalExpectReturn
 import java.io.File
 import java.time.Clock
 
-/**
- * Scan receipt: the document scanner (rear camera, edges found and cropped, or a photo from the
- * gallery) hands back one page, which is read and then attached once the user confirms it. Where
- * the scanner cannot start (no Google Play services, or a phone it does not support) the plain
- * camera and gallery choices take its place.
- */
+// Uses the ML Kit document scanner; where it cannot start (no Google Play services, or an
+// unsupported phone) the plain camera and gallery take its place.
 @Stable
 class ReceiptScanner internal constructor(
     private val context: Context,
@@ -46,7 +42,7 @@ class ReceiptScanner internal constructor(
     private val onUnavailable: State<() -> Unit>,
     private val expectReturn: () -> Unit,
 ) {
-    /** The document scanner; [onUnavailable] offers the camera and gallery instead when it cannot start. */
+    // Falls back to [onUnavailable] when the scanner cannot start.
     fun scan() {
         val activity = context.findActivity()
         if (activity == null) {
@@ -80,10 +76,7 @@ class ReceiptScanner internal constructor(
     }
 }
 
-/**
- * [onScanned] gets a scanned page or a photo just taken; [onPicked] a file from the gallery, which
- * may turn out not to be an image.
- */
+// [onPicked] gets a gallery file, which may turn out not to be an image.
 @Composable
 fun rememberReceiptScanner(
     onScanned: (Uri) -> Unit,
@@ -125,11 +118,8 @@ fun rememberReceiptScanner(
     }
 }
 
-/**
- * Takes a photo with the phone's camera app, asking it to open on the rear lens. The system has no
- * official way to choose the lens for another app, so these extras are hints: many camera apps
- * follow them, and one that does not simply opens on whichever lens it used last.
- */
+// There is no official way to choose another app's lens, so these extras only hint at the
+// rear one; many camera apps follow them.
 private class RearCameraPicture : ActivityResultContracts.TakePicture() {
     override fun createIntent(context: Context, input: Uri): Intent =
         super.createIntent(context, input).apply {
@@ -141,7 +131,6 @@ private class RearCameraPicture : ActivityResultContracts.TakePicture() {
         }
 }
 
-/** One page, straightened and cropped, from the rear camera or the gallery. */
 private fun receiptScanner() = GmsDocumentScanning.getClient(
     GmsDocumentScannerOptions.Builder()
         .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)

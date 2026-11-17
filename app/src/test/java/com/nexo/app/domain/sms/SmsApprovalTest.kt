@@ -39,7 +39,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Approve / Deny / Edit against a seeded LKR book (accounts "1" bank, "11" cash; category "6" Food). */
+// Seeded LKR book: accounts "1" (bank) and "11" (cash), category "6" (Food).
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class SmsApprovalTest {

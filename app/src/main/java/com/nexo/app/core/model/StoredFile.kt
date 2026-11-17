@@ -2,7 +2,7 @@ package com.nexo.app.core.model
 
 import java.io.File
 
-/** A file in one of the app's folders, with what a list shows about it read up front. */
+// Date and size are read up front for lists.
 data class StoredFile(val file: File, val modifiedAt: Long, val sizeBytes: Long) {
     val name: String get() = file.name
 

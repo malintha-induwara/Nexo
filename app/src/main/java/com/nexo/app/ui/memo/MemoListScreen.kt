@@ -54,7 +54,6 @@ import com.nexo.app.ui.navigation.MemoListKey
 import java.time.LocalDate
 import java.time.YearMonth
 
-/** Standalone memo list. */
 @Composable
 fun MemoListRoute(key: MemoListKey) {
     val vm =

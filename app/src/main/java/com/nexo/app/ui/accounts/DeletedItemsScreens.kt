@@ -38,7 +38,6 @@ import com.nexo.app.ui.designsystem.theme.nexo
 import com.nexo.app.ui.navigation.AccountDetailKey
 import com.nexo.app.ui.navigation.LocalNavigator
 
-/** Deleted accounts and deleted groups. */
 @Composable
 fun DeletedAccountsRoute(vm: DeletedItemsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current

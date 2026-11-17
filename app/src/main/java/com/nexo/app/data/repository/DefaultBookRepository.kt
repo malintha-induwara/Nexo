@@ -33,7 +33,7 @@ class DefaultBookRepository @Inject constructor(
             ?: 0
     }
 
-    /** Complete reset: every table emptied and re-seeded. Device preferences and the PIN stay. */
+    // Every table emptied and re-seeded; device preferences and the PIN stay.
     override suspend fun completeReset(deletePhotos: Boolean, main: CatalogCurrency) =
         scope.runToCompletion {
             withContext(ioDispatcher) {
@@ -47,7 +47,7 @@ class DefaultBookRepository @Inject constructor(
             }
         }
 
-    /** Reset contents only: transactions, photos, tag links and the SMS review queue that points at them. */
+    // The SMS review queue goes too, since it points at the transactions.
     override suspend fun contentsReset(deletePhotos: Boolean) = scope.runToCompletion {
         withContext(ioDispatcher) {
             db.transactionDao().deleteAll()
@@ -60,7 +60,6 @@ class DefaultBookRepository @Inject constructor(
         }
     }
 
-    /** Forgotten PIN: everything on the device is erased and the app returns to the welcome screen. */
     override suspend fun eraseAll() = scope.runToCompletion {
         withContext(ioDispatcher) {
             db.clearAllTables()
@@ -78,7 +77,7 @@ class DefaultBookRepository @Inject constructor(
         }
     }
 
-    /** The record of messages already taken in is gone, so capture starts over rather than refill the queue. */
+    // The seen-message record is gone, so capture starts over instead of refilling the queue.
     private suspend fun restartSmsCapture() {
         if (prefs.getDeviceSettings().smsCaptureStartedAt != 0L) {
             prefs.markSmsCaptureStarted(clock.millis())

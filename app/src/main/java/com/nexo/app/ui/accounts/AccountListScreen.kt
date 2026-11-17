@@ -59,7 +59,6 @@ import com.nexo.app.ui.navigation.AccountListKey
 import com.nexo.app.ui.navigation.AccountListMode
 import com.nexo.app.ui.navigation.LocalNavigator
 
-/** Accounts Setting list with reorder / show-hide / delete modes. */
 @Composable
 fun AccountListRoute(key: AccountListKey, vm: AccountListViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -75,7 +74,7 @@ fun AccountListRoute(key: AccountListKey, vm: AccountListViewModel = hiltViewMod
     )
 }
 
-/** [startMode] is the mode the list opened in; back leaves a mode only when it opened in normal mode. */
+// Back leaves a mode only when the list opened in normal mode.
 @Composable
 internal fun AccountListScreen(
     state: AccountListUiState,
@@ -248,7 +247,7 @@ internal fun AccountListScreen(
     }
 }
 
-/** Moving past a group boundary moves the account into the neighbouring group. */
+// Moving past a group boundary moves the account into the neighbouring group.
 private fun move(
     ref: RefData,
     list: List<Account>,

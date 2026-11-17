@@ -1,6 +1,6 @@
 package com.nexo.app.core.model
 
-/** Sum of amounts for one (account, counterpart, kind) combination. */
+// Sum of amounts per (account, counterpart, kind).
 data class TxAggregate(
     val accountId: String?,
     val counterpartAccountId: String?,

@@ -15,7 +15,7 @@ import com.nexo.app.ui.navigation.RestoreFileKey
 import com.nexo.app.ui.navigation.SearchKey
 import com.nexo.app.ui.navigation.SmsQueueKey
 
-/** Maps launch intents (shortcuts, notifications, deep link, opened files) to screens. */
+// Maps launch intents (shortcuts, notifications, deep links, opened files) to screens.
 object IntentRouter {
     fun route(intent: Intent?): List<NavKey> {
         intent ?: return emptyList()

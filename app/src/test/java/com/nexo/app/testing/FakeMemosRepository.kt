@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
-/** Memos kept in a list; the order and search rules are the simple ones the screens rely on. */
+// Order and search follow the simple rules the screens rely on.
 class FakeMemosRepository(initial: List<Memo> = emptyList()) : MemosRepository {
     private val memos = MutableStateFlow(initial)
 

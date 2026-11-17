@@ -21,13 +21,12 @@ import com.nexo.app.core.model.GroupType
 import com.nexo.app.domain.AccountsSummary
 import com.nexo.app.domain.CardFigures
 
-/** How an account group looks: an icon and one of the ten category hues. */
 data class GroupVisual(val icon: ImageVector, val hue: Int)
 
 object GroupVisuals {
     val None = GroupVisual(Icons.Rounded.Inbox, 9)
 
-    /** Seeded groups get a fixed look; the user's own groups take a stable hue from their id. */
+    // Seeded groups get a fixed look; the user's own groups take a stable hue from their id.
     fun of(group: AccountGroup): GroupVisual = when (group.builtinId) {
         11 -> GroupVisual(Icons.Rounded.Payments, 3)
 
@@ -62,27 +61,26 @@ object GroupVisuals {
     }
 }
 
-/** One account card. Amounts are in [currency]. */
 data class AccountUi(
     val key: String,
-    /** Null for the "None" pseudo-account. */
+    // Null for the "None" pseudo-account.
     val accountId: String?,
     val name: String,
     val groupName: String,
     val visual: GroupVisual,
     val currency: Currency,
     val balance: Double,
-    /** Statement split, shown instead of [balance] when present. */
+    // Statement split, shown instead of balance when present.
     val card: CardFigures? = null,
-    /** Left out of the totals: drawn dimmed. */
+    // Left out of the totals; drawn dimmed.
     val muted: Boolean = false,
-    /** Debit cards show spending, not a balance: never coloured by sign. */
+    // Debit cards show spending, not a balance: never coloured by sign.
     val neutral: Boolean = false,
-    /** Change against the previous period, in period modes. */
+    // Change against the previous period, in period modes.
     val change: Double? = null,
 )
 
-/** A group of account cards. [total] is in the main currency. */
+// The total is in the main currency.
 data class AccountSection(
     val id: String,
     val title: String,

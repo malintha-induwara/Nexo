@@ -47,11 +47,11 @@ data class EntryKey(
     val reviewUnassigned: Boolean = false,
     val sourceText: String? = null,
     val repeat: RepeatType? = null,
-    /** When true the form opens on top of the main screen from a shortcut or notification. */
+    // Opens on top of the main screen, from a shortcut or notification.
     val external: Boolean = false,
-    /** Opened from an add button: the form is shown as a drawer over the current screen. */
+    // Opened from an add button: shown as a drawer over the current screen.
     val fromAdd: Boolean = false,
-    /** [EntryMode.SMS]: the Review Queue item being reviewed; saving approves it. */
+    // [EntryMode.SMS]: the Review Queue item being reviewed; saving approves it.
     val smsItemId: String? = null,
 ) : NavKey
 
@@ -222,7 +222,6 @@ data class ExcelExportKey(val start: String? = null, val end: String? = null) : 
 @Serializable
 data class RestoreFileKey(val uri: String) : NavKey
 
-/** Bank SMS Review Queue. */
 @Serializable
 data object SmsQueueKey : NavKey
 
@@ -238,6 +237,6 @@ data object SmsFeesKey : NavKey
 @Serializable
 data object SmsSendersKey : NavKey
 
-/** A non-zero gap opens on the messages that arrived while capture was off. */
+// A non-zero gap opens on the messages that arrived while capture was off.
 @Serializable
 data class SmsHistoryKey(val gapFrom: Long = 0, val gapUntil: Long = 0) : NavKey

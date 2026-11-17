@@ -19,7 +19,6 @@ import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoShapes
 import com.nexo.app.ui.designsystem.theme.Space
 
-/** A dropdown menu in the app's look: a rounded panel that floats just under its anchor. */
 @Composable
 fun NexoMenu(
     expanded: Boolean,
@@ -43,7 +42,6 @@ fun NexoMenu(
     )
 }
 
-/** One choice in a [NexoMenu]. [danger] colours a destructive choice. */
 @Composable
 fun NexoMenuItem(
     label: String,

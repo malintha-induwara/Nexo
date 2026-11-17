@@ -2,18 +2,17 @@ package com.nexo.app.data.sms.parser
 
 import java.util.Locale
 
-/** A merchant as sent, as shown, and as used for category learning. */
+// raw as sent, name as shown, key for category learning.
 data class Merchant(val raw: String, val name: String, val key: String) {
     companion object {
         val NONE = Merchant("", "", "")
     }
 }
 
-/** Merchant cleanup. The card-network descriptor carries city, country, phone and reference junk. */
 object MerchantCleaner {
     private val ci = setOf(RegexOption.IGNORE_CASE)
 
-    // Step 1 (case-sensitive): Sri Lankan ATM names end in a district code + LK; card descriptors in a 2-letter country.
+    // Case-sensitive: ATM names end in a district code + LK, card descriptors in a country code.
     private val atmSuffix = Regex("""\s?(?:[A-Z]{2}\s?)?LK$""")
     private val country = Regex("""\s[A-Z]{2}$""")
     private val phone = Regex("""\+\d{8,}""")
@@ -42,7 +41,7 @@ object MerchantCleaner {
         return s.replace(spaces, " ").trim(' ', '-', '.', ',', ':', ';')
     }
 
-    /** Lower-case alphanumerics: all "Dialog Axiata PLC Colombo 02 LK" variants share one key. */
+    // Lower-case alphanumerics, so spelling variants of one merchant share a key.
     fun key(name: String): String = name.lowercase(Locale.ROOT).replace(keyJunk, " ").trim()
 
     private fun of(raw: String, name: String) = Merchant(raw.trim(), name, key(name))

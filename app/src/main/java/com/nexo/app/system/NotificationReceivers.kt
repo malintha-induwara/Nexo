@@ -9,7 +9,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 
-/** The daily reminder alarm went off. */
 @AndroidEntryPoint
 class ReminderReceiver : BroadcastReceiver() {
     @Inject lateinit var notifications: StandingNotifications
@@ -21,7 +20,7 @@ class ReminderReceiver : BroadcastReceiver() {
         handleAsync(scope) { notifications.onReminderAlarm() }
 }
 
-/** The quick-add notification was swiped away; it comes back while the setting is on. */
+// The quick-add notification was swiped away; it comes back while the setting is on.
 @AndroidEntryPoint
 class QuickAddRepostReceiver : BroadcastReceiver() {
     @Inject lateinit var notifications: StandingNotifications
@@ -33,7 +32,7 @@ class QuickAddRepostReceiver : BroadcastReceiver() {
         handleAsync(scope) { notifications.refreshQuickAdd() }
 }
 
-/** After a reboot, an app update or an exact-alarm permission change. */
+// After a reboot, an app update or an exact-alarm permission change.
 @AndroidEntryPoint
 class BootReceiver : BroadcastReceiver() {
     @Inject lateinit var notifications: StandingNotifications

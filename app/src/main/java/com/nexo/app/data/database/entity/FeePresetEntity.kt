@@ -5,7 +5,6 @@ import com.nexo.app.core.model.FeeMode
 import com.nexo.app.core.model.FeePreset
 import com.nexo.app.core.model.FeeRoute
 
-/** Fee preset, keyed by source account and route. */
 @Entity(tableName = "fee_presets", primaryKeys = ["accountId", "route"])
 data class FeePresetEntity(
     val accountId: String,

@@ -42,7 +42,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
-/** Filter chips. The first two show the queue (pending items); the rest show decided items still kept. */
+// The first two show pending items; the rest show decided items still kept.
 @Serializable
 enum class QueueFilter(val label: Int, val status: SmsStatus) {
     ATTENTION(R.string.sms_filter_attention, SmsStatus.PENDING),
@@ -52,20 +52,19 @@ enum class QueueFilter(val label: Int, val status: SmsStatus) {
     CANCELLED(R.string.sms_filter_cancelled, SmsStatus.CANCELLED),
 }
 
-/** One fee question, for a single item or a bulk-approved batch on the same route. */
+// For a single item, or a bulk-approved batch on the same route.
 data class FeePrompt(val items: List<SmsItem>, val plan: FeePlan.Ask)
 
-/** A bank card that pending items mention but no account is set for. */
+// A card that pending items mention but no account is mapped to.
 data class CardRef(val bank: String, val last4: String)
 
-/** What the Undo button of a [QueueNotice] reverses. */
 sealed interface QueueUndo {
     data class RemoveFee(val feeId: String) : QueueUndo
 
     data class Restore(val ids: List<String>) : QueueUndo
 }
 
-/** The message bar under the queue; a new [id] restarts its timer even with the same text. */
+// A new id restarts the bar's timer even when the text is the same.
 data class QueueNotice(
     val text: UiText,
     val undo: QueueUndo? = null,
@@ -77,12 +76,12 @@ data class SmsQueueUiState(
     val device: DeviceSettings? = null,
     val filter: QueueFilter = QueueFilter.ALL,
     val pending: List<SmsItem> = emptyList(),
-    /** Null while loading. */
+    // Null while loading.
     val items: List<SmsItem>? = null,
     val unmappedCards: List<CardRef> = emptyList(),
     val selection: Set<String> = emptySet(),
     val notice: QueueNotice? = null,
-    /** The fee question on screen; the rest wait their turn. */
+    // One fee question at a time; the rest wait their turn.
     val feePrompt: FeePrompt? = null,
     val permitted: Boolean = false,
 )
@@ -102,10 +101,7 @@ class SmsQueueViewModel @Inject constructor(
     savedState: SavedStateHandle,
 ) : ViewModel() {
 
-    /**
-     * Kept for event handlers that need these synchronously. They feed [uiState], so they are
-     * current whenever the screen is there to call them.
-     */
+    // Read synchronously by event handlers; they feed uiState, so they're current while shown.
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
@@ -151,7 +147,7 @@ class SmsQueueViewModel @Inject constructor(
         SmsQueueUiState(permitted = inbox.hasPermission()),
     )
 
-    /** The queue is open: nothing is "new" any more, so the notification goes. */
+    // Once the queue is open nothing is "new", so the notification goes.
     fun markSeen() = viewModelScope.launch {
         sms.markQueueSeen()
         permitted.value = inbox.hasPermission()
@@ -162,7 +158,7 @@ class SmsQueueViewModel @Inject constructor(
         selection.value = emptySet()
     }
 
-    /** An item on a fee route asks first, unless its preset says always or never. */
+    // An item on a fee route asks first, unless its preset says always or never.
     fun approve(id: String) = viewModelScope.launch {
         val item = pending.value.firstOrNull { it.id == id } ?: return@launch
         if (item.needsDetails) {
@@ -183,7 +179,7 @@ class SmsQueueViewModel @Inject constructor(
         }
     }
 
-    /** The answer to the fee question on screen; null is Cancel, which leaves the items in the queue. */
+    // Null is Cancel, which leaves the items in the queue.
     fun answerFee(choice: FeeChoice?) = viewModelScope.launch {
         val prompt = feePrompts.value.firstOrNull() ?: return@launch
         feePrompts.update { it.drop(1) }
@@ -225,10 +221,7 @@ class SmsQueueViewModel @Inject constructor(
         selection.value = emptySet()
     }
 
-    /**
-     * Bulk approve: "always" and "never" presets apply silently; routes still on "ask" get one question each for
-     * the whole batch. Items that need details stay in the queue.
-     */
+    // "Always"/"never" presets apply silently; each route still on "ask" gets one question.
     fun approveSelected() = viewModelScope.launch {
         val ids = selection.value
         val ready = pending.value.filter { it.id in ids && !it.needsDetails }
@@ -275,15 +268,14 @@ class SmsQueueViewModel @Inject constructor(
         selection.value = emptySet()
     }
 
-    /** Re-enable hint dismissed. */
+    // Dismisses the re-enable hint.
     fun clearGap() = viewModelScope.launch { prefs.clearSmsGap() }
 
-    /** "Not now". The picker stays in Settings. */
+    // "Not now"; the picker stays reachable from Settings.
     fun skipHistory() = viewModelScope.launch {
         prefs.setSmsHistoryImport(SmsHistoryImport.SKIPPED)
     }
 
-    /** Undo pressed on [notice]. */
     fun undo(notice: QueueNotice) {
         when (val action = notice.undo) {
             is QueueUndo.RemoveFee -> viewModelScope.launch {

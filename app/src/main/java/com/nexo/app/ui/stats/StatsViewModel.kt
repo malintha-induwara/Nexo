@@ -168,10 +168,7 @@ class StatsViewModel @Inject constructor(
     private val clock: Clock,
     savedState: SavedStateHandle,
 ) : ViewModel() {
-    /**
-     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
-     * is current whenever the screen is there to call them.
-     */
+    // For handlers that need it synchronously; it feeds [uiState], so it stays current.
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),

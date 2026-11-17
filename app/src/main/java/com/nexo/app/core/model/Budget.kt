@@ -1,7 +1,7 @@
 package com.nexo.app.core.model
 
 data class Budget(
-    /** "total" for the overall budget, otherwise "cat_<categoryId>". One budget per target. */
+    // "total" for the overall budget, otherwise "cat_<categoryId>".
     val id: String,
     val categoryId: String?,
     val orderSeq: Int,

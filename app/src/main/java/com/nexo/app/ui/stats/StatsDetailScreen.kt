@@ -309,7 +309,7 @@ internal fun StatsDetailScreen(
     })
 }
 
-/** The category's total over the recent periods; tap or drag the chart to read another period. */
+// Tap or drag the chart to read another period.
 @Composable
 private fun TrendCard(
     title: String,

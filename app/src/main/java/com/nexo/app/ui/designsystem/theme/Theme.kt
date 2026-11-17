@@ -17,7 +17,6 @@ import com.nexo.app.core.model.ColorSet
 import com.nexo.app.core.model.MemoColor
 import com.nexo.app.core.model.ThemeMode
 
-/** Colours of screen headers. Soft Tally headers sit on the page background. */
 @Immutable
 data class HeaderColors(
     val container: Color,
@@ -26,10 +25,8 @@ data class HeaderColors(
     val lightStatusBar: Boolean,
 )
 
-/**
- * [income] and [expense] colour amounts as text. [incomeFill] and [expenseFill] colour filled chart
- * marks: on a dark ground a fill needs a deeper step than text does.
- */
+// [incomeFill] and [expenseFill] are for filled chart marks: on a dark ground a fill needs a
+// deeper step than text does.
 @Immutable
 data class MoneyColors(
     val income: Color,
@@ -44,7 +41,6 @@ data class MoneyColors(
         CashFlow.NEUTRAL -> neutral
     }
 
-    /** Colour for a signed figure: positive = income colour, negative = expense colour. */
     fun signed(value: Double): Color = when {
         value > 0 -> income
         value < 0 -> expense
@@ -61,19 +57,17 @@ val LocalMoneyColors = staticCompositionLocalOf {
 val LocalIsDark = staticCompositionLocalOf { true }
 
 object NexoPalette {
-    // Loop palette: income shares the brand's text blue, expense is the danger red.
     val IncomeBlue = LightNexoColors.primaryText
     val IncomeBlueDark = DarkNexoColors.primaryText
     val ExpenseRed = LightNexoColors.danger
     val ExpenseRedDark = DarkNexoColors.danger
 
-    /** Expense bars on the dark ground. */
     val ExpenseFillDark = Color(0xFFE5554D)
 
     val Sunday = Color(0xFFE5533D)
     val Saturday = Color(0xFF2F7DE1)
 
-    /** 11-colour stats palette, red/orange → yellow → green → teal → blue → purple → pink. */
+    // Red/orange → yellow → green → teal → blue → purple → pink.
     val Stats = listOf(
         Color(0xFFF2574B),
         Color(0xFFF7883A),
@@ -120,7 +114,6 @@ fun isDarkTheme(mode: ThemeMode): Boolean = when (mode) {
     ThemeMode.SYSTEM -> isSystemInDarkTheme()
 }
 
-/** Shortcut to the Loop palette. */
 val MaterialTheme.nexo: NexoColors
     @Composable get() = LocalNexoColors.current
 
@@ -164,7 +157,7 @@ fun NexoTheme(
             typography = NexoTypography,
             shapes = NexoMaterialShapes,
         ) {
-            // Screens without a Scaffold or Surface (the tab roots) still get readable text by default.
+            // Screens without a Scaffold or Surface (the tab roots) still get readable text.
             CompositionLocalProvider(LocalContentColor provides colors.text, content = content)
         }
     }

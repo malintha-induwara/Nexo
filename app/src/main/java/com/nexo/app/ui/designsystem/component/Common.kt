@@ -58,7 +58,6 @@ fun EmptyState(
     }
 }
 
-/** Small upper-case label above a group of rows. */
 @Composable
 fun SectionHeader(text: String, modifier: Modifier = Modifier) {
     Text(
@@ -74,7 +73,6 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** Settings row with title, optional subtitle and trailing content. */
 @Composable
 fun SettingRow(
     title: String,
@@ -176,7 +174,7 @@ fun nexoSwitchColors() = LocalNexoColors.current.let { c ->
 @Composable
 fun Divider() = HorizontalDivider(color = LocalNexoColors.current.hairline)
 
-/** Income / Expenses / Total strip. */
+// Income / Expenses / Total strip.
 @Composable
 fun TotalsBar(
     income: Double,

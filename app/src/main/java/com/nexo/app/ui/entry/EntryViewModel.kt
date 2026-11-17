@@ -95,10 +95,7 @@ class EntryViewModel @AssistedInject constructor(
     private val form =
         MutableStateFlow(EntryForm(date = LocalDate.now(clock), time = loader.timeNow()))
 
-    /**
-     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
-     * is current whenever the screen is there to call them.
-     */
+    // For handlers that need it synchronously; it feeds [uiState], so it stays current.
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
@@ -116,10 +113,9 @@ class EntryViewModel @AssistedInject constructor(
         uiState.value.tags.filter { !it.isDeleted }
     }
 
-    /** What the tag picker can do. */
     val tagActions: TagActions = tagEditor.actions
 
-    /** Looked up again only when the form's stored photos change. */
+    // Looked up again only when the form's stored photos change.
     private val photoFiles: Flow<Map<String, File>> = form
         .map { f -> f.photos.filterIsInstance<PhotoItem.Stored>().map { it.fileName } }
         .distinctUntilChanged()
@@ -151,10 +147,9 @@ class EntryViewModel @AssistedInject constructor(
 
     private var originalState: EntryForm? = null
 
-    /** The stored records the form was opened from; see [LoadedEntry]. */
     private var opened = LoadedEntry(form.value)
 
-    /** Loads the form once; safe to call again. [texts] are the strings the form needs as data. */
+    // Loads the form once; safe to call again.
     @MainThread
     fun initialize(texts: EntryTexts) {
         if (initialized) return
@@ -187,7 +182,7 @@ class EntryViewModel @AssistedInject constructor(
         }
     }
 
-    /** A bookmark picked from the list this form opened; it fills the form but keeps the date. */
+    // Fills the form from a bookmark but keeps the date.
     fun applyFavorite(id: String) = viewModelScope.launch {
         form.first { it.loaded }
         form.value = loader.applyFavorite(refs.getRefData(), form.value, id, keepDate = true)
@@ -209,7 +204,7 @@ class EntryViewModel @AssistedInject constructor(
         userMessage.value = UserMessage(UiText.Resource(text, listOfNotNull(arg)))
     }
 
-    /** Leaves the form; with [focusDate] the Transactions tab scrolls there. */
+    // With [focusDate] the Transactions tab scrolls there.
     private fun close(focusDate: LocalDate?) {
         focusDate?.let { results.update { r -> r + NavResult.Focus(it) } }
         navigation.value = EntryNavigation.Close
@@ -219,7 +214,6 @@ class EntryViewModel @AssistedInject constructor(
         navigation.value = EntryNavigation.Open(key, replace)
     }
 
-    /** Saves a copy of a stored photo to the phone's gallery. */
     fun exportPhoto(fileName: String) {
         viewModelScope.launch { photoExported.value = photos.exportToGallery(fileName) }
     }
@@ -228,13 +222,13 @@ class EntryViewModel @AssistedInject constructor(
         photoExported.value = null
     }
 
-    /** Deny from the form. Nothing is written to the ledger. */
+    // Nothing is written to the ledger.
     fun denySms() = viewModelScope.launch {
         key.smsItemId?.let { smsRepository.deny(listOf(it)) }
         close(null)
     }
 
-    // ---- Field changes -------------------------------------------------------------------------------------------------
+    // ---- Field changes ----------------------------------------------------------------------
 
     private fun edit(transform: (EntryForm) -> EntryForm) {
         form.update { s -> transform(if (s.viewing) s.copy(viewing = false) else s) }
@@ -355,7 +349,7 @@ class EntryViewModel @AssistedInject constructor(
         }
     }
 
-    /** Exchange-rate sheet: either the main amount or the rate is edited. */
+    // Exchange-rate sheet: either the main amount or the rate is edited.
     fun setMainAmount(main: Double) {
         val s = form.value
         val amount = s.amount ?: return
@@ -389,11 +383,11 @@ class EntryViewModel @AssistedInject constructor(
         )
     }
 
-    // ---- Receipt scan --------------------------------------------------------------------------------------------------
+    // ---- Receipt scan -----------------------------------------------------------------------
 
     private var scanJob: Job? = null
 
-    /** A file picked from the gallery is read as a receipt, unless it is no image Nexo can store. */
+    // Read as a receipt unless it is no image Nexo can store.
     fun scanPickedPhoto(uri: Uri) {
         viewModelScope.launch {
             if (photos.isSupported(uri)) {
@@ -404,7 +398,6 @@ class EntryViewModel @AssistedInject constructor(
         }
     }
 
-    /** Reads [uri] on the device; the confirm sheet shows while it runs and then shows what was read. */
     fun scanReceipt(uri: Uri) {
         scanJob?.cancel()
         form.update { it.copy(scan = ScanUi.Reading(uri), panel = Panel.NONE) }
@@ -414,7 +407,7 @@ class EntryViewModel @AssistedInject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // The stack trace carries no receipt text, and it is what a release-only failure needs.
+                // The stack trace carries no receipt text and is what a release-only failure needs.
                 Log.w("ReceiptScan", "Receipt read failed", e)
                 null
             }
@@ -438,11 +431,7 @@ class EntryViewModel @AssistedInject constructor(
         form.update { it.copy(scan = null) }
     }
 
-    /**
-     * The user's confirmed reading: [amount] (as shown or corrected, rounded to the entry's currency), its shop as the
-     * note when [useMerchant] and the note is still empty, and the photo itself.
-     * Nothing is saved until the entry is.
-     */
+    // Nothing is saved until the entry is.
     fun applyReceipt(amount: Double?, useMerchant: Boolean) {
         val done = form.value.scan as? ScanUi.Done ?: return
         edit { s ->
@@ -475,7 +464,6 @@ class EntryViewModel @AssistedInject constructor(
     fun dismissRepeatConfirm() = form.update { it.copy(confirmRepeat = false) }
     fun setAskDelete(v: Boolean) = form.update { it.copy(askDelete = v) }
 
-    /** Opens the first empty field in visual order. */
     private fun advance(fromPad: Boolean = false) {
         val s = form.value
         if (s.viewing) return
@@ -503,7 +491,7 @@ class EntryViewModel @AssistedInject constructor(
         }
     }
 
-    // ---- Save ----------------------------------------------------------------------------------------------------------
+    // ---- Save -------------------------------------------------------------------------------
 
     private fun validate(s: EntryForm): Boolean {
         val r = ref.value
@@ -577,7 +565,6 @@ class EntryViewModel @AssistedInject constructor(
         }
     }
 
-    /** The form as it is saved, with the records this way of opening it settles. */
     private fun entrySave(s: EntryForm) = EntrySave(
         draft = s.toDraft(),
         smsReview = key.smsItemId?.takeIf { key.mode == EntryMode.SMS }?.let { id ->

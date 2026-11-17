@@ -63,7 +63,6 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
-/** Estimated occurrences of a rule in the current month period. */
 fun estimatedCount(rule: RepeatRule, period: MonthPeriod): Int {
     val next = runCatching { LocalDate.parse(rule.nextDate) }.getOrNull() ?: return 0
     val days = period.range.days()
@@ -377,7 +376,6 @@ private fun RuleRow(
 @Suppress("unused")
 private fun range(p: MonthPeriod) = DateRange(p.start, p.end)
 
-/** Made-up repeats for previews and tests: a monthly salary, a weekly bus pass and a vegetable box. */
 internal val previewRepeatListState = RepeatListUiState(
     ref = PreviewData.ref,
     rules = listOf(

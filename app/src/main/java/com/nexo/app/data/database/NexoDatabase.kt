@@ -67,7 +67,7 @@ import com.nexo.app.data.database.entity.TransactionTagEntity
     autoMigrations = [
         // 2: category emoji and colour (two nullable columns).
         AutoMigration(from = 1, to = 2),
-        // 3: bank SMS capture (review queue, card mapping, learned categories, fee presets, rate history) and transactions.feeParentId.
+        // 3: bank SMS capture tables and transactions.feeParentId.
         AutoMigration(from = 2, to = 3),
         // 4: fee stated in the SMS (sms_items.statedFee).
         AutoMigration(from = 3, to = 4),
@@ -94,7 +94,7 @@ abstract class NexoDatabase : RoomDatabase() {
         const val VERSION = 5
         const val FILE_NAME = "nexo.db"
 
-        /** Room identity table name; its presence identifies a Nexo backup file. */
+        // Its presence identifies a Nexo backup file.
         const val IDENTITY_TABLE = "room_master_table"
     }
 }

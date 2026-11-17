@@ -6,20 +6,9 @@ import org.junit.Test
 
 /**
  * Keeps the layers apart: core knows nothing above it, data never reaches up into domain or ui,
- * and ui talks to data only through repositories. Nothing else enforces this in a one-module app.
- *
- * Where code goes:
- * - core/model: the app's types, their derived properties, and pure rules the data layer needs
- *   too, since data cannot see domain. Plain Kotlin.
- * - domain: rules only the ui needs, over core types. A pure calculation is a function or a named
- *   object. Code that reads a repository is an `XxxUseCase` with `operator fun invoke`, used when
- *   logic spans repositories or is shared by ViewModels. Plain Kotlin.
- * - data/repository: everything that reads or writes storage, with the rules a write must keep.
- *   Logic over a single repository belongs here rather than in a use case.
- * - ui: a ViewModel turns repository and use-case output into one uiState; a Route connects it
- *   to a stateless Screen.
- * - system: Android entry points other than the activity (receivers, the process lifecycle) and
- *   the notifications they post. They hand off to repositories straight away.
+ * and ui talks to data only through repositories. Pure rules data also needs go in core/model;
+ * rules only ui needs go in domain (an `XxxUseCase` when they read repositories); logic over one
+ * repository stays in it; system holds Android entry points other than the activity.
  */
 class ArchitectureTest {
     private val root: File = listOf("src/main/java", "app/src/main/java")
@@ -29,7 +18,7 @@ class ArchitectureTest {
         val layer: String = path.substringBefore('/')
         val name: String = path.substringAfterLast('/')
 
-        /** Imports of the app's own packages, relative to com.nexo.app, with their line numbers. */
+        // Relative to com.nexo.app, with their line numbers.
         val appImports: List<Pair<Int, String>> = lines.mapIndexedNotNull { i, line ->
             line.removePrefix("import com.nexo.app.").takeIf { it != line }?.let { i + 1 to it }
         }
@@ -42,7 +31,7 @@ class ArchitectureTest {
         }.toList()
     }
 
-    /** Resources and build constants come from the app module wherever they are needed. */
+    // Allowed from any layer.
     private val everywhere = listOf("R", "BuildConfig")
 
     private val allowed = mapOf(
@@ -119,10 +108,7 @@ class ArchitectureTest {
         assertNoViolations(violations)
     }
 
-    /**
-     * A ViewModel owns the coroutine and answers through its uiState, so the work is not cut short
-     * when the composable that asked for it leaves.
-     */
+    // The ViewModel owns the coroutine, so work outlives the composable that asked for it.
     @Test
     fun viewModelsExposeNoSuspendFunctions() {
         val violations = sources.filter { it.name.endsWith("ViewModel.kt") }.flatMap { source ->
@@ -133,13 +119,11 @@ class ArchitectureTest {
         assertNoViolations(violations)
     }
 
-    /** Top-level `fun` declarations; the name is group 1. */
+    // Top-level `fun` declarations; the name is group 1.
     private val topLevelFun = Regex("""^(?:\w+ )*fun (?:<[^>]*> )?(?:[\w.]+\.)?(\w+)""")
 
-    /**
-     * Only a Route reaches for the navigator or a ViewModel, so every screen below it can be
-     * previewed and tested with plain state and lambdas. The app root wires the back stack itself.
-     */
+    // Keeps every screen below a Route testable with plain state and lambdas.
+    // The app root wires the back stack itself.
     @Test
     fun onlyRoutesReadTheNavigatorOrViewModels() {
         val reads = listOf("LocalNavigator.current", "hiltViewModel(", "hiltViewModel<")
@@ -158,7 +142,6 @@ class ArchitectureTest {
         assertNoViolations(violations)
     }
 
-    /** A ViewModel stays in its Route: composables below it get state and lambdas. */
     @Test
     fun onlyRoutesTakeAViewModel() {
         val viewModelParam = Regex("""\b\w+\s*:\s*\w*ViewModel\b""")
@@ -171,7 +154,7 @@ class ArchitectureTest {
         assertNoViolations(violations)
     }
 
-    /** Top-level composables as (name, line, parameter list text). */
+    // (name, line, parameter list text) for each top-level composable.
     private fun composableSignatures(source: Source): List<Triple<String, Int, String>> {
         val found = mutableListOf<Triple<String, Int, String>>()
         source.lines.forEachIndexed { i, line ->

@@ -12,10 +12,8 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
 
-/**
- * Inbox check every six hours while capture is on. Android releases the messages it kept back without telling
- * anyone, so this is what brings them into the queue while the app is closed.
- */
+// Inbox check every six hours while capture is on: brings in the messages Android
+// releases silently while the app is closed.
 @HiltWorker
 class SmsCatchUpWorker @AssistedInject constructor(
     @Assisted context: Context,
@@ -30,10 +28,7 @@ class SmsCatchUpWorker @AssistedInject constructor(
     companion object {
         private const val NAME = "sms_catch_up"
 
-        /**
-         * Two runs can be almost two periods apart, and a released message has to be read within the re-read window
-         * of its arrival, so this stays well under half of that window.
-         */
+        // Two runs can be almost two periods apart, so this stays under half the re-read window.
         private const val EVERY_HOURS = 6L
 
         fun schedule(context: Context) {

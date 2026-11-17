@@ -127,7 +127,6 @@ private fun FormatRows(
     }
 }
 
-/** The message toast and the way back once a main-currency change is written. */
 @Composable
 private fun MainCurrencyEffects(
     state: MainCurrencyUiState,
@@ -211,10 +210,7 @@ fun MainCurrencyPickerRoute(vm: MainCurrencyViewModel = hiltViewModel()) {
     )
 }
 
-/**
- * Picking a new main currency: [onChangeWithRate] keeps the data and converts it,
- * [onChangeWithReset] starts the book over.
- */
+// onChangeWithRate keeps and converts the data; onChangeWithReset starts the book over.
 @Composable
 internal fun MainCurrencyPickerScreen(
     state: MainCurrencyUiState,
@@ -422,7 +418,6 @@ fun AddSubCurrencyRoute(vm: SubCurrencyViewModel = hiltViewModel()) {
     )
 }
 
-/** Add a built-in sub-currency. */
 @Composable
 internal fun AddSubCurrencyScreen(
     state: SubCurrencyUiState,
@@ -491,10 +486,8 @@ fun SubCurrencyEditRoute(key: SubCurrencyEditKey, vm: SubCurrencyViewModel = hil
     SubCurrencyEditScreen(key = key, state = state, onBack = nav::back, onSave = vm::saveSub)
 }
 
-/**
- * Edit / add a sub-currency, built-in or custom. [onSave] gets the catalog entry (null for a
- * custom one), the currency being edited if any, then the name, symbol, format and rate.
- */
+// onSave gets the catalog entry (null for a custom one), the edited currency if any,
+// then the name, symbol, format and rate.
 @Composable
 internal fun SubCurrencyEditScreen(
     key: SubCurrencyEditKey,

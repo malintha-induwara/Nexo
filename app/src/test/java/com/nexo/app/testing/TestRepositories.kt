@@ -54,7 +54,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 
-/** Real repositories over an in-memory [NexoDatabase], wired the way Hilt wires them. */
+// Real repositories over an in-memory database, wired the way Hilt wires them.
 fun referenceDataRepository(db: NexoDatabase, scope: CoroutineScope): ReferenceDataRepository =
     DefaultReferenceDataRepository(
         db.accountGroupDao(),
@@ -123,10 +123,7 @@ fun smsRepository(
     clock,
 )
 
-/**
- * A fresh book (seeded in [currency]) in an in-memory database, with the repositories a ViewModel needs wired as Hilt
- * wires them. The seeded LKR book has accounts "1" (bank) and "11" (cash) and category "6" (Food).
- */
+// Seeded LKR book: accounts "1" (bank) and "11" (cash), category "6" (Food).
 class TestBook(
     val context: Context,
     scope: CoroutineScope,
@@ -220,7 +217,6 @@ class TestBook(
     override fun close() = db.close()
 }
 
-/** Records what would have been posted instead of showing it. */
 class FakeNotifier : Notifier {
     val smsReviewCounts = mutableListOf<Int>()
     val quickAdd = mutableListOf<Boolean>()
@@ -248,7 +244,6 @@ class FakeNotifier : Notifier {
     override fun canScheduleExactAlarms(): Boolean = true
 }
 
-/** Records which jobs were asked for instead of handing them to WorkManager. */
 class FakeBackgroundWork : BackgroundWork {
     val requests = mutableListOf<String>()
 

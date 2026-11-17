@@ -11,10 +11,7 @@ import com.nexo.app.data.repository.FxRatesRepository
 import com.nexo.app.data.repository.ReferenceDataRepository
 import javax.inject.Inject
 
-/**
- * Fills a new queue item's account, destination and category:
- * card digits first, then the bank's default account; categories only from what the user taught Nexo.
- */
+// Account: card digits first, then the bank's default. Category: only what the user taught.
 class SmsSuggester @Inject constructor(
     private val dao: SmsDao,
     private val refs: ReferenceDataRepository,
@@ -53,7 +50,7 @@ class SmsSuggester @Inject constructor(
         ) {
             out = out.copy(certainty = Certainty.EXACT, reason = null, feeRoute = null)
         }
-        // Local snapshots only; the sync worker fetches and fills "Rate pending" items later.
+        // Local snapshots only; the sync worker fills "Rate pending" items later.
         return fx.estimate(out, r)
     }
 }

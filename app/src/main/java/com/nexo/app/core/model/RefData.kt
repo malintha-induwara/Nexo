@@ -1,6 +1,5 @@
 package com.nexo.app.core.model
 
-/** Snapshot of the reference tables and book settings, used to render and classify transactions. */
 data class RefData(
     val groups: List<AccountGroup> = emptyList(),
     val accounts: List<Account> = emptyList(),
@@ -15,7 +14,6 @@ data class RefData(
     val currencyById: Map<String, Currency> = currencies.associateBy { it.id }
     val tagById: Map<String, Tag> = tags.associateBy { it.id }
 
-    /** Resolved look of every category (emoji or monogram, hue), by id. */
     val visualById: Map<String, CategoryVisual> by lazy {
         categories.associate { c ->
             c.id to
@@ -27,7 +25,6 @@ data class RefData(
 
     val mainCurrency: Currency = currencies.firstOrNull { it.isMain } ?: FALLBACK_MAIN
 
-    /** Main first, then visible sub-currencies in order. */
     val activeCurrencies: List<Currency> =
         listOf(mainCurrency) +
             currencies.filter { !it.isMain && it.isVisible }.sortedBy { it.orderSeq }
@@ -53,7 +50,6 @@ data class RefData(
         }?.currencyId,
     )
 
-    /** Debit cards drawing on [accountId]. */
     fun linkedDebitCards(accountId: String): List<Account> = accounts.filter {
         it.linkedAccountId == accountId &&
             groupType(it.id) == GroupType.DEBIT_CARD
@@ -64,7 +60,7 @@ data class RefData(
         return a.status == AccountStatus.ACTIVE && g != null && g.status == GroupStatus.ACTIVE
     }
 
-    /** Accounts offered in pickers: active, in active groups, ordered by group then account order. */
+    // Ordered by group, then by account.
     val pickerAccounts: List<Account> by lazy { orderedAccounts().filter { isAccountVisible(it) } }
 
     fun orderedAccounts(): List<Account> {

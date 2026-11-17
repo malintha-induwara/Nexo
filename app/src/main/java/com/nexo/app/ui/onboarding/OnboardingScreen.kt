@@ -201,10 +201,8 @@ private fun Welcome(onStart: () -> Unit) {
     }
 }
 
-/**
- * The app icon as the splash screen shows it: the blue tile and the glass loop, layered on their shared 108-unit canvas.
- * The tile fills 59 of those units, so the canvas is drawn larger than [size] and centred, leaving the tile at [size].
- */
+// The tile fills 59 of the icon's 108-unit canvas, so the canvas is drawn larger than size
+// and centred, leaving the tile at size.
 @Composable
 private fun AppIcon(size: Dp) {
     val canvas = size * (108f / 59f)
@@ -216,10 +214,7 @@ private fun AppIcon(size: Dp) {
 
 private enum class StartChoice { FRESH, RESTORE }
 
-/**
- * How to begin: fresh defaults in a chosen main currency, or a backup file. Picking a card only selects it; the button at
- * the bottom says what happens next (Continue, or Choose backup file) so the way forward is always on screen.
- */
+// Picking a card only selects it; the bottom button says what happens next.
 @Composable
 private fun StartingData(
     state: OnboardingUiState,
@@ -367,7 +362,6 @@ private fun ChoiceCard(
     }
 }
 
-/** Searchable list of built-in currencies. */
 @Composable
 fun CurrencyPickerDialog(
     onPick: (CatalogCurrency) -> Unit,

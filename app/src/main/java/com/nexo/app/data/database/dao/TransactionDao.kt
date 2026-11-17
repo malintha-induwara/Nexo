@@ -67,11 +67,10 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE feeGroupId = :feeGroupId AND kind = 'EXPENSE' LIMIT 1")
     suspend fun getFeeRow(feeGroupId: String): TransactionEntity?
 
-    /** Bank fees charged on these (non-transfer) rows (`feeParentId`). */
+    // Fees on non-transfer rows, linked through feeParentId.
     @Query("SELECT * FROM transactions WHERE feeParentId IN (:parentIds)")
     suspend fun feeChildren(parentIds: List<String>): List<TransactionEntity>
 
-    /** Most recent transfer between two accounts that carried a fee (for prefill). */
     @Query(
         "SELECT * FROM transactions WHERE kind = 'TRANSFER_OUT' AND accountId = :from AND " +
             "counterpartAccountId = :to " +
@@ -129,7 +128,7 @@ interface TransactionDao {
     @Query("SELECT COUNT(*) FROM transactions")
     suspend fun count(): Int
 
-    /** Changes whenever a transaction is inserted, updated or deleted. */
+    // Changes on every insert, update or delete.
     @Query("SELECT COALESCE(MAX(updatedAt), 0) + COUNT(*) FROM transactions")
     fun observeStamp(): Flow<Long>
 

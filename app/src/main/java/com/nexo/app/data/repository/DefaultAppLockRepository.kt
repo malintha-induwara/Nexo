@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Background time is measured with the monotonic clock. */
+// Background time uses the monotonic clock.
 @Singleton
 class DefaultAppLockRepository @Inject constructor(
     private val prefs: UserPreferencesRepository,
@@ -29,7 +29,7 @@ class DefaultAppLockRepository @Inject constructor(
     @Dispatcher(NexoDispatchers.Default) private val defaultDispatcher: CoroutineDispatcher,
     private val clock: Clock,
 ) : AppLockRepository {
-    /** Null until the preferences say whether a PIN is set; a cold start with one is locked. */
+    // Null until preferences say whether a PIN is set; a cold start with one is locked.
     private val lockState = MutableStateFlow<Boolean?>(null)
 
     init {
@@ -133,17 +133,17 @@ class DefaultAppLockRepository @Inject constructor(
         const val FREE_TRIES = 5
         const val MAX_WAIT = 15 * 60_000L
 
-        /** How soon after [expectReturn] the app must go to the background for the trip to count as the hand-off. */
+        // The app must go to the background this soon after [expectReturn] to be a hand-off.
         const val HANDOFF_START = 10_000L
 
-        /** How long a hand-off may last before coming back locks the app after all. */
+        // How long a hand-off may last before returning locks the app anyway.
         const val HANDOFF_GRACE = 5 * 60_000L
 
-        /** Whether coming back after [awayMillis] locks the app. A hand-off gets [HANDOFF_GRACE] instead of the usual limit. */
+        // A hand-off gets [HANDOFF_GRACE] instead of the usual limit.
         fun shouldLock(awayMillis: Long, limitMillis: Long, handoff: Boolean): Boolean =
             awayMillis > if (handoff) maxOf(limitMillis, HANDOFF_GRACE) else limitMillis
 
-        /** From the 5th consecutive failure, 30 s doubling up to 15 min. */
+        // From the 5th consecutive failure: 30 s, doubling up to 15 min.
         fun waitFor(failures: Int): Long = if (failures < FREE_TRIES) {
             0
         } else {

@@ -2,7 +2,7 @@ package com.nexo.app.core.model
 
 data class RepeatRule(
     val id: String,
-    /** INCOME, EXPENSE or TRANSFER_OUT. */
+    // INCOME, EXPENSE or TRANSFER_OUT.
     val kind: TxKind,
     val accountId: String?,
     val toAccountId: String? = null,
@@ -12,11 +12,11 @@ data class RepeatRule(
     val note: String = "",
     val description: String = "",
     val repeatType: RepeatType,
-    /** Next occurrence still to be generated, ISO date. */
+    // Next occurrence still to be generated, ISO date.
     val nextDate: String,
-    /** Last allowed occurrence, ISO date; null = no end. */
+    // ISO date; null = no end.
     val endDate: String? = null,
-    /** Day of month the series was created on; monthly steps clamp to it instead of drifting. */
+    // Monthly steps clamp to this day instead of drifting.
     val anchorDay: Int,
     val createdAt: Long,
     val updatedAt: Long,

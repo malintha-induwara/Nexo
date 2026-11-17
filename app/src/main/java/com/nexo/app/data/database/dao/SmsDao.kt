@@ -45,7 +45,7 @@ interface SmsDao {
     @Query("SELECT COUNT(*) FROM sms_items WHERE status = 'PENDING'")
     suspend fun pendingCount(): Int
 
-    /** Pending items that arrived after the queue was last opened (the notification count). */
+    // The notification count.
     @Query("SELECT COUNT(*) FROM sms_items WHERE status = 'PENDING' AND capturedAt > :since")
     suspend fun countPendingSince(since: Long): Int
 
@@ -83,7 +83,7 @@ interface SmsDao {
         since: Long,
     ): SmsItemEntity?
 
-    /** A transfer the bank confirmed in [since, until], whatever was decided about it. */
+    // Any status: a confirmed transfer counts whatever was decided about it.
     @Query(
         "SELECT * FROM sms_items WHERE bank = :bank AND kind = 'TRANSFER_OUT' AND certainty = " +
             "'EXACT' AND template != 'transfer_code' AND amount = :amount AND " +
@@ -109,7 +109,6 @@ interface SmsDao {
         until: Long,
     ): List<SmsItemEntity>
 
-    /** Pending items on cards that aren't mapped to an account yet. */
     @Query(
         "SELECT * FROM sms_items WHERE status = 'PENDING' AND cardLast4 IS NOT NULL AND " +
             "accountId IS NULL " +
@@ -126,7 +125,6 @@ interface SmsDao {
     @Update
     suspend fun updateAll(items: List<SmsItemEntity>)
 
-    /** Pending items captured before [before] leave the queue without touching the ledger. */
     @Query(
         "UPDATE sms_items SET status = 'EXPIRED', decidedAt = :now, updatedAt = :now WHERE status = 'PENDING' AND capturedAt < :before",
     )
@@ -135,7 +133,6 @@ interface SmsDao {
     @Query("DELETE FROM sms_items WHERE status = :status AND decidedAt < :before")
     suspend fun purge(status: SmsStatus, before: Long): Int
 
-    /** Approved items keep their link to the ledger; their stored text is no longer needed after [before]. */
     @Query("DELETE FROM sms_items WHERE status = 'APPROVED' AND decidedAt < :before")
     suspend fun purgeApproved(before: Long): Int
 
@@ -239,7 +236,6 @@ interface SmsDao {
     )
     suspend fun latestRate(bank: String, ccy: String): FxSnapshotEntity?
 
-    /** Each bank's latest board for [ccy] captured at or before [at]. */
     @Query(
         "SELECT f.* FROM fx_snapshots f JOIN (SELECT bank, MAX(capturedAt) AS m FROM " +
             "fx_snapshots WHERE ccy = :ccy AND capturedAt <= :at GROUP BY bank) l " +
@@ -247,7 +243,7 @@ interface SmsDao {
     )
     suspend fun boardAtOrBefore(ccy: String, at: Long): List<FxSnapshotEntity>
 
-    /** Each bank's earliest board for [ccy]: for transactions older than Nexo's rate history. */
+    // For transactions older than the stored rate history.
     @Query(
         "SELECT f.* FROM fx_snapshots f JOIN (SELECT bank, MIN(capturedAt) AS m FROM " +
             "fx_snapshots WHERE ccy = :ccy GROUP BY bank) l " +

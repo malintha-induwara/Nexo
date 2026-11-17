@@ -11,7 +11,7 @@ import com.nexo.app.core.model.noteFor
 import java.time.Clock
 import javax.inject.Inject
 
-/** What approving a queue item as it stands would save, without any fee. Null while it still needs details. */
+// What approving the item as it stands would save, without any fee; null while it needs details.
 class GetSmsDraftUseCase @Inject constructor(
     private val getLedgerAmount: GetSmsLedgerAmountUseCase,
     private val clock: Clock,

@@ -31,10 +31,8 @@ import javax.inject.Inject
 import kotlin.math.abs
 import kotlinx.coroutines.flow.map
 
-/**
- * Writes single transactions: a row from the entry form with its tags and photos, a transfer's two
- * legs and fee, a bank fee, and a balance difference. Each write is one database transaction.
- */
+// Writes single transactions with their tags, photos, transfer legs and fees.
+// Each write is one database transaction.
 class TransactionWriter @Inject constructor(
     private val texts: TextResourceDataSource,
     private val db: NexoDatabase,
@@ -167,7 +165,7 @@ class TransactionWriter @Inject constructor(
         return row.id
     }
 
-    /** Copy shared fields to all rows of the group; renumber when rows were deleted. */
+    // Copies shared fields to every row of the group; renumbers when rows were deleted.
     private suspend fun syncInstallmentGroup(ref: RefData, edited: TransactionEntity) {
         val group = dao.getByInstallmentGroup(edited.installmentGroupId!!).take(600)
         val renumber = edited.installmentCount != group.size
@@ -327,7 +325,7 @@ class TransactionWriter @Inject constructor(
         return outRow.id
     }
 
-    /** Original account/transaction ratio, kept when neither currency changed. */
+    // The original account/transaction ratio, kept when neither currency changed.
     private fun crossRate(
         ref: RefData,
         original: TransactionEntity?,
@@ -342,7 +340,7 @@ class TransactionWriter @Inject constructor(
         return Money.divide(original.amountAccount, original.amount)
     }
 
-    /** Fee category: the system Bank fee category once it exists, else "Fees", else "Other", else the last expense category. */
+    // Bank fee category, else "Fees", else "Other", else the last expense category.
     private fun feeCategory(ref: RefData): Category? {
         val expense = ref.categories.filter { it.kind == CategoryKind.EXPENSE && !it.isDeleted }
         ref.settings.bankFeeCategoryId.takeIf { it.isNotEmpty() }?.let { id ->
@@ -358,10 +356,7 @@ class TransactionWriter @Inject constructor(
             ?: expense.lastOrNull { it.parentId == null }
     }
 
-    /**
-     * The system "Bank fee" category, created on first use and remembered by id,
-     * so renaming it never breaks the link.
-     */
+    // Created on first use and remembered by id, so renaming it never breaks the link.
     suspend fun bankFeeCategory(): String {
         val ref = refs.getRefData()
         ref.settings.bankFeeCategoryId.takeIf { it.isNotEmpty() }
@@ -392,10 +387,8 @@ class TransactionWriter @Inject constructor(
         return id
     }
 
-    /**
-     * A bank fee on a non-transfer row is its own expense from the same account, linked through `feeParentId`,
-     * a millisecond after its parent. Returns the fee row's id.
-     */
+    // Its own expense from the same account, linked by feeParentId, a millisecond after
+    // its parent. Returns the fee row's id.
     suspend fun addFee(parentId: String, amount: Double, note: String?): String? {
         val feeNote = note ?: texts.getString(R.string.cat_bank_fee)
         if (amount <= 0) return null
@@ -462,7 +455,7 @@ class TransactionWriter @Inject constructor(
         )
     }
 
-    /** Hard-deletes rows with their photos and tag links (no partner expansion). */
+    // Hard-deletes rows with their photos and tag links (no partner expansion).
     suspend fun removeRows(ids: List<String>, cleanup: MutableSet<String>) {
         if (ids.isEmpty()) return
         cleanup += db.photoDao().forTransactions(ids).map { it.fileName }

@@ -17,7 +17,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Synthetic messages in the fixed formats. Names and amounts are invented. */
+// Synthetic messages; names and amounts are invented.
 class SmsParserTest {
     private val parser = SmsParser()
     private val nov3 = LocalDateTime.of(

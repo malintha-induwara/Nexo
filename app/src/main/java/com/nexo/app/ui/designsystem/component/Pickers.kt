@@ -47,7 +47,7 @@ private fun LocalDate.utcMillis(): Long = atStartOfDay().toInstant(ZoneOffset.UT
 private fun Long.utcDate(): LocalDate =
     Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
 
-/** Date picker limited to 1985–2050. */
+// Limited to 1985–2050.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NexoDatePickerDialog(
@@ -103,7 +103,6 @@ fun NexoTimePickerDialog(initial: LocalTime, onPick: (LocalTime) -> Unit, onDism
     )
 }
 
-/** Month picker: year ±, 12 months, "This month". */
 @Composable
 fun MonthPickerDialog(selected: YearMonth, onPick: (YearMonth) -> Unit, onDismiss: () -> Unit) {
     val clock = LocalClock.current
@@ -168,7 +167,7 @@ fun MonthPickerDialog(selected: YearMonth, onPick: (YearMonth) -> Unit, onDismis
     )
 }
 
-/** Picks a date range: From then To, keeping from ≤ to. */
+// Picks From then To, keeping from ≤ to.
 @Composable
 fun DateRangeChips(
     start: LocalDate,

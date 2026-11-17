@@ -11,7 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
-/** 4dp base grid. */
+// 4dp base grid.
 object Space {
     val xxs = 2.dp
     val xs = 4.dp
@@ -19,11 +19,10 @@ object Space {
     val m = 12.dp
     val l = 16.dp
 
-    /** Horizontal page gutter. */
+    // Horizontal page gutter.
     val gutter = 20.dp
     val xl = 24.dp
 
-    /** Gap between sections. */
     val section = 28.dp
     val xxl = 32.dp
     val xxxl = 48.dp
@@ -53,7 +52,7 @@ object NexoShapes {
     val pill = CircleShape
 }
 
-/** Material shape slots: dialogs use extraLarge, cards medium, chips and fields small. */
+// Dialogs use extraLarge, cards medium, chips and fields small.
 val NexoMaterialShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),
@@ -62,10 +61,8 @@ val NexoMaterialShapes = Shapes(
     extraLarge = RoundedCornerShape(28.dp),
 )
 
-/**
- * Motion: springs for anything the finger drives or that reacts to a tap, short eased tweens
- * for screen-level changes. All of it collapses to a snap when the system animation scale is 0.
- */
+// Springs for anything the finger drives or that reacts to a tap, short eased tweens for
+// screen-level changes.
 object NexoMotion {
     val Emphasized: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
     val EmphasizedDecelerate: Easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
@@ -75,18 +72,16 @@ object NexoMotion {
     const val MEDIUM = 250
     const val LONG = 320
 
-    /** Interactive spring (damping 0.8, stiffness 380). */
     fun <T> snappy(visibilityThreshold: T? = null): FiniteAnimationSpec<T> =
         spring(dampingRatio = 0.8f, stiffness = 380f, visibilityThreshold = visibilityThreshold)
 
-    /** Slower, no-overshoot spring for large surfaces. */
+    // For large surfaces.
     fun <T> gentle(visibilityThreshold: T? = null): FiniteAnimationSpec<T> = spring(
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = 260f,
         visibilityThreshold = visibilityThreshold,
     )
 
-    /** Quick press feedback. */
     fun <T> press(): FiniteAnimationSpec<T> = spring(dampingRatio = 0.6f, stiffness = 900f)
 
     fun <T> enter(duration: Int = MEDIUM, delay: Int = 0): FiniteAnimationSpec<T> =

@@ -35,7 +35,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
-/** The inbox check: what the broadcast missed, and messages Android released hours after they arrived. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class SmsCatchUpTest {

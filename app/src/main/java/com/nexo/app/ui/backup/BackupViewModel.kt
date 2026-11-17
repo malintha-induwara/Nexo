@@ -19,7 +19,6 @@ import kotlinx.coroutines.launch
 
 data class Progress(val done: Int, val total: Int)
 
-/** What a finished backup operation reports to the screen that started it. */
 sealed interface BackupResult {
     data class BackupWritten(val ok: Boolean) : BackupResult
 
@@ -27,10 +26,10 @@ sealed interface BackupResult {
 
     data class Restored(val result: RestoreResult) : BackupResult
 
-    /** A picked backup file, waiting for the user to confirm the restore. */
+    // Waits for the user to confirm the restore.
     data class RestorePicked(val uri: Uri) : BackupResult
 
-    /** The picked file's name says it is not a backup. */
+    // The picked file's name says it is not a backup.
     data object NotABackup : BackupResult
 
     data class ExcelReady(val file: File, val range: DateRange, val total: Boolean) : BackupResult
@@ -49,13 +48,11 @@ sealed interface BackupResult {
 data class BackupUiState(
     val busy: Boolean = false,
     val progress: Progress? = null,
-    /** Photos in the app's own folder, which a reset can delete along with the book. */
+    // Photos in the app's own folder, which a reset can delete along with the book.
     val photoCount: Int = 0,
-    /** Handled once, then cleared with [BackupViewModel.onResultHandled]. */
     val result: BackupResult? = null,
 )
 
-/** The backup hub: sharing a copy, moving photos, and resetting the book. */
 @HiltViewModel
 class BackupViewModel @Inject constructor(
     private val backups: BackupRepository,

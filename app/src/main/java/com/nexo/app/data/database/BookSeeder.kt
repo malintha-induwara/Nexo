@@ -18,7 +18,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Clock
 import javax.inject.Inject
 
-/** Seeds a fresh book. */
 class BookSeeder @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: NexoDatabase,
@@ -228,7 +227,7 @@ class BookSeeder @Inject constructor(
                     R.string.cat_academy,
                 ),
         )
-        // Subcategories take their main category's hue (colorIndex stays null) and carry their own emoji.
+        // Subcategories inherit the main hue (colorIndex null) but carry their own emoji.
         subs.forEach { (parent, children) ->
             children.forEach {
                 add(it, CategoryKind.EXPENSE, mains.getValue(parent), emoji = SUB_EMOJI[it])
@@ -238,7 +237,7 @@ class BookSeeder @Inject constructor(
     }
 
     private companion object {
-        /** Seeded main categories: emoji and hue index (0 tomato … 9 stone, see CategoryHues). */
+        // Emoji and hue index (0 tomato … 9 stone) per seeded main category.
         val MAIN_LOOK: Map<Int, Pair<String, Int>> = mapOf(
             R.string.cat_allowance to ("💵" to 3),
             R.string.cat_salary to ("💼" to 5),

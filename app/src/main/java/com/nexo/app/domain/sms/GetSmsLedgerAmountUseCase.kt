@@ -7,7 +7,7 @@ import com.nexo.app.core.model.SmsItem
 import com.nexo.app.core.model.SmsKind
 import javax.inject.Inject
 
-/** The ledger currency and amount of a queue item: foreign estimates are booked in the account's currency. */
+// Foreign estimates are booked in the account's currency.
 class GetSmsLedgerAmountUseCase @Inject constructor() {
     operator fun invoke(item: SmsItem, ref: RefData): Pair<Currency, Double> {
         val account = ref.accountCurrency(

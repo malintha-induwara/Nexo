@@ -103,7 +103,6 @@ private sealed interface QueueSheet {
     data class Deny(val ids: Set<String>) : QueueSheet
 }
 
-/** What the review queue can ask for; the route backs each with the ViewModel or navigation. */
 class SmsQueueActions(
     val onBack: () -> Unit = {},
     val onOpenSettings: () -> Unit = {},
@@ -576,7 +575,7 @@ private fun SelectionHeader(
     }
 }
 
-/** The capture switch mirrored on the queue header. Opens the SMS settings. */
+// Mirrors the capture switch on the queue header; tapping opens the SMS settings.
 @Composable
 private fun CapturePill(label: String, on: Boolean, onClick: () -> Unit) {
     val colors = LocalNexoColors.current
@@ -651,7 +650,7 @@ private fun FilterChips(
     }
 }
 
-/** Card mapping, asked once per card at the top of a list. */
+// Asked once per card, at the top of a list.
 @Composable
 fun CardQuestion(card: CardRef, modifier: Modifier, onChoose: () -> Unit) {
     val bank = Banks.byName(card.bank)?.displayName.orEmpty()
@@ -700,7 +699,7 @@ private fun previewItem(
     )
 }
 
-/** Made-up queue items for previews and tests: a card purchase, a foreign estimate, an unmapped withdrawal. */
+// Made-up items for previews and tests.
 internal val previewSmsItems = listOf(
     previewItem(
         "grocery",

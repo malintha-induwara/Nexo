@@ -32,10 +32,8 @@ import com.nexo.app.ui.designsystem.preview.NexoPreview
 import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 
-/** Pending count, and whether any of them needs attention (home badge and dot). */
 data class QueueBadge(val count: Int = 0, val attention: Boolean = false)
 
-/** The Review Queue's way in from the Transactions header. Shown only while something waits. */
 @Composable
 fun SmsInboxAction(badge: QueueBadge, onClick: () -> Unit) {
     val colors = LocalNexoColors.current

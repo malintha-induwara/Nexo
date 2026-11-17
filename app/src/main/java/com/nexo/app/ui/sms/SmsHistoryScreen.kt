@@ -70,7 +70,6 @@ import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SmsHistoryKey
 import java.time.LocalDate
 
-/** "Add past transactions": nothing selected by default, picked rows go straight to the ledger. */
 @Composable
 fun SmsHistoryRoute(key: SmsHistoryKey) {
     val vm =
@@ -158,7 +157,7 @@ internal fun SmsHistoryScreen(
                 )
             }
             ChipRow(
-                // Opened from the re-enable hint, the gap comes first so the chosen chip is in view.
+                // From the re-enable hint, the gap comes first so the chosen chip is in view.
                 options = if (state.gap) {
                     listOf(HistoryRange.GAP) +
                         HistoryRange.entries.filter { it != HistoryRange.GAP }
@@ -367,7 +366,6 @@ internal fun SmsHistoryScreen(
     }
 }
 
-/** A horizontally scrolling row of filter chips (the same look as the queue's filters). */
 @Composable
 private fun <T> ChipRow(
     options: List<T>,

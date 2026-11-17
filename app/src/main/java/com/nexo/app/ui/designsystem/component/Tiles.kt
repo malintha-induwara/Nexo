@@ -25,7 +25,7 @@ import com.nexo.app.ui.designsystem.theme.LocalNexoColors
 import com.nexo.app.ui.designsystem.theme.Radius
 import com.nexo.app.ui.designsystem.theme.Sizes
 
-/** A rounded square tinted with [hue] at low strength. Text inside is sized from the tile, not the font scale. */
+// Text inside is sized from the tile, not the font scale.
 @Composable
 fun Tile(
     hue: Color,
@@ -47,7 +47,7 @@ fun Tile(
     )
 }
 
-/** Category identity: the emoji when there is one, otherwise the monogram in the hue. Decorative for accessibility. */
+// The emoji when there is one, otherwise the monogram. Decorative for accessibility.
 @Composable
 fun CategoryTile(
     emoji: String?,
@@ -89,7 +89,7 @@ fun CategoryTile(
     }
 }
 
-/** A tile carrying an icon, for rows that are not a category (transfers, adjustments, carry-over). */
+// For rows that are not a category (transfers, adjustments, carry-over).
 @Composable
 fun IconTile(
     icon: ImageVector,

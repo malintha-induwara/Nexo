@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 
 data class SmsSettingsUiState(
     val ref: RefData = RefData(),
-    /** Null until the preferences are read. */
+    // Null until the preferences are read.
     val device: DeviceSettings? = null,
     val permitted: Boolean = false,
     val pendingCount: Int = 0,
@@ -57,7 +57,7 @@ class SmsSettingsViewModel @Inject constructor(
         SmsSettingsUiState(permitted = inbox.hasPermission()),
     )
 
-    /** Coming back from the permission dialog or App info. */
+    // Called on return from the permission dialog or App info.
     fun refresh() = viewModelScope.launch {
         permitted.value = inbox.hasPermission()
         inbox.refresh()

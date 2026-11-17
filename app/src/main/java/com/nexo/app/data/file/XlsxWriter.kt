@@ -6,14 +6,13 @@ import java.time.temporal.ChronoUnit
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-/** Cell values understood by [XlsxWriter]. */
 sealed interface XCell {
     data class Text(val value: String) : XCell
     data class Num(val value: Double) : XCell
     data class Date(val value: LocalDateTime, val withTime: Boolean) : XCell
 }
 
-/** Minimal Office Open XML spreadsheet writer: one sheet, bold header row, date cells. */
+// Minimal Office Open XML writer: one sheet, bold header row, date cells.
 object XlsxWriter {
     private val epoch = LocalDateTime.of(1899, 12, 30, 0, 0)
 

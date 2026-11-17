@@ -7,24 +7,20 @@ import java.math.RoundingMode
 import java.text.DecimalFormatSymbols
 import kotlin.math.abs
 
-/**
- * A formatted amount split for display, so the integer can be set large and the symbol and
- * decimals small. Joining the parts gives the same text as [AmountFormatter.format], except
- * that the sign uses a true minus (U+2212) and a plus can be shown.
- */
+// Split so the integer can be set large. Joined, it matches AmountFormatter.format, but with a
+// true minus (U+2212) and an optional plus.
 data class AmountParts(
-    /** "", "−" or "+". */
+    // "", "−" or "+".
     val sign: String,
-    /** Currency symbol shown before the number, without the separating space. */
+    // Without the separating space.
     val prefix: String,
-    /** Integer digits with locale grouping, e.g. "48,250". */
+    // With locale grouping, e.g. "48,250".
     val integer: String,
-    /** Decimal separator and decimals, e.g. ".00"; empty for zero-decimal currencies. */
+    // Separator and decimals, e.g. ".00"; empty for zero-decimal currencies.
     val fraction: String,
-    /** Currency symbol shown after the number. */
     val suffix: String,
 ) {
-    /** Plain text for accessibility and copying. */
+    // For accessibility and copying.
     val text: String get() = sign + (if (prefix.isNotEmpty()) "$prefix " else "") + integer +
         fraction +
         suffix

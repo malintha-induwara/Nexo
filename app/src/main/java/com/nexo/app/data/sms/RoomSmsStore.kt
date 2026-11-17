@@ -7,7 +7,6 @@ import com.nexo.app.data.database.entity.SmsItemEntity
 import com.nexo.app.data.database.entity.asEntity
 import com.nexo.app.data.database.entity.asExternalModel
 
-/** The live Review Queue as the correlator's store. */
 class RoomSmsStore(private val dao: SmsDao) : SmsStore {
     override suspend fun byDedupeKey(key: String) = dao.byDedupeKey(key)?.asExternalModel()
     override suspend fun pendingRetry(

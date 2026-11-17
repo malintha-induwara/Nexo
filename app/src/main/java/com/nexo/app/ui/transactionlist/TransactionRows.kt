@@ -42,9 +42,8 @@ data class TxRowUi(
     val amountText: String,
     val amountMain: Double,
     val isCarryOver: Boolean = false,
-    /** Category look; null for transfers, balance adjustments, carry-over and uncategorised rows. */
+    // Null for transfers, balance adjustments, carry-over and uncategorised rows.
     val visual: CategoryVisual? = null,
-    /** Currency of [amount]. */
     val currency: Currency? = null,
 )
 
@@ -56,7 +55,7 @@ data class DayGroup(
     val memos: List<Memo> = emptyList(),
 )
 
-/** Builds display rows from transactions. Labels stay [UiText] so the screen resolves them. */
+// Labels stay [UiText] so the screen resolves them.
 class TransactionRowMapper(private val ref: RefData, private val zone: ZoneId) {
     private val classifier = Classifier(ref)
     private val timeFormat = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
@@ -157,11 +156,11 @@ class TransactionRowMapper(private val ref: RefData, private val zone: ZoneId) {
         )
     }
 
-    /** Listed rows: every kind except incoming transfer legs and balance rows (balance rows show only in account lists). */
+    // Every kind except incoming transfer legs and balance rows, which show only in account lists.
     fun listable(tx: Transaction, includeBalance: Boolean = false): Boolean =
         tx.kind != TxKind.TRANSFER_IN && (includeBalance || !tx.kind.isBalance)
 
-    /** Groups rows by day, newest day first, ordering within a day per the Time Input setting. */
+    // Newest day first; within a day, ordered per the Time Input setting.
     fun dayGroups(
         rows: List<Transaction>,
         ledger: Ledger,
@@ -197,7 +196,6 @@ class TransactionRowMapper(private val ref: RefData, private val zone: ZoneId) {
         }
     }
 
-    /** "From → To" for a transfer. */
     fun transferText(fromId: String?, toId: String?): UiText =
         UiText.join(accountName(fromId), UiText.Raw(" → "), accountName(toId))
 

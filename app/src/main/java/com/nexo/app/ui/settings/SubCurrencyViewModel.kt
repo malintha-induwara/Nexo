@@ -17,13 +17,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-data class SubCurrencyUiState(
-    val ref: RefData = RefData(),
-    /** A sub-currency was saved: the screen goes back, then calls [SubCurrencyViewModel.onClosedHandled]. */
-    val closed: Boolean = false,
-)
+data class SubCurrencyUiState(val ref: RefData = RefData(), val closed: Boolean = false)
 
-/** Sub-currencies: their order, hiding them, and adding or editing one. */
 @HiltViewModel
 class SubCurrencyViewModel @Inject constructor(
     refs: ReferenceDataRepository,
@@ -39,7 +34,7 @@ class SubCurrencyViewModel @Inject constructor(
 
     fun hide(id: String) = viewModelScope.launch { repo.hide(id) }
 
-    /** Saves a custom sub-currency when [catalog] is null, otherwise a built-in one. */
+    // A null catalog entry means a custom sub-currency.
     fun saveSub(
         catalog: CatalogCurrency?,
         existing: Currency?,

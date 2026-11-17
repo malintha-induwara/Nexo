@@ -12,11 +12,11 @@ import com.nexo.app.data.sms.parser.MerchantCleaner
 import com.nexo.app.data.sms.parser.ParsedSms
 import java.util.UUID
 
-/** What the correlator needs from storage: Room for live capture, memory for the history picker and tests. */
+// Room backs live capture; [MemorySmsStore] backs the history picker and tests.
 interface SmsStore {
     suspend fun byDedupeKey(key: String): SmsItem?
 
-    /** Pending approval-code item with the same route and amount since [since]. */
+    // Pending approval-code item with the same route and amount.
     suspend fun pendingRetry(
         bank: String,
         route: String,
@@ -25,7 +25,7 @@ interface SmsStore {
         since: Long,
     ): SmsItem?
 
-    /** Pending unverified transfer-out with the same amount since [since]. */
+    // Pending unverified transfer-out with the same amount.
     suspend fun upgradeCandidate(
         bank: String,
         amount: Double,
@@ -33,7 +33,7 @@ interface SmsStore {
         since: Long,
     ): SmsItem?
 
-    /** Transfer-out the bank confirmed in [since, until] with the same amount, in any status. */
+    // Bank-confirmed transfer-out with the same amount, in any status.
     suspend fun confirmedTransfer(
         bank: String,
         amount: Double,
@@ -42,7 +42,7 @@ interface SmsStore {
         until: Long,
     ): SmsItem?
 
-    /** Card purchases on [cardLast4] in [since, until], newest first. */
+    // Newest first.
     suspend fun purchasesOnCard(
         bank: String,
         cardLast4: String,
@@ -55,7 +55,7 @@ interface SmsStore {
 
     suspend fun putHint(hint: SmsOtpHint)
 
-    /** Removes and returns the newest hint with this amount in [since, until]. */
+    // Removes and returns the newest matching hint.
     suspend fun takeHint(
         bank: String,
         amount: Double,
@@ -65,10 +65,7 @@ interface SmsStore {
     ): SmsOtpHint?
 }
 
-/**
- * Applies the stateful rules across messages: dedupe, OTP enrichment, cancellations, approval-code retries and later
- * confirmations.
- */
+// Rules that span messages: dedupe, OTP merchants, cancellations, code retries, confirmations.
 class SmsCorrelator(private val store: SmsStore) {
 
     sealed interface Outcome {
@@ -77,17 +74,14 @@ class SmsCorrelator(private val store: SmsStore) {
         data class Upgraded(val item: SmsItem) : Outcome
         data class Cancelled(val item: SmsItem) : Outcome
 
-        /** The cancelled purchase was already approved: a money-back item now waits in the queue. */
+        // Cancelled after approval: a money-back item now waits in the queue.
         data class Reversal(val item: SmsItem, val original: SmsItem) : Outcome
         data class Duplicate(val existing: SmsItem) : Outcome
         data object HintStored : Outcome
         data class Skipped(val reason: IgnoreReason, val detail: String = "") : Outcome
     }
 
-    /**
-     * [text] is the body as it should be stored. [prepare] adds suggestions (account, category) before the insert.
-     * [now] is the capture time.
-     */
+    // [text] is the body to store; [prepare] fills account and category before the insert.
     suspend fun accept(
         msg: SmsMessage,
         parsed: ParsedSms,
@@ -142,7 +136,7 @@ class SmsCorrelator(private val store: SmsStore) {
                 store.update(merged)
                 return Outcome.Merged(merged)
             }
-            // Android can hand a code message over hours late, after the bank's confirmation made the item.
+            // A late code message can arrive after the bank's confirmation already made the item.
             store.confirmedTransfer(
                 bank,
                 amount,
@@ -290,7 +284,6 @@ class SmsCorrelator(private val store: SmsStore) {
     }
 }
 
-/** In-memory [SmsStore]: the history picker's scratch space, and the test double. */
 class MemorySmsStore : SmsStore {
     val items = LinkedHashMap<String, SmsItem>()
     val hints = ArrayList<SmsOtpHint>()

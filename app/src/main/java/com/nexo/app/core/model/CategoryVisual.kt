@@ -2,17 +2,11 @@ package com.nexo.app.core.model
 
 import java.util.Locale
 
-/** What a category looks like: an emoji (or, failing that, a monogram) on a tile of one of the ten hues. */
+// A null emoji shows the monogram instead.
 data class CategoryVisual(val emoji: String?, val monogram: String, val colorIndex: Int)
 
-/**
- * Resolves a category's visual without writing anything back, so old data, legacy imports and
- * restored backups all render without a backfill.
- *
- * Emoji: the category's own, else its parent's, else a suggestion from its name, else from its
- * parent's name, else none (the monogram shows). Colour: its own, else its parent's, else a
- * stable value from the main category's id, so a main category and its subcategories share a hue.
- */
+// Resolved on read, never written back, so imported and restored data needs no backfill.
+// The fallback colour comes from the main category's id, so subcategories share its hue.
 object CategoryVisuals {
     const val HUES = 10
 
@@ -29,7 +23,6 @@ object CategoryVisuals {
 
     fun stableColor(id: String): Int = Math.floorMod(id.hashCode(), HUES)
 
-    /** First letter (as a whole grapheme where possible), upper-cased. */
     fun monogram(name: String): String {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return "?"
@@ -37,11 +30,8 @@ object CategoryVisuals {
         return trimmed.substring(0, end).uppercase(Locale.getDefault())
     }
 
-    /**
-     * A best guess from the name; specific words are listed before general ones. Keywords match
-     * the start of a word ("book" → "Books"); keywords under four letters must be the whole word or
-     * its plural, so "car" does not match "Card"; keywords with spaces or punctuation match as phrases.
-     */
+    // KEYWORDS lists specific words before general ones. Keywords under four letters must match a
+    // whole word, so "car" does not match "Card".
     fun suggestEmoji(name: String): String? {
         val normalized = name.lowercase(Locale.ROOT)
         val words = normalized.split(WORD_BREAK).filter { it.isNotEmpty() }

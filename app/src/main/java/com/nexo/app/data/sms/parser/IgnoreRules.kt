@@ -1,9 +1,6 @@
 package com.nexo.app.data.sms.parser
 
-/**
- * Messages that are clearly not money movements. The fixed formats run first, so an approval-code transfer that
- * says "do not share" is still captured. Only unambiguous phrases belong here.
- */
+// Messages that are clearly not money movements. Only unambiguous phrases belong here.
 object IgnoreRules {
     private val rule = Regex(
         listOf(
@@ -29,6 +26,5 @@ object IgnoreRules {
         RegexOption.IGNORE_CASE,
     )
 
-    /** The phrase that blocked [body], or null. */
     fun match(body: String): String? = rule.find(body)?.value
 }

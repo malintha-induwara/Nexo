@@ -19,7 +19,6 @@ import java.time.LocalDateTime
 import java.util.UUID
 import javax.inject.Inject
 
-/** Currencies with manually entered rates. */
 class DefaultCurrenciesRepository @Inject constructor(
     private val db: NexoDatabase,
     private val refs: ReferenceDataRepository,
@@ -110,14 +109,9 @@ class DefaultCurrenciesRepository @Inject constructor(
         db.currencyDao().upsert(ids.mapIndexedNotNull { i, id -> all[id]?.copy(orderSeq = i + 1) })
     }
 
-    /** "Data initialization": complete reset with the new main currency. */
     override suspend fun changeMainWithReset(target: CatalogCurrency) =
         reset.completeReset(deletePhotos = false, main = target)
 
-    /**
-     * "Data retention": every main amount and budget converts with [r] (1 old main = r new main),
-     * and every rate becomes old rate × r. A safety backup is taken first and restored on failure.
-     */
     override suspend fun changeMainWithRate(target: CatalogCurrency, r: Double): Boolean {
         val safety = File(dirs.backups, BackupFiles.name(LocalDateTime.now(clock)))
         if (!backups.writeBackup(safety)) return false
@@ -143,7 +137,6 @@ class DefaultCurrenciesRepository @Inject constructor(
                         t.copy(amountMain = main)
                     },
                 )
-                // Budgets.
                 val amounts = db.budgetDao().getAmounts()
                 db.budgetDao().upsertAmounts(
                     amounts.map {

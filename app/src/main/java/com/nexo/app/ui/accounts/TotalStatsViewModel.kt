@@ -40,10 +40,7 @@ class TotalStatsViewModel @Inject constructor(
     private val clock: Clock,
     savedState: SavedStateHandle,
 ) : ViewModel() {
-    /**
-     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
-     * is current whenever the screen is there to call them.
-     */
+    // Read synchronously by event handlers; it feeds uiState, so it's current while shown.
     private val ref = refs.getRefDataStream().stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
@@ -71,7 +68,7 @@ class TotalStatsViewModel @Inject constructor(
             periods.add(0, p)
             p = e.previous(p)
         }
-        // B10: included accounts (non-debit, not deleted, included in totals) + their debit cards + unassigned rows.
+        // Included non-debit accounts, their debit cards, and unassigned rows.
         val included = r.accounts.filter { acc ->
             val g = r.groupById[acc.groupId] ?: return@filter false
             g.type != GroupType.DEBIT_CARD && acc.status != AccountStatus.DELETED &&

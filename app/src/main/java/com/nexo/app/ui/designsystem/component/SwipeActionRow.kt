@@ -41,7 +41,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
-/** One side of a [SwipeActionRow]. A disabled action resists the drag and never fires. */
+// A disabled action resists the drag and never fires.
 data class SwipeAction(
     val icon: ImageVector,
     val label: String,
@@ -49,11 +49,8 @@ data class SwipeAction(
     val onTrigger: () -> Unit,
 )
 
-/**
- * A row with an action under each side: drag right for [start], left for [end]. Past a third of the width the action
- * arms (a tick), fires on release, and the row springs back; the list decides whether the row then leaves.
- * Content should draw nothing behind itself: the row paints the screen background under it.
- */
+// Past a third of the width the action arms, fires on release and the row springs back.
+// Content should draw nothing behind itself: the row paints the background under it.
 @Composable
 fun SwipeActionRow(
     start: SwipeAction?,

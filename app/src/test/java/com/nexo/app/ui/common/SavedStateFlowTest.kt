@@ -20,7 +20,7 @@ import org.robolectric.annotation.Config
 class SavedStateFlowTest {
     private val day = LocalDate.of(2026, 11, 14)
 
-    /** The handle a new process gets back from what the old one saved. */
+    // The handle a new process gets back from what the old one saved.
     private fun SavedStateHandle.afterProcessDeath() =
         SavedStateHandle.createHandle(savedStateProvider().saveState(), null)
 

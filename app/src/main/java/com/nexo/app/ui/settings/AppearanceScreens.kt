@@ -77,7 +77,6 @@ private fun themeModeLabel(m: ThemeMode) = stringResource(
     },
 )
 
-/** Light, dark or follow the system. The colour theme was retired with the neutral redesign. */
 @Composable
 fun StyleRoute(vm: AppearanceViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -158,7 +157,7 @@ fun ReminderRoute(vm: ReminderViewModel = hiltViewModel()) {
     )
 }
 
-/** [onAlarm] turns the reminder on or off, asking for the notification permission first if needed. */
+// onAlarm asks for the notification permission first if needed.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ReminderScreen(
@@ -272,7 +271,7 @@ fun LockSettingsRoute(vm: LockSettingsViewModel = hiltViewModel()) {
     )
 }
 
-/** App lock: PIN, biometrics and lock timeout. [onSetPin] with null removes the PIN. */
+// onSetPin(null) removes the PIN.
 @Composable
 internal fun LockSettingsScreen(
     state: LockSettingsUiState,
@@ -389,11 +388,8 @@ private fun timeoutLabel(t: LockTimeout) = stringResource(
     },
 )
 
-/**
- * PIN keypad flow: "new" = enter + confirm; "change" = verify current, then new; "verify" = verify only.
- * [onDone] receives the new PIN (or the verified one for "verify"). [onVerify] asks whether a PIN is
- * the current one; the answer comes back as [check].
- */
+// "new" = enter + confirm; "change" = verify, then new; "verify" = verify only.
+// onDone gets the new PIN (or the verified one); onVerify's answer comes back as check.
 @Composable
 private fun PinFlowDialog(
     mode: String,

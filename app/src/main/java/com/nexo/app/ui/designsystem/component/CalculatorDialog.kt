@@ -37,7 +37,7 @@ import java.math.BigDecimal
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 
-/** Full-screen calculator. Returns the evaluated value on OK. */
+// Full-screen; reports the evaluated value on OK.
 @Composable
 fun CalculatorDialog(initial: Double?, onResult: (BigDecimal) -> Unit, onDismiss: () -> Unit) {
     val start =

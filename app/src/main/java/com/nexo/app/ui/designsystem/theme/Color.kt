@@ -8,45 +8,39 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 
-/**
- * Loop palette, built from the launcher icon.
- * Structure is strictly neutral: pure white in light mode, graphite in dark. Blue marks actions and
- * emphasis only (buttons, the add button, switches, the active tab, selected states); every other
- * colour carries meaning (money direction and category identity).
- */
+// Structure is neutral; blue marks actions and emphasis only. Every other colour carries
+// meaning (money direction and category identity).
 @Immutable
 data class NexoColors(
     val background: Color,
-    /** Sheets, the bottom bar, panels. */
+    // Sheets, the bottom bar, panels.
     val surface: Color,
-    /** Controls sitting on a surface: keypad keys, segmented tracks, chips. */
+    // Controls on a surface: keypad keys, segmented tracks, chips.
     val raised: Color,
-    /** One step above [raised]: pressed keys, the segmented thumb. */
+    // Pressed keys, the segmented thumb.
     val raisedHigh: Color,
     val hairline: Color,
     val text: Color,
     val textSecondary: Color,
     val textTertiary: Color,
-    /** Brand blue as a fill: buttons, the add button, switches, selected marks. */
+    // Fill for buttons, the add button, switches, selected marks.
     val primary: Color,
     val primaryPressed: Color,
-    /** Label and icon colour on [primary]. */
     val onPrimary: Color,
-    /** Brand blue for text and icons on the page: links, the active tab. */
+    // Text and icons on the page: links, the active tab.
     val primaryText: Color,
-    /** Quiet blue container: selected chips, banners. */
+    // Selected chips, banners.
     val primarySoft: Color,
     val success: Color,
     val warning: Color,
     val danger: Color,
     val isDark: Boolean,
 ) {
-    /** Tile tint for a category hue: the hue at low strength over the bare background. */
+    // The hue at low strength over the bare background.
     fun tint(hue: Color, over: Color = background): Color =
         hue.copy(alpha = if (isDark) 0.18f else 0.16f).compositeOver(over)
 }
 
-/** Graphite dark base. */
 val DarkNexoColors = NexoColors(
     background = Color(0xFF121212),
     surface = Color(0xFF1C1C1C),
@@ -89,10 +83,7 @@ val LightNexoColors = NexoColors(
 
 val LocalNexoColors = staticCompositionLocalOf { DarkNexoColors }
 
-/**
- * Material roles mapped onto the palette. `primary` is the brand blue, so stock buttons, switches,
- * FABs and text buttons pick it up; everything else stays neutral.
- */
+// `primary` is the brand blue so stock components pick it up; everything else stays neutral.
 internal fun NexoColors.toScheme(): ColorScheme = if (isDark) {
     darkColorScheme(
         primary = primary,
@@ -174,11 +165,7 @@ internal fun NexoColors.toScheme(): ColorScheme = if (isDark) {
     )
 }
 
-/**
- * Ten category hues. Index order is part of the stored data (`categories.colorIndex`),
- * so append only. Dark values are lifted for a dark ground; light values are deepened
- * for contrast on white.
- */
+// Index order is stored (`categories.colorIndex`), so append only.
 object CategoryHues {
     private val dark = listOf(
         Color(0xFFFF7A5C), // tomato

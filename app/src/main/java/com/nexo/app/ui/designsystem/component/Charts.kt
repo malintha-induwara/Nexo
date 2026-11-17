@@ -49,7 +49,7 @@ import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 
-/** A value axis with round steps that always includes zero. */
+// Round steps that always include zero.
 private class AxisScale(val bottom: Double, val top: Double, val step: Double)
 
 private fun axisScale(values: List<Double>): AxisScale {
@@ -80,7 +80,7 @@ private fun tickLabel(v: Double): String {
     return "%.1f".format(scaled).removeSuffix(".0").removeSuffix(",0") + unit
 }
 
-/** The plot area inside a chart canvas: value ticks down the left, one slot per label along the bottom. */
+// Value ticks down the left, one slot per label along the bottom.
 private class Plot(
     val left: Float,
     val top: Float,
@@ -97,7 +97,7 @@ private class Plot(
 
 private val PlotGutter = 40.dp
 
-/** Draws the hairline grid with its value ticks and the labels under the slots; returns the plot area. */
+// Draws the grid, value ticks and slot labels; returns the plot area.
 private fun DrawScope.drawPlotFrame(
     labels: List<String>,
     scale: AxisScale,
@@ -147,7 +147,7 @@ private fun rememberAxisInk(color: Color): Paint {
     }
 }
 
-/** Picks the slot under a tap or a sideways drag, so a value can be scrubbed. */
+// Tap or sideways drag, so a value can be scrubbed.
 private fun Modifier.pickSlot(count: Int, onPick: (Int) -> Unit): Modifier {
     fun PointerInputScope.slotAt(x: Float): Int {
         val left = PlotGutter.toPx()
@@ -162,10 +162,7 @@ private fun Modifier.pickSlot(count: Int, onPick: (Int) -> Unit): Modifier {
         }
 }
 
-/**
- * One series over time as a smooth line on a soft wash, anchored at zero. The [selected] point
- * carries a marker on a hairline; tap or drag across the chart to move it.
- */
+// Smooth line anchored at zero; tap or drag across the chart to move the [selected] marker.
 @Composable
 fun AreaChart(
     labels: List<String>,
@@ -228,11 +225,8 @@ fun AreaChart(
     }
 }
 
-/**
- * Side-by-side columns for a few series per label, rounded at the value end and square at the
- * baseline. The [selected] label sits on a soft band; tap or drag across the chart to move it.
- * [targets] marks a level per label (a budget) as a short stroke across its columns.
- */
+// [targets] marks a level per label (a budget) as a stroke across its columns. Tap or drag
+// across the chart to move the [selected] band.
 @Composable
 fun ColumnChart(
     labels: List<String>,
@@ -308,7 +302,7 @@ fun ColumnChart(
                 drawPath(bar, seriesColors.getOrElse(s) { colors.textSecondary })
             }
         }
-        // A target is a short stroke across the slot, ringed in the surface colour so it reads over a column.
+        // Ringed in the surface colour so the target reads over a column.
         targets?.forEachIndexed { i, t ->
             if (i >= labels.size || t == 0.0) return@forEachIndexed
             val half = min(plot.slot / 2 - 4.dp.toPx(), group / 2 + 8.dp.toPx())
@@ -331,10 +325,7 @@ fun ColumnChart(
 
 data class PieSlice(val label: String, val value: Double, val color: Color)
 
-/**
- * Ring of the stats rows. Tapping a slice reports its index; tapping the middle reports -1.
- * The ring sweeps in clockwise when the data changes. A picked slice thickens and the rest dim.
- */
+// Tapping a slice reports its index; tapping the middle reports -1.
 @Composable
 fun DonutChart(
     slices: List<PieSlice>,

@@ -139,7 +139,6 @@ private fun PanelHeader(
     }
 }
 
-/** A name in a rounded cell; selection fills it with the entry's colour at low strength and rings it. */
 @Composable
 private fun NameCell(
     text: String,
@@ -231,7 +230,7 @@ private fun ListCell(
     }
 }
 
-/** Account selection panel: flat grid or grouped two-pane. */
+// Flat grid or grouped two-pane.
 @Composable
 fun AccountPanel(
     title: String,
@@ -330,7 +329,6 @@ private fun AddCell(onAdd: () -> Unit) {
     ) { Icon(Icons.Rounded.Add, stringResource(R.string.add_account), tint = colors.textSecondary) }
 }
 
-/** An emoji tile with its name beneath, ringed in the entry's colour when chosen. */
 @Composable
 private fun CategoryCell(
     category: Category,
@@ -413,11 +411,8 @@ private fun CategoryCell(
     }
 }
 
-/**
- * Category selection panel. A grid of main categories; with subcategories on, a main
- * category that has subcategories opens its own grid, where the first cell picks the main
- * category itself (same rule as the old two-pane picker: first tap opens, second tap selects).
- */
+// With subcategories on, a main category that has them opens its own grid, whose first cell
+// picks the main category itself.
 @Composable
 fun CategoryPanel(
     kind: CategoryKind,

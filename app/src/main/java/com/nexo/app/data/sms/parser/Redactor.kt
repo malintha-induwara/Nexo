@@ -1,6 +1,5 @@
 package com.nexo.app.data.sms.parser
 
-/** What Nexo keeps of a message body. */
 object Redactor {
     private val ci = setOf(RegexOption.IGNORE_CASE)
     const val MASK = "[REDACTED]"
@@ -21,7 +20,7 @@ object Redactor {
         .replace(codeAfter) { "${it.groupValues[1]}${it.groupValues[2]}$CODE_MASK" }
         .replace(codeBefore) { "$CODE_MASK${it.groupValues[1]}" }
 
-    /** Phone numbers, then long numbers, then masked and card digits. Run after the hints were extracted. */
+    // Run only after hints were extracted from the body.
     fun redact(text: String): String = text
         .replace(phone, MASK)
         .replace(longNumber, MASK)

@@ -42,7 +42,7 @@ fun TransferExpenseRoute(vm: AccountSettingsViewModel = hiltViewModel()) {
     )
 }
 
-/** The income option is always shown, default on. */
+// The income option is always shown, default on.
 @Composable
 internal fun TransferExpenseScreen(
     state: AccountSettingsUiState,

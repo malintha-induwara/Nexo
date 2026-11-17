@@ -11,15 +11,15 @@ object BudgetMath {
         return if (m >= 12) (y + 1) * 100 + 1 else y * 100 + m + 1
     }
 
-    /** Amount of the record with the greatest key ≤ [key]; 0 if none. */
+    // The record with the greatest key ≤ [key]; 0 if none.
     fun effective(records: List<BudgetAmount>, key: Int): Double =
         records.filter { it.periodKey <= key }.maxByOrNull { it.periodKey }?.amount ?: 0.0
 
-    /** "Default Budget": the record with the greatest key. */
+    // "Default Budget" is the record with the greatest key.
     fun latest(records: List<BudgetAmount>): Double =
         records.maxByOrNull { it.periodKey }?.amount ?: 0.0
 
-    /** Change only month [key]. Returns the records to upsert. */
+    // Changes only month [key]; returns the records to upsert.
     fun perMonthEdit(
         budgetId: String,
         records: List<BudgetAmount>,
@@ -43,7 +43,7 @@ object BudgetMath {
         return out
     }
 
-    /** From next month on, months that followed the old default get [amount]. */
+    // From next month on, months that followed the old default get [amount].
     fun defaultEdit(
         budgetId: String,
         records: List<BudgetAmount>,
@@ -76,7 +76,7 @@ object BudgetMath {
         return out
     }
 
-    /** Truncated percentage; null means "-". */
+    // Truncated; null shows as "-".
     fun rate(used: Double, budget: Double): Int? {
         if (budget == 0.0) return if (used > 0) 100 else 0
         val r = used / budget * 100

@@ -35,7 +35,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** One opening per mode; the seeded LKR book has accounts "1" (bank) and "11" (cash) and category "6" (Food). */
+// Seeded LKR book: accounts "1" (bank) and "11" (cash), category "6" (Food).
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class EntryFormLoaderTest {

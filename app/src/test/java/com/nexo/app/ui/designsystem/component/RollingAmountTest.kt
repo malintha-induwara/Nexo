@@ -18,11 +18,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Every digit slot of a [RollingAmount] must stay on the row's baseline once it has rolled. If a
- * slot reports a baseline shifted by its rolling layer, the row aligns it a line lower and grows
- * to twice its height, which is how the bug showed on the home header.
- */
+// Every digit slot must stay on the row's baseline once it has rolled.
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class RollingAmountTest {

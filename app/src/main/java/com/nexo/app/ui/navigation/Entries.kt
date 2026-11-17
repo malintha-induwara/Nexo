@@ -56,7 +56,6 @@ import com.nexo.app.ui.sms.SmsSettingsRoute
 import com.nexo.app.ui.stats.StatsDetailRoute
 import com.nexo.app.ui.tags.TagSettingsRoute
 
-/** Every screen of the app. */
 fun nexoEntries(): (NavKey) -> NavEntry<NavKey> = entryProvider {
     entry<MainKey> { MainShellRoute() }
     entry<SmsQueueKey> { SmsQueueRoute() }

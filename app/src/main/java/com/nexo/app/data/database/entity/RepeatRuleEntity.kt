@@ -9,7 +9,7 @@ import com.nexo.app.core.model.TxKind
 @Entity(tableName = "repeat_rules")
 data class RepeatRuleEntity(
     @PrimaryKey val id: String,
-    /** INCOME, EXPENSE or TRANSFER_OUT. */
+    // INCOME, EXPENSE or TRANSFER_OUT.
     val kind: TxKind,
     val accountId: String?,
     val toAccountId: String? = null,
@@ -19,11 +19,11 @@ data class RepeatRuleEntity(
     val note: String = "",
     val description: String = "",
     val repeatType: RepeatType,
-    /** Next occurrence still to be generated, ISO date. */
+    // Next occurrence still to generate (ISO date).
     val nextDate: String,
-    /** Last allowed occurrence, ISO date; null = no end. */
+    // Last allowed occurrence (ISO date); null = no end.
     val endDate: String? = null,
-    /** Day of month the series was created on; monthly steps clamp to it instead of drifting. */
+    // Day of month the series started on; monthly steps clamp to it instead of drifting.
     val anchorDay: Int,
     val createdAt: Long,
     val updatedAt: Long,

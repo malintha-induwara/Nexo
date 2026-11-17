@@ -9,7 +9,7 @@ data class Account(
     val description: String = "",
     val status: AccountStatus = AccountStatus.ACTIVE,
     val includeInTotals: Boolean = true,
-    /** Credit card: paying account. Debit card: the account it draws on. */
+    // Credit card: the paying account. Debit card: the account it draws on.
     val linkedAccountId: String? = null,
     val settlementDay: Int = 1,
     val paymentDay: Int = 1,

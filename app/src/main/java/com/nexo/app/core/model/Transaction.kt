@@ -3,22 +3,19 @@ package com.nexo.app.core.model
 data class Transaction(
     val id: String,
     val kind: TxKind,
-    /** Null means the pseudo-account "None". */
+    // Null means the pseudo-account "None".
     val accountId: String?,
-    /** Other account of a transfer leg. */
     val counterpartAccountId: String? = null,
-    /** Null means the pseudo-category "None" (or no category for transfers and balance rows). */
+    // Null means "None", or no category for transfers and balance rows.
     val categoryId: String? = null,
-    /** Balance correction recorded from account editing ("Modified Bal."). */
+    // Recorded from account editing ("Modified Bal.").
     val isBalanceAdjustment: Boolean = false,
     val dateTime: Long,
-    /** Local calendar date, ISO yyyy-MM-dd. Always equals the local date of [dateTime]. */
+    // Local ISO date (yyyy-MM-dd) of [dateTime].
     val date: String,
-    /** Amount in the transaction currency. */
+    // In the transaction currency.
     val amount: Double,
-    /** Amount in the main currency. */
     val amountMain: Double,
-    /** Amount in the account's currency. */
     val amountAccount: Double,
     val currencyId: String,
     val note: String = "",
@@ -30,13 +27,10 @@ data class Transaction(
     val installmentCount: Int = 0,
     val repeatRuleId: String? = null,
     val repeatType: RepeatType? = null,
-    /** Original message text for entries created from pasted / imported text. */
+    // For entries made from pasted or imported text.
     val sourceText: String? = null,
     val createdAt: Long,
     val updatedAt: Long,
-    /**
-     * Bank fee charged on a non-transfer row: the fee expense points at its parent.
-     * Transfer fees keep using [feeGroupId].
-     */
+    // The fee expense of a non-transfer row points at it; transfer fees use [feeGroupId].
     val feeParentId: String? = null,
 )

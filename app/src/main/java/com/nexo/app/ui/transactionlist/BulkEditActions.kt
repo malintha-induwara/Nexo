@@ -6,7 +6,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
-/** What the bulk-edit dialogs can do to the selected rows. */
 class BulkEditActions(
     val delete: () -> Unit,
     val setDate: (LocalDate) -> Unit,
@@ -16,7 +15,7 @@ class BulkEditActions(
     val setTransfer: (from: String, to: String) -> Unit,
 )
 
-/** Bulk edits of [selection] run in a ViewModel's [scope]; the selection clears once each edit is written. */
+// The selection clears once each edit is written.
 fun bulkEditActions(
     transactions: TransactionsRepository,
     scope: CoroutineScope,

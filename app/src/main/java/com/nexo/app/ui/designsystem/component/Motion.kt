@@ -24,9 +24,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.nexo.app.ui.designsystem.theme.NexoMotion
 
-/** Screen transitions: a short directional slide with a fade, never a full-width push. */
+// A short directional slide with a fade, never a full-width push.
 object NavMotion {
-    /** Forward: the new screen drifts in from the right while the old one dims away. */
     fun <S> push(scope: AnimatedContentTransitionScope<S>): ContentTransform = with(scope) {
         (
             slideInHorizontally(NexoMotion.enter(NexoMotion.LONG)) { it / 12 } +
@@ -38,7 +37,7 @@ object NavMotion {
                 )
     }
 
-    /** Back: the mirror of [push], with the leaving screen kept on top. */
+    // The mirror of [push], with the leaving screen kept on top.
     fun <S> pop(scope: AnimatedContentTransitionScope<S>): ContentTransform = with(scope) {
         ContentTransform(
             targetContentEnter =
@@ -51,7 +50,6 @@ object NavMotion {
         )
     }
 
-    /** Predictive back: the leaving screen shrinks and fades under the finger. */
     fun <S> predictivePop(scope: AnimatedContentTransitionScope<S>): ContentTransform =
         with(scope) {
             ContentTransform(
@@ -65,7 +63,7 @@ object NavMotion {
             )
         }
 
-    /** Sideways content change inside a screen (period steps, sub-views); [direction] is +1 forward, -1 back. */
+    // Sideways change inside a screen; [direction] is +1 forward, -1 back.
     fun <S> lateral(scope: AnimatedContentTransitionScope<S>, direction: Int): ContentTransform =
         with(scope) {
             if (direction == 0) {
@@ -85,7 +83,6 @@ object NavMotion {
         }
 }
 
-/** Scales the element down slightly while pressed and springs it back on release. */
 @Composable
 fun Modifier.pressScale(interactions: InteractionSource, pressed: Float = 0.94f): Modifier {
     val isPressed by interactions.collectIsPressedAsState()
@@ -100,10 +97,7 @@ fun Modifier.pressScale(interactions: InteractionSource, pressed: Float = 0.94f)
     }
 }
 
-/**
- * Shakes the element sideways whenever [trigger] changes to a new non-zero value.
- * Used for rejected input (a wrong PIN, an amount that does not fit).
- */
+// Shakes whenever [trigger] changes to a new non-zero value.
 @Composable
 fun Modifier.shakeOn(trigger: Int): Modifier {
     val offset = remember { Animatable(0f) }

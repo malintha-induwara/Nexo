@@ -1,9 +1,8 @@
 package com.nexo.app.core.model
 
-/** What an item still lacks before it can be approved. Separate from [Certainty]. */
+// What an item still lacks before approval; separate from Certainty.
 enum class Missing { ACCOUNT, DESTINATION, CATEGORY, AMOUNT }
 
-/** Category kind a queue item is filed under. */
 val SmsKind.categoryKind: CategoryKind
     get() = if (isInflow) CategoryKind.INCOME else CategoryKind.EXPENSE
 
@@ -16,14 +15,14 @@ fun SmsItem.missing(): Set<Missing> = buildSet {
             add(Missing.DESTINATION)
         }
 
-        // To a payee outside Nexo: either an account (a transfer) or a category (an expense) will do.
+        // A payee outside Nexo: an account (transfer) or a category (expense) will do.
         SmsKind.TRANSFER_OUT -> if (toAccountId == null && categoryId == null) {
             add(Missing.DESTINATION)
         }
 
         else -> if (categoryId == null) add(Missing.CATEGORY)
     }
-    // "Rate pending" — no account-currency amount yet.
+    // "Rate pending": no account-currency amount yet.
     if (certainty == Certainty.ESTIMATED && estimatedAmount == null && actualAmount == null) {
         add(Missing.AMOUNT)
     }
@@ -31,10 +30,8 @@ fun SmsItem.missing(): Set<Missing> = buildSet {
 
 val SmsItem.needsDetails: Boolean get() = missing().isNotEmpty()
 
-/** "Needs attention": not exact, or incomplete. */
 val SmsItem.needsAttention: Boolean get() = certainty != Certainty.EXACT || needsDetails
 
-/** Where withdrawals go. The chosen account, else the first visible account in the Cash group. */
 fun RefData.smsCashAccount(): String? {
     val chosen = settings.smsCashAccountId.takeIf {
         it.isNotEmpty()
@@ -45,12 +42,12 @@ fun RefData.smsCashAccount(): String? {
 
 private const val CASH_GROUP = 11
 
-/** The amount as it would reach the ledger, in the account's currency for foreign items. */
+// In the account's currency for foreign items.
 fun ledgerAmount(item: SmsItem): Double = item.actualAmount ?: item.estimatedAmount ?: item.amount
 
 fun bankName(item: SmsItem): String = Banks.byName(item.bank)?.displayName ?: Bank.OTHER.displayName
 
-/** The row title and transaction note: merchant, else payee, else "<bank> transfer <route>", else the bank. */
+// Used as the row title and the transaction note.
 fun noteFor(item: SmsItem): String = item.merchant.ifEmpty { item.payee.orEmpty() }
     .ifEmpty { item.route?.let { "${bankName(item)} transfer $it" }.orEmpty() }
     .ifEmpty { bankName(item) }

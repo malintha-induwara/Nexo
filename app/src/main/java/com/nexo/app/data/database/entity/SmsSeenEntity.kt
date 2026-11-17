@@ -4,9 +4,7 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-/**
- * A message capture has already taken in, as a hash of it: the inbox is read again for a day, and the text itself
- * is never kept here.
- */
+// Hash of each message capture already took in, as the inbox is read again for a day.
+// The text itself is never kept.
 @Entity(tableName = "sms_seen", indices = [Index("receivedAt")])
 data class SmsSeenEntity(@PrimaryKey val id: String, val receivedAt: Long)

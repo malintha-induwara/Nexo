@@ -81,7 +81,7 @@ data class AccountDetailUiState(
     val anchor: LocalDate,
     val charts: Boolean = false,
     val selection: Set<String> = emptySet(),
-    /** The account was restored: the screen goes back, then calls [AccountDetailViewModel.onRestoredHandled]. */
+    // The screen goes back, then calls onRestoredHandled.
     val restored: Boolean = false,
     val days: List<DayGroup> = emptyList(),
     val running: Map<String, Double> = emptyMap(),
@@ -94,7 +94,7 @@ data class AccountDetailUiState(
     val card: CardFigures? = null,
 )
 
-/** A credit card's periods run between its settlement days; every other account follows the book. */
+// A credit card's periods run between its settlement days; other accounts follow the book.
 internal fun RefData.periodsFor(account: Account?): PeriodEngine =
     if (account != null && groupType(account.id) == GroupType.CREDIT_CARD) {
         PeriodEngine(account.settlementDay, weekStart = settings.weekStartDay)
@@ -118,10 +118,7 @@ class AccountDetailViewModel @AssistedInject constructor(
         fun create(key: AccountDetailKey): AccountDetailViewModel
     }
 
-    /**
-     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
-     * is current whenever the screen is there to call them.
-     */
+    // Read synchronously by event handlers; it feeds uiState, so it's current while shown.
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),

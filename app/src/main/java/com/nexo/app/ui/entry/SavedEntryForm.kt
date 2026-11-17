@@ -8,7 +8,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import kotlinx.serialization.Serializable
 
-/** What the user typed into the entry form; everything else is loaded again from the nav key. */
+// Only what the user typed; everything else is loaded again from the nav key.
 @Serializable
 internal data class SavedEntryForm(
     val viewing: Boolean,
@@ -35,7 +35,7 @@ internal data class SavedEntryForm(
     val installments: Int,
 )
 
-/** A stored photo by its file, or a picked one by its content URI. */
+// A stored photo by its file, or a picked one by its content URI.
 @Serializable
 internal data class SavedPhoto(
     val fileName: String? = null,
@@ -74,7 +74,7 @@ internal fun EntryForm.toSaved() = SavedEntryForm(
     installments = installments,
 )
 
-/** [form] with the saved input laid over it; [keepPicked] says which picked photos are still readable. */
+// [keepPicked] says which picked photos are still readable.
 internal fun SavedEntryForm.appliedTo(form: EntryForm, keepPicked: (String) -> Boolean) = form.copy(
     viewing = viewing,
     type = type,

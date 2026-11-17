@@ -8,7 +8,6 @@ import com.nexo.app.data.repository.ReferenceDataRepository
 import com.nexo.app.data.repository.SmsRepository
 import javax.inject.Inject
 
-/** Whether approving a queue item should add, ask about, or skip a bank fee. */
 class GetSmsFeePlanUseCase @Inject constructor(
     private val sms: SmsRepository,
     private val refs: ReferenceDataRepository,
@@ -44,7 +43,7 @@ class GetSmsFeePlanUseCase @Inject constructor(
     }
 
     private companion object {
-        /** An actual amount within 0.5 % of the estimate is just rounding. */
+        // An actual amount within 0.5 % of the estimate is just rounding.
         const val FX_TOLERANCE = 0.005
     }
 }

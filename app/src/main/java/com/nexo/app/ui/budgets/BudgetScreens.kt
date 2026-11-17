@@ -231,7 +231,7 @@ internal fun BudgetDetailScreen(
     if (picker) MonthPickerDialog(month, onPick = onPickMonth, onDismiss = { picker = false })
 }
 
-/** Budget Settings, plain or expandable. */
+// Plain or expandable.
 @Composable
 fun BudgetSettingsRoute(vm: BudgetSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -518,7 +518,6 @@ internal fun BudgetAddScreen(
     }
 }
 
-/** Monthly budget editor. */
 @Composable
 fun BudgetEditorRoute(key: BudgetEditorKey, vm: BudgetSettingsViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current

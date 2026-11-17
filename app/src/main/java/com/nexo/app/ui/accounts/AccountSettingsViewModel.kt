@@ -17,7 +17,6 @@ import kotlinx.coroutines.launch
 
 data class AccountSettingsUiState(val ref: RefData = RefData())
 
-/** The account settings menu and the transfers-as-expense choices. */
 @HiltViewModel
 class AccountSettingsViewModel @Inject constructor(
     private val repo: AccountsRepository,

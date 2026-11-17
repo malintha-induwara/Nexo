@@ -5,7 +5,7 @@ import androidx.annotation.StringRes
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
-/** The app's own words, for the rows the ledger writes by itself (a fee, a balance difference). */
+// The app's own words for rows the ledger writes itself (a fee, a balance difference).
 class TextResourceDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {

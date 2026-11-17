@@ -26,7 +26,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Builds a synthetic Money Manager v19 backup and checks the mapping into Nexo. */
+// A synthetic Money Manager v19 backup.
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class LegacyImporterTest {

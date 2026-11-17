@@ -10,10 +10,8 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 
-/**
- * Which pickers, menus and dialogs are open over the entry form. They are opened from the fields
- * and the top bar but drawn on top of everything, so they share one holder; it survives rotation.
- */
+// Opened from the fields and the top bar but drawn over everything, so they share one
+// holder that survives rotation.
 @Stable
 class EntryDialogState {
     var date by mutableStateOf(false)
@@ -29,10 +27,10 @@ class EntryDialogState {
     var scanMenu by mutableStateOf(false)
     var transferGuide by mutableStateOf(false)
 
-    /** Index of the photo open full screen, or -1. */
+    // Index of the photo open full screen, or -1.
     var viewerIndex by mutableIntStateOf(-1)
 
-    /** Exchange-rate sheet: 0 closed, 1 editing the main-currency amount, 2 editing the rate. */
+    // 0 closed, 1 editing the main-currency amount, 2 editing the rate.
     var rateEdit by mutableIntStateOf(0)
 
     companion object {

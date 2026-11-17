@@ -57,16 +57,14 @@ data class AccountFormUiState(
     val pickGroup: Boolean = false,
     val difference: Double? = null,
     val confirmCurrency: Boolean = false,
-    /** Shown once, then cleared with [AccountFormViewModel.onUserMessageShown]. */
     val userMessage: UserMessage? = null,
-    /** The form is done; handled once, then cleared with [AccountFormViewModel.onCloseHandled]. */
     val close: AccountFormClose? = null,
 )
 
-/** How the form closes: back to where it came from, or all the way to the main screen after a delete. */
+// After a delete the form goes all the way back to the main screen.
 enum class AccountFormClose { BACK, TO_MAIN }
 
-/** What the user typed into the account form; balances and rows are loaded again. */
+// Only what the user typed is saved; balances and rows are loaded again.
 @Serializable
 private data class SavedAccountForm(
     val id: String,
@@ -119,10 +117,7 @@ class AccountFormViewModel @AssistedInject constructor(
         fun create(key: AccountFormKey): AccountFormViewModel
     }
 
-    /**
-     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
-     * is current whenever the screen is there to call them.
-     */
+    // Read synchronously by event handlers; it feeds uiState, so it's current while shown.
     private val ref = refs.getRefDataStream().stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
@@ -137,7 +132,7 @@ class AccountFormViewModel @AssistedInject constructor(
     private var original: Account? = null
     private var initialized = false
 
-    /** Loads the account once; safe to call again. */
+    // Loads the account once; safe to call again.
     @MainThread
     fun initialize() {
         if (initialized) return
@@ -196,7 +191,7 @@ class AccountFormViewModel @AssistedInject constructor(
         }
     }
 
-    /** Balance of the account if its rows were expressed in [currencyId]. */
+    // The account's balance if its rows were in currencyId.
     private fun balanceIn(r: RefData, currencyId: String, a: Account): Double {
         val target = r.currency(currencyId)
         return Money.sum(

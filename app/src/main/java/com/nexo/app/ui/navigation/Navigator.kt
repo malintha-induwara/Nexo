@@ -4,7 +4,6 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.navigation3.runtime.NavKey
 
-/** Thin wrapper over the Navigation 3 back stack, with the results screens hand back. */
 @Stable
 class Navigator(
     private val stack: MutableList<NavKey>,
@@ -18,7 +17,7 @@ class Navigator(
         if (stack.size > 1) stack.removeAt(stack.lastIndex)
     }
 
-    /** Pops screens until [key] class is on top (or only the root remains). */
+    // Pops until [predicate] matches the top, or only the root remains.
     fun backTo(predicate: (NavKey) -> Boolean) {
         while (stack.size > 1 && !predicate(stack.last())) stack.removeAt(stack.lastIndex)
     }

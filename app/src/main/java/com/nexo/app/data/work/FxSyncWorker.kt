@@ -15,7 +15,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
 
-/** Fetches bank rates when online and fills in "Rate pending" estimates. */
+// Fetches bank rates when online and fills in "Rate pending" estimates.
 @HiltWorker
 class FxSyncWorker @AssistedInject constructor(
     @Assisted context: Context,

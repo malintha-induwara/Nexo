@@ -6,7 +6,7 @@ import com.nexo.app.core.model.SmsHistoryImport
 import com.nexo.app.core.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 
-/** Device-only preferences: look, reminders, lock, SMS capture state. Never part of a data backup. */
+// Device-only preferences; never part of a data backup.
 interface UserPreferencesRepository {
     fun getDeviceSettingsStream(): Flow<DeviceSettings>
 

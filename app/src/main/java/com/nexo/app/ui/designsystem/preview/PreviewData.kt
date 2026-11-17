@@ -24,7 +24,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
-/** A small book for previews: rupees, cash, a bank account and a card, a few categories and tags. */
 object PreviewData {
     val clock: Clock = Clock.fixed(Instant.parse("2026-11-14T06:30:00Z"), ZoneId.of("Asia/Colombo"))
     val today: LocalDate = LocalDate.now(clock)
@@ -112,7 +111,7 @@ object PreviewData {
     val device = DeviceSettings(setupDone = true)
 }
 
-/** The app theme and a fixed clock around a preview, on the app background. */
+// App theme and a fixed clock, on the app background.
 @Composable
 fun NexoPreview(dark: Boolean = false, content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalClock provides PreviewData.clock) {

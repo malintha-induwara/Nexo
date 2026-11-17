@@ -23,7 +23,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
-/** Photo files in the private photo folder, plus the shared gallery export. Knows nothing about which rows use them. */
+// Photo files in the private folder plus the gallery export; knows nothing about rows.
 class PhotoFileDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dirs: AppDirs,
@@ -54,7 +54,7 @@ class PhotoFileDataSource @Inject constructor(
         context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
     }
 
-    /** Writes [bytes] as a new photo file, downscaling sources over 2 MB. [extension] is used for small files only. */
+    // Downscales sources over 2 MB; [extension] is used for small files only.
     suspend fun write(bytes: ByteArray, extension: String?, checksum: String): StoredPhoto =
         withContext(ioDispatcher) {
             val large = bytes.size > MAX_BYTES
@@ -125,7 +125,7 @@ class PhotoFileDataSource @Inject constructor(
         file(fileName).delete()
     }
 
-    /** Saves a copy into the shared Pictures/Nexo folder. */
+    // Saves a copy into the shared Pictures/Nexo folder.
     suspend fun exportToGallery(fileName: String): Boolean = withContext(ioDispatcher) {
         val src = file(fileName)
         if (!src.exists()) return@withContext false

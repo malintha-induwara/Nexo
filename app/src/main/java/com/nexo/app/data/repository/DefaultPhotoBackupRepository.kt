@@ -18,7 +18,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.withContext
 
-/** Photo export / import through a user-picked folder. */
 class DefaultPhotoBackupRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dirs: AppDirs,
@@ -51,11 +50,11 @@ class DefaultPhotoBackupRepository @Inject constructor(
         return out
     }
 
-    /** Copies referenced photos that the folder doesn't have yet. */
+    // Copies referenced photos the folder doesn't have yet.
     override suspend fun export(tree: Uri, progress: (Int, Int) -> Unit): Int =
         scope.runToCompletion { copyOut(tree, progress) }
 
-    /** A copy cut short leaves an empty file that later exports would take for the photo. */
+    // Runs to completion: a cut-short copy leaves an empty file that looks like the photo.
     private suspend fun copyOut(tree: Uri, progress: (Int, Int) -> Unit): Int =
         withContext(ioDispatcher) {
             val referenced = db.photoDao().getAll().map { it.fileName }.toSet()
@@ -85,7 +84,7 @@ class DefaultPhotoBackupRepository @Inject constructor(
             done
         }
 
-    /** Copies every image file of the folder into the photo folder, overwriting same-named files. */
+    // Copies every image in the folder into the photo folder, overwriting same-named files.
     override suspend fun import(tree: Uri, progress: (Int, Int) -> Unit): Int =
         scope.runToCompletion { copyIn(tree, progress) }
 

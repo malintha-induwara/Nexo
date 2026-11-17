@@ -29,7 +29,6 @@ data class OnboardingUiState(
     val done: Boolean = false,
 )
 
-/** How far the user got: the step, and the currency by its code. */
 @Serializable
 private data class SavedOnboarding(val step: Int, val currency: String)
 
@@ -83,7 +82,7 @@ class OnboardingViewModel @Inject constructor(
         _uiState.update { it.copy(busy = false, done = true) }
     }
 
-    /** Leaves onboarding; the root switches to the main screen when the flag flips. */
+    // The root switches to the main screen when the flag flips.
     fun complete() = viewModelScope.launch {
         prefs.setPermissionIntroShown()
         prefs.setSetupDone(true)

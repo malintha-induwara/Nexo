@@ -95,7 +95,6 @@ import java.time.YearMonth
 import java.util.Locale
 import kotlin.math.abs
 
-/** What the account detail screen can ask for; the route backs each with the ViewModel or navigation. */
 class AccountDetailActions(
     val onBack: () -> Unit = {},
     val onStep: (forward: Boolean) -> Unit = {},
@@ -161,7 +160,7 @@ fun AccountDetailRoute(key: AccountDetailKey) {
     )
 }
 
-/** [periods] is the period engine of the account on screen; [isNone] is the unassigned pseudo-account. */
+// isNone: the unassigned "None" pseudo-account.
 @Composable
 internal fun AccountDetailScreen(
     ui: AccountDetailUiState,
@@ -378,7 +377,6 @@ internal fun AccountDetailScreen(
     })
 }
 
-/** The statement for the period on screen: the balance on one line, with money in, out and the net beneath. */
 @Composable
 private fun SummaryBlock(
     ui: AccountDetailUiState,
@@ -532,7 +530,6 @@ private fun Figure(label: String, value: Double, cur: Currency, color: Color, mo
     }
 }
 
-/** A month or year of the account: money in and out, the net, and the balance it ended on in brackets. */
 @Composable
 private fun PeriodCard(
     p: PeriodRowUi,

@@ -66,7 +66,7 @@ fun MessageDialog(message: String, onDismiss: () -> Unit, title: String? = null)
     )
 }
 
-/** Single-choice list dialog. Choosing the selected option does nothing. */
+// Choosing the selected option does nothing.
 @Composable
 fun <T> ChoiceDialog(
     title: String,

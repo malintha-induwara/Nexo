@@ -16,13 +16,12 @@ import kotlinx.coroutines.launch
 
 data class ReminderUiState(
     val device: DeviceSettings? = null,
-    /** Whether notifications may be posted at all (Android 13+ asks the user). */
+    // Android 13+ asks the user.
     val canPostNotifications: Boolean = true,
-    /** Whether the reminder can fire at the exact minute (Android 12+ asks the user). */
+    // Android 12+ asks the user.
     val canScheduleExactAlarms: Boolean = true,
 )
 
-/** The daily reminder: its days and time, and the alarm behind it. */
 @HiltViewModel
 class ReminderViewModel @Inject constructor(
     private val prefs: UserPreferencesRepository,
@@ -46,7 +45,7 @@ class ReminderViewModel @Inject constructor(
             notifier.scheduleReminder(enabled, hour, minute)
         }
 
-    /** The user may have changed a permission in system settings while away. */
+    // The user may have changed a permission in system settings while away.
     fun refreshPermissions() {
         permissions.value = readPermissions()
     }

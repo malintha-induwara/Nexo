@@ -4,23 +4,20 @@ import android.net.Uri
 import com.nexo.app.core.model.StoredPhoto
 import java.io.File
 
-/** Transaction photos: files in the private photo folder, shared between rows that attach the same picture. */
+// Files in the private photo folder, shared between rows that attach the same picture.
 interface PhotosRepository {
-    /** Where each stored photo is on disk. */
     suspend fun getPhotoFiles(fileNames: Collection<String>): Map<String, File>
 
-    /** Whether the picked file looks like an image type Nexo stores; unknown types are allowed. */
+    // Unknown types are allowed.
     suspend fun isSupported(uri: Uri): Boolean
 
-    /** Whether [uri] can still be opened; a picked file's permission ends with the process. */
+    // A picked file's permission ends with the process.
     suspend fun canRead(uri: Uri): Boolean
 
-    /** Copies [uri] into the photo folder, reusing an identical stored file. */
+    // Reuses an identical stored file.
     suspend fun importPhoto(uri: Uri): StoredPhoto?
 
-    /** Removes files that no photo row references any more. */
     suspend fun deleteUnreferenced(fileNames: Collection<String>)
 
-    /** Saves a copy into the shared Pictures/Nexo folder. */
     suspend fun exportToGallery(fileName: String): Boolean
 }

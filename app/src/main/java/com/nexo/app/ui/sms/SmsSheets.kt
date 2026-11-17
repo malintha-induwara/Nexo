@@ -39,7 +39,6 @@ import com.nexo.app.ui.designsystem.theme.NexoShapes
 import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
 
-/** Title and optional hint at the top of an inline sheet. */
 @Composable
 fun SheetTitle(title: String, hint: String? = null) {
     val colors = LocalNexoColors.current
@@ -59,7 +58,6 @@ fun SheetTitle(title: String, hint: String? = null) {
     }
 }
 
-/** Visible accounts under their group names; the chosen one carries a check. */
 @Composable
 fun ColumnScope.AccountPickList(ref: RefData, selectedId: String?, onPick: (String) -> Unit) {
     val colors = LocalNexoColors.current
@@ -100,7 +98,6 @@ fun ColumnScope.AccountPickList(ref: RefData, selectedId: String?, onPick: (Stri
     }
 }
 
-/** Optional reason chips on Deny. */
 @Composable
 fun DenyReasonList(onPick: (DenyReason?) -> Unit) {
     val colors = LocalNexoColors.current
@@ -134,7 +131,7 @@ fun DenyReasonList(onPick: (DenyReason?) -> Unit) {
     }
 }
 
-/** A one-off question at the top of a list: card mapping, the history offer, the re-enable hint. */
+// A one-off question at the top of a list, e.g. card mapping or the history offer.
 @Composable
 fun SmsPromptCard(
     title: String,

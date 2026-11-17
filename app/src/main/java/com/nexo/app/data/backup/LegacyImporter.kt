@@ -57,7 +57,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
-/** Column-name based cursor access that tolerates missing columns. */
+// Cursor access by column name that tolerates missing columns.
 private class Row(private val c: Cursor) {
     private fun idx(name: String) = c.getColumnIndex(name)
     fun str(name: String): String? =
@@ -72,10 +72,8 @@ private class Row(private val c: Cursor) {
     fun int(name: String): Int? = dbl(name)?.toInt()
 }
 
-/**
- * Imports a Money Manager Android backup (uid-based schema, versions 16–19) into Nexo.
- * Tombstones (delete flag 1) are skipped, sync bookkeeping and the plain-text passcode rows are never read.
- */
+// Imports a Money Manager Android backup (uid schema, versions 16–19).
+// Tombstones are skipped; sync bookkeeping and passcode rows are never read.
 class LegacyImporter @Inject constructor(
     private val db: NexoDatabase,
     private val seeder: BookSeeder,
@@ -231,7 +229,6 @@ class LegacyImporter @Inject constructor(
         val mainId = currencies.values.first { it.isMain }.id
         fun cur(uid: String?): String = uid?.let { currencyMap[it] ?: currencies[it]?.id } ?: mainId
 
-        // Groups.
         val groups = ArrayList<AccountGroupEntity>()
         src.each("ASSETGROUP") { r ->
             val uid = r.str("uid") ?: return@each
@@ -259,7 +256,6 @@ class LegacyImporter @Inject constructor(
         val fallbackGroup =
             groups.firstOrNull { it.id == "11" }?.id ?: groups.firstOrNull()?.id ?: "11"
 
-        // Accounts.
         val accounts = ArrayList<AccountEntity>()
         src.each("ASSETS") { r ->
             val uid = r.str("uid") ?: return@each
@@ -302,7 +298,6 @@ class LegacyImporter @Inject constructor(
                     accountIds
             }
 
-        // Categories.
         val categories = ArrayList<CategoryEntity>()
         src.each("ZCATEGORY") { r ->
             val uid = r.str("uid") ?: return@each
@@ -375,7 +370,6 @@ class LegacyImporter @Inject constructor(
         val repeatIds = repeats.map { it.id }.toSet()
         val accountCurrency = accounts.associate { it.id to it.currencyId }
 
-        // Transactions.
         val transactions = ArrayList<TransactionEntity>()
         src.each("INOUTCOME") { r ->
             if (deleted(r, "IS_DEL")) return@each
@@ -460,7 +454,7 @@ class LegacyImporter @Inject constructor(
         }
         val txIds = transactions.map { it.id }.toSet()
 
-        // Tags (system tags of the Korean card features are not used by Nexo).
+        // Tags; the Korean card features' system tags are not used by Nexo.
         val tags = ArrayList<TagEntity>()
         src.each("TAG") { r ->
             val uid = r.str("uid") ?: return@each
@@ -476,7 +470,7 @@ class LegacyImporter @Inject constructor(
             links[tx to tag] = TransactionTagEntity(tx, tag, r.int("orderSeq") ?: 0)
         }
 
-        // Photo metadata (files themselves come in through Import Photo Files).
+        // Photo metadata only; the files come in through Import Photo Files.
         val photos = ArrayList<PhotoEntity>()
         src.each("PHOTO") { r ->
             if (deleted(r, "IS_DEL")) return@each
@@ -499,7 +493,6 @@ class LegacyImporter @Inject constructor(
             )
         }
 
-        // Bookmarks.
         val favorites = ArrayList<FavoriteEntity>()
         src.each("FAVTRANSACTION") { r ->
             if (deleted(r, "IS_DEL")) return@each
@@ -532,7 +525,7 @@ class LegacyImporter @Inject constructor(
             )
         }
 
-        // Budgets: one per target, amounts keyed by period.
+        // One budget per target, amounts keyed by period.
         val budgets = LinkedHashMap<String, BudgetEntity>()
         val budgetIdMap = HashMap<String, String>()
         src.each("BUDGET") { r ->
@@ -560,7 +553,6 @@ class LegacyImporter @Inject constructor(
             budgetAmounts[id] = BudgetAmountEntity(id, budget, period, r.dbl("AMOUNT") ?: 0.0, now)
         }
 
-        // Memos.
         val memos = ArrayList<MemoEntity>()
         src.each("MEMO") { r ->
             if (deleted(r, "isDel")) return@each
@@ -597,7 +589,7 @@ class LegacyImporter @Inject constructor(
         )
     }
 
-    /** Book settings from the ZETC codes. Passcode rows (-8457, -9999) are never read. */
+    // Book settings from the ZETC codes; passcode rows (-8457, -9999) are never read.
     private fun readSettings(src: SQLiteDatabase): BookSettings {
         val values = HashMap<Int, Pair<String?, String?>>()
         src.each("ZETC") { r ->

@@ -6,24 +6,24 @@ import com.nexo.app.core.model.ImportPreview
 import com.nexo.app.core.model.StoredFile
 import java.io.File
 
-/** Tab-separated transaction files waiting in the import folder, their preview, and saving them to the ledger. */
+// Tab-separated files waiting in the import folder, their preview, and saving them.
 interface TransactionImportRepository {
-    /** The files waiting in the import folder, newest first. */
+    // Newest first.
     suspend fun getFiles(): List<StoredFile>
 
     fun file(name: String): File
 
-    /** Copies a picked file into the import folder; null when it can't be read. */
+    // Copies a picked file into the import folder; null when it can't be used.
     suspend fun add(uri: Uri): File?
 
     suspend fun removeLine(fileName: String, index: Int)
 
-    /** The device's date order (day-month-year and so on), used when a file doesn't say. */
+    // Used when a file doesn't say.
     fun deviceDateOrder(): DateOrder
 
     suspend fun load(fileName: String, order: DateOrder?): ImportPreview
 
-    /** Saves every valid row; returns (saved, failed). */
+    // Saves every valid row; returns (saved, failed).
     suspend fun saveAll(fileName: String, order: DateOrder?): Pair<Int, Int>
 
     suspend fun delete(names: Collection<String>)

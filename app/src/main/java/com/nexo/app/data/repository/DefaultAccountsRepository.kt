@@ -13,7 +13,6 @@ import java.time.Clock
 import java.util.UUID
 import javax.inject.Inject
 
-/** Accounts and account groups. */
 class DefaultAccountsRepository @Inject constructor(
     private val db: NexoDatabase,
     private val refs: ReferenceDataRepository,
@@ -61,7 +60,6 @@ class DefaultAccountsRepository @Inject constructor(
 
     override suspend fun nextAccountOrder(): Int = db.accountDao().maxOrder() + 1
 
-    /** Saves an account; a currency change re-derives account amounts of its rows and linked debit cards. */
     override suspend fun saveAccount(account: Account) {
         val ref = refs.getRefData()
         db.withTransaction {
@@ -98,7 +96,6 @@ class DefaultAccountsRepository @Inject constructor(
         db.accountDao().upsert(listOf(a.copy(status = status, updatedAt = now())))
     }
 
-    /** Order = position in the whole list, group may change. */
     override suspend fun reorderAccounts(order: List<Pair<String, String>>) = db.withTransaction {
         val all = db.accountDao().getAll().associateBy { it.id }
         db.accountDao().upsert(

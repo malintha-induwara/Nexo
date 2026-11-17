@@ -6,11 +6,11 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalResources
 
-/** Text a ViewModel wants shown. The UI resolves it against the current resources, so ViewModels never hold a Context. */
+// Resolved by the UI against current resources, so ViewModels never hold a Context.
 sealed interface UiText {
     data class Raw(val value: String) : UiText
 
-    /** [args] may themselves be [UiText]; they are resolved first. */
+    // [args] may themselves be [UiText]; they are resolved first.
     data class Resource(@StringRes val id: Int, val args: List<Any> = emptyList()) : UiText
 
     data class Plural(
@@ -19,7 +19,6 @@ sealed interface UiText {
         val args: List<Any> = listOf(count),
     ) : UiText
 
-    /** Several texts shown as one, e.g. "Bank → Cash (3 months)". */
     data class Joined(val parts: List<UiText>) : UiText
 
     companion object {
@@ -34,7 +33,6 @@ sealed interface UiText {
     }
 }
 
-/** These texts shown one after another with [separator] between them, e.g. "2 approved · 1 skipped". */
 fun List<UiText>.joinToUiText(separator: String): UiText = UiText.Joined(
     flatMapIndexed { i, part ->
         if (i == 0) {
@@ -65,5 +63,5 @@ fun UiText.asString(): String = asString(LocalResources.current)
 private fun resolve(args: List<Any>, resources: Resources): Array<Any> =
     args.map { if (it is UiText) it.asString(resources) else it }.toTypedArray()
 
-/** A message shown once (a toast or snackbar). [id] tells two identical messages apart. */
+// Shown once (toast or snackbar); [id] tells two identical messages apart.
 data class UserMessage(val text: UiText, val id: Long = System.nanoTime())

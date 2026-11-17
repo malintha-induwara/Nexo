@@ -92,7 +92,7 @@ import com.nexo.app.ui.navigation.LocalNavigator
 import com.nexo.app.ui.navigation.SubcategoryListKey
 import java.text.BreakIterator
 
-/** Curated picks for the category form; anything else can be typed. */
+// Curated picks; anything else can be typed.
 private val EMOJI_CHOICES = listOf(
     "🍜", "🍱", "☕", "🛒", "🍺", "🥂", "🏠", "💡", "📱", "🌐",
     "🚌", "🚕", "🚗", "⛽", "✈️", "🏨", "🎬", "🎮", "🎵", "📚",
@@ -191,7 +191,6 @@ private fun EditableList(
     }
 }
 
-/** Main category list. */
 @Composable
 fun CategoryListRoute(key: CategoryListKey, vm: CategoryViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current
@@ -353,7 +352,7 @@ internal fun SubcategoryListScreen(
     }
 }
 
-/** Hue used least among the main categories of [kind], so new categories spread across the palette. */
+// The least-used hue among main categories, so new ones spread across the palette.
 private fun leastUsedHue(ref: RefData, kind: CategoryKind): Int {
     val used = ref.mainCategories(kind).mapNotNull {
         ref.visual(it.id)?.colorIndex
@@ -361,7 +360,7 @@ private fun leastUsedHue(ref: RefData, kind: CategoryKind): Int {
     return (0 until CategoryHues.count).minBy { used[it] ?: 0 }
 }
 
-/** First user-perceived character, so a typed flag or family emoji stays whole. */
+// First grapheme, so a typed flag or family emoji stays whole.
 private fun firstGrapheme(text: String): String? {
     val t = text.trim()
     if (t.isEmpty()) return null
@@ -370,7 +369,6 @@ private fun firstGrapheme(text: String): String? {
     return if (end == BreakIterator.DONE) t else t.substring(0, end)
 }
 
-/** Add / edit main or sub category, with the main ↔ sub conversions. */
 @Composable
 fun CategoryFormRoute(key: CategoryFormKey, vm: CategoryViewModel = hiltViewModel()) {
     val nav = LocalNavigator.current

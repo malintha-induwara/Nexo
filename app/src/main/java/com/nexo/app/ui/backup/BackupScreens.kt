@@ -123,7 +123,6 @@ private fun restoreMessage(r: RestoreResult) = stringResource(
     },
 )
 
-/** What the backup screen can do; each action defaults to nothing. */
 class BackupActions(
     val onBack: () -> Unit = {},
     val onBackupDevice: () -> Unit = {},
@@ -203,7 +202,7 @@ fun BackupRoute(vm: BackupViewModel = hiltViewModel()) {
     )
 }
 
-/** [photosCopied] is how many photos an export or import just copied, shown until dismissed. */
+// photosCopied: photos an export or import just copied, shown until dismissed.
 @Composable
 internal fun BackupScreen(state: BackupUiState, photosCopied: Int?, actions: BackupActions) {
     val busy = state.busy
@@ -375,10 +374,7 @@ fun BackupDeviceRoute(vm: RestoreViewModel = hiltViewModel()) {
     )
 }
 
-/**
- * Backup / restore on device. [message] is a string resource to show, [pendingRestore] a picked
- * file waiting for confirmation, and [restoreResult] the outcome of the last restore.
- */
+// message is a string resource; pendingRestore is a picked file awaiting confirmation.
 @Composable
 internal fun BackupDeviceScreen(
     state: RestoreUiState,
@@ -466,7 +462,7 @@ fun RestoreFileRoute(key: RestoreFileKey, vm: RestoreViewModel = hiltViewModel()
     )
 }
 
-/** Restore requested by opening a backup file with Nexo. */
+// Shown when a backup file is opened with Nexo.
 @Composable
 internal fun RestoreFileScreen(
     state: RestoreUiState,
@@ -651,7 +647,6 @@ fun ExcelExportRoute(key: ExcelExportKey, vm: ExcelExportViewModel = hiltViewMod
     ExcelExportScreen(key = key, state = state, onBack = nav::back, onExport = vm::exportExcel)
 }
 
-/** Excel period dialog. */
 @Composable
 internal fun ExcelExportScreen(
     key: ExcelExportKey,
@@ -703,7 +698,7 @@ internal fun ExcelExportScreen(
     BusyOverlay(busy, null)
 }
 
-/** A file for previews: a name, a time and a size, without anything on disk. */
+// For previews; nothing on disk.
 internal fun previewFile(name: String, modified: Instant, bytes: Long): StoredFile =
     StoredFile(File(name), modified.toEpochMilli(), bytes)
 
@@ -773,7 +768,6 @@ private fun ExcelExportScreenPreview() = NexoPreview {
     )
 }
 
-/** Back to a fresh main screen with the Transactions tab on today, after the book was replaced. */
 private fun Navigator.toMainOnToday(clock: Clock) {
     results.post(NavResult.Focus(LocalDate.now(clock)))
     resetTo(MainKey)

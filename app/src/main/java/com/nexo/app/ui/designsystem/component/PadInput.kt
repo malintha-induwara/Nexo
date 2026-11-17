@@ -38,17 +38,14 @@ enum class PadKey {
     CLEAR,
 }
 
-/**
- * Number-pad buffer rules. The buffer uses '.' as separator internally.
- * [allowSign] is true for amount fields; [maxDecimals] caps typed decimals.
- */
+// The buffer always uses '.' as separator. [allowSign] is true for amount fields.
 data class PadInput(
     val buffer: String = "",
     val maxDecimals: Int = 2,
     val allowSign: Boolean = true,
     val maxLength: Int = 15,
 ) {
-    /** Result of a key press: the new input, and a field action when the buffer alone can't express it. */
+    // The flags are field actions the buffer alone can't express.
     data class Result(
         val input: PadInput,
         val negateExisting: Boolean = false,
@@ -114,14 +111,13 @@ data class PadInput(
         }?.trimEnd('.')?.toBigDecimalOrNull()?.toDouble()
 
     companion object {
-        /** Value shown in a field when it starts editing an existing amount: trailing zeros trimmed. */
+        // For a field that starts editing an existing amount: trailing zeros trimmed.
         fun plain(value: Double, decimals: Int): String = BigDecimal.valueOf(
             value,
         ).setScale(decimals, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
     }
 }
 
-/** Calculator expression evaluation. */
 object Calculator {
     sealed interface Outcome {
         data class Value(val value: BigDecimal) : Outcome
@@ -199,7 +195,6 @@ object Calculator {
         return out
     }
 
-    /** Applies a calculator key to the expression. */
     fun type(expr: String, key: String): String {
         val ops = setOf('+', '−', '×', '÷')
         val last = expr.lastOrNull()

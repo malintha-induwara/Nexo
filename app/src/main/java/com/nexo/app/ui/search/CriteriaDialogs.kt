@@ -39,7 +39,7 @@ data class CheckItem(
     val indent: Boolean = false,
 )
 
-/** Generic multi-select list with an "All" tri-state header. */
+// Multi-select list with an "All" tri-state header.
 @Composable
 fun MultiSelectDialog(
     title: String,
@@ -134,7 +134,6 @@ fun accountItems(ref: RefData): List<CheckItem> {
     return out
 }
 
-/** Category criterion: Income / Expenses tabs, with all-of-kind and per category / subcategory picks. */
 @Composable
 fun CategoryCriteriaDialog(
     ref: RefData,

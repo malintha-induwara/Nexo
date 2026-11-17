@@ -12,10 +12,10 @@ import kotlin.reflect.KClass
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/** What a screen hands back to the screens under it when it closes. */
+// Handed back to the screens underneath when a screen closes.
 @Serializable
 sealed interface NavResult {
-    /** The Transactions tab moves to [date] and scrolls it into view once. */
+    // The Transactions tab moves to the day and scrolls it into view once.
     @Serializable
     data class Focus(private val day: String) : NavResult {
         constructor(date: LocalDate) : this(date.toString())
@@ -23,23 +23,21 @@ sealed interface NavResult {
         val date: LocalDate get() = LocalDate.parse(day)
     }
 
-    /** A transaction was written; its row lights up when the list shows it. */
+    // Its row lights up when the list shows it.
     @Serializable
     data class TransactionSaved(val id: String) : NavResult
 
-    /** A memo was written; its card lights up when the Notes view shows it. */
+    // Its card lights up when the Notes view shows it.
     @Serializable
     data class MemoSaved(val id: String) : NavResult
 
-    /** A bookmark chosen for the entry form that opened the list. */
+    // A bookmark chosen for the entry form that opened the list.
     @Serializable
     data class FavoritePicked(val id: String) : NavResult
 }
 
-/**
- * Results waiting for the screen that wants them to come back on screen. Only the latest of each
- * kind is kept. It is saved with the back stack, so a result survives the process being killed.
- */
+// Only the latest result of each kind is kept. Saved with the back stack, so results survive
+// process death.
 @Stable
 class NavResultStore(initial: List<NavResult> = emptyList()) {
     private val items = mutableStateListOf<NavResult>().apply { addAll(initial) }
@@ -63,7 +61,7 @@ class NavResultStore(initial: List<NavResult> = emptyList()) {
     }
 }
 
-/** Hands a pending result of [type] to [onResult] once, while the caller is composed. */
+// Hands a pending result of [type] to [onResult] once, while the caller is composed.
 @Composable
 fun <T : NavResult> ReceiveNavResult(
     store: NavResultStore,

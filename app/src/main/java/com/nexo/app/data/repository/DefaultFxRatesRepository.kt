@@ -29,7 +29,6 @@ class DefaultFxRatesRepository @Inject constructor(
 
     override val online: Boolean get() = client.hasKey
 
-    /** Fetch policy: at most every 6 hours. Returns whether a fetch succeeded. */
     override suspend fun refreshIfStale(): Boolean {
         val now = clock.millis()
         if (!online || now - prefs.getDeviceSettings().fxFetchedAt < FxRatesRepository.REFRESH_MS) {
@@ -41,10 +40,8 @@ class DefaultFxRatesRepository @Inject constructor(
         return true
     }
 
-    /**
-     * New boards are kept only when a bank's rates changed since its last stored board, so the history stays small.
-     * Older boards (a past day fetched with `date=`) always fill the history.
-     */
+    // New boards are kept only when a bank's rates changed, so the history stays small.
+    // Older boards (a past day fetched with date=) always fill the history.
     override suspend fun store(rows: List<FxSnapshot>) {
         val fresh = rows.filter { r ->
             val last = dao.latestRate(r.bank, r.ccy)
@@ -57,11 +54,8 @@ class DefaultFxRatesRepository @Inject constructor(
         if (fresh.isNotEmpty()) dao.insertSnapshots(fresh.map(FxSnapshot::asEntity))
     }
 
-    /**
-     * Fills [item]'s estimate. The board is each bank's latest snapshot captured on or before the transaction's date
-     * (Sri Lankan time). Older than Nexo's history: with [allowNetwork], the API's stored board for that day is fetched;
-     * otherwise the earliest snapshot is used and its date shows.
-     */
+    // Uses each bank's latest board on or before the transaction's day (Sri Lanka time).
+    // Older than the history: fetches that day's board if [allowNetwork], else the earliest.
     override suspend fun estimate(item: SmsItem, ref: RefData?, allowNetwork: Boolean): SmsItem {
         if (item.certainty != Certainty.ESTIMATED || item.actualAmount != null) return item
         val r = ref ?: refs.getRefData()
@@ -99,7 +93,6 @@ class DefaultFxRatesRepository @Inject constructor(
         )
     }
 
-    /** Re-estimates pending foreign items that have no confirmed amount, e.g. after a fetch. Returns how many changed. */
     override suspend fun fillPending(allowNetwork: Boolean): Int {
         val ref = refs.getRefData()
         var changed = 0
@@ -118,7 +111,7 @@ class DefaultFxRatesRepository @Inject constructor(
         return changed
     }
 
-    /** Last fallback before asking: the rate the user keeps in Nexo's currency settings, when LKR is the main currency. */
+    // Last fallback: the rate from currency settings, when LKR is the main currency.
     private fun manual(currency: String, ref: RefData): RateChoice? {
         if (!ref.mainCurrency.isoCode.equals(LKR, ignoreCase = true)) return null
         val c =
@@ -129,7 +122,7 @@ class DefaultFxRatesRepository @Inject constructor(
         }?.let { RateChoice(it, RateChoice.MANUAL, null) }
     }
 
-    /** Drops banks whose latest board is much older than the transaction (a bank that stopped publishing). */
+    // Drops banks whose latest board is much older than the transaction.
     private fun recent(board: List<FxSnapshot>, at: Long): List<FxSnapshot> {
         val fresh = board.filter { at - it.capturedAt <= STALE_MS }
         return fresh.ifEmpty { board }

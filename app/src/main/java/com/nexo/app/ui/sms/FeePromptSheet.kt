@@ -56,7 +56,7 @@ fun feeRouteLabel(route: FeeRoute): Int = when (route) {
     FeeRoute.CC_PAYMENT -> R.string.fee_route_cc
 }
 
-/** The route as it reads mid-sentence ("Remember for other banks' ATMs from …"). */
+// Mid-sentence form: "Remember for other banks' ATMs from …".
 private fun feeRouteInline(route: FeeRoute): Int = when (route) {
     FeeRoute.INTERBANK_TRANSFER -> R.string.fee_route_interbank_inline
     FeeRoute.OTHER_BANK_ATM -> R.string.fee_route_other_atm_inline
@@ -73,11 +73,7 @@ private fun feeRouteQuestion(route: FeeRoute): Int? = when (route) {
     FeeRoute.FX_CARD_PURCHASE -> null
 }
 
-/**
- * "Did <bank> charge a fee?": the fee pre-filled from the last one on this route (or the FX difference),
- * "Remember", and Add fee / No fee. The FX variant offers Record as bank fee / Include in purchase.
- * Cancel is the sheet's own dismissal (scrim, back, drag) or the text button.
- */
+// "Did <bank> charge a fee?" sheet; a null answer means Cancel.
 @Composable
 fun ColumnScope.FeePromptContent(prompt: FeePrompt, ref: RefData, onAnswer: (FeeChoice?) -> Unit) {
     val colors = LocalNexoColors.current

@@ -6,12 +6,9 @@ import com.nexo.app.core.model.RateSide
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-/** Which rate converts a foreign-currency movement, and the estimate it gives. */
 object RateChooser {
-    /**
-     * [board] is one row per bank for the currency. Fallbacks, in order: the issuing bank's own rate; the median across
-     * banks; the CBSL official rate plus half a typical spread (minus, for money coming in); otherwise null.
-     */
+    // [board] has one row per bank. Fallbacks: issuer's rate, bank median, then the official rate
+    // plus half the typical spread (minus for money coming in).
     fun choose(board: List<FxSnapshot>, issuer: String?, side: RateSide): RateChoice? {
         fun value(r: FxSnapshot) = if (side == RateSide.SELL) r.sell else r.buy
         board.firstOrNull {
@@ -29,7 +26,6 @@ object RateChooser {
         return RateChoice(rate, RateChoice.OFFICIAL, newest)
     }
 
-    /** `round_half_up(original × rate, 2)` in decimal arithmetic. */
     fun estimate(original: Double, rate: Double, decimals: Int = 2): Double = BigDecimal.valueOf(
         original,
     ).multiply(BigDecimal.valueOf(rate)).setScale(decimals, RoundingMode.HALF_UP).toDouble()

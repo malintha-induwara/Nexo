@@ -74,7 +74,7 @@ import com.nexo.app.ui.shell.LocalShell
 
 data class HubItem(val label: Int, val icon: ImageVector, val key: NavKey)
 
-/** Sends the feedback e-mail. The address is a placeholder for the publisher's own. */
+// The address is a placeholder for the publisher's own.
 fun feedbackIntent(context: Context, subjectRes: Int = R.string.feedback_subject): Intent {
     val body =
         "\n\n---\n${Build.MANUFACTURER} ${Build.MODEL}\nAndroid ${Build.VERSION.RELEASE} (API " +

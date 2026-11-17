@@ -21,7 +21,6 @@ import java.time.LocalDate
 import java.time.LocalTime
 import kotlin.math.abs
 
-/** What saving the form writes to the ledger. */
 internal fun EntryForm.toDraft(): TxDraft = TxDraft(
     editingId = originalId,
     type = type,
@@ -47,7 +46,7 @@ internal fun EntryForm.toDraft(): TxDraft = TxDraft(
     sourceText = sourceText,
 )
 
-/** The form as a repeat rule; [id] and [createdAt] carry over from the rule being edited. */
+// [id] and [createdAt] carry over from the rule being edited.
 internal fun EntryForm.toRepeatRule(id: String, currency: Currency, createdAt: Long, now: Long) =
     RepeatRule(
         id = id,
@@ -71,7 +70,7 @@ internal fun EntryForm.toRepeatRule(id: String, currency: Currency, createdAt: L
         updatedAt = now,
     )
 
-/** Switched to [t]: the category, destination and installments start over. */
+// The category, destination and installments start over.
 internal fun EntryForm.withType(t: EntryType): EntryForm {
     if (type == t && !isBalance) return this
     return copy(
@@ -92,7 +91,7 @@ internal fun EntryForm.withType(t: EntryType): EntryForm {
     )
 }
 
-/** An account picked on the open panel; with no amount yet, the form takes the account's currency. */
+// With no amount yet, the form takes the account's currency.
 internal fun EntryForm.withAccount(id: String, r: RefData): EntryForm = when (panel) {
     Panel.TO_ACCOUNT -> copy(toAccountId = id)
 
@@ -109,14 +108,14 @@ internal fun EntryForm.withAccount(id: String, r: RefData): EntryForm = when (pa
     }
 }
 
-/** From and to swapped; the fee is looked up again for the new direction. */
+// The fee is looked up again for the new direction.
 internal fun EntryForm.swapped(r: RefData): EntryForm {
     var n = copy(accountId = toAccountId, toAccountId = accountId, feeLoaded = false)
     if (amount == null) n = n.copy(currencyId = r.accountCurrency(n.accountId).id)
     return n
 }
 
-/** The amount, or the fee when its pad is open, after [k]. */
+// Applies [k] to the amount, or to the fee when its pad is open.
 internal fun EntryForm.afterPadKey(k: PadKey): EntryForm {
     val r = pad.press(k)
     val forFee = panel == Panel.FEE
@@ -132,11 +131,11 @@ internal fun EntryForm.afterPadKey(k: PadKey): EntryForm {
     return n.copy(pad = r.input, viewing = false)
 }
 
-/** A repeat date always lands on a day the schedule can hit. */
+// A repeat date always lands on a day the schedule can hit.
 internal fun EntryForm.withDate(d: LocalDate): EntryForm =
     copy(date = if (repeat != RepeatType.NONE) RepeatSchedule.snap(d, repeat) else d)
 
-/** Repeating rules carry no tags, fee or installments. */
+// Repeating rules carry no tags, fee or installments.
 internal fun EntryForm.withRepeat(t: RepeatType): EntryForm = if (t == RepeatType.NONE) {
     copy(repeat = RepeatType.NONE, repeatEnd = null)
 } else {
@@ -150,16 +149,14 @@ internal fun EntryForm.withRepeat(t: RepeatType): EntryForm = if (t == RepeatTyp
     )
 }
 
-/** Installments and repeats exclude each other. */
+// Installments and repeats exclude each other.
 internal fun EntryForm.withInstallments(n: Int): EntryForm = copy(
     installments = n.coerceIn(0, 600),
     repeat = if (n > 0) RepeatType.NONE else repeat,
 )
 
-/**
- * The confirmed reading of [done]: [amount] rounded to [decimals], its shop as the note when
- * [useMerchant] and the note is still empty, and the photo itself. The entry's date is left alone.
- */
+// Rounds [amount] to [decimals]; the shop becomes the note when [useMerchant] and the note is
+// empty. The date is left alone.
 internal fun EntryForm.withReceipt(
     done: ScanUi.Done,
     amount: Double?,
@@ -179,6 +176,6 @@ internal fun EntryForm.withReceipt(
     return n
 }
 
-/** The first empty field in visual order, which the form opens next. */
+// The first empty field in visual order.
 internal fun EntryForm.nextEmptyField(): Field? =
     fields.firstOrNull { isEmpty(it) && !(it == Field.CATEGORY && isBalance) }

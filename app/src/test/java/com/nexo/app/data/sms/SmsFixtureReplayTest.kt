@@ -22,13 +22,11 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 /**
- * Replays a bank-SMS fixture through the parser and correlator and compares every message with its `expected` block.
- * Real messages never live in this repo: point `NEXO_SMS_FIXTURE` at a file outside it, e.g.
+ * Replays a bank-SMS fixture kept outside the repo against each message's `expected` block.
+ * Skipped unless NEXO_SMS_FIXTURE is set:
  *
  *     NEXO_SMS_FIXTURE=/path/to/real-sms.json \
  *       ./gradlew :app:testDebugUnitTest --tests '*SmsFixtureReplayTest' --rerun
- *
- * Skipped when the variable is unset.
  */
 class SmsFixtureReplayTest {
 
@@ -175,7 +173,7 @@ class SmsFixtureReplayTest {
         assertTrue("${problems.size} mismatches", problems.isEmpty())
     }
 
-    /** Body time where the message has one; otherwise a minute before the next newer dated message (a real SMS time stands in). */
+    // Body time where there is one; otherwise a minute before the next newer dated message.
     private fun timestamps(oldestFirst: List<Row>): Map<Int, Long> {
         val card = Regex("""(\d{2}/\d{2}/\d{2}) (\d{1,2}:\d{2} [AP]M)""")
         val iso = Regex("""(\d{4}-\d{2}-\d{2}) at (\d{2}:\d{2}:\d{2})""")

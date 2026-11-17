@@ -85,10 +85,7 @@ class SearchViewModel @Inject constructor(
     private val clock: Clock,
     savedState: SavedStateHandle,
 ) : ViewModel() {
-    /**
-     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
-     * is current whenever the screen is there to call them.
-     */
+    // For handlers that need it synchronously; it feeds [uiState], so it stays current.
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
@@ -116,7 +113,7 @@ class SearchViewModel @Inject constructor(
     }
         .mapLatest { (r, c) -> run(r, c) }
 
-    /** Note autocomplete, read once the screen starts collecting. */
+    // Read once the screen starts collecting.
     private val suggestions: Flow<List<NoteSuggestion>> = flow { emit(loadSuggestions()) }
 
     val uiState: StateFlow<SearchUiState> = combine(ref, criteria, result, selection, suggestions) {
@@ -225,7 +222,7 @@ class SearchViewModel @Inject constructor(
         executed.value = criteria.value
     }
 
-    /** Criteria changes search immediately. */
+    // Searches immediately.
     fun update(transform: (SearchCriteria) -> SearchCriteria) {
         criteria.update(transform)
         execute()

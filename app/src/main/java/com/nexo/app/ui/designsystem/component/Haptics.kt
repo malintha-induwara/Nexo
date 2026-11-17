@@ -7,28 +7,24 @@ import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 
-/**
- * Named haptic moments so every screen feels the same. The system's own touch-feedback
- * setting still applies; on older devices Compose maps each type to the closest effect.
- */
+// Named haptic moments so every screen feels the same.
 @Stable
 class Haptics(private val feedback: HapticFeedback) {
-    /** A keypad key or calculator key. */
+    // A keypad or calculator key.
     fun key() = feedback.performHapticFeedback(HapticFeedbackType.KeyboardTap)
 
-    /** Moving between discrete options: a segment, a tab, a picker step. */
+    // Moving between discrete options: a segment, a tab, a picker step.
     fun tick() = feedback.performHapticFeedback(HapticFeedbackType.SegmentTick)
 
-    /** Scrubbing across many small steps (a chart). */
+    // Scrubbing across many small steps (a chart).
     fun scrub() = feedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
 
-    /** A completed action: save, delete confirmed. */
+    // A completed action: save, delete confirmed.
     fun confirm() = feedback.performHapticFeedback(HapticFeedbackType.Confirm)
 
-    /** Rejected input. */
     fun reject() = feedback.performHapticFeedback(HapticFeedbackType.Reject)
 
-    /** Entering a mode by long press (multi-select). */
+    // Entering multi-select.
     fun longPress() = feedback.performHapticFeedback(HapticFeedbackType.LongPress)
 
     fun toggle(on: Boolean) = feedback.performHapticFeedback(

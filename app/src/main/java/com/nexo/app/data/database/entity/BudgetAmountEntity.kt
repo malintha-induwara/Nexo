@@ -7,10 +7,10 @@ import com.nexo.app.core.model.BudgetAmount
 
 @Entity(tableName = "budget_amounts", indices = [Index("budgetId")])
 data class BudgetAmountEntity(
-    /** "<budgetId>_<periodKey>". */
+    // "<budgetId>_<periodKey>"
     @PrimaryKey val id: String,
     val budgetId: String,
-    /** 0 = from the beginning, otherwise year * 100 + month of the labelled month period. */
+    // 0 = from the beginning, else year * 100 + month of the labelled period.
     val periodKey: Int,
     val amount: Double,
     val updatedAt: Long,

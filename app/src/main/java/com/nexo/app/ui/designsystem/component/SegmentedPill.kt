@@ -49,11 +49,8 @@ import com.nexo.app.ui.designsystem.theme.NexoTypography
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
-/**
- * A pill-shaped segmented control whose thumb slides between options on a spring.
- * [accent] lets a segment carry meaning (e.g. income/expense): the thumb tints and the label takes the colour.
- * With [equalWidths] every segment gets the same width; otherwise segments fit their labels and share the leftover space.
- */
+// [accent] tints the thumb and label (e.g. income/expense). Without [equalWidths] segments fit
+// their labels and share the leftover space.
 @Composable
 fun <T> SegmentedPill(
     options: List<T>,
@@ -67,9 +64,9 @@ fun <T> SegmentedPill(
     track: Color = LocalNexoColors.current.surface,
     textStyle: TextStyle = NexoTypography.labelLarge,
     segmentPadding: Dp = 14.dp,
-    /** False shows every option unselected (e.g. a balance adjustment that has no type yet). */
+    // False shows every option unselected (e.g. a balance adjustment with no type yet).
     showSelection: Boolean = true,
-    /** A small dot after the label, e.g. a filter tab that has something set. */
+    // A small dot after the label, e.g. a filter tab that has something set.
     dot: (T) -> Boolean = { false },
 ) {
     val colors = LocalNexoColors.current
@@ -166,8 +163,8 @@ fun <T> SegmentedPill(
                 }
             },
         ) { measurables, constraints ->
-            // Natural widths first; leftover space is shared (equally, or to equal widths when they fit);
-            // if the labels do not fit, every segment shrinks in proportion.
+            // Leftover space is shared (equally, or to equal widths when they fit); if the labels
+            // do not fit, every segment shrinks in proportion.
             val height = 36.dp.roundToPx()
             val natural = measurables.map { it.maxIntrinsicWidth(height) }
             val sum = natural.sum().coerceAtLeast(1)
@@ -192,7 +189,7 @@ fun <T> SegmentedPill(
     }
 }
 
-/** Income / Expenses by index (0 and 1), in the money colours: the switch for category pickers that cover both kinds. */
+// Index 0 = income, 1 = expenses, for category pickers that cover both kinds.
 @Composable
 fun IncomeExpensePill(selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val money = LocalMoneyColors.current

@@ -55,7 +55,7 @@ import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
 import java.time.LocalDate
 
-/** One card per month: its income, expenses and net, opening to the weeks inside it. */
+// One card per month, opening to the weeks inside it.
 @Composable
 internal fun MonthlyContent(
     data: HomeData,
@@ -160,7 +160,6 @@ private fun MonthCard(
     }
 }
 
-/** A week inside a month card: its dates, then income, expenses and net in three columns. */
 @Composable
 private fun WeekLine(week: WeekRow, main: Currency, onClick: () -> Unit) {
     val colors = LocalNexoColors.current

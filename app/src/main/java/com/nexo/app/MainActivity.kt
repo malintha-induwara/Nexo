@@ -47,11 +47,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * The splash screen is drawn by the system before the app runs, so it only sees the phone's
-     * dark-mode setting. On Android 12+ the in-app choice is handed to the system, which keeps it
-     * and uses it for the next splash (and resolves `-night` resources to match).
-     */
+    // Lets the system splash screen follow the in-app theme (Android 12+).
     private fun syncSystemNightMode(mode: ThemeMode) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
         getSystemService(UiModeManager::class.java)?.setApplicationNightMode(

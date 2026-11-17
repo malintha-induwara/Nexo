@@ -51,10 +51,7 @@ import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
 import java.util.Locale
 
-/**
- * The hide-amounts eye: [enabled] when it is switched on in settings, [hidden] while the large
- * summary figures are blurred. Provided by the app root.
- */
+// [enabled] when the eye is switched on in settings, [hidden] while hero figures are blurred.
 @Immutable
 class AmountPrivacy(
     val enabled: Boolean = false,
@@ -64,10 +61,8 @@ class AmountPrivacy(
 
 val LocalAmountPrivacy = compositionLocalOf { AmountPrivacy() }
 
-/** A smaller figure shown under the hero number. */
 data class HeroStat(val label: String, val value: Double, val color: Color)
 
-/** A screen's one large number under its label, with a row of smaller labelled figures beneath. */
 @Composable
 fun HeroSummary(
     label: String,
@@ -112,7 +107,7 @@ fun HeroSummary(
     }
 }
 
-/** The hero's label with the eye button that hides or shows every hero figure in the app. */
+// The eye button hides or shows every hero figure in the app.
 @Composable
 fun HeroLabel(label: String, modifier: Modifier = Modifier) {
     val colors = LocalNexoColors.current
@@ -149,7 +144,7 @@ fun HeroLabel(label: String, modifier: Modifier = Modifier) {
     }
 }
 
-/** A hero figure that rolls like [RollingAmount], blurred in place while amounts are hidden. */
+// Rolls like [RollingAmount], blurred in place while amounts are hidden.
 @Composable
 fun HeroAmount(
     value: Double,
@@ -184,11 +179,8 @@ fun HeroAmount(
     )
 }
 
-/**
- * Blurs the content by [amount] (0 to 1) without changing its size, so nothing around it moves.
- * The radius grows with the text so even the hero digits can't be read. Blur needs Android 12;
- * older versions fade the figure out over a soft bar instead.
- */
+// The radius grows with the text so even hero digits can't be read. Blur needs Android 12;
+// older versions fade the figure out over a soft bar instead.
 private fun Modifier.privacyBlur(amount: Float, fontSize: TextUnit, color: Color): Modifier {
     if (amount <= 0f) return this
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

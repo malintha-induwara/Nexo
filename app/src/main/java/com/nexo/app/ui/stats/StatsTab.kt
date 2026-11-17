@@ -342,7 +342,6 @@ internal fun StatsTab(
     }
 }
 
-/** The middle of the ring: one category's share, name and amount. */
 @Composable
 private fun ShareLabel(row: StatsRow, main: Currency) {
     val colors = LocalNexoColors.current
@@ -379,7 +378,6 @@ private fun ShareLabel(row: StatsRow, main: Currency) {
     }
 }
 
-/** One category: its tile in the ring's colour, its name over its share, and the total. */
 @Composable
 private fun CategoryCard(
     row: StatsRow,

@@ -13,7 +13,7 @@ import java.time.Clock
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 
-/** Realtime capture. Multipart messages arrive together and are joined per sender. */
+// Multipart messages arrive together and are joined per sender.
 @AndroidEntryPoint
 class SmsReceiver : BroadcastReceiver() {
     @Inject lateinit var sms: SmsRepository

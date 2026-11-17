@@ -37,7 +37,7 @@ import com.nexo.app.ui.designsystem.theme.NexoType
 import com.nexo.app.ui.designsystem.theme.Space
 import java.util.Locale
 
-/** "BALANCE · NOV": what a chart shows and which period the figures above it are for. */
+// "BALANCE · NOV": what a chart shows and the period of the figures above it.
 @Composable
 fun ChartTitle(title: String, period: String) {
     Text(
@@ -48,10 +48,7 @@ fun ChartTitle(title: String, period: String) {
     )
 }
 
-/**
- * A series' key and name over its value for the picked period; doubles as the chart's legend.
- * The key is a square for filled marks and a short stroke for a line; null leaves it out.
- */
+// Doubles as the chart's legend. A null key is left out.
 @Composable
 fun KeyFigure(
     label: String,
@@ -86,10 +83,7 @@ fun KeyFigure(
     }
 }
 
-/**
- * Balance over time, money in and out, and the same figures as a table. One period is picked
- * across all three: tap or drag a chart, or tap a table row. It starts on the latest period.
- */
+// One period is picked across both charts and the table; it starts on the latest period.
 @Composable
 fun FlowCharts(
     labels: List<String>,

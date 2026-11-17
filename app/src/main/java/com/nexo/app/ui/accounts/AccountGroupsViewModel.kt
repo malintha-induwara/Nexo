@@ -16,13 +16,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-data class AccountGroupsUiState(
-    val ref: RefData = RefData(),
-    /** A group was saved: the form goes back, then calls [AccountGroupsViewModel.onGroupSavedHandled]. */
-    val groupSaved: Boolean = false,
-)
+data class AccountGroupsUiState(val ref: RefData = RefData(), val groupSaved: Boolean = false)
 
-/** The account group list and the group form. */
 @HiltViewModel
 class AccountGroupsViewModel @Inject constructor(
     private val repo: AccountsRepository,

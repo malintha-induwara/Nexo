@@ -55,7 +55,7 @@ import kotlin.math.abs
 @Composable
 private fun AccountUi.hue(): Color = CategoryHues.of(visual.hue, LocalNexoColors.current.isDark)
 
-/** Balance colour on a neutral ground: red when owed, dim when left out of totals, plain otherwise. */
+// Red when owed, dim when left out of totals.
 @Composable
 private fun AccountUi.balanceColor(): Color {
     val colors = LocalNexoColors.current
@@ -67,7 +67,6 @@ private fun AccountUi.balanceColor(): Color {
     }
 }
 
-/** Payable and outstanding side by side, each under its label; overdue beneath when there is any. */
 @Composable
 private fun CardSplit(
     card: CardFigures,
@@ -124,7 +123,7 @@ private fun CardSplit(
     }
 }
 
-/** "↑ Rs 5,000.00" against the previous period. */
+// e.g. "↑ Rs 5,000.00" against the previous period.
 @Composable
 private fun ChangeCaption(
     change: Double,
@@ -150,7 +149,6 @@ private fun ChangeCaption(
     }
 }
 
-/** Group name over its cards, with the group's total; tap to fold the group. */
 @Composable
 private fun SectionLabel(
     section: AccountSection,
@@ -203,7 +201,6 @@ private fun SectionLabel(
     }
 }
 
-/** One neutral full-width card per account, grouped, with the balance set large under the name. */
 @Composable
 internal fun AccountCards(ui: AccountsUi, onToggle: (String) -> Unit, onOpen: (AccountUi) -> Unit) {
     val money = LocalMoneyColors.current

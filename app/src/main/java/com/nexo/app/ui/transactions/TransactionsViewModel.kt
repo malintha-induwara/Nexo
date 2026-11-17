@@ -75,34 +75,29 @@ class TransactionsViewModel @Inject constructor(
     private val clock: Clock,
     private val savedState: SavedStateHandle,
 ) : ViewModel() {
-    /** The day the tab shows; kept across process death. */
+    // Kept across process death.
     private val selectedDate = MutableStateFlow(
         savedState.get<String>(SELECTED_DATE)?.let(LocalDate::parse) ?: LocalDate.now(clock),
     )
 
-    /** Day to scroll to once, after a save elsewhere; cleared by [onFocusHandled]. */
+    // Day to scroll to once, after a save elsewhere; cleared by [onFocusHandled].
     private val focus = MutableStateFlow<LocalDate?>(null)
 
-    /** Transaction just written by the entry form, so its row lights up when the list shows it. */
     private val lastSaved = MutableStateFlow<String?>(null)
 
-    /** Memo just written by the editor, for its highlight. */
     private val savedMemo = MutableStateFlow<String?>(null)
 
-    /**
-     * Kept for event handlers that need the reference data synchronously. It feeds [uiState], so it
-     * is current whenever the screen is there to call them.
-     */
+    // For handlers that need it synchronously; it feeds [uiState], so it stays current.
     private val ref: StateFlow<RefData> = refs.getRefDataStream().stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
         RefData(),
     )
 
-    /** The sub-tab the user picked; null means the book's start screen. */
+    // Null means the book's start screen.
     private val _tab = savedState.savedStateFlow<SubTab?>("tab", null)
 
-    /** Waits for the real reference data, so the start screen never flashes the wrong sub-tab. */
+    // Waits for the real reference data, so the start screen never flashes the wrong sub-tab.
     private val tab: Flow<SubTab> = combine(_tab, refs.getRefDataStream()) { t, r ->
         t
             ?: startTab(r)
@@ -192,7 +187,6 @@ class TransactionsViewModel @Inject constructor(
         savedMemo.value = id
     }
 
-    /** Moves to [date] and scrolls it into view once. */
     fun focusOn(date: LocalDate) {
         select(date)
         focus.value = date
@@ -291,7 +285,6 @@ class TransactionsViewModel @Inject constructor(
         var totals = InOut()
         days.forEach { totals += InOut(it.income, it.expense) }
 
-        // Calendar cells
         val today = LocalDate.now(clock)
         val byDay = filtered.filter { factory.listable(it) }.groupBy { LocalDate.parse(it.date) }
         val cells = grid.days().map { d ->
@@ -344,7 +337,7 @@ class TransactionsViewModel @Inject constructor(
         )
     }
 
-    /** Upcoming scheduled repeats from today to the period end. */
+    // Upcoming scheduled repeats from today to the period end.
     private fun repeatPreview(
         ref: RefData,
         rules: List<RepeatRule>,
@@ -488,7 +481,6 @@ class TransactionsViewModel @Inject constructor(
         )
     }
 
-    /** Total-page summary. */
     private fun summary(
         ref: RefData,
         rows: List<Transaction>,
@@ -570,7 +562,7 @@ class TransactionsViewModel @Inject constructor(
         return pinned + dated
     }
 
-    // ---- Navigation --------------------------------------------------------------------------------------------------
+    // ---- Navigation -------------------------------------------------------------------------
 
     fun setTab(t: SubTab) {
         _tab.value = t
@@ -617,7 +609,7 @@ class TransactionsViewModel @Inject constructor(
         _tab.value = SubTab.DAILY
     }
 
-    // ---- Filter ------------------------------------------------------------------------------------------------------
+    // ---- Filter -----------------------------------------------------------------------------
 
     fun setFilterOpen(open: Boolean) {
         filterOpen.value = open
@@ -631,7 +623,7 @@ class TransactionsViewModel @Inject constructor(
         filter.value = f
     }
 
-    // ---- Multi-select ------------------------------------------------------------------------------------------------
+    // ---- Multi-select -----------------------------------------------------------------------
 
     fun toggleSelect(id: String) {
         selection.value = if (id in selection.value) selection.value - id else selection.value + id

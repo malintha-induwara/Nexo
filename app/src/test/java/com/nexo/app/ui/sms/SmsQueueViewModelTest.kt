@@ -29,7 +29,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Synthetic messages only; real bank SMS never enters the repository. */
+// Synthetic messages only; real bank SMS never enters the repository.
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class SmsQueueViewModelTest {

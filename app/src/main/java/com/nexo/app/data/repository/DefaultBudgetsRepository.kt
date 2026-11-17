@@ -14,7 +14,6 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-/** Budgets with effective-from monthly amounts. */
 class DefaultBudgetsRepository @Inject constructor(
     private val db: NexoDatabase,
     private val clock: Clock,
@@ -30,7 +29,6 @@ class DefaultBudgetsRepository @Inject constructor(
 
     private fun now() = clock.millis()
 
-    /** [currentKey] is the label key of the current month. */
     override suspend fun add(categoryId: String?, amount: Double, currentKey: Int) =
         db.withTransaction {
             val id = Budget.idFor(categoryId)
@@ -111,7 +109,6 @@ class DefaultBudgetsRepository @Inject constructor(
         )
     }
 
-    /** Soft delete; the amounts stay stored for a later revival. */
     override suspend fun delete(budgetId: String) = db.withTransaction {
         val b = db.budgetDao().getBudget(budgetId) ?: return@withTransaction
         db.budgetDao().upsertBudgets(listOf(b.copy(isDeleted = true, updatedAt = now())))
