@@ -4,6 +4,19 @@ Nexo is an offline-first personal finance app for Android. It tracks income, exp
 
 ## Screenshots
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/9b148cd7-17c7-4712-90b7-f6a7237c9f2b" width="200" alt="Home" />
+  <img src="https://github.com/user-attachments/assets/178638f9-12c6-4a0e-854b-cd783f30bb62" width="200" alt="Calendar" />
+  <img src="https://github.com/user-attachments/assets/cd4331f1-8a7e-4c3f-872f-1093fbc8f584" width="200" alt="Stats" />
+  <img src="https://github.com/user-attachments/assets/db2dadcb-0dc0-4e71-9a82-94abc1eec0ed" width="200" alt="Accounts" />
+</p>
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/668b76ae-69eb-4bc9-856d-dca8edaedb22" width="200" alt="Add transaction" />
+  <img src="https://github.com/user-attachments/assets/f2c5ef1f-3e42-4924-9447-aaec7060640d" width="200" alt="Bank SMS review queue" />
+  <img src="https://github.com/user-attachments/assets/a3d47a3c-7289-4edb-8899-6f957d29a2a5" width="200" alt="Dark mode" />
+</p>
+
+
 ## Features
 
 - **Transactions**
