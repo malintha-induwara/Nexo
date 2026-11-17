@@ -2,6 +2,8 @@
 
 Nexo is an offline-first personal finance app for Android. It tracks income, expenses and transfers across accounts and currencies. It can also pick up transactions from Sri Lankan bank SMS alerts and read totals from scanned receipts, all on the device.
 
+## Screenshots
+
 ## Features
 
 - **Transactions**
@@ -115,17 +117,12 @@ adb logcat -s DebugSmsReceiver
 [![Navigation 3](https://img.shields.io/badge/Navigation%203-4285F4?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com/guide/navigation/navigation-3)
 [![Hilt](https://img.shields.io/badge/Hilt-2D3E50?style=for-the-badge&logo=dagger&logoColor=white)](https://dagger.dev/hilt/)
 [![Room](https://img.shields.io/badge/Room-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
-[![DataStore](https://img.shields.io/badge/DataStore-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com/topic/libraries/architecture/datastore)
-[![WorkManager](https://img.shields.io/badge/WorkManager-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com/topic/libraries/architecture/workmanager)
-[![Coroutines](https://img.shields.io/badge/Coroutines%20%26%20Flow-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org/docs/coroutines-overview.html)
-[![kotlinx.serialization](https://img.shields.io/badge/kotlinx.serialization-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://github.com/Kotlin/kotlinx.serialization)
 [![ML Kit](https://img.shields.io/badge/ML%20Kit-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://developers.google.com/ml-kit)
 [![Coil](https://img.shields.io/badge/Coil-1E88E5?style=for-the-badge&logo=kotlin&logoColor=white)](https://coil-kt.github.io/coil/)
 [![Biometric](https://img.shields.io/badge/Biometric-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com/jetpack/androidx/releases/biometric)
 [![Gradle](https://img.shields.io/badge/Gradle-02303A?style=for-the-badge&logo=gradle&logoColor=white)](https://gradle.org/)
 [![JUnit](https://img.shields.io/badge/JUnit-25A162?style=for-the-badge&logo=junit5&logoColor=white)](https://junit.org/junit4/)
 [![Robolectric](https://img.shields.io/badge/Robolectric-6DB33F?style=for-the-badge&logo=android&logoColor=white)](https://robolectric.org/)
-[![ktlint](https://img.shields.io/badge/ktlint-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://pinterest.github.io/ktlint/)
 
 ## Architecture
 
