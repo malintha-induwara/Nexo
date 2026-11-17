@@ -33,7 +33,6 @@ Nexo is an offline-first personal finance app for Android. It tracks income, exp
   - App lock with a PIN or biometrics
   - Daily automatic on-device backup, plus manual backup and restore
   - Export to Excel (`.xlsx`) and import transactions from TSV files
-  - Import from Money Manager Android backups
 - **Personalisation**
   - Light, dark or system theme
   - Quick-add notification and a daily reminder
@@ -140,3 +139,7 @@ Nexo follows the [Android architecture guide](https://developer.android.com/topi
 - `di` — Hilt modules
 
 `ArchitectureTest` keeps the layers apart: data never reaches into domain or ui, and ui talks to data only through repositories.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
