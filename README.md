@@ -4,16 +4,16 @@ Nexo is an offline-first personal finance app for Android. It tracks income, exp
 
 ## Screenshots
 
+
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/9b148cd7-17c7-4712-90b7-f6a7237c9f2b" width="200" alt="Home" />
-  <img src="https://github.com/user-attachments/assets/178638f9-12c6-4a0e-854b-cd783f30bb62" width="200" alt="Calendar" />
-  <img src="https://github.com/user-attachments/assets/cd4331f1-8a7e-4c3f-872f-1093fbc8f584" width="200" alt="Stats" />
-  <img src="https://github.com/user-attachments/assets/db2dadcb-0dc0-4e71-9a82-94abc1eec0ed" width="200" alt="Accounts" />
+  <img src="https://github.com/user-attachments/assets/92efd95b-a68c-424c-b640-ec656d0acd35" width="200" alt="Home" />
+  <img src="https://github.com/user-attachments/assets/66dda01c-5048-4bf1-a5cf-485233d45087" width="200" alt="Stats" />
+  <img src="https://github.com/user-attachments/assets/d3e8a16a-1b1b-4914-9369-4f27f7f8ea7a" width="200" alt="Accounts" />
+  <img src="https://github.com/user-attachments/assets/b38a6fa7-ceee-44a0-a956-01587069808f" width="200" alt="Receipt Scan" />
 </p>
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/668b76ae-69eb-4bc9-856d-dca8edaedb22" width="200" alt="Add transaction" />
-  <img src="https://github.com/user-attachments/assets/f2c5ef1f-3e42-4924-9447-aaec7060640d" width="200" alt="Bank SMS review queue" />
-  <img src="https://github.com/user-attachments/assets/a3d47a3c-7289-4edb-8899-6f957d29a2a5" width="200" alt="Dark mode" />
+  <img src="https://github.com/user-attachments/assets/974e58df-c233-4b40-b8e0-f8448d495d8b" width="200" alt="Add transaction" />
+  <img src="https://github.com/user-attachments/assets/76f32985-2274-4485-b41e-cf35efb24fe0" width="200" alt="Bank SMS review queue" />
 </p>
 
 
